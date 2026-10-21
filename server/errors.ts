@@ -16,3 +16,12 @@ export const invalidOutput = () =>
     "INVALID_AGENT_RESPONSE",
     "The agent returned an incomplete response. Please try again.",
   );
+
+export class RunError extends Error {
+  code: string;
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = "RunError";
+    this.code = code;
+  }
+}

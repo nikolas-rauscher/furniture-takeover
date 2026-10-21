@@ -10,22 +10,24 @@ The browser calls relative `/api/...` URLs. Vite forwards them to the loopback A
 - `/api/listings`: seeded demo catalog and validated updates.
 - `/api/messages`: local conversation preview, isolated by browser workspace identifier.
 
-`server/service.ts` validates supplied seller facts before accepting a structured draft. `server/runtime.ts` coordinates tools. `shared/actions.ts`, `shared/runs.ts` and `shared/negotiation.ts` describe the data crossing those boundaries. `src/api/runs.ts` validates the streamed events again before the UI applies them.
+`server/service.ts` validates supplied seller facts before accepting a structured draft. `server/runtime.ts` coordinates the agent loop and streaming; `server/agent-tools.ts` registers tools with their descriptions, schemas and execution functions. `shared/actions.ts`, `shared/runs.ts` and `shared/negotiation.ts` describe the data crossing those boundaries. `src/api/runs.ts` validates the streamed events again before the UI applies them.
 
 ## Adding a feature
 
-| Change                               | Start here                                                                            | Also check                                                            |
-| ------------------------------------ | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| A listing field or search constraint | `shared/marketplace.ts`, `shared/actions.ts`                                          | Server validation, browser form, persistence and migrations           |
-| An agent tool                        | `server/actions.ts` or a focused tool module such as `server/negotiation-tools.ts`    | Registration in `runtime.ts`, typed stream event, frontend handling   |
-| A question or chat control           | `AgentRunPanel.tsx`, `AgentComposer.tsx`, `useAgentRun.ts`                            | Free-text answers, Stop, stale responses and manual edit preservation |
-| A provider or external source        | `deepseek.ts`, `web-search.ts`, `marketplace-policy.ts`                               | Cancellation, response bounds, URL validation and honest error states |
-| An inbox feature                     | `shared/messages.ts`, `server/messages.ts`, `src/api/messages.ts`, `MessagesPage.tsx` | Workspace isolation and idempotent sends; this is still a local demo  |
-| Persistence changes                  | `server/database.ts`, browser storage hooks/repositories                              | Existing records, defaults and non-destructive migration tests        |
+| Change                               | Start here                                                                                                      | Also check                                                              |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| A listing field or search constraint | `shared/marketplace.ts`, `shared/actions.ts`                                                                    | Server validation, browser form, persistence and migrations             |
+| An agent tool                        | `server/agent-tools.ts` for registration, `server/actions.ts` or `server/negotiation-tools.ts` for domain logic | Registration in `agent-tools.ts`, typed stream event, frontend handling |
+| A question or chat control           | `AgentActionControls.tsx`, `AgentComposer.tsx`, `useAgentRun.ts`                                                | Free-text answers, Stop, stale responses and manual edit preservation   |
+| A provider or external source        | `deepseek.ts`, `web-search.ts`, `marketplace-policy.ts`                                                         | Cancellation, response bounds, URL validation and honest error states   |
+| An inbox feature                     | `shared/messages.ts`, `server/messages.ts`, `src/api/messages.ts`, `MessagesPage.tsx`                           | Workspace isolation and idempotent sends; this is still a local demo    |
+| Persistence changes                  | `server/database.ts`, browser storage hooks/repositories                                                        | Existing records, defaults and non-destructive migration tests          |
 
 Do not put provider credentials or server imports in `src/`. Do not let an agent tool bypass user confirmation for saving or sending. Price research should remain a proposal the user can accept or change.
 
 ## UI conventions
+
+Page components in `src/components/` own their markup; `App.tsx` connects navigation, storage and workflows. `AgentRunPanel.tsx` handles run status, `AgentActionControls.tsx` handles questions and changes, and `AgentAnswerContent.tsx` renders text and citations.
 
 Use the existing CSS tokens and DM Sans typography: paper backgrounds, dark text and cobalt-blue actions. Keep chat scrolling contained, account for fixed mobile navigation and respect reduced-motion preferences. Dialogs must trap focus, support Escape and restore focus when closed.
 

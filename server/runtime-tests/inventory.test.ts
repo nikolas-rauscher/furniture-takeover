@@ -1,3 +1,4 @@
+import { inventorySearch, selectTakeoverListings } from "../agent-tools.ts";
 import {
   toolCall,
   answer,
@@ -8,11 +9,7 @@ import {
 import test from "node:test";
 import assert from "node:assert/strict";
 import { MockLanguageModelV4 } from "ai/test";
-import {
-  inventorySearch,
-  selectTakeoverListings,
-  validateRunRequest,
-} from "../runtime.ts";
+import { validateRunRequest } from "../runtime.ts";
 
 test("takeover curation accepts only observed IDs within the current budget", () => {
   const observed = new Map([[ownDesk.id, ownDesk]]);

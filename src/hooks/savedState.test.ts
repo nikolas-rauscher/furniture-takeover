@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { defaults } from "../../shared/marketplace.ts";
 import { products } from "../testing/fixtures.ts";
 import {
-  isConversations,
   isFavoriteIds,
   isProducts,
   isSearchJobs,
@@ -46,7 +45,7 @@ test("old saved labels migrate before record validation", () => {
   assert.equal(result.value[0].criteria.condition, "Good");
 });
 
-test("malformed nested search criteria and messages are rejected", () => {
+test("malformed nested search criteria are rejected", () => {
   assert.equal(
     isSearchJobs([
       {
@@ -58,32 +57,6 @@ test("malformed nested search criteria and messages are rejected", () => {
       },
     ]),
     false,
-  );
-  assert.equal(
-    isConversations([
-      {
-        id: "bad",
-        productId: "desk",
-        name: "A",
-        date: "",
-        confirmed: false,
-        messages: [null],
-      },
-    ]),
-    false,
-  );
-  assert.equal(
-    isConversations([
-      {
-        id: "ok",
-        productId: "desk",
-        name: "A",
-        date: "",
-        confirmed: false,
-        messages: [{ text: "Hello", mine: true }],
-      },
-    ]),
-    true,
   );
 });
 

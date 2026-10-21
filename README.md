@@ -56,7 +56,8 @@ src/App.tsx        Top-level navigation and workflow coordination
 shared/            Domain types, validated action/event contracts and demo catalog
 server/config.ts   Ports, credentials, database path and allowed origins
 server/http.ts     HTTP routing, request limits and stream delivery
-server/runtime.ts  Agent loop and tool registration
+server/runtime.ts  Agent loop and streaming
+server/agent-tools.ts Tool registration and execution
 server/service.ts  Structured assistance and seller-fact grounding
 server/deepseek.ts DeepSeek transport for suggestions and photo drafts
 server/web-search.ts Brave adapter and result validation
@@ -79,6 +80,4 @@ For LAN or Tailscale access, see [phone testing](docs/DEVELOPMENT.md#phone-testi
 - Sending a message writes to the local demo inbox. Seller preview mode is not a real seller account. No external seller receives a message.
 - There is no authentication, payment processing, marketplace posting or background alert service. The API is a local prototype, not a public multi-user backend.
 - Web results are search snippets. Prices, availability and pickup distances may be unverified. Demo catalog prices and details are fictional.
-- [Image sources](public/images/CATALOG_SOURCES.md) documents bundled photos and external image references. External marketplace photographs are not licensed as part of this source code.
-
-
+- [Image sources](public/images/CATALOG_SOURCES.md) records the external catalog photo references. External marketplace photographs are not licensed as part of this source code.

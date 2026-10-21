@@ -1,7 +1,6 @@
 import { MAX_LISTING_PHOTOS } from "../../shared/listingPhotos.ts";
 import {
   migrateSaved,
-  type Conversation,
   type Criteria,
   type Product,
   type SearchJob,
@@ -95,24 +94,6 @@ export const isProducts: SavedValueValidator<Product[]> = (
       oneOf(item.status, ["active", "reserved", "sold", "withdrawn"]) &&
       (item.own === undefined || typeof item.own === "boolean") &&
       (item.demo === undefined || typeof item.demo === "boolean"),
-  );
-
-export const isConversations: SavedValueValidator<Conversation[]> = (
-  value,
-): value is Conversation[] =>
-  Array.isArray(value) &&
-  value.every(
-    (item) =>
-      record(item) &&
-      stringFields(item, ["id", "productId", "name", "date"]) &&
-      typeof item.confirmed === "boolean" &&
-      Array.isArray(item.messages) &&
-      item.messages.every(
-        (message: unknown) =>
-          record(message) &&
-          typeof message.text === "string" &&
-          typeof message.mine === "boolean",
-      ),
   );
 
 /** Validate after migration, before any saved value reaches a rendering path. */

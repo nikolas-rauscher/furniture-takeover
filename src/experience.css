@@ -1635,7 +1635,7 @@ label > textarea {
   color: var(--paper-muted, #70706b);
 }
 
-.workflow-test-banner {
+.database-status {
   padding: 8px 24px;
   background: #edf0fa;
   color: #344eb5;
@@ -1765,14 +1765,14 @@ label > textarea {
 .job-actions { margin-top: 16px; gap: 16px; }
 .listing-preview h2 { margin: 12px 0; }
 .listing-preview p { margin-top: 10px; }
-.workflow-test-banner {
+.database-status {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
   gap: 4px 12px;
 }
-.workflow-test-banner button { min-height: 44px; }
+.database-status button { min-height: 44px; }
 .search-area-status .agent-footnote {
   max-width: none;
   min-width: 0;

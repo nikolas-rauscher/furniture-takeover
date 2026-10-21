@@ -23,16 +23,3 @@ Prices, locations and descriptions in the sample catalogue remain fictional demo
 The app uses the photo and offer URLs in `shared/listingPhotoSources.ts`. This document records their original sources.
 
 The app references the original 1000 × 750 photograph URL carried in the indexed thumbnail. All 14 distinct image endpoints returned HTTP 200 with an image content type on 13 October 2026. Photo attribution is visible in each demo listing detail. Demo prices, dimensions and locations are examples, not the source offer details.
-
-## Bundled test photographs
-
-The bundled JPG files listed below are illustrative Unsplash photographs from the early prototype. They do not represent live offers. Demo prices, people and listing details are fictional.
-
-- chair: https://images.unsplash.com/photo-1503602642458-232111445657
-- desk: https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd
-- sofa: https://images.unsplash.com/photo-1555041469-a586c61ea9bc
-- armchair: https://images.unsplash.com/photo-1567538096630-e0c55bd6374c
-- lamp: https://images.unsplash.com/photo-1507473885765-e6ed057f782c
-- shelf: https://images.unsplash.com/photo-1594620302200-9a762244a156
-- desk2: https://images.unsplash.com/photo-1519219788971-8d9797e0928e
-- room: https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e

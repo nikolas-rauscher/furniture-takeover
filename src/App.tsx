@@ -1,6 +1,9 @@
+import AccountPage, { type AccountTab } from "./components/AccountPage";
+import ListingDetailPage from "./components/ListingDetailPage";
+import ComparePage from "./components/ComparePage";
+import SavedSearchesPage from "./components/SavedSearchesPage";
 import { listingPhotos, MAX_LISTING_PHOTOS } from "../shared/listingPhotos";
 import { readListingPhoto } from "./listingPhotos";
-import PhotoGallery from "./components/PhotoGallery";
 import { animateUiChange, scrollToPageStart } from "./uiMotion";
 import MessagesPage from "./components/MessagesPage";
 import { useNegotiations } from "./hooks/useNegotiations";
@@ -32,12 +35,8 @@ import {
   Check,
   ChevronDown,
   GitCompareArrows,
-  Heart,
-  MapPin,
-  Pencil,
   Plus,
   Search,
-  Trash2,
   UserRound,
   X,
 } from "lucide-react";
@@ -61,7 +60,6 @@ import {
   preferenceSearch,
   restoreSearch,
   sameCriteria,
-  searchText,
   type SavedSearch,
   type SearchSnapshot,
 } from "./searchRequest";
@@ -201,9 +199,7 @@ export default function App() {
       : undefined,
   );
   const [modal, setModal] = useState<Dialog>(null);
-  const [accountTab, setAccountTab] = useState<
-    "favorites" | "listings" | "archive"
-  >("listings");
+  const [accountTab, setAccountTab] = useState<AccountTab>("listings");
   const [favorites, setFavorites] = useSaved<string[]>(
     "takeover-favorites",
     [],
@@ -260,8 +256,6 @@ export default function App() {
   const archivedListings = localListings.filter(
     (item) => item.status === "withdrawn",
   );
-  const accountListings =
-    accountTab === "archive" ? archivedListings : visibleListings;
   const editingItem = own.find((item) => item.id === editingListing);
   const savedSearches = jobs.filter((job) => job.id !== "seed-search");
   const savedListings = visibleListings.filter((item) =>
@@ -1190,7 +1184,7 @@ export default function App() {
   return (
     <>
       {(!database.ready || database.pending > 0 || database.error) && (
-        <div className="workflow-test-banner" role="status">
+        <div className="database-status" role="status">
           {database.error ||
             (database.pending
               ? "Saving demo changes to the database…"
@@ -1324,7 +1318,9 @@ export default function App() {
                 });
                 setMessageProposal(undefined);
               }}
-              onDeleted={() => window.history.replaceState(null, "", "#messages")}
+              onDeleted={() =>
+                window.history.replaceState(null, "", "#messages")
+              }
               listings={own}
               listing={own.find((item) => item.id === messageListingId)}
               onOpenListing={(id) => {
@@ -1682,94 +1678,37 @@ export default function App() {
           )}
 
           {view === "searches" && (
-            <>
-              <div className="page-title">
-                <h1>Saved searches</h1>
-                <p>Keep a search and run it again when you need it.</p>
-              </div>
-              {savedSearches.length ? (
-                <div className="search-jobs">
-                  {savedSearches.map((job) => (
-                    <article className="search-job" key={job.id}>
-                      <div className="job-icon">
-                        <Search size={20} />
-                      </div>
-                      <div className="job-main">
-                        <h2>{job.title}</h2>
-                        <p>
-                          {job.request ||
-                            searchText(job.criteria, job.location || location)}
-                        </p>
-                        <div className="job-actions">
-                          <button
-                            className="button secondary small"
-                            onClick={() => {
-                              const search = restoreSearch(job, location);
-                              setSearchArea({
-                                location: search.location,
-                                radius: search.criteria.radius,
-                              });
-                              void performSearch(search);
-                            }}
-                          >
-                            Run search
-                            <ArrowRight size={14} />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="job-controls">
-                        <button
-                          className="icon-button"
-                          aria-label={"Edit saved search " + job.title}
-                          onClick={() => {
-                            setEditingJob(job.id);
-                            setJobTitle(job.title);
-                            setFilterDraft(job.criteria);
-                            setModal("edit-search");
-                          }}
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          className="icon-button"
-                          aria-label={"Delete saved search " + job.title}
-                          onClick={() => {
-                            setJobs((current) =>
-                              current.filter((item) => item.id !== job.id),
-                            );
-                            setToastNotice({
-                              message: "Saved search deleted.",
-                              deletedSearch: {
-                                job,
-                                index: jobs.findIndex(
-                                  (item) => item.id === job.id,
-                                ),
-                              },
-                            });
-                          }}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <div className="empty-state">
-                  <Bookmark size={32} />
-                  <h2>No saved searches yet</h2>
-                  <p>Start with what you need, then save your search.</p>
-                  <button className="button primary" onClick={goHome}>
-                    Find furniture
-                  </button>
-                </div>
-              )}
-              {savedSearches.length > 0 && (
-                <p className="quiet-caption">
-                  Stored in this browser. Searches run when you start them.
-                </p>
-              )}
-            </>
+            <SavedSearchesPage
+              searches={savedSearches}
+              location={location}
+              onFind={goHome}
+              onRun={(job) => {
+                const search = restoreSearch(job, location);
+                setSearchArea({
+                  location: search.location,
+                  radius: search.criteria.radius,
+                });
+                void performSearch(search);
+              }}
+              onEdit={(job) => {
+                setEditingJob(job.id);
+                setJobTitle(job.title);
+                setFilterDraft(job.criteria);
+                setModal("edit-search");
+              }}
+              onDelete={(job) => {
+                setJobs((current) =>
+                  current.filter((item) => item.id !== job.id),
+                );
+                setToastNotice({
+                  message: "Saved search deleted.",
+                  deletedSearch: {
+                    job,
+                    index: jobs.findIndex((item) => item.id === job.id),
+                  },
+                });
+              }}
+            />
           )}
 
           {view === "sell" && (
@@ -1803,384 +1742,45 @@ export default function App() {
             </>
           )}
 
-          {view === "detail" &&
-            (selected ? (
-              <>
-                <button
-                  className="back-link"
-                  onClick={() => navigate("account")}
-                >
-                  <ArrowLeft size={16} />
-                  My listings
-                </button>
-                <div className="detail-layout">
-                  <div className="detail-photo">
-                    <PhotoGallery
-                      key={selected.id}
-                      images={listingPhotos(selected)}
-                      title={selected.title}
-                    />
-                  </div>
-                  <div className="detail-summary">
-                    <span className="source-label">
-                      {selected.demo
-                        ? "Demo listing · Fictional offer"
-                        : "Your local listing"}
-                    </span>
-                    <h1>{selected.title}</h1>
-                    <strong className="detail-price">
-                      {money(selected.price)}
-                    </strong>
-                    <div className="detail-meta">
-                      <span>
-                        <MapPin size={15} />
-                        {selected.location}
-                      </span>
-                    </div>
-                    {selected.pickupPoint && (
-                      <div className="detail-description">
-                        <strong>Suggested meeting point</strong>
-                        <p>
-                          {selected.pickupPoint.name}
-                          <br />
-                          {selected.pickupPoint.address}
-                        </p>
-                        <a
-                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selected.pickupPoint.name + " " + selected.pickupPoint.address)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Open in Maps
-                        </a>
-                        {" · "}
-                        <a
-                          href={selected.pickupPoint.sourceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Address source
-                        </a>
-                        <p>
-                          This is a real place near EPFL. Arrange a meeting with
-                          the seller; this demo item is not stored there.
-                        </p>
-                      </div>
-                    )}
-                    <div className="detail-description">
-                      <p>{selected.description}</p>
-                      {selected.photoSourceUrl && (
-                        <a
-                          href={selected.photoSourceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          View original photo listing
-                        </a>
-                      )}
-                    </div>
-                    <div className="facts">
-                      <div>
-                        <span>Condition</span>
-                        <strong>{selected.condition || "Not specified"}</strong>
-                      </div>
-                      <div>
-                        <span>Dimensions</span>
-                        <strong>{selected.dimensions}</strong>
-                      </div>
-                      <div>
-                        <span>Collection</span>
-                        <strong>{selected.available}</strong>
-                      </div>
-                    </div>
-                    <button
-                      className="button primary full"
-                      disabled={selected.status !== "active"}
-                      onClick={() => openMessages(selected.id)}
-                    >
-                      Message seller
-                    </button>
-                    <button
-                      className="button secondary full"
-                      onClick={() => editListing(selected)}
-                    >
-                      <Pencil size={16} />
-                      Edit listing
-                    </button>
-                    <button
-                      className="button secondary full"
-                      onClick={() => {
-                        editListing(selected);
-                        void runListing(
-                          "Review my supplied listing and help me improve it. Ask about missing facts; do not invent them.",
-                        );
-                      }}
-                    >
-                      Ask the agent
-                    </button>
-                    <p className="quiet-caption">
-                      {selected.demo
-                        ? "Demo listing stored in the local database."
-                        : "Saved in this browser."}{" "}
-                      Not published to an external marketplace.
-                    </p>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="empty-state">
-                <h1>Listing not found</h1>
-                <button
-                  className="button secondary"
-                  onClick={() => navigate("account")}
-                >
-                  My listings
-                </button>
-              </div>
-            ))}
+          {view === "detail" && (
+            <ListingDetailPage
+              selected={selected}
+              onBack={() => navigate("account")}
+              onMessage={() => selected && openMessages(selected.id)}
+              onEdit={() => selected && editListing(selected)}
+              onAskAgent={() => {
+                if (!selected) return;
+                editListing(selected);
+                void runListing(
+                  "Review my supplied listing and help me improve it. Ask about missing facts; do not invent them.",
+                );
+              }}
+            />
+          )}
 
           {view === "compare" && (
-            <>
-              <div className="page-title">
-                <button
-                  className="back-link"
-                  onClick={() => navigate("account")}
-                >
-                  <ArrowLeft size={16} />
-                  My space
-                </button>
-                <h1>Compare your listings</h1>
-              </div>
-              {comparison.length ? (
-                <div className="comparison-grid">
-                  {comparison.map((item) => (
-                    <article className="comparison-card" key={item.id}>
-                      <div className="comparison-image">
-                        <img src={item.image} alt={item.title} />
-                      </div>
-                      <h2>{item.title}</h2>
-                      <strong className="compare-price">
-                        {money(item.price)}
-                      </strong>
-                      <div>
-                        <div className="compare-fact">
-                          <span>Condition</span>
-                          <strong>{item.condition || "Not specified"}</strong>
-                        </div>
-                        <div className="compare-fact">
-                          <span>Dimensions</span>
-                          <strong>{item.dimensions}</strong>
-                        </div>
-                        <div className="compare-fact">
-                          <span>Collection</span>
-                          <strong>{item.available}</strong>
-                        </div>
-                      </div>
-                      <button
-                        className="button secondary full"
-                        onClick={() => openProduct(item)}
-                      >
-                        Open listing
-                      </button>
-                      <button
-                        className="text-button"
-                        onClick={() => toggleCompare(item.id)}
-                      >
-                        Remove
-                      </button>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <div className="empty-state">
-                  <h2>Select listings to compare</h2>
-                  <button
-                    className="button secondary"
-                    onClick={() => navigate("account")}
-                  >
-                    My listings
-                  </button>
-                </div>
-              )}
-            </>
+            <ComparePage
+              items={comparison}
+              onBack={() => navigate("account")}
+              onOpen={openProduct}
+              onRemove={toggleCompare}
+            />
           )}
 
           {view === "account" && (
-            <>
-              <div className="page-title title-with-action">
-                <div>
-                  <h1>My space</h1>
-                  <p>Your browser listings, saved items and demo database.</p>
-                </div>
-                <button className="button primary" onClick={startSell}>
-                  <Plus size={16} />
-                  Sell furniture
-                </button>
-              </div>
-              <button
-                className="button secondary"
-                onClick={() => openMessages()}
-              >
-                Open messages
-              </button>
-              <div
-                className="account-tabs"
-                role="tablist"
-                aria-label="My space"
-              >
-                <button
-                  role="tab"
-                  aria-selected={accountTab === "listings"}
-                  className={accountTab === "listings" ? "active" : ""}
-                  onClick={() => setAccountTab("listings")}
-                >
-                  My listings<span>{visibleListings.length}</span>
-                </button>
-                <button
-                  role="tab"
-                  aria-selected={accountTab === "favorites"}
-                  className={accountTab === "favorites" ? "active" : ""}
-                  onClick={() => setAccountTab("favorites")}
-                >
-                  Saved items<span>{savedListings.length}</span>
-                </button>
-                <button
-                  role="tab"
-                  aria-selected={accountTab === "archive"}
-                  className={accountTab === "archive" ? "active" : ""}
-                  onClick={() => setAccountTab("archive")}
-                >
-                  Archive<span>{archivedListings.length}</span>
-                </button>
-              </div>
-              {accountTab === "favorites" &&
-                (savedListings.length ? (
-                  <div className="product-grid">
-                    {savedListings.map((item) => productCard(item))}
-                  </div>
-                ) : (
-                  <div className="empty-state">
-                    <Heart size={30} />
-                    <h2>No saved local items</h2>
-                    <p>Use the heart on a local listing to keep it here.</p>
-                    <button
-                      className="button secondary"
-                      onClick={() => setAccountTab("listings")}
-                    >
-                      My listings
-                    </button>
-                  </div>
-                ))}
-              {accountTab !== "favorites" &&
-                (accountListings.length ? (
-                  <div className="own-listings">
-                    {accountListings.map((item) => (
-                      <article className="own-listing" key={item.id}>
-                        {item.status === "withdrawn" ? (
-                          <div
-                            className="own-listing-image"
-                            aria-hidden="true"
-                            style={{ display: "grid", placeItems: "center" }}
-                          >
-                            <Trash2 size={24} />
-                          </div>
-                        ) : (
-                          <button
-                            className="own-listing-image"
-                            aria-label={"Open " + item.title}
-                            onClick={() => openProduct(item)}
-                          >
-                            <img src={item.image} alt={item.title} />
-                          </button>
-                        )}
-                        <div>
-                          <span
-                            className={
-                              "status " +
-                              (item.status !== "active" ? "muted" : "")
-                            }
-                          >
-                            {item.status === "active"
-                              ? "Active locally"
-                              : item.status === "withdrawn"
-                                ? "Archived"
-                                : item.status === "reserved"
-                                  ? "Reserved"
-                                  : "Sold"}
-                          </span>
-                          <h2>{item.title}</h2>
-                          <strong>{money(item.price)}</strong>
-                          <p>{item.available}</p>
-                          <div className="listing-actions">
-                            {item.status !== "withdrawn" && (
-                              <button
-                                className="button secondary small"
-                                onClick={() => editListing(item)}
-                              >
-                                <Pencil size={13} />
-                                Edit
-                              </button>
-                            )}
-                            {item.status === "active" && (
-                              <button
-                                className="button secondary small"
-                                onClick={() => setStatus(item.id, "reserved")}
-                              >
-                                Mark reserved
-                              </button>
-                            )}
-                            {(item.status === "active" ||
-                              item.status === "reserved") && (
-                              <button
-                                className="button secondary small"
-                                onClick={() => setStatus(item.id, "sold")}
-                              >
-                                Mark sold
-                              </button>
-                            )}
-                            {item.status !== "active" && (
-                              <button
-                                className="text-button"
-                                onClick={() => setStatus(item.id, "active")}
-                              >
-                                {item.status === "withdrawn"
-                                  ? "Restore listing"
-                                  : "Make active"}
-                              </button>
-                            )}
-                            {item.status !== "withdrawn" && (
-                              <button
-                                className="text-button"
-                                onClick={() => setStatus(item.id, "withdrawn")}
-                              >
-                                Archive
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="empty-state">
-                    <Camera size={32} />
-                    <h2>
-                      {accountTab === "archive"
-                        ? "No archived listings"
-                        : "Your first listing starts with a photo"}
-                    </h2>
-                    <p>
-                      {accountTab === "archive"
-                        ? "Items you archive will appear here."
-                        : "Add your item and let the agent prepare the details."}
-                    </p>
-                    {accountTab !== "archive" && (
-                      <button className="button primary" onClick={startSell}>
-                        Create a listing
-                      </button>
-                    )}
-                  </div>
-                ))}
-            </>
+            <AccountPage
+              accountTab={accountTab}
+              setAccountTab={setAccountTab}
+              visibleListings={visibleListings}
+              savedListings={savedListings}
+              archivedListings={archivedListings}
+              onSell={startSell}
+              onMessages={() => openMessages()}
+              onOpen={openProduct}
+              onEdit={editListing}
+              onStatusChange={setStatus}
+              renderProduct={productCard}
+            />
           )}
         </main>
       </div>

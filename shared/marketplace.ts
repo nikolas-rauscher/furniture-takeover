@@ -48,14 +48,6 @@ export type SearchJob = {
   paused: boolean;
   seen: boolean;
 };
-export type Conversation = {
-  id: string;
-  productId: string;
-  name: string;
-  messages: { text: string; mine: boolean }[];
-  date: string;
-  confirmed: boolean;
-};
 export const defaults: Criteria = {
   category: "All",
   maxPrice: 500,
