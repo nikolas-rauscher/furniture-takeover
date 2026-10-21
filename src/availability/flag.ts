@@ -8,7 +8,9 @@ export type AvailabilityFlag = {
 
 /**
  * `?availability=reserve` turns the prototype on and remembers it in this
- * browser; `?availability=off` forgets it. Any other URL keeps the stored value.
+ * browser. `?availability=off`, or another variant's value, forgets it so only
+ * one availability prototype runs at a time. Without the parameter the stored
+ * value applies.
  */
 export function resolveAvailabilityFlag(
   search: string,
@@ -20,7 +22,7 @@ export function resolveAvailabilityFlag(
       storage.setItem(AVAILABILITY_FLAG_KEY, "reserve");
       return { enabled: true, cleanup: false };
     }
-    if (requested === "off") {
+    if (requested !== null) {
       storage.removeItem(AVAILABILITY_FLAG_KEY);
       return { enabled: false, cleanup: true };
     }
@@ -30,6 +32,9 @@ export function resolveAvailabilityFlag(
     };
   } catch {
     // Without storage the flag still works for the current page load.
-    return { enabled: requested === "reserve", cleanup: requested === "off" };
+    return {
+      enabled: requested === "reserve",
+      cleanup: requested !== null && requested !== "reserve",
+    };
   }
 }

@@ -48,12 +48,12 @@ test("the URL turns the prototype on or off and the choice is remembered", () =>
       undefined,
     ],
     [
-      "unknown values keep the stored flag",
-      "?availability=other",
+      "another variant's value turns this one off",
+      "?availability=badge",
       "reserve",
-      true,
       false,
-      "reserve",
+      true,
+      undefined,
     ],
   ];
   for (const [name, search, stored, enabled, cleanup, after] of cases) {
