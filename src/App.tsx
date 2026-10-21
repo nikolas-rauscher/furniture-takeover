@@ -81,6 +81,7 @@ import type {
   AgentPreferencesPatchEvent,
 } from "../shared/actions";
 import { useAgentHealth } from "./hooks/useAgentHealth";
+import { useAvailability } from "./availability/useAvailability";
 import {
   defaults,
   criteriaTitle,
@@ -213,6 +214,14 @@ export default function App() {
   const database = useListings();
   const own = database.listings;
   const setOwn = database.setListings;
+  // `?availability=reserve` prototype; null (main behaviour) when the flag is off.
+  const availability = useAvailability({
+    listings: own,
+    ready: database.ready,
+    setStatus,
+    setToast,
+    onFindSimilar: (title) => void runSearch(title),
+  });
   const [compared, setCompared] = useState<string[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messageProposal, setMessageProposal] = useState<
@@ -1149,6 +1158,7 @@ export default function App() {
       onOpen={() => openProduct(item)}
       onToggleFavorite={() => toggleFavorite(item.id)}
       onToggleCompare={() => toggleCompare(item.id)}
+      {...availability?.cardProps(item)}
     />
   );
 
@@ -1321,6 +1331,7 @@ export default function App() {
               onDeleted={() =>
                 window.history.replaceState(null, "", "#messages")
               }
+              threadBanner={availability?.threadBanner}
               listings={own}
               listing={own.find((item) => item.id === messageListingId)}
               onOpenListing={(id) => {
@@ -1634,6 +1645,7 @@ export default function App() {
                 negotiations.items
                   .filter((item) => item.status === "draft")
                   .map((proposal) => proposalSummary(proposal))}
+              {isHome && availability?.notices()}
               {isHome && visibleListings.length > 0 && (
                 <>
                   <div className="section-heading">
@@ -1742,9 +1754,19 @@ export default function App() {
             </>
           )}
 
+          {view === "detail" &&
+            !selected &&
+            selectedId &&
+            availability?.notices(selectedId)}
           {view === "detail" && (
             <ListingDetailPage
               selected={selected}
+              availabilityPanel={
+                selected &&
+                availability?.detailPanel(selected, () =>
+                  openMessages(selected.id),
+                )
+              }
               onBack={() => navigate("account")}
               onMessage={() => selected && openMessages(selected.id)}
               onEdit={() => selected && editListing(selected)}
@@ -1836,6 +1858,7 @@ export default function App() {
             </button>
           </div>
         )}
+      {availability?.overlay}
       {toast && (
         <div className="toast" role="status">
           <Check size={18} />

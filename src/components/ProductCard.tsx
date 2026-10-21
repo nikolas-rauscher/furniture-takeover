@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { listingPhotos } from "../../shared/listingPhotos";
 import { GitCompareArrows, Heart } from "lucide-react";
 import { TODAY, money, type Product } from "../../shared/marketplace";
@@ -10,6 +11,9 @@ type ProductCardProps = {
   onOpen: () => void;
   onToggleFavorite: () => void;
   onToggleCompare: () => void;
+  /** Feature-flagged availability prototypes; absent on main. */
+  statusLabel?: ReactNode;
+  availabilityNote?: ReactNode;
 };
 
 export default function ProductCard({
@@ -20,6 +24,8 @@ export default function ProductCard({
   onOpen,
   onToggleFavorite,
   onToggleCompare,
+  statusLabel,
+  availabilityNote,
 }: ProductCardProps) {
   const tags = [
     ...new Set(
@@ -63,6 +69,7 @@ export default function ProductCard({
         )}
         {product.demo && <span className="product-demo-mark">Demo</span>}
         {product.status === "sold" && <span className="sold-label">Sold</span>}
+        {statusLabel}
       </div>
       <div className="product-info">
         <div className="product-tags" aria-label="Listing details">
@@ -89,6 +96,7 @@ export default function ProductCard({
             {product.pickupPoint.address}
           </p>
         )}
+        {availabilityNote}
         <div className="product-bottom">
           <span
             className={`pickup ${product.pickupBy === TODAY ? "today" : ""}`}

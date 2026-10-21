@@ -1,0 +1,327 @@
+/* Reserve & confirm prototype. Loaded only through useAvailability. */
+
+.availability-label.mine {
+  background: var(--blue);
+}
+.availability-note {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--blue-dark);
+}
+
+.availability-panel {
+  display: grid;
+  gap: 10px;
+}
+.availability-panel > .quiet-caption {
+  margin: 0;
+}
+.availability-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid #dce2f0;
+  border-radius: 10px;
+  background: var(--mist);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.availability-status > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--blue);
+}
+.availability-status strong,
+.availability-status span {
+  display: block;
+}
+.availability-status strong {
+  font-weight: 600;
+}
+.availability-status span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.availability-status.confirmed {
+  border-color: var(--blue);
+  background: #f3f5ff;
+}
+.availability-status.muted {
+  background: var(--canvas);
+  border-color: var(--line);
+}
+.availability-cancel {
+  justify-self: center;
+  min-height: 36px;
+  color: var(--muted);
+  text-decoration: underline;
+}
+
+.availability-notices {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 24px;
+}
+.availability-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: white;
+}
+.availability-notice.reopened {
+  border-color: var(--blue);
+  background: #f3f5ff;
+}
+.availability-notice > p {
+  flex: 1 1 260px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.availability-notice > p > strong {
+  display: block;
+  font-weight: 600;
+}
+.availability-notice-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reservation-steps {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 22px;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.reservation-steps strong {
+  font-weight: 600;
+}
+.pickup-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 0;
+  border: 0;
+}
+.pickup-days legend {
+  width: 100%;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.pickup-days label {
+  position: relative;
+}
+.pickup-days input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+}
+.pickup-days span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid #dfe3ed;
+  border-radius: 999px;
+  background: white;
+  font-size: 13px;
+  cursor: pointer;
+}
+.pickup-days input:checked + span {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: white;
+}
+.pickup-days input:focus-visible + span {
+  outline: 3px solid #8297f5;
+  outline-offset: 3px;
+}
+
+.thread-reservation {
+  flex-shrink: 0;
+  margin: 12px 0 0;
+  padding: 14px 16px;
+  border: 1px solid var(--blue);
+  border-radius: 12px;
+  background: #f3f5ff;
+  font-size: 13px;
+}
+.thread-reservation.compact {
+  padding: 10px 14px;
+  line-height: 1.45;
+}
+.thread-reservation-summary {
+  margin: 0;
+  line-height: 1.45;
+}
+.thread-reservation-summary strong {
+  display: block;
+  font-weight: 600;
+}
+.thread-reservation-summary span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.thread-reservation-warning {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 8px 0 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--yellow);
+  font-size: 12px;
+}
+.thread-reservation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.demo-controls {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  z-index: 30;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: calc(100vw - 32px);
+}
+.demo-controls-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px dashed #9aa6cf;
+  border-radius: 999px;
+  background: white;
+  color: var(--blue-dark);
+  font-size: 12px;
+  box-shadow: 0 4px 18px #2f3e641a;
+}
+.demo-clock {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--mist);
+  font-weight: 600;
+}
+.demo-controls-panel {
+  display: grid;
+  gap: 6px;
+  width: 250px;
+  max-width: 100%;
+  padding: 12px;
+  border: 1px solid #dce2f0;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 8px 36px #2f3e6426;
+}
+.demo-controls-panel > p {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.demo-controls-panel > p strong {
+  display: block;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+.demo-controls-panel button {
+  display: grid;
+  gap: 1px;
+  padding: 8px 10px;
+  border: 1px solid #dfe3ed;
+  border-radius: 8px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+}
+.demo-controls-panel button:not(:disabled):hover {
+  background: var(--mist);
+}
+.demo-controls-panel small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+.demo-controls-panel .demo-reset {
+  margin-top: 4px;
+  border-style: dashed;
+  color: var(--blue-dark);
+}
+
+@media (max-width: 760px) {
+  .demo-controls {
+    left: 12px;
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  }
+  .demo-controls-toggle {
+    min-height: 32px;
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+  body:has(.compare-tray) .demo-controls {
+    bottom: calc(148px + env(safe-area-inset-bottom, 0px));
+  }
+  /* Keep the end of scrolling pages clear of the floating pill. */
+  body:has(.demo-controls) .home-layout .main-content,
+  body:has(.demo-controls)
+    .main-content:is(
+      .view-detail,
+      .view-account,
+      .view-searches,
+      .view-compare
+    ) {
+    padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px));
+  }
+  body:has(.demo-controls):has(.compare-tray) .home-layout .main-content,
+  body:has(.demo-controls):has(.compare-tray)
+    .main-content:is(
+      .view-detail,
+      .view-account,
+      .view-searches,
+      .view-compare
+    ) {
+    padding-bottom: calc(224px + env(safe-area-inset-bottom, 0px));
+  }
+  /* Chat and inbox screens keep a composer above the nav; stay clear of it. */
+  #root:has(
+      .chat-layout,
+      .messages-layout,
+      .selling-chat-layout,
+      .selling-photo-layout
+    )
+    .demo-controls {
+    top: 62px;
+    right: 12px;
+    bottom: auto;
+    left: auto;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+  .thread-reservation {
+    margin-top: 8px;
+    padding: 10px 12px;
+  }
+  .thread-reservation-warning {
+    font-size: 11px;
+  }
+}

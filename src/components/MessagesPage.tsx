@@ -1,6 +1,6 @@
 import { Image as ImageIcon, Trash2 } from "lucide-react";
 import { motionBehavior } from "../uiMotion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { SellerConversation } from "../../shared/messages";
 import {
   listMessages,
@@ -19,8 +19,15 @@ export default function MessagesPage({
   onBeforeSend,
   onSent,
   onDeleted,
+  threadBanner,
 }: {
   onDeleted?: (id: string) => void;
+  /** Feature-flagged availability prototype shown above the open thread. */
+  threadBanner?: (thread: {
+    listingId: string;
+    role: "buyer" | "seller";
+    onConversation: (conversation: SellerConversation) => void;
+  }) => ReactNode;
   listingId?: string;
   listing?: Product;
   listings: Product[];
@@ -262,6 +269,17 @@ export default function MessagesPage({
                   </select>
                 </label>
               </header>
+              {threadBanner?.({
+                listingId: current.listingId,
+                role,
+                onConversation: (updated) => {
+                  stickToBottom.current = true;
+                  setConversations((items) => [
+                    updated,
+                    ...items.filter((item) => item.id !== updated.id),
+                  ]);
+                },
+              })}
               <div
                 className="seller-chat-messages"
                 ref={messagesRef}

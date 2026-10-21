@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ArrowLeft, MapPin, Pencil } from "lucide-react";
 import { listingPhotos } from "../../shared/listingPhotos";
 import { money, type Product } from "../../shared/marketplace";
@@ -9,6 +10,8 @@ type ListingDetailPageProps = {
   onMessage(): void;
   onEdit(): void;
   onAskAgent(): void;
+  /** Feature-flagged availability prototype; replaces "Message seller". */
+  availabilityPanel?: ReactNode;
 };
 
 export default function ListingDetailPage({
@@ -17,6 +20,7 @@ export default function ListingDetailPage({
   onMessage,
   onEdit,
   onAskAgent,
+  availabilityPanel,
 }: ListingDetailPageProps) {
   return selected ? (
     <>
@@ -101,13 +105,15 @@ export default function ListingDetailPage({
               <strong>{selected.available}</strong>
             </div>
           </div>
-          <button
-            className="button primary full"
-            disabled={selected.status !== "active"}
-            onClick={() => onMessage()}
-          >
-            Message seller
-          </button>
+          {availabilityPanel ?? (
+            <button
+              className="button primary full"
+              disabled={selected.status !== "active"}
+              onClick={() => onMessage()}
+            >
+              Message seller
+            </button>
+          )}
           <button className="button secondary full" onClick={() => onEdit()}>
             <Pencil size={16} />
             Edit listing
