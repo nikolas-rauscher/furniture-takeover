@@ -1,0 +1,249 @@
+.photo-gallery {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  gap: 8px;
+}
+.photo-gallery-stage {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--surface-muted, #f5f5f3);
+}
+.photo-gallery-stage > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: 65dvh;
+  object-fit: contain;
+}
+.photo-gallery-count {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: #fff;
+  font-size: 11px;
+}
+.photo-gallery-controls {
+  flex: 0 0 auto;
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+.photo-gallery-thumbnails {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px;
+}
+.photo-gallery-thumbnails button {
+  flex: 0 0 44px;
+  height: 44px;
+  padding: 2px;
+  border: 1px solid #dce0e9;
+  border-radius: 5px;
+  background: white;
+  position: relative;
+}
+.photo-gallery-thumbnails button[aria-pressed="true"] {
+  border-color: #3c50be;
+  outline: 1px solid #3c50be;
+}
+.photo-gallery-thumbnails img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 3px;
+}
+.photo-gallery-thumbnails span {
+  position: absolute;
+  bottom: 1px;
+  left: 1px;
+  right: 1px;
+  background: #fff;
+  font-size: 8px;
+  line-height: 12px;
+}
+.photo-gallery-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 30px;
+  font-size: 12px;
+}
+.photo-gallery-actions > span {
+  margin-left: auto;
+  color: #777;
+}
+.photo-gallery-actions .button {
+  min-height: 30px;
+  padding: 4px 8px;
+  margin: 0;
+  font-size: 12px;
+}
+.photo-gallery-actions .file-label:has(input:disabled) {
+  opacity: 0.5;
+  cursor: default;
+}
+.photo-gallery-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+.selling-photo-layout .sell-layout > .photo-upload-panel {
+  display: flex;
+  min-height: 0;
+}
+.selling-photo-layout .photo-upload-panel > .photo-gallery {
+  flex: 1 1 0;
+}
+.selling-photo-layout .photo-gallery-thumbnails img {
+  object-fit: cover;
+}
+.photo-gallery.is-editable .photo-gallery-stage {
+  min-height: 80px;
+}
+.modal .photo-gallery-stage {
+  height: min(38dvh, 360px);
+}
+.detail-photo > .photo-gallery {
+  height: 100%;
+}
+.detail-photo .photo-gallery-thumbnails img {
+  height: 100%;
+  object-fit: cover;
+}
+.listing-preview-photos {
+  position: relative;
+  display: block;
+  border: 0;
+  padding: 0;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+.listing-preview-photos > img {
+  width: 100%;
+  display: block;
+}
+.listing-preview-photos > span {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: white;
+  border-radius: 12px;
+  padding: 3px 8px;
+  font-size: 11px;
+}
+@media (max-width: 700px) {
+  .selling-chat-layout .listing-preview-photos {
+    flex: 0 0 64px;
+    width: 64px;
+    height: 52px;
+  }
+  .selling-chat-layout .listing-preview-photos > img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .selling-chat-layout .listing-preview-photos > span {
+    font-size: 8px;
+    padding: 1px 3px;
+    bottom: 0;
+    right: 0;
+  }
+}
+.selling-chat-layout .listing-preview-photos > img {
+  max-height: 24dvh;
+  object-fit: contain;
+}
+@media (max-width: 760px) {
+  .selling-chat-layout .listing-preview-photos {
+    width: 40px;
+    height: 44px;
+  }
+  .selling-chat-layout .listing-preview-photos > img {
+    width: 40px;
+    height: 44px;
+    object-fit: cover;
+  }
+  .selling-chat-layout .listing-preview-photos > span {
+    font-size: 8px;
+    padding: 1px 2px;
+    bottom: 0;
+    right: 0;
+  }
+}
+.photo-gallery-stage > img {
+  animation: gallery-photo-appear 180ms ease-out;
+}
+@keyframes gallery-photo-appear {
+  from {
+    opacity: 0.3;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.product-photo-count {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #292929;
+  font-size: 10px;
+  line-height: 16px;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .photo-gallery-stage > img {
+    animation: none;
+  }
+}
+
+/* A single compact photo strip; generic form-label styles must not stack it. */
+.photo-gallery.is-editable .photo-gallery-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.photo-gallery.is-editable .photo-gallery-thumbnails {
+  min-width: 0;
+  max-width: 100%;
+}
+.photo-gallery.is-editable .photo-gallery-actions {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.photo-gallery-actions label.file-label {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: auto;
+  height: 36px;
+  min-height: 36px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.photo-gallery-actions > span { margin-left: 0; white-space: nowrap; }
+.photo-gallery.is-editable .photo-gallery-stage.has-image {
+  display: block;
+  background: #f1f2f4;
+}
+.photo-gallery.is-editable .photo-gallery-stage.has-image > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: contain;
+}

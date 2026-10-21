@@ -1,0 +1,113 @@
+.agent-suggestions {
+  margin-top: 22px;
+  max-width: 68ch;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--muted);
+  text-align: left;
+}
+
+.agent-suggestions-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 5px;
+}
+
+.agent-suggestions-mode {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.agent-suggestions ul {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agent-suggestions li {
+  min-width: 0;
+}
+
+.agent-suggestions li > button {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 0;
+  color: var(--blue);
+  font-size: 14px;
+  line-height: 1.65;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.agent-suggestions li > button:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.agent-suggestions .agent-suggestions-detail {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.75;
+}
+
+.agent-suggestions-pending {
+  min-height: 28px;
+}
+
+.agent-suggestions-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 18px;
+}
+
+.agent-suggestions-error p {
+  flex: 1 1 240px;
+}
+
+.agent-suggestions-error > button {
+  min-height: 40px;
+  padding: 8px 0;
+  color: var(--blue);
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+@media (max-width: 760px) {
+  .agent-suggestions {
+    margin-top: 20px;
+  }
+
+  .agent-suggestions li > button {
+    min-height: 44px;
+    padding: 10px 0;
+    font-size: 14px;
+  }
+}
+
+/* Grow the shared container first; reveal each new suggestion without moving focus. */
+.agent-suggestions-heading,
+.agent-suggestions-detail,
+.agent-suggestions-pending,
+.agent-suggestions-error {
+  animation: suggestion-appear 360ms ease-out both;
+}
+.agent-suggestions li {
+  animation: suggestion-appear 480ms cubic-bezier(.22, 1, .36, 1) both;
+  animation-delay: var(--suggestion-delay, 0ms);
+}
+@keyframes suggestion-appear {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent-suggestions-heading,
+  .agent-suggestions-detail,
+  .agent-suggestions-pending,
+  .agent-suggestions-error,
+  .agent-suggestions li { animation: none; }
+}

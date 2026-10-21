@@ -1,0 +1,24 @@
+node_modules/
+dist/
+.DS_Store
+.qa/
+.env
+.env.*
+!.env.example
+
+/data/*.sqlite*
+/data/*.db*
+/data/
+
+# Local checks and release exports
+coverage/
+*.log
+*.tsbuildinfo
+.vscode/*
+!.vscode/extensions.json
+
+# Generated presentation and portfolio material
+/presentation/
+/screenshots/
+/public/portfolio/
+/public/portfolio-deck/

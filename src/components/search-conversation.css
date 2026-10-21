@@ -1,0 +1,355 @@
+.search-conversation {
+  max-width: 920px;
+  min-width: 0;
+  margin: 22px 0 14px;
+  color: var(--ink, #292929);
+}
+.search-conversation-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.search-conversation-heading h2,
+.search-conversation-heading > span {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted, #70706b);
+}
+.search-conversation-heading > span {
+  color: var(--blue, #344eb5);
+}
+.search-conversation-messages {
+  list-style: none;
+  display: grid;
+  gap: 14px;
+  padding: 0;
+  margin: 0;
+}
+.search-conversation-turn {
+  display: grid;
+  gap: 12px;
+}
+.search-message {
+  width: fit-content;
+  max-width: min(78%, 64ch);
+  padding: 12px 16px;
+  border-radius: 12px;
+}
+.search-message > span {
+  display: block;
+  font-size: 11px;
+  color: var(--muted, #70706b);
+  margin-bottom: 5px;
+}
+.search-message p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.user-message {
+  margin-left: auto;
+  background: #edf0fa;
+  border-bottom-right-radius: 3px;
+  animation: search-message-reveal 650ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.previous-agent-message {
+  background: #fff;
+  border: 1px solid var(--line, #deded8);
+  border-bottom-left-radius: 3px;
+}
+.previous-agent-answer > * + * {
+  margin-top: 8px;
+}
+.previous-agent-answer h3,
+.previous-agent-answer h4 {
+  margin: 8px 0 4px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.previous-agent-answer > :first-child {
+  margin-top: 0;
+}
+.previous-agent-answer ul,
+.previous-agent-answer ol {
+  margin-bottom: 0;
+  padding-left: 20px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+@keyframes search-message-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (max-width: 600px) {
+  .search-message {
+    max-width: 92%;
+    padding: 11px 13px;
+  }
+  .search-conversation {
+    margin: 16px 0 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .user-message {
+    animation: none;
+  }
+}
+
+/* Previous turns retain the same response tree and dimensions. */
+.search-conversation {
+  max-width: none;
+}
+.search-conversation-turn {
+  min-width: 0;
+}
+.archived-agent-response .agent-run-actions,
+.archived-agent-response .agent-run-change-actions {
+  visibility: hidden;
+  pointer-events: none;
+}
+.search-conversation-turn .agent-run-panel {
+  animation: none;
+}
+
+.chat-workspace {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: min(680px, 72dvh);
+  min-height: 340px;
+  min-width: 0;
+  overflow: hidden;
+}
+.chat-workspace > .search-conversation-heading {
+  flex: 0 0 auto;
+}
+.chat-scroll-viewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  padding: 4px 8px 20px 0;
+  overflow-anchor: none;
+}
+.chat-composer-dock {
+  flex: 0 0 auto;
+  min-height: 66px;
+  padding-top: 10px;
+  background: var(--paper, #fafaf8);
+  border-top: 1px solid var(--line, #e1e3eb);
+}
+.chat-composer-dock .assistant-composer.conversation-composer {
+  position: static;
+  width: 100%;
+  margin: 0;
+}
+.chat-jump-latest {
+  position: absolute;
+  bottom: 82px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  padding: 8px 14px;
+  border: 1px solid var(--line, #e1e3eb);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 3px 12px rgb(25 30 60 / 10%);
+  white-space: nowrap;
+  font-size: 12px;
+}
+@media (max-width: 760px) {
+  .chat-workspace {
+    height: 68dvh;
+    min-height: 320px;
+  }
+  .chat-scroll-viewport {
+    padding-right: 4px;
+  }
+}
+.chat-workspace {
+  scroll-margin-top: 96px;
+}
+
+/* Proposal details live in the review dialog, not above the conversation. */
+.chat-context {
+  flex: 0 0 auto;
+  margin-bottom: 10px;
+  min-width: 0;
+}
+.proposal-chat-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid #dce0e9;
+  border-left: 3px solid var(--blue, #3449ca);
+  border-radius: 8px;
+  background: #fff;
+}
+.proposal-chat-bar > div {
+  flex: 1;
+  min-width: 0;
+}
+.proposal-chat-bar strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.proposal-chat-bar span {
+  display: block;
+  color: var(--muted, #667080);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.proposal-chat-bar .button {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+.proposal-chat-bar .proposal-dismiss {
+  flex-shrink: 0;
+  width: 32px;
+  height: 36px;
+  font-size: 22px;
+}
+.price-suggestion-details {
+  margin: 8px 0;
+  font-size: 13px;
+}
+
+/* Chat turns use compact spacing in both current and previous responses. */
+.chat-workspace .agent-run-panel {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #e1e3eb;
+  border-radius: 12px 12px 12px 3px;
+  background: #fff;
+}
+.chat-workspace .agent-run-identity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  min-height: 24px;
+}
+.chat-workspace .agent-run-status {
+  margin-left: auto;
+  padding: 0;
+  font-size: 11px;
+}
+.chat-workspace .agent-run-header {
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  min-height: 30px;
+}
+.chat-workspace .agent-run-header h2 {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.chat-workspace .agent-run-actions {
+  gap: 14px;
+}
+.chat-workspace .agent-run-actions > button {
+  min-height: 30px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+.chat-workspace .agent-run-activity {
+  margin: 2px 0 8px;
+}
+.chat-workspace .agent-search-result-messages {
+  gap: 10px;
+  margin: 8px 0 0;
+}
+.chat-workspace .agent-search-result-message {
+  padding: 12px;
+}
+.chat-workspace .agent-search-result-message > h3 {
+  margin: 0 0 8px;
+}
+.chat-workspace .agent-run-answer {
+  font-size: 14px;
+  line-height: 1.5;
+}
+.chat-workspace .agent-run-answer > * + * {
+  margin-top: 8px;
+}
+.chat-workspace .agent-run-answer > :first-child {
+  margin-top: 0;
+}
+.chat-workspace .agent-run-answer > :last-child {
+  margin-bottom: 0;
+}
+.chat-workspace .agent-run-question {
+  margin: 8px 0 0;
+  padding: 12px;
+}
+.chat-workspace .agent-run-debug {
+  margin-top: 10px;
+}
+.chat-workspace .section-heading {
+  margin: 10px 0 8px;
+}
+.chat-message-draft {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid #dce1f1;
+  border-radius: 10px;
+  background: #f7f8fd;
+}
+.chat-message-draft-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  font-size: 14px;
+}
+.chat-message-draft-heading span,
+.chat-message-draft small {
+  font-size: 12px;
+  color: var(--muted, #667080);
+}
+.chat-message-draft p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 10px 0 12px;
+}
+.chat-message-draft small {
+  display: block;
+  margin-top: 8px;
+}
+.chat-message-draft .button {
+  min-height: 40px;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+.chat-workspace .agent-run-identity { flex-wrap: nowrap; }
+.chat-workspace .agent-run-identity > span:not(.agent-run-status) { white-space: nowrap; }
+.chat-workspace .agent-run-status { flex: 1 1 auto; min-width: 0; text-align: right; }
+.chat-workspace .question-skip { margin-top: 8px; min-height: 32px; font-size: 12px; color: var(--muted, #70706b); }
+
+/* Show the offers first, then the agent's explanation of those offers. */
+.agent-search-result-message > .agent-local-listings + .agent-run-answer,
+.agent-search-result-message > .agent-run-sources + .agent-run-answer {
+  margin-top: 16px;
+}

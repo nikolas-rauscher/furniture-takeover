@@ -1,0 +1,34 @@
+.assistant-composer.conversation-composer {
+  position: sticky;
+  bottom: 16px;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+  width: 100%;
+  margin: 16px 0;
+  padding: 8px 10px;
+  border: 1px solid #dce0e9;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: none;
+}
+.assistant-composer.conversation-composer textarea {
+  min-height: 44px;
+  padding: 10px 4px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.assistant-composer.conversation-composer > div {
+  margin: 0;
+}
+.assistant-composer.conversation-composer > div > button {
+  width: 44px;
+  height: 44px;
+}
+@media (max-width: 760px) {
+  .assistant-composer.conversation-composer {
+    bottom: 78px;
+  }
+}
