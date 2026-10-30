@@ -11,6 +11,8 @@ import type { AgentRunEvent, AgentRuntimeHealth } from "../shared/runs.ts";
 import type { ListingsStore } from "./database.ts";
 import { reversePickupLocation } from "./location.ts";
 import { localOrigins } from "./config.ts";
+import { unavailableKeyStatus, type AccountKeyStore } from "./account-keys.ts";
+import type { AgentRuntime } from "./runtime.ts";
 
 export const MAX_BODY_BYTES = 3 * 1024 * 1024;
 
@@ -90,6 +92,18 @@ function readBody(request: IncomingMessage): Promise<unknown> {
 export function createAgentServer(
   service: AgentService,
   options: {
+    cloud?: {
+      config: { supabaseUrl: string; supabaseKey: string };
+      authorize(
+        header: string | undefined,
+        charge?: boolean,
+      ): Promise<string | void>;
+    };
+    accountKeys?: AccountKeyStore;
+    forAccount?: (
+      owner: string,
+      authorization: string,
+    ) => Promise<{ service: AgentService; runtime: AgentRuntime }>;
     maxConcurrent?: number;
     allowedOrigins?: readonly string[];
     listings?: ListingsStore;
@@ -128,11 +142,94 @@ export function createAgentServer(
       const pathname = url.pathname;
       if (request.method === "OPTIONS" && pathname.startsWith("/api/")) {
         response.writeHead(204, {
-          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, X-Message-Workspace",
+          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+          "Access-Control-Allow-Headers":
+            "Content-Type, X-Message-Workspace, Authorization",
           "Access-Control-Max-Age": "600",
         });
         response.end();
+        return;
+      }
+      if (pathname === "/api/config" && request.method === "GET") {
+        send(response, 200, options.cloud?.config ?? {});
+        return;
+      }
+      let actor: string | void = undefined;
+      if (options.cloud) {
+        if (
+          pathname.startsWith("/api/messages") ||
+          pathname.startsWith("/api/listings")
+        )
+          throw new AgentError(
+            410,
+            "CLOUD_MODE",
+            "Use the signed-in marketplace.",
+          );
+        if (
+          pathname.startsWith("/api/agent/") ||
+          pathname === "/api/account/keys"
+        )
+          actor = await options.cloud.authorize(
+            request.headers.authorization,
+            pathname.startsWith("/api/agent/"),
+          );
+      }
+      if (pathname === "/api/account/keys") {
+        if (!options.cloud || !actor || !request.headers.authorization)
+          throw new AgentError(
+            401,
+            "AUTH_REQUIRED",
+            "Sign in to manage your API keys.",
+          );
+        if (!["GET", "PUT", "DELETE"].includes(request.method ?? ""))
+          throw new AgentError(
+            405,
+            "METHOD_NOT_ALLOWED",
+            "Use GET, PUT or DELETE.",
+          );
+        if (!options.accountKeys) {
+          if (request.method !== "GET")
+            throw new AgentError(
+              503,
+              "KEY_STORAGE_UNAVAILABLE",
+              "API key storage has not been configured on the server.",
+            );
+          send(response, 200, unavailableKeyStatus());
+          return;
+        }
+        if (request.method === "GET") {
+          send(
+            response,
+            200,
+            await options.accountKeys.status(
+              actor,
+              request.headers.authorization,
+            ),
+          );
+          return;
+        }
+        if (
+          !/^application\/json(?:\s*;|$)/i.test(
+            request.headers["content-type"] ?? "",
+          )
+        )
+          throw new AgentError(415, "UNSUPPORTED_MEDIA_TYPE", "Send JSON.");
+        if (Number(request.headers["content-length"] ?? 0) > 2048)
+          throw new AgentError(
+            413,
+            "BODY_TOO_LARGE",
+            "This API key request is too large.",
+          );
+        send(
+          response,
+          200,
+          await options.accountKeys.change(
+            actor,
+            request.headers.authorization,
+            await readBody(request),
+            request.method === "PUT",
+          ),
+        );
         return;
       }
       if (pathname === "/api/messages") {
@@ -181,9 +278,20 @@ export function createAgentServer(
         return;
       }
       if (pathname === "/api/health" && request.method === "GET") {
+        const owner =
+          options.forAccount && request.headers.authorization
+            ? await options.cloud?.authorize(
+                request.headers.authorization,
+                false,
+              )
+            : undefined;
+        const agents =
+          owner && request.headers.authorization
+            ? await options.forAccount!(owner, request.headers.authorization)
+            : { service, runtime: options.runtime };
         send(response, 200, {
-          ...service.health(),
-          ...(options.runtime?.health() ?? {}),
+          ...agents.service.health(),
+          ...(agents.runtime?.health() ?? {}),
         });
         return;
       }
@@ -335,8 +443,12 @@ export function createAgentServer(
       active++;
       try {
         const body = await readBody(request);
+        const agents =
+          actor && request.headers.authorization && options.forAccount
+            ? await options.forAccount(actor, request.headers.authorization)
+            : { service, runtime: options.runtime };
         if (pathname === "/api/agent/run") {
-          if (!options.runtime)
+          if (!agents.runtime)
             throw new AgentError(
               503,
               "AGENT_NOT_CONFIGURED",
@@ -349,7 +461,7 @@ export function createAgentServer(
             "X-Accel-Buffering": "no",
           });
           response.flushHeaders();
-          await options.runtime.run(
+          await agents.runtime.run(
             body,
             (event) => {
               if (!response.destroyed && !response.writableEnded)
@@ -360,7 +472,7 @@ export function createAgentServer(
           if (!response.destroyed && !response.writableEnded) response.end();
           return;
         }
-        const result = await service.assist(body, controller.signal);
+        const result = await agents.service.assist(body, controller.signal);
         send(response, 200, result);
       } finally {
         active--;

@@ -141,7 +141,7 @@ test("explicit source changes leave a previous own-only restriction", () => {
   );
 });
 
-test("agent inventory includes only active own items, without photos and bounded fields", () => {
+test("agent inventory includes active Takeover listings from every owner, without photos and bounded fields", () => {
   const active = {
     id: "own",
     title: "Desk",
@@ -151,16 +151,18 @@ test("agent inventory includes only active own items, without photos and bounded
     own: true,
     status: "active",
     image: "private-photo",
+    source: "takeover",
   } as Product;
   const payload = agentSearchRequest(newSearch("desk", defaults, "Lausanne"), [
     active,
     { ...active, id: "removed", status: "withdrawn" },
     { ...active, id: "other", own: false },
+    { ...active, id: "external", own: false, source: "Ricardo" },
     { ...active, id: "sold", status: "sold" },
   ]);
   assert.deepEqual(
     payload.inventory?.map((item) => item.id),
-    ["own"],
+    ["own", "other"],
   );
   assert.equal(payload.inventory?.[0].description.length, 1500);
   assert.equal("image" in payload.inventory![0], false);
@@ -223,6 +225,7 @@ test("search requests include database demo listings without disguising them as 
     demo: true,
     status: "active",
     image: "photo",
+    source: "takeover",
   } as Product;
   const payload = agentSearchRequest(
     newSearch("bicycle", defaults, "Ecublens"),

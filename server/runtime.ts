@@ -34,7 +34,8 @@ export type AgentRuntimeConfig = {
   /** Inject the official SDK mock model in tests; never supplied by HTTP callers. */
   modelImpl?: LanguageModel;
   timeoutMs?: number;
-  inventoryProvider?: () => Product[];
+  inventoryProvider?: () => Product[] | Promise<Product[]>;
+  inventoryAuthoritative?: boolean;
   listingTextTranslator?: (
     text: ListingText,
     signal: AbortSignal,
@@ -227,14 +228,15 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
       };
       try {
         const request = validateRunRequest(input);
-        // Database rows are authoritative; browser-only listings remain searchable too.
+        // Hosted inventory is server-owned; local mode also searches browser drafts.
+        const databaseRows = (await config.inventoryProvider?.()) ?? [];
         const currentInventory = () => {
-          const databaseRows = config.inventoryProvider?.() ?? [];
           const databaseIds = new Set(databaseRows.map((item) => item.id));
           return [
-            ...(request.inventory ?? []).filter(
-              (item) => !databaseIds.has(item.id),
-            ),
+            ...(config.inventoryAuthoritative
+              ? []
+              : (request.inventory ?? [])
+            ).filter((item) => !databaseIds.has(item.id)),
             ...listingInventory(databaseRows),
           ];
         };

@@ -16,7 +16,7 @@ npm run dev
 
 Open **http://localhost:5173**. Run every command from the folder containing this `package.json`. The launcher starts the frontend on port 5173 and the API on port 8787. Stop both with Ctrl+C.
 
-`npm run setup` creates `.env` only if it does not exist. It never overwrites your keys. SQLite creates and seeds `data/marketplace.sqlite` on first startup. No separate database installation or database download is needed.
+`npm run setup` creates `.env` only if it does not exist. It never overwrites your keys. In demo mode, SQLite creates and seeds `data/marketplace.sqlite` on first startup. No separate database installation or database download is needed.
 
 ### API keys
 
@@ -28,6 +28,14 @@ BRAVE_SEARCH_API_KEY=your-own-key
 ```
 
 Restart `npm run dev`. Keep `.env` local. Tests run without API keys.
+
+## Real user accounts (Supabase)
+
+Create a project at [Supabase](https://supabase.com/dashboard), run all SQL migrations from `supabase/migrations/` in order, then set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` in `.env` and restart. Use the public publishable/anon key, never a service-role key. [Setup and verification](docs/SUPABASE.md).
+
+This enables email-confirmed accounts, shared listings and photo uploads, private conversations, saved listings, profile settings, blocking/reporting, data export and account deletion. The assistant requires sign-in. Without these two settings the original local demo runs as before. Demo data is not copied into Supabase automatically. The optional [demo seed](docs/DEMO_DATA.md) adds six eBay-inspired sample listings and three clearly marked demo sellers.
+
+Users can save personal DeepSeek and Brave keys under **Account settings → API keys**. Apply migration `202610300004_profile_and_api_keys.sql` and configure `ACCOUNT_KEYS_ENCRYPTION_KEY` using `.env.example`. Keep that server encryption key backed up and unchanged across redeployments. Personal keys override the server defaults for that user; providers bill their usage. Payments are marked **Coming soon** and collect no payment data.
 
 ## Commands
 
@@ -52,7 +60,9 @@ For a local build preview, run `npm run build`, then keep `npm run start:backend
 src/components/    Screens, chat controls, listing forms and galleries
 src/hooks/         Agent state, cancellation, local storage and listing sync
 src/api/           Browser clients and streamed-event validation
-src/App.tsx        Top-level navigation and workflow coordination
+src/App.tsx        Shared app navigation and workflow coordination
+src/cloud/         Supabase data adapters and account controls
+supabase/migrations/ Database schema, ownership rules and account functions
 shared/            Domain types, validated action/event contracts and demo catalog
 server/config.ts   Ports, credentials, database path and allowed origins
 server/http.ts     HTTP routing, request limits and stream delivery
@@ -74,10 +84,10 @@ Optional settings are documented in [`.env.example`](.env.example). `APP_PORT`, 
 
 For LAN or Tailscale access, see [phone testing](docs/DEVELOPMENT.md#phone-testing). The API validates exact origins, so a working homepage alone does not prove that agent requests from a phone work.
 
-## Data and demo boundaries
+## Local demo boundaries
 
 - Demo listings and local message threads live in SQLite. Personal listings, saved searches, favourites and offer drafts use browser storage. Browser data does not automatically move between computers or browsers.
 - Sending a message writes to the local demo inbox. Seller preview mode is not a real seller account. No external seller receives a message.
-- There is no authentication, payment processing, marketplace posting or background alert service. The API is a local prototype, not a public multi-user backend.
+- Demo mode has no authentication. Supabase mode adds real accounts and shared data; neither mode includes payments or background alerts.
 - Web results are search snippets. Prices, availability and pickup distances may be unverified. Demo catalog prices and details are fictional.
 - [Image sources](public/images/CATALOG_SOURCES.md) records the external catalog photo references. External marketplace photographs are not licensed as part of this source code.

@@ -28,7 +28,7 @@ async function requestListings(
 }
 
 /** Demo catalog is server-owned; personal browser records are never uploaded. */
-export function useListings() {
+export function useListings(enabled = true) {
   const [saved, setSaved] = useSaved<Product[]>(
     "takeover-listings",
     [],
@@ -38,10 +38,7 @@ export function useListings() {
   const [journal] = useState(() => {
     try {
       return {
-        outbox: new ListingOutbox(
-          localStorage,
-          "takeover-listing-outbox",
-        ),
+        outbox: new ListingOutbox(localStorage, "takeover-listing-outbox"),
         error: "",
       };
     } catch {
@@ -156,6 +153,7 @@ export function useListings() {
   );
 
   useEffect(() => {
+    if (!enabled) return;
     mounted.current = true;
     let cancelled = false;
     let retries = 0;
@@ -189,7 +187,7 @@ export function useListings() {
       window.removeEventListener("online", recoverWhenAvailable);
       window.removeEventListener("focus", recoverWhenAvailable);
     };
-  }, [load, journal]);
+  }, [load, journal, enabled]);
 
   const setListings = useCallback(
     (update: SetStateAction<Product[]>) => {

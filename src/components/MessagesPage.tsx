@@ -1,4 +1,6 @@
-import { Image as ImageIcon, Trash2 } from "lucide-react";
+import type { AccountConnection } from "../cloud/AccountSession";
+import AccountMessages from "../cloud/AccountMessages";
+import { ArrowLeft, Image as ImageIcon, Trash2 } from "lucide-react";
 import { motionBehavior } from "../uiMotion";
 import { useEffect, useRef, useState } from "react";
 import type { SellerConversation } from "../../shared/messages";
@@ -10,16 +12,8 @@ import {
 import { PendingMessage } from "../pendingMessage";
 import type { Product } from "../../shared/marketplace";
 import "./messages.css";
-export default function MessagesPage({
-  listingId,
-  listing,
-  listings,
-  onOpenListing,
-  initialMessage,
-  onBeforeSend,
-  onSent,
-  onDeleted,
-}: {
+export type MessagesPageProps = {
+  account?: AccountConnection;
   onDeleted?: (id: string) => void;
   listingId?: string;
   listing?: Product;
@@ -32,9 +26,34 @@ export default function MessagesPage({
     role: "buyer" | "seller",
     message: string,
   ) => void;
-}) {
+};
+export default function MessagesPage(props: MessagesPageProps) {
+  if (props.account?.session)
+    return (
+      <AccountMessages
+        {...props}
+        account={{
+          client: props.account.client,
+          session: props.account.session,
+        }}
+      />
+    );
+  if (props.account) return <p>Sign in to open your messages.</p>;
+  return <DemoMessagesPage {...props} />;
+}
+function DemoMessagesPage({
+  listingId,
+  listing,
+  listings,
+  onOpenListing,
+  initialMessage,
+  onBeforeSend,
+  onSent,
+  onDeleted,
+}: MessagesPageProps) {
   const [conversations, setConversations] = useState<SellerConversation[]>([]);
   const [selected, setSelected] = useState(listingId ?? "");
+  const [showConversation, setShowConversation] = useState(Boolean(listingId));
   const [role, setRole] = useState<"buyer" | "seller">("buyer");
   const [drafts, setDrafts] = useState<Record<string, string>>(
     listingId && initialMessage
@@ -159,7 +178,10 @@ export default function MessagesPage({
     };
   }, []);
   return (
-    <section className="messages-page" aria-label="Messages page">
+    <section
+      className={`messages-page demo-messages${showConversation && current ? " has-conversation" : ""}`}
+      aria-label="Messages page"
+    >
       <div className="page-title">
         <h1>Messages</h1>
         <p>Talk to sellers and arrange your pickup.</p>
@@ -182,6 +204,7 @@ export default function MessagesPage({
               onClick={() => {
                 stickToBottom.current = true;
                 setSelected(item.listingId);
+                setShowConversation(true);
                 setRole("buyer");
               }}
             >
@@ -200,6 +223,7 @@ export default function MessagesPage({
                 disabled={busy}
                 onClick={() => {
                   setSelected(listing.id);
+                  setShowConversation(true);
                   setRole("buyer");
                 }}
               >
@@ -226,6 +250,14 @@ export default function MessagesPage({
             <>
               <header>
                 <div className="chat-header-item">
+                  <button
+                    type="button"
+                    className="icon-button inbox-back"
+                    aria-label="Back to conversations"
+                    onClick={() => setShowConversation(false)}
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
                   {thumbnail(current)}
                   <div className="chat-header-copy">
                     <strong>{current.seller}</strong>
@@ -302,6 +334,7 @@ export default function MessagesPage({
                 ))}
               </div>
               <form
+                className="conversation-composer"
                 onSubmit={async (event) => {
                   event.preventDefault();
                   if (busy || !text.trim()) return;
@@ -348,7 +381,7 @@ export default function MessagesPage({
                   aria-label="Message"
                   placeholder="Write a message…"
                   maxLength={4000}
-                  rows={3}
+                  rows={2}
                   value={text}
                   disabled={busy}
                   onChange={(event) => setText(event.target.value)}

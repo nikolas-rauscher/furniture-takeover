@@ -6,7 +6,7 @@ export function listingInventory(
   inventory: Product[],
 ): AgentRunInventoryItem[] {
   return inventory
-    .filter((item) => item.own && item.status === "active")
+    .filter((item) => item.source === "takeover" && item.status === "active")
     .map((item) => ({
       id: item.id.slice(0, 120),
       title: item.title.slice(0, 180),

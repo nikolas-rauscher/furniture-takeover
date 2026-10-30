@@ -1,5 +1,5 @@
 import { listingPhotos } from "../../shared/listingPhotos";
-import { GitCompareArrows, Heart } from "lucide-react";
+import { GitCompareArrows, Heart, Image as ImageIcon } from "lucide-react";
 import { TODAY, money, type Product } from "../../shared/marketplace";
 
 type ProductCardProps = {
@@ -21,10 +21,11 @@ export default function ProductCard({
   onToggleFavorite,
   onToggleCompare,
 }: ProductCardProps) {
+  const itemTags = product.tags?.filter((tag) => tag !== "Demo") ?? [];
   const tags = [
     ...new Set(
-      product.tags?.length
-        ? product.tags
+      itemTags.length
+        ? itemTags
         : [
             product.condition,
             product.price === 0 ? "Free" : "",
@@ -43,7 +44,14 @@ export default function ProductCard({
           onClick={onOpen}
           aria-label={`${product.title} view`}
         >
-          <img src={product.image} alt={product.title} loading="lazy" />
+          {product.image ? (
+            <img src={product.image} alt={product.title} loading="lazy" />
+          ) : (
+            <span className="listing-no-photo">
+              <ImageIcon size={32} />
+              <span>No photo</span>
+            </span>
+          )}
         </button>
         {showFavorite && (
           <button
@@ -61,7 +69,6 @@ export default function ProductCard({
             {listingPhotos(product).length} photos
           </span>
         )}
-        {product.demo && <span className="product-demo-mark">Demo</span>}
         {product.status === "sold" && <span className="sold-label">Sold</span>}
       </div>
       <div className="product-info">

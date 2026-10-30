@@ -25,7 +25,14 @@ export function animateUiChange(update: () => void) {
 }
 
 export function scrollToPageStart() {
-  requestAnimationFrame(() =>
-    window.scrollTo({ top: 0, behavior: motionBehavior() }),
-  );
+  requestAnimationFrame(() => {
+    const locked = document.querySelector(
+      ".chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-layout",
+    );
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: locked ? "instant" : motionBehavior(),
+    });
+  });
 }

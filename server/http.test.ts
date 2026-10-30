@@ -10,6 +10,7 @@ import {
   fakeConfig,
   fakeFetch,
 } from "./testing/provider.ts";
+import { unavailableKeyStatus } from "./account-keys.ts";
 
 // Each test gets a loopback port and automatic cleanup, including failed assertions.
 async function startServer(
@@ -29,6 +30,126 @@ async function startServer(
     url: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
   };
 }
+
+test("account keys and AI requests use only the authenticated owner's credentials", async (t) => {
+  const status = (owner: string) => ({
+    ...unavailableKeyStatus(),
+    enabled: true,
+    providers: {
+      deepseek: {
+        saved: owner === "alice",
+        lastFour: owner === "alice" ? "1234" : undefined,
+      },
+      brave: { saved: false },
+    },
+  });
+  const seen: string[] = [];
+  const instance = await startServer(
+    t,
+    createAgentService({ ...fakeConfig, apiKey: "" }),
+    {
+      cloud: {
+        config: {
+          supabaseUrl: "https://example.supabase.co",
+          supabaseKey: "public-only",
+        },
+        authorize: async (header) => {
+          const owner = header?.replace("Bearer ", "");
+          if (owner !== "alice" && owner !== "bob") {
+            const { AgentError } = await import("./errors.ts");
+            throw new AgentError(401, "AUTH_REQUIRED", "Sign in.");
+          }
+          return owner;
+        },
+      },
+      accountKeys: {
+        status: async (owner) => status(owner),
+        change: async (owner, authorization, input) => {
+          assert.equal(authorization, `Bearer ${owner}`);
+          assert.equal((input as { user_id: string }).user_id, "eve");
+          return status(owner);
+        },
+        credentials: async () => ({}),
+      },
+      forAccount: async (owner, authorization) => {
+        assert.equal(authorization, `Bearer ${owner}`);
+        const apiKey = `${owner}-private-provider-key`;
+        return {
+          service: createAgentService({
+            ...fakeConfig,
+            apiKey,
+            fetchImpl: fakeFetch(async (_url, init) => {
+              assert.equal(
+                (init?.headers as Record<string, string>).Authorization,
+                `Bearer ${apiKey}`,
+              );
+              seen.push(owner);
+              return completion(output);
+            }),
+          }),
+          runtime: {
+            health: () => ({
+              configured: true,
+              model: "test",
+              webSearchConfigured: false,
+            }),
+            run: async (_input, emit) => {
+              seen.push(owner);
+              await emit({
+                type: "complete",
+                runId: "test",
+                text: "Draft ready.",
+                sources: [],
+              });
+            },
+          },
+        };
+      },
+    },
+  );
+  assert.equal((await fetch(instance.url + "/api/account/keys")).status, 401);
+  for (const owner of ["alice", "bob"]) {
+    const headers = {
+      Authorization: `Bearer ${owner}`,
+      "Content-Type": "application/json",
+    };
+    const changed = await fetch(instance.url + "/api/account/keys", {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({
+        provider: "deepseek",
+        key: "not-real-secret",
+        user_id: "eve",
+      }),
+    });
+    assert.deepEqual(
+      await changed.json(),
+      JSON.parse(JSON.stringify(status(owner))),
+    );
+    const result = await fetch(instance.url + "/api/agent/assist", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ intent: "search", text: "white desk" }),
+    });
+    assert.equal(result.status, 200);
+    assert.ok(!(await result.text()).includes("private-provider-key"));
+    const run = await fetch(instance.url + "/api/agent/run", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ text: "desk" }),
+    });
+    assert.equal(run.status, 200);
+    assert.ok((await run.text()).includes("Draft ready"));
+    const health = await (
+      await fetch(instance.url + "/api/health", { headers })
+    ).json();
+    assert.equal(health.configured, true);
+    assert.ok(!JSON.stringify(health).includes("private-provider-key"));
+  }
+  assert.deepEqual(seen, ["alice", "alice", "bob", "bob"]);
+  const config = await (await fetch(instance.url + "/api/config")).json();
+  assert.deepEqual(Object.keys(config).sort(), ["supabaseKey", "supabaseUrl"]);
+});
 
 test(
   "HTTP reports setup status and keeps local origin restrictions",
@@ -238,3 +359,52 @@ test(
     assert.equal(cancelled, true);
   },
 );
+
+test("cloud mode exposes only public config and guards all AI and old demo routes", async (t) => {
+  const { AgentError } = await import("./errors.ts");
+  let calls = 0;
+  const instance = await startServer(
+    t,
+    createAgentService({ ...fakeConfig, apiKey: "" }),
+    {
+      cloud: {
+        config: {
+          supabaseUrl: "https://example.supabase.co",
+          supabaseKey: "public-test-key",
+        },
+        authorize: async (header) => {
+          calls++;
+          if (header !== "Bearer valid")
+            throw new AgentError(401, "AUTH_REQUIRED", "Sign in.");
+        },
+      },
+    },
+  );
+  const config = await (await fetch(`${instance.url}/api/config`)).json();
+  assert.deepEqual(config, {
+    supabaseUrl: "https://example.supabase.co",
+    supabaseKey: "public-test-key",
+  });
+  for (const route of ["/api/agent/assist", "/api/agent/run"])
+    assert.equal(
+      (await fetch(instance.url + route, { method: "POST", body: "{}" }))
+        .status,
+      401,
+    );
+  assert.equal(calls, 2);
+  for (const route of [
+    "/api/listings",
+    "/api/listings/demo/update",
+    "/api/messages",
+  ])
+    assert.equal((await fetch(instance.url + route)).status, 410);
+  const allowed = await fetch(`${instance.url}/api/agent/assist`, {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer valid",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ intent: "search", text: "desk" }),
+  });
+  assert.equal(allowed.status, 503); // Passed auth; deliberately unconfigured provider.
+});

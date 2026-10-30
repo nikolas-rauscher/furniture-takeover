@@ -1,3 +1,4 @@
+import { accountAccessToken } from "../cloud/session.ts";
 import type {
   AssistRequest,
   AssistResponse,
@@ -5,7 +6,7 @@ import type {
   HealthResponse,
 } from "../../shared/agent";
 
-type RequestOptions = { signal?: AbortSignal };
+type RequestOptions = { signal?: AbortSignal; accessToken?: string };
 
 export class AgentApiError extends Error {
   readonly code: string;
@@ -99,8 +100,14 @@ async function requestJson(
 
 export async function getAgentHealth({
   signal,
+  accessToken,
 }: RequestOptions = {}): Promise<HealthResponse> {
-  const data = await requestJson("/api/health", { signal });
+  // Browsing works as a guest; a signed-in health check also sees the user's keys.
+  accessToken ??= await accountAccessToken().catch(() => undefined);
+  const data = await requestJson("/api/health", {
+    signal,
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+  });
   if (
     !isRecord(data) ||
     (data.mode !== "live" && data.mode !== "unconfigured") ||
@@ -118,11 +125,15 @@ export async function getAgentHealth({
 /** Send a deliberate request. Photo data is sent only when explicitly included here. */
 export async function requestAgentAssist(
   request: AssistRequest,
-  { signal }: RequestOptions = {},
+  { signal, accessToken }: RequestOptions = {},
 ): Promise<AssistResponse> {
+  accessToken ??= await accountAccessToken();
   const data = await requestJson("/api/agent/assist", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
     body: JSON.stringify(request),
     signal,
   });

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Image as ImageIcon } from "lucide-react";
 import { MAX_LISTING_PHOTOS } from "../../shared/listingPhotos";
 import "./photo-gallery.css";
 
@@ -80,6 +80,11 @@ export default function PhotoGallery({
               </button>
             )}
           </>
+        ) : !editable ? (
+          <div className="listing-no-photo">
+            <ImageIcon size={36} />
+            <span>No photos added</span>
+          </div>
         ) : (
           <>
             <h2>Add item photos</h2>
@@ -93,7 +98,11 @@ export default function PhotoGallery({
       </div>
       {images.length > 0 && (
         <div className="photo-gallery-controls">
-          <div className="photo-gallery-thumbnails" aria-label="Listing photos">
+          <div
+            className="photo-gallery-thumbnails"
+            role="group"
+            aria-label="Listing photos"
+          >
             {images.map((image, photoIndex) => (
               <button
                 key={image}
