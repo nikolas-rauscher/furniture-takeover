@@ -301,7 +301,7 @@ export async function main(args = process.argv.slice(2), env = process.env) {
     throw new Error("Unknown flag. Use --help.");
   if (args.includes("--help")) {
     console.log(
-      "Preview: node --env-file=.env scripts/seed-demo.mjs\nSeed:    node --env-file=.env scripts/seed-demo.mjs --apply\nProfile: add --profile-only for a dedicated demo buyer.\nSQL: use --sql alone to print the optional sandbox seed.\nSee docs/DEMO_DATA.md for credentials and email confirmation.",
+      "Preview: node --env-file=.env scripts/seed-demo.mjs\nSeed:    node --env-file=.env scripts/seed-demo.mjs --apply\nProfile: add --profile-only for a dedicated demo buyer.\nSQL: use --sql alone to print the optional sandbox seed.",
     );
     return;
   }
@@ -343,7 +343,7 @@ export async function main(args = process.argv.slice(2), env = process.env) {
     "DEMO_SEED_DISPLAY_NAME",
   ]) {
     if (!env[name]?.trim())
-      throw new Error(`Set ${name} before applying. See docs/DEMO_DATA.md.`);
+      throw new Error(`Set ${name} before applying.`);
   }
   if (
     !demoName.test(env.DEMO_SEED_DISPLAY_NAME) ||
