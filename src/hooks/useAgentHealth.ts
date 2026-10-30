@@ -57,6 +57,12 @@ export function useAgentHealth() {
     };
     window.addEventListener("online", recover);
     window.addEventListener("focus", recover);
+    const keysChanged = () => {
+      request.current?.abort();
+      request.current = null;
+      void check();
+    };
+    window.addEventListener("takeover-api-keys-changed", keysChanged);
     return () => {
       alive.current = false;
       request.current?.abort();
@@ -64,6 +70,7 @@ export function useAgentHealth() {
       if (retry.current) clearTimeout(retry.current);
       window.removeEventListener("online", recover);
       window.removeEventListener("focus", recover);
+      window.removeEventListener("takeover-api-keys-changed", keysChanged);
     };
   }, [check]);
   return { health, error, checking, refresh: () => void check() };

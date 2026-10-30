@@ -1,4 +1,6 @@
 import { ArrowRight } from "lucide-react";
+import { useLayoutEffect, useRef } from "react";
+import { fitTextarea } from "../textarea";
 import "./agent-composer.css";
 
 type AgentComposerProps = {
@@ -20,6 +22,22 @@ export default function AgentComposer({
   sendLabel,
   disabled = false,
 }: AgentComposerProps) {
+  const textarea = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    if (textarea.current) fitTextarea(textarea.current, 100);
+  }, [value, placeholder]);
+  useLayoutEffect(() => {
+    const element = textarea.current;
+    if (!element?.parentElement) return;
+    let width = 0;
+    const observer = new ResizeObserver(([entry]) => {
+      if (Math.abs(entry.contentRect.width - width) < 1) return;
+      width = entry.contentRect.width;
+      fitTextarea(element, 100);
+    });
+    observer.observe(element.parentElement);
+    return () => observer.disconnect();
+  }, []);
   const send = () => {
     if (!disabled && value.trim()) onSend();
   };
@@ -32,6 +50,7 @@ export default function AgentComposer({
       }}
     >
       <textarea
+        ref={textarea}
         aria-label={label}
         value={value}
         onChange={(event) => onChange(event.target.value)}

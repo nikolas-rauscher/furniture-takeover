@@ -1,10 +1,24 @@
-export type AgentIntent = "search" | "listing";
+export type AgentIntent = "search" | "listing" | "reply";
 
 export type AssistRequest = {
   intent: AgentIntent;
   text: string;
   image?: string;
   images?: string[];
+  conversation?: {
+    role: "buyer" | "seller";
+    listing: {
+      title: string;
+      description?: string;
+      price?: number;
+      location?: string;
+      condition?: string;
+      dimensions?: string;
+      pickup?: string;
+      status?: string;
+    };
+    messages: { role: "self" | "other"; text: string }[];
+  };
   context?: {
     location?: string;
     currentQuery?: string;

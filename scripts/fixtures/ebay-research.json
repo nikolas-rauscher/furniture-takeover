@@ -1,0 +1,267 @@
+{
+  "schemaVersion": 1,
+  "researchedAt": "2026-10-30",
+  "usageNotice": "Research references for clearly marked fictional Takeover demo listings. These are not offers to sell the referenced eBay items. Source prices remain in EUR; demo CHF amounts are invented and are not currency conversions. All syntheticDemo locations, dimensions, pickup logistics and condition wording are fictional demo choices. No seller names or contacts are included. Public product photographs are referenced by external URL with per-image provenance; no image files are downloaded or redistributed.",
+  "method": "Public web search followed by reading public eBay listing pages. No account access, contact, bids or transactions. Evidence represents page text returned by the research tools, which may be cached. Availability is not guaranteed.",
+  "items": [
+    {
+      "id": "ebay-lamp-168607888789",
+      "source": {
+        "platform": "eBay.de",
+        "url": "https://www.ebay.de/itm/168607888789",
+        "title": "Stehlampe vintage 60/70er Wohnzimmer Retro-Rarität im Topzustand",
+        "evidenceLevel": "public_listing_page",
+        "observedAt": "2026-10-30",
+        "listingStatus": "Purchase option displayed; current availability not independently confirmed.",
+        "price": {
+          "amount": 39,
+          "currency": "EUR",
+          "kind": "displayed_buy_now_price"
+        },
+        "condition": "Gebraucht",
+        "location": "Feldkirchen-Westerham, Deutschland",
+        "details": [
+          "Floor lamp marketed as a 1960s/1970s vintage piece.",
+          "Seller describes the item as very well preserved with no visible defects."
+        ],
+        "uncertainties": [
+          "Age and condition are seller claims, not independently authenticated.",
+          "Dimensions were not established."
+        ],
+        "image": "https://i.ebayimg.com/thumbs/images/g/NM4AAeSwzM5qa0NI/s-l500.jpg",
+        "imageSourceUrl": "https://www.ebay.de/itm/168607888789",
+        "imageEvidenceLevel": "public_listing_primary_photo_link",
+        "imageObservedAt": "2026-10-30",
+        "imageUsageNote": "Externally referenced product photograph from the cited public listing; not downloaded or redistributed. The fictional Takeover sample is not an offer for the photographed item."
+      },
+      "syntheticDemo": {
+        "slug": "retro-reading-lamp",
+        "title": "DEMO · Retro reading lamp",
+        "description": "Fictional demo listing inspired by a public secondhand lamp listing. A warm reading corner accessory with a compact footprint. The CHF price, Lausanne location and pickup plan are sample data, not the seller's offer.",
+        "demoPriceChf": 35,
+        "demoLocation": "Lausanne · Centre (fictional demo location)",
+        "condition": "Good — demo condition",
+        "dimensions": "40 × 40 × 155 cm — fictional demo dimensions",
+        "pickup": "Demo pickup: evenings after 18:00; one person can carry it. No real appointment."
+      }
+    },
+    {
+      "id": "ebay-dining-398391085374",
+      "source": {
+        "platform": "eBay.de",
+        "url": "https://www.ebay.de/itm/398391085374",
+        "title": "esstisch mit stühlen gebraucht holz massiv",
+        "evidenceLevel": "public_listing_page",
+        "observedAt": "2026-10-30",
+        "listingStatus": "Ended 2026-09-20; page links to a relisted or similar item.",
+        "price": {
+          "amount": 300,
+          "currency": "EUR",
+          "kind": "ended_auction_displayed_price_zero_bids",
+          "alternativeAmount": 420,
+          "alternativeKind": "displayed_buy_now_price"
+        },
+        "condition": "Gebraucht",
+        "location": "Dresden, Deutschland",
+        "details": [
+          "Dining table with chairs.",
+          "Title describes solid wood construction."
+        ],
+        "uncertainties": [
+          "EUR 300 is not a verified sale price: the page shows zero bids.",
+          "Chair count and dimensions were not established."
+        ],
+        "image": "https://i.ebayimg.com/thumbs/images/g/73EAAeSwYUhqYfVD/s-l500.jpg",
+        "imageSourceUrl": "https://www.ebay.de/itm/398391085374",
+        "imageEvidenceLevel": "public_listing_primary_photo_link",
+        "imageObservedAt": "2026-10-30",
+        "imageUsageNote": "Externally referenced product photograph from the cited public listing; not downloaded or redistributed. The fictional Takeover sample is not an offer for the photographed item."
+      },
+      "syntheticDemo": {
+        "slug": "shared-flat-dining-set",
+        "title": "DEMO · Shared-flat dining set",
+        "description": "Fictional demo dining set inspired by a public solid-wood table listing. This sample includes four chairs for a shared kitchen. Chair count, dimensions, CHF price and collection arrangements are invented for the demo.",
+        "demoPriceChf": 180,
+        "demoLocation": "Renens · Gare (fictional demo location)",
+        "condition": "Used, with surface marks — demo condition",
+        "dimensions": "140 × 80 × 75 cm — fictional demo dimensions",
+        "pickup": "Demo pickup: Saturday afternoon; table legs detach; bring two people and a van. No real appointment."
+      }
+    },
+    {
+      "id": "ebay-sofa-960053697342",
+      "source": {
+        "platform": "eBay.de",
+        "url": "https://www.ebay.de/itm/960053697342",
+        "title": "Sofa Couch 2 Sitzer grau selten benutzt",
+        "evidenceLevel": "public_listing_page",
+        "observedAt": "2026-10-30",
+        "listingStatus": "Ended 2026-10-22 because the item was no longer available.",
+        "price": {
+          "amount": 125,
+          "currency": "EUR",
+          "kind": "last_displayed_asking_price_or_best_offer"
+        },
+        "condition": "Gebraucht",
+        "location": "Schlangenbad, Deutschland",
+        "details": [
+          "Grey two-seat sofa.",
+          "Item specifics describe a wooden frame and polyester or polyester-blend upholstery."
+        ],
+        "uncertainties": [
+          "Title's low-use claim is not independently verified.",
+          "Dimension entries omit units; no verified dimensions are recorded.",
+          "Ended status does not establish a completed sale."
+        ],
+        "image": "https://i.ebayimg.com/thumbs/images/g/J-cAAeSwVT5qy9xZ/s-l500.jpg",
+        "imageSourceUrl": "https://www.ebay.de/itm/960053697342",
+        "imageEvidenceLevel": "public_listing_primary_photo_link",
+        "imageObservedAt": "2026-10-30",
+        "imageUsageNote": "Externally referenced product photograph from the cited public listing; not downloaded or redistributed. The fictional Takeover sample is not an offer for the photographed item."
+      },
+      "syntheticDemo": {
+        "slug": "grey-two-seat-sofa",
+        "title": "DEMO · Grey two-seat sofa",
+        "description": "Fictional demo sofa for a small living room, inspired by a public used two-seater listing. This is not the original item. Price, dimensions, pickup access and local availability are synthetic sample data.",
+        "demoPriceChf": 120,
+        "demoLocation": "Lausanne · Chailly (fictional demo location)",
+        "condition": "Good — demo condition",
+        "dimensions": "168 × 80 × 78 cm — fictional demo dimensions",
+        "pickup": "Demo pickup: Sunday 10:00–13:00; second floor without lift; two people needed. No real appointment."
+      }
+    },
+    {
+      "id": "ebay-bookshelf-318243680763",
+      "source": {
+        "platform": "eBay.de",
+        "url": "https://www.ebay.de/itm/318243680763",
+        "title": "2x IKEA BILLY Regal weiß – 80 cm & 40 cm – guter Zustand",
+        "evidenceLevel": "indexed_search_extract_only",
+        "observedAt": "2026-10-30",
+        "listingStatus": "Search extract says ended 2026-05-10; direct page returned HTTP 404.",
+        "price": {
+          "amount": 61,
+          "currency": "EUR",
+          "kind": "indexed_ended_auction_displayed_price_zero_bids_or_best_offer"
+        },
+        "condition": "Gebraucht",
+        "location": "Bonn, Deutschland",
+        "details": [
+          "Pair of white IKEA BILLY shelves.",
+          "Title specifies widths of 80 cm and 40 cm."
+        ],
+        "uncertainties": [
+          "Search engine reported a crawl three months before observation; direct page unavailable.",
+          "EUR 61 is not a verified sale price.",
+          "Height and depth were not established."
+        ],
+        "image": "https://i.ebayimg.com/thumbs/images/g/m9QAAeSwQnZq31qk/s-l500.jpg",
+        "imageSourceUrl": "https://www.ebay.de/itm/206655349493",
+        "imageEvidenceLevel": "same_model_illustration_from_other_public_listing",
+        "imageObservedAt": "2026-10-30",
+        "imageUsageNote": "Original listing returns 404. Photo illustrates the white 80 cm IKEA BILLY model from a different public listing, not the original pair. It must not be represented as a photo of the original source item. Externally referenced only; not downloaded.",
+        "imageSourceTitle": "Billy Ikea Regal Bücherregal, weiß, 80x28x202 cm",
+        "additionalImageReferences": [
+          {
+            "image": "https://i.ebayimg.com/thumbs/images/g/nIIAAeSwhAtq31tY/s-l500.jpg",
+            "imageSourceUrl": "https://www.ebay.de/itm/206655350717",
+            "imageSourceTitle": "IKEA Billy Bücherregal, Weiß, 202x40x28 Cm",
+            "usageNote": "Optional illustration of the narrow white BILLY model from another listing; not the original pair."
+          }
+        ]
+      },
+      "syntheticDemo": {
+        "slug": "white-bookshelf-pair",
+        "title": "DEMO · White bookshelf pair",
+        "description": "Fictional demo pair of white shelves inspired by an indexed secondhand listing. One wide and one narrow unit suit a study corner. The sample CHF price, full dimensions and pickup arrangements are fictional.",
+        "demoPriceChf": 55,
+        "demoLocation": "Ecublens · EPFL area (fictional demo location)",
+        "condition": "Good, small scuffs — demo condition",
+        "dimensions": "80 / 40 × 28 × 202 cm — fictional demo dimensions",
+        "pickup": "Demo pickup: weekday lunchtime; shelves can be dismantled; bring an extra person. No real appointment."
+      }
+    },
+    {
+      "id": "ebay-desk-375283897362",
+      "source": {
+        "platform": "eBay.de",
+        "url": "https://www.ebay.de/itm/375283897362",
+        "title": "Schreibtisch \"ikea Micke\" Farbe: weiß, 142x50 cm, Zustand ist gut.",
+        "evidenceLevel": "public_listing_page",
+        "observedAt": "2026-10-30",
+        "listingStatus": "Purchase option displayed; current availability not independently confirmed.",
+        "price": {
+          "amount": 50,
+          "currency": "EUR",
+          "kind": "displayed_asking_price_or_best_offer"
+        },
+        "condition": "Gebraucht",
+        "location": "Trier, Deutschland",
+        "details": [
+          "White IKEA desk, identified as MICKE in the title.",
+          "Title gives 142 × 50 cm; item specifics instead list length 140 cm, width 50 cm and height 75 cm."
+        ],
+        "uncertainties": [
+          "Conflicting length values must not be resolved as fact without measurement.",
+          "Good condition is a seller claim."
+        ],
+        "image": "https://i.ebayimg.com/thumbs/images/g/JyoAAOSw3ppl4KJA/s-l500.jpg",
+        "imageSourceUrl": "https://www.ebay.de/itm/375283897362",
+        "imageEvidenceLevel": "public_listing_primary_photo_link",
+        "imageObservedAt": "2026-10-30",
+        "imageUsageNote": "Externally referenced product photograph from the cited public listing; not downloaded or redistributed. The fictional Takeover sample is not an offer for the photographed item."
+      },
+      "syntheticDemo": {
+        "slug": "white-study-desk",
+        "title": "DEMO · White study desk",
+        "description": "Fictional demo desk inspired by a used white IKEA desk listing. A compact study setup for a laptop and notebooks. Dimensions are a chosen demo example; the source itself contains conflicting length values.",
+        "demoPriceChf": 45,
+        "demoLocation": "Lausanne · Sous-Gare (fictional demo location)",
+        "condition": "Good — demo condition",
+        "dimensions": "140 × 50 × 75 cm — fictional demo dimensions",
+        "pickup": "Demo pickup: Thursday after 17:00; ground-floor collection; legs removable. No real appointment."
+      }
+    },
+    {
+      "id": "ebay-dresser-177804573336",
+      "source": {
+        "platform": "eBay.de",
+        "url": "https://www.ebay.de/itm/177804573336",
+        "title": "kommode anthrazit L:100 B:35 L:70 cm",
+        "evidenceLevel": "public_listing_page",
+        "observedAt": "2026-10-30",
+        "listingStatus": "Purchase option displayed; current availability not independently confirmed.",
+        "price": {
+          "amount": 60,
+          "currency": "EUR",
+          "kind": "displayed_asking_price_or_best_offer"
+        },
+        "condition": "Gebraucht",
+        "location": "München, Deutschland",
+        "details": [
+          "Anthracite chest of drawers or storage cabinet.",
+          "Title contains measurements 100, 35 and 70 cm, with the length label repeated."
+        ],
+        "uncertainties": [
+          "The title's repeated dimension label leaves the orientation unclear.",
+          "Drawer count and exact condition were not established."
+        ],
+        "image": "https://i.ebayimg.com/thumbs/images/g/HGAAAeSwu2RpdPq2/s-l500.jpg",
+        "imageSourceUrl": "https://www.ebay.de/itm/177804573336",
+        "imageEvidenceLevel": "public_listing_primary_photo_link",
+        "imageObservedAt": "2026-10-30",
+        "imageUsageNote": "Externally referenced product photograph from the cited public listing; not downloaded or redistributed. The fictional Takeover sample is not an offer for the photographed item."
+      },
+      "syntheticDemo": {
+        "slug": "anthracite-storage-cabinet",
+        "title": "DEMO · Anthracite storage cabinet",
+        "description": "Fictional demo storage cabinet inspired by a public used anthracite cabinet listing. The demo supplies its own dimensions, condition, CHF price and collection plan; no real seller or local stock is represented.",
+        "demoPriceChf": 60,
+        "demoLocation": "Prilly · Centre (fictional demo location)",
+        "condition": "Used, light wear — demo condition",
+        "dimensions": "100 × 35 × 70 cm — fictional demo dimensions",
+        "pickup": "Demo pickup: Friday 16:00–19:00; lift available; two people recommended. No real appointment."
+      }
+    }
+  ]
+}

@@ -4,7 +4,7 @@ import {
   House,
   Search,
   SquarePlus,
-  UserRound,
+  Package,
 } from "lucide-react";
 import "./mobile-nav.css";
 
@@ -22,7 +22,7 @@ const destinations = [
   { id: "sell", label: "Sell", Icon: SquarePlus },
   { id: "favorites", label: "Saved", Icon: Heart },
   { id: "messages", label: "Messages", Icon: MessageCircle },
-  { id: "account", label: "My space", Icon: UserRound },
+  { id: "account", label: "My listings", Icon: Package },
 ] as const;
 
 export default function MobileNav({ active, onNavigate }: MobileNavProps) {
