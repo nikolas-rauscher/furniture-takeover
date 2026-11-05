@@ -331,7 +331,9 @@ export function filterProducts(items: Product[], c: Criteria): Product[] {
   );
 }
 export function criteriaTitle(c: Criteria) {
-  return `${c.category === "All" ? c.query || "Furniture" : c.category} under CHF ${c.maxPrice}`;
+  const item = c.category === "All" ? c.query || "Furniture" : c.category;
+  // 1,000,000 is the "Any budget" value; it is not a price to print.
+  return c.maxPrice >= 1_000_000 ? item : `${item} under CHF ${c.maxPrice}`;
 }
 export function shortDate(value: string) {
   return value

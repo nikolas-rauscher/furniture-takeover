@@ -767,3 +767,31 @@ test("transport retains proposal facts and seller pickup point without leaking f
     { role: "user", text: "CHF 70" },
   ]);
 });
+
+test("watch suggestions accept a bounded query and budget and reject malformed payloads", async () => {
+  const suggestion: AgentRunEvent = {
+    type: "watch_suggestion",
+    query: "desk",
+    maxPrice: 80,
+  };
+  const seen: AgentRunEvent[] = [];
+  await readAgentRunStream(body([suggestion, complete]), (event) =>
+    seen.push(event),
+  );
+  assert.deepEqual(seen, [suggestion, complete]);
+  for (const bad of [
+    { query: "", maxPrice: 10 },
+    { query: "x".repeat(121) },
+    { query: "desk\n" },
+    { query: "desk", maxPrice: -1 },
+    { query: "desk", maxPrice: "80" },
+    { query: 4 },
+  ])
+    await assert.rejects(
+      readAgentRunStream(
+        body([{ type: "watch_suggestion", ...bad } as AgentRunEvent, complete]),
+        () => {},
+      ),
+      { code: "INVALID_STREAM" },
+    );
+});

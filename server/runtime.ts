@@ -141,6 +141,7 @@ const toolLabel = (name: string) =>
     inventory_search: "Searching takeover listings",
     show_takeover_listings: "Selecting takeover matches",
     suggest_takeover_offer: "Suggesting an offer",
+    suggest_watch: "Offering to watch for this item",
     get_listing: "Checking listing details",
     get_negotiation: "Reading your proposal",
     select_listing: "Starting your proposal",

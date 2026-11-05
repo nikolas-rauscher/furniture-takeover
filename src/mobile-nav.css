@@ -73,3 +73,17 @@
     background: #eeeeea;
   }
 }
+.mobile-nav-item { position: relative; }
+.mobile-nav-badge {
+  position: absolute;
+  top: 2px;
+  left: calc(50% + 6px);
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+}

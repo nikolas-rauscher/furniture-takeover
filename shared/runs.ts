@@ -70,6 +70,8 @@ export type AgentRunEvent =
   | { type: "inventory_matches"; ids: string[] }
   /** Review-only suggestion for an observed Takeover listing; never sends a message. */
   | { type: "offer_suggestion"; listingId: string }
+  /** Review-only offer to watch for an item; the buyer's tap creates the alert, never the agent. */
+  | { type: "watch_suggestion"; query: string; maxPrice?: number }
   | { type: "complete"; text: string; sources: AgentRunSource[]; runId: string }
   | {
       type: "error";

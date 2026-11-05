@@ -1,4 +1,13 @@
-import { ArrowRight, Bookmark, Pencil, Search, Trash2 } from "lucide-react";
+import {
+  ArrowRight,
+  Bell,
+  BellOff,
+  Bookmark,
+  Pencil,
+  Search,
+  Trash2,
+} from "lucide-react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { searchText, type SavedSearch } from "../searchRequest";
 
 type SavedSearchesPageProps = {
@@ -7,7 +16,10 @@ type SavedSearchesPageProps = {
   onRun(job: SavedSearch): void;
   onEdit(job: SavedSearch): void;
   onDelete(job: SavedSearch): void;
+  onTogglePause(job: SavedSearch): void;
   onFind(): void;
+  onWatch(query: string, maxPrice?: number): void;
+  alerts?: ReactNode;
 };
 
 export default function SavedSearchesPage({
@@ -16,14 +28,64 @@ export default function SavedSearchesPage({
   onRun,
   onEdit,
   onDelete,
+  onTogglePause,
   onFind,
+  onWatch,
+  alerts,
 }: SavedSearchesPageProps) {
+  const [wantedQuery, setWantedQuery] = useState("");
+  const [wantedPrice, setWantedPrice] = useState("");
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    const query = wantedQuery.trim();
+    if (!query) return;
+    onWatch(query, wantedPrice.trim() === "" ? undefined : Number(wantedPrice));
+    setWantedQuery("");
+    setWantedPrice("");
+  }
   return (
     <>
       <div className="page-title">
         <h1>Saved searches</h1>
-        <p>Keep a search and run it again when you need it.</p>
+        <p>
+          Keep a search and get an alert when a new matching listing appears.
+        </p>
       </div>
+      {alerts}
+      <form
+        className="watch-form"
+        onSubmit={submit}
+        aria-label="Watch for an item"
+      >
+        <label className="grow">
+          Watch for an item
+          <input
+            value={wantedQuery}
+            maxLength={120}
+            placeholder="e.g. desk"
+            onChange={(event) => setWantedQuery(event.target.value)}
+          />
+        </label>
+        <label>
+          Max price (CHF)
+          <input
+            type="number"
+            min={0}
+            max={1000000}
+            value={wantedPrice}
+            placeholder="Any"
+            onChange={(event) => setWantedPrice(event.target.value)}
+          />
+        </label>
+        <button
+          className="button primary small"
+          type="submit"
+          disabled={!wantedQuery.trim()}
+        >
+          <Bell size={14} />
+          Notify me
+        </button>
+      </form>
       {searches.length ? (
         <div className="search-jobs">
           {searches.map((job) => (
@@ -44,6 +106,14 @@ export default function SavedSearchesPage({
                   >
                     Run search
                     <ArrowRight size={14} />
+                  </button>
+                  <button
+                    className="button secondary small"
+                    aria-pressed={job.paused}
+                    onClick={() => onTogglePause(job)}
+                  >
+                    {job.paused ? <BellOff size={14} /> : <Bell size={14} />}
+                    {job.paused ? "Alerts paused" : "Alerts on"}
                   </button>
                 </div>
               </div>
@@ -78,7 +148,8 @@ export default function SavedSearchesPage({
       )}
       {searches.length > 0 && (
         <p className="quiet-caption">
-          Stored in this browser. Searches run when you start them.
+          Stored in this browser. Alerts cover listings in this browser and the
+          demo catalog; nothing is sent to a seller.
         </p>
       )}
     </>

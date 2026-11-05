@@ -14,6 +14,7 @@ export type MobileDestination =
 type MobileNavProps = {
   active: MobileDestination | null;
   onNavigate: (destination: MobileDestination) => void;
+  badges?: Partial<Record<MobileDestination, number>>;
 };
 
 const destinations = [
@@ -25,7 +26,11 @@ const destinations = [
   { id: "account", label: "My space", Icon: UserRound },
 ] as const;
 
-export default function MobileNav({ active, onNavigate }: MobileNavProps) {
+export default function MobileNav({
+  active,
+  onNavigate,
+  badges,
+}: MobileNavProps) {
   return (
     <nav className="mobile-nav" aria-label="Mobile navigation">
       <div className="mobile-nav-items">
@@ -43,6 +48,14 @@ export default function MobileNav({ active, onNavigate }: MobileNavProps) {
               aria-hidden="true"
             />
             <span>{label}</span>
+            {Boolean(badges?.[id]) && (
+              <span
+                className="mobile-nav-badge"
+                aria-label={`${badges?.[id]} new`}
+              >
+                {badges?.[id]}
+              </span>
+            )}
           </button>
         ))}
       </div>

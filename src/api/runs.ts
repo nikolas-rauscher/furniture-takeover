@@ -449,6 +449,22 @@ function parseEvent(line: string): AgentRunEvent {
       )
         throw invalidStream();
       return { type: "offer_suggestion", listingId: value.listingId };
+    case "watch_suggestion":
+      if (
+        !boundedString(value.query, 120) ||
+        /[\u0000-\u001f\u007f]/.test(value.query) ||
+        (value.maxPrice !== undefined &&
+          (typeof value.maxPrice !== "number" ||
+            !Number.isFinite(value.maxPrice) ||
+            value.maxPrice < 0 ||
+            value.maxPrice > 1_000_000))
+      )
+        throw invalidStream();
+      return {
+        type: "watch_suggestion",
+        query: value.query,
+        ...(value.maxPrice === undefined ? {} : { maxPrice: value.maxPrice }),
+      };
     case "inventory_matches":
       if (
         !Array.isArray(value.ids) ||

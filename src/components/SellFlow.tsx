@@ -53,6 +53,8 @@ type SellFlowProps = {
   listingAssist: AgentAssistState;
   agentConversation?: ReactNode;
   agentWorking?: boolean;
+  /** Demand and price context for the listing being written. */
+  insight?: ReactNode;
   onBack: () => void;
   onDraftChange: (changes: Partial<ListingDraft>) => void;
   onPhotoSelected: (files: File[]) => void;
@@ -66,6 +68,7 @@ export default function SellFlow({
   step,
   editing,
   pickupMin = TODAY,
+  insight,
   busy,
   photoReading = false,
   uploadError,
@@ -437,6 +440,7 @@ export default function SellFlow({
               <strong>
                 {draft.price ? money(Number(draft.price)) : "Price not set"}
               </strong>
+              {insight}
               {draft.description && (
                 <p className="listing-preview-description">
                   {draft.description}

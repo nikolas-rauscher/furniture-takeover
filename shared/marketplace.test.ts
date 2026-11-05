@@ -8,6 +8,7 @@ import {
   migrateSaved,
   listingTitle,
   parsePickupDate,
+  criteriaTitle,
 } from "./marketplace.ts";
 
 // Calendar examples use a fixed Monday, independent of when CI runs.
@@ -347,4 +348,13 @@ test("supported marketplace source phrases are preferences rather than item keyw
     assert.equal(criteria.query, "desk");
     assert.equal(criteria.source, source);
   }
+});
+
+test("an any-budget search is titled without a price", () => {
+  const criteria = { ...defaults, query: "desk", maxPrice: 1_000_000 };
+  assert.equal(criteriaTitle(criteria), "desk");
+  assert.equal(
+    criteriaTitle({ ...criteria, maxPrice: 80 }),
+    "desk under CHF 80",
+  );
 });

@@ -81,7 +81,9 @@ export function searchText(criteria: Criteria, location: string) {
   return [
     criteria.query ||
       (criteria.category === "All" ? "furniture" : criteria.category),
-    "budget up to CHF " + criteria.maxPrice,
+    criteria.maxPrice >= 1_000_000
+      ? "any budget"
+      : "budget up to CHF " + criteria.maxPrice,
     "within " + criteria.radius + " km of " + location,
     criteria.pickup ? "pickup by " + criteria.pickup : "flexible pickup",
     criteria.condition === "All"
