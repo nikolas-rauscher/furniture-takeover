@@ -42,13 +42,54 @@ export function validateRequest(value: unknown): AssistRequest {
     );
   if (
     !record(value) ||
-    (value.intent !== "search" && value.intent !== "listing")
+    !["search", "listing", "reply"].includes(String(value.intent))
   )
     throw fail();
   const result: AssistRequest = {
-    intent: value.intent,
+    intent: value.intent as AssistRequest["intent"],
     text: text(value.text, 4000, fail),
   };
+  if (result.intent === "reply") {
+    const conversation = value.conversation;
+    if (
+      !record(conversation) ||
+      !["buyer", "seller"].includes(String(conversation.role)) ||
+      !record(conversation.listing) ||
+      !Array.isArray(conversation.messages) ||
+      conversation.messages.length > 12
+    )
+      throw fail();
+    const listing: NonNullable<AssistRequest["conversation"]>["listing"] = {
+      title: text(conversation.listing.title, 180, fail),
+    };
+    if (!listing.title) throw fail();
+    for (const [field, max] of [
+      ["description", 2400],
+      ["location", 180],
+      ["condition", 160],
+      ["dimensions", 160],
+      ["pickup", 500],
+      ["status", 20],
+    ] as const)
+      if (conversation.listing[field] !== undefined)
+        listing[field] = text(conversation.listing[field], max, fail);
+    if (conversation.listing.price !== undefined)
+      listing.price = number(conversation.listing.price, 1_000_000, fail);
+    result.conversation = {
+      role: conversation.role as "buyer" | "seller",
+      listing,
+      messages: conversation.messages.map((message) => {
+        if (
+          !record(message) ||
+          !["self", "other"].includes(String(message.role))
+        )
+          throw fail();
+        const body = text(message.text, 4000, fail);
+        if (!body) throw fail();
+        return { role: message.role as "self" | "other", text: body };
+      }),
+    };
+  }
   if (value.context !== undefined) {
     if (!record(value.context)) throw fail();
     const source = value.context;

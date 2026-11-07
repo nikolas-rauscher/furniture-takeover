@@ -13,6 +13,7 @@
   --canvas: #f4f4f1;
   --yellow: #f4f2e8;
   --radius: 4px;
+  --mobile-nav-height: 0px;
 }
 * {
   box-sizing: border-box;

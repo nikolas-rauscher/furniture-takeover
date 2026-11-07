@@ -1,0 +1,297 @@
+/* Shared phone geometry. Content pages scroll naturally; conversations own one scroll pane. */
+#root,
+.app-layout,
+.main-content,
+.title-with-action > div,
+.own-listing > div,
+.job-main {
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  :root {
+    --mobile-nav-height: calc(69px + env(safe-area-inset-bottom, 0px));
+  }
+  html {
+    scrollbar-gutter: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #c7cbd3 transparent;
+  }
+  html::-webkit-scrollbar {
+    width: 5px;
+  }
+  html::-webkit-scrollbar-thumb {
+    border-radius: 4px;
+    background: #c7cbd3;
+  }
+  ::view-transition-old(workspace) {
+    animation-duration: 100ms;
+  }
+  ::view-transition-new(workspace) {
+    animation-duration: 240ms;
+  }
+  .app-header .icon-button {
+    width: 44px;
+    height: 44px;
+  }
+  :root[data-keyboard-open] {
+    --mobile-nav-height: 0px;
+  }
+  :root[data-keyboard-open] .mobile-nav {
+    display: none;
+  }
+  .mobile-nav {
+    min-height: var(--mobile-nav-height);
+  }
+  .mobile-nav-item {
+    min-width: 0;
+  }
+  .app-header {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  #root:has(
+      .chat-layout,
+      .messages-layout,
+      .selling-chat-layout,
+      .selling-photo-layout
+    )
+    > .app-header {
+    height: calc(56px + env(safe-area-inset-top, 0px));
+    flex-basis: calc(56px + env(safe-area-inset-top, 0px));
+  }
+  .app-layout:not(
+      .chat-layout,
+      .messages-layout,
+      .selling-chat-layout,
+      .selling-photo-layout
+    )
+    > .main-content {
+    padding-bottom: calc(var(--mobile-nav-height) + 24px);
+  }
+  .main-content :is(h1, h2, h3, p, .product-tags, .status) {
+    overflow-wrap: anywhere;
+  }
+  .main-content .button,
+  .modal .button {
+    max-width: 100%;
+    white-space: normal;
+  }
+  :is(input, textarea, select) {
+    font-size: 16px;
+    scroll-margin-block: 80px;
+  }
+  .search-hero textarea,
+  .main-search > input,
+  .chat-layout .main-search > input,
+  .assistant-composer.conversation-composer textarea,
+  .main-content input,
+  .main-content textarea,
+  .main-content select,
+  .modal .form-grid :is(input, textarea, select),
+  .selling-photo-layout .sell-inputs textarea,
+  label > input,
+  label > select,
+  label > textarea {
+    font-size: 16px;
+  }
+  .title-with-action,
+  .section-heading,
+  .results-controls,
+  .job-actions,
+  .modal-actions {
+    flex-wrap: wrap;
+  }
+  .account-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .account-tabs button {
+    min-width: 0;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    font-size: 12px;
+    padding: 8px 2px;
+  }
+  .own-listing {
+    gap: 12px;
+    padding: 12px;
+  }
+  .own-listing-image {
+    width: 72px;
+    min-height: 88px;
+    align-self: flex-start;
+  }
+  .own-listing h2 {
+    font-size: 15px;
+  }
+  .listing-actions :is(.text-button, .button),
+  .job-actions > button {
+    min-height: 44px;
+  }
+  .compare-tray {
+    bottom: calc(var(--mobile-nav-height) + 12px);
+    max-width: calc(100% - 24px);
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  body:has(.compare-tray)
+    .app-layout:not(
+      .chat-layout,
+      .messages-layout,
+      .selling-chat-layout,
+      .selling-photo-layout
+    )
+    > .main-content {
+    padding-bottom: calc(var(--mobile-nav-height) + 104px);
+  }
+  .toast {
+    bottom: calc(var(--mobile-nav-height) + 16px);
+    max-width: calc(100% - 24px);
+    overflow-wrap: anywhere;
+  }
+  .modal-backdrop {
+    padding: 12px;
+    max-height: var(--app-viewport-height, 100dvh);
+  }
+  .modal {
+    min-width: 0;
+    max-height: calc(var(--app-viewport-height, 100dvh) - 24px);
+    padding: 16px;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    overflow-wrap: anywhere;
+  }
+  .modal-heading {
+    align-items: flex-start;
+    gap: 12px;
+    position: sticky;
+    top: -16px;
+    z-index: 2;
+    background: white;
+    padding: 10px 0;
+    margin-top: -10px;
+  }
+  .modal-heading h2 {
+    min-width: 0;
+    flex: 1;
+  }
+  .modal .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .modal textarea {
+    max-height: none;
+    resize: none;
+  }
+  .chat-layout .chat-composer-dock textarea,
+  .selling-chat-layout .chat-composer-dock textarea {
+    resize: none;
+    max-height: min(100px, 20dvh);
+  }
+  .app-layout:is(
+      .chat-layout,
+      .messages-layout,
+      .selling-chat-layout,
+      .selling-photo-layout
+    )
+    > .main-content {
+    padding-bottom: 8px;
+  }
+  .selling-chat-layout .listing-research-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2px 8px;
+  }
+  .selling-chat-layout .listing-research-actions button {
+    min-width: 0;
+    white-space: normal;
+    text-align: left;
+  }
+  .selling-chat-layout .listing-save-form {
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+
+  /* Preserve room for history in landscape and above the phone keyboard. */
+  :root[data-compact-viewport]
+    #root:has(
+      .chat-layout,
+      .selling-chat-layout,
+      .messages-page.has-conversation
+    )
+    > .app-header {
+    display: none;
+  }
+  :root[data-compact-viewport]
+    .messages-page.has-conversation
+    > :is(.page-title, .account-inbox-notice),
+  :root[data-compact-viewport] .chat-layout .search-title,
+  :root[data-compact-viewport] .chat-layout .results-controls,
+  :root[data-compact-viewport] .chat-layout .search-conversation-heading,
+  :root[data-compact-viewport] .selling-chat-layout .listing-preview,
+  :root[data-compact-viewport] .selling-chat-layout .page-title,
+  :root[data-compact-viewport]
+    .selling-chat-layout
+    .search-conversation-heading {
+    display: none;
+  }
+  :root[data-compact-viewport] .messages-page .conversation-composer {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+  :root[data-compact-viewport] .messages-page .reply-assistance {
+    grid-column: 1 / -1;
+  }
+  :root[data-compact-viewport] .messages-page .reply-assistance-action > small,
+  :root[data-compact-viewport] .messages-page .composer-actions > small {
+    display: none;
+  }
+  :root[data-compact-viewport]
+    .messages-page
+    .conversation-composer
+    > textarea {
+    height: 44px;
+    min-height: 44px;
+    max-height: 72px;
+  }
+  :root[data-compact-viewport] .messages-page .composer-actions .button {
+    min-height: 44px;
+  }
+}
+
+/* Very short portrait displays still expose the complete photo form. */
+@media (max-width: 599px) and (max-height: 620px) {
+  .selling-photo-layout .page-title,
+  .selling-photo-layout .steps {
+    display: none;
+  }
+  .selling-photo-layout .sell-layout {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    padding: 0 2px 4px;
+  }
+  .selling-photo-layout .sell-layout > .photo-upload-panel {
+    flex: 0 0 auto;
+    min-height: 80px;
+    max-height: none;
+  }
+  .selling-photo-layout .upload-zone {
+    min-height: 80px;
+  }
+  .selling-photo-layout .upload-zone.has-image {
+    height: 120px;
+  }
+  .selling-photo-layout .upload-zone :is(h2, p, .file-hint) {
+    display: none;
+  }
+  .selling-photo-layout .sell-inputs textarea {
+    min-height: 80px;
+    height: 80px;
+    scrollbar-width: thin;
+  }
+  .selling-photo-layout .sell-inputs {
+    flex-shrink: 0;
+  }
+}

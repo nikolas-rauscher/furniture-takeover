@@ -16,7 +16,7 @@ npm run dev
 
 Open **http://localhost:5173**. Run every command from the folder containing this `package.json`. The launcher starts the frontend on port 5173 and the API on port 8787. Stop both with Ctrl+C.
 
-`npm run setup` creates `.env` only if it does not exist. It never overwrites your keys. SQLite creates and seeds `data/marketplace.sqlite` on first startup. No separate database installation or database download is needed.
+`npm run setup` creates `.env` only if it does not exist. It never overwrites your keys. In demo mode, SQLite creates and seeds `data/marketplace.sqlite` on first startup. No separate database installation or database download is needed.
 
 ### API keys
 
@@ -29,6 +29,18 @@ BRAVE_SEARCH_API_KEY=your-own-key
 
 Restart `npm run dev`. Keep `.env` local. Tests run without API keys.
 
+## Real user accounts (Supabase)
+
+Create a project at [Supabase](https://supabase.com/dashboard), run all SQL migrations from `supabase/migrations/` in order, then set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` in `.env` and restart. Use the public publishable/anon key, never a service-role key.
+
+This enables email-confirmed accounts, shared listings and photo uploads, private conversations, saved listings, profile settings, blocking/reporting, data export and account deletion. The assistant requires sign-in. Without these two settings the original local demo runs as before. Demo data is not copied into Supabase automatically.
+
+Access is by invitation. In Supabase Auth, disable new user signups, set the public app URL under URL Configuration, and invite testers under Users → Add user → Send invitation. Configure [custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp) to send invitations and password resets to addresses outside your Supabase team. The app accepts dashboard invitations, then asks the user to set a password; normal sign-in and reset requests keep PKCE enabled.
+
+Migration `202611060001_ai_quota.sql` limits AI usage to 50 requests per account and 500 across the app per UTC day. Reservations are atomic and survive server restarts; typing suggestions count too. Each request can include several bounded model/tool calls, so these limits are not a currency budget. Existing minute, concurrency and timeout limits also apply.
+
+Users can save personal DeepSeek and Brave keys under **Account settings → API keys**. Apply migration `202610300004_profile_and_api_keys.sql` and configure `ACCOUNT_KEYS_ENCRYPTION_KEY` using `.env.example`. Keep that server encryption key backed up and unchanged across redeployments. Personal keys override the server defaults for that user; providers bill their usage. Payments are marked **Coming soon** and collect no payment data.
+
 ## Commands
 
 | Command                 | Purpose                                                     |
@@ -40,11 +52,14 @@ Restart `npm run dev`. Keep `.env` local. Tests run without API keys.
 | `npm run check`         | Check TypeScript and run all tests                          |
 | `npm test`              | Discover and run tests, including tests in new subfolders   |
 | `npm run build`         | Check types and build the frontend into `dist/`             |
+| `npm start`             | Serve the built frontend and API together on port 8787      |
 | `npm run start:backend` | Run the API without a file watcher                          |
 | `npm run preview`       | Preview the built frontend, with an API proxy, on port 4173 |
 | `npm run format`        | Format application source with Prettier                     |
 
 For a local build preview, run `npm run build`, then keep `npm run start:backend` in one terminal and `npm run preview` in another. This is a local verification workflow, not a production deployment.
+
+For hosting, run `npm run build` followed by `npm start`. Forward your HTTPS tunnel to `http://127.0.0.1:8787` and add its exact public origin to `API_ALLOWED_ORIGINS`. Add the same URL to Supabase Auth's allowed redirect URLs. Keep the existing `ACCOUNT_KEYS_ENCRYPTION_KEY` when moving the service to another machine.
 
 ## Where to make changes
 
@@ -52,7 +67,9 @@ For a local build preview, run `npm run build`, then keep `npm run start:backend
 src/components/    Screens, chat controls, listing forms and galleries
 src/hooks/         Agent state, cancellation, local storage and listing sync
 src/api/           Browser clients and streamed-event validation
-src/App.tsx        Top-level navigation and workflow coordination
+src/App.tsx        Shared app navigation and workflow coordination
+src/cloud/         Supabase data adapters and account controls
+supabase/migrations/ Database schema, ownership rules and account functions
 shared/            Domain types, validated action/event contracts and demo catalog
 server/config.ts   Ports, credentials, database path and allowed origins
 server/http.ts     HTTP routing, request limits and stream delivery
@@ -66,18 +83,17 @@ server/messages.ts SQLite local conversation demo
 scripts/           Development, setup and test discovery
 ```
 
-Start with [the development guide](docs/DEVELOPMENT.md) for feature changes, test locations and smoke checks. The repository-level `.github/workflows/ci.yml` checks the app on Node 22 and 24.
+The repository-level `.github/workflows/ci.yml` checks the app on Node 22 and 24.
 
 ## Configuration and phone access
 
 Optional settings are documented in [`.env.example`](.env.example). `APP_PORT`, `API_PORT` and `PREVIEW_PORT` let you avoid port conflicts. Relative `DATABASE_PATH` values resolve from the project folder.
 
-For LAN or Tailscale access, see [phone testing](docs/DEVELOPMENT.md#phone-testing). The API validates exact origins, so a working homepage alone does not prove that agent requests from a phone work.
+The API validates exact origins, so a working homepage alone does not prove that agent requests from a phone work.
 
-## Data and demo boundaries
+## Local demo boundaries
 
 - Demo listings and local message threads live in SQLite. Personal listings, saved searches, favourites and offer drafts use browser storage. Browser data does not automatically move between computers or browsers.
 - Sending a message writes to the local demo inbox. Seller preview mode is not a real seller account. No external seller receives a message.
-- There is no authentication, payment processing, marketplace posting or background alert service. The API is a local prototype, not a public multi-user backend.
+- Demo mode has no authentication. Supabase mode adds real accounts and shared data; neither mode includes payments or background alerts.
 - Web results are search snippets. Prices, availability and pickup distances may be unverified. Demo catalog prices and details are fictional.
-- [Image sources](public/images/CATALOG_SOURCES.md) records the external catalog photo references. External marketplace photographs are not licensed as part of this source code.

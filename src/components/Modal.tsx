@@ -1,5 +1,13 @@
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useLayoutEffect,
+  type ReactNode,
+} from "react";
+import { fitTextarea } from "../textarea";
 import { X } from "lucide-react";
+import { createPortal } from "react-dom";
 
 type ModalProps = {
   title: string;
@@ -27,6 +35,24 @@ export default function Modal({
   const onCloseRef = useRef(onClose);
   const headingId = useId();
   onCloseRef.current = onClose;
+  const fitFields = () => {
+    if (window.matchMedia("(max-width: 760px)").matches)
+      dialogRef.current
+        ?.querySelectorAll("textarea")
+        .forEach((field) => fitTextarea(field));
+  };
+  useLayoutEffect(fitFields, [children]);
+  useLayoutEffect(() => {
+    if (!dialogRef.current) return;
+    let width = 0;
+    const observer = new ResizeObserver(([entry]) => {
+      if (Math.abs(entry.contentRect.width - width) < 1) return;
+      width = entry.contentRect.width;
+      fitFields();
+    });
+    observer.observe(dialogRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const previousFocus =
@@ -96,7 +122,7 @@ export default function Modal({
     };
   }, []);
 
-  return (
+  return createPortal(
     <div
       className="modal-backdrop"
       onMouseDown={(event) => {
@@ -110,6 +136,13 @@ export default function Modal({
         aria-labelledby={headingId}
         tabIndex={-1}
         ref={dialogRef}
+        onInputCapture={(event) => {
+          if (
+            event.target instanceof HTMLTextAreaElement &&
+            window.matchMedia("(max-width: 760px)").matches
+          )
+            fitTextarea(event.target);
+        }}
       >
         <div className="modal-heading">
           <h2 id={headingId}>{title}</h2>
@@ -124,6 +157,7 @@ export default function Modal({
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

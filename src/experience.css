@@ -1738,7 +1738,6 @@ label > textarea {
 .search-area-status .agent-footnote > span[role="status"]::before { content:""; display:inline-block; width:5px; height:5px; border-radius:50%; background:currentColor; margin-right:6px; vertical-align:middle; }
 .product-tags { display:flex; flex-wrap:wrap; gap:4px 8px; min-height:20px; margin-bottom:8px; }
 .product-tags > span { font-size:11px; line-height:1.5; color:var(--muted); background:#f0f0ed; padding:2px 6px; border-radius:2px; overflow-wrap:anywhere; }
-.product-demo-mark { position:absolute; left:10px; bottom:10px; padding:3px 6px; color:#fff; background:rgba(0,0,0,.58); font-size:10px; border-radius:2px; pointer-events:none; }
 @media (max-width:640px) { .search-area-status { gap:2px 10px; flex:1; } .search-area-status .agent-footnote { font-size:10px; } }
 
 /* Keep related copy together while preserving generous control targets. */
@@ -1874,10 +1873,11 @@ html { scrollbar-gutter: stable; }
 html:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-layout),
 body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-layout) {
   overflow: hidden;
+  scrollbar-gutter: auto;
   overscroll-behavior: none;
 }
 #root:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-layout) {
-  height: 100dvh;
+  height: var(--app-viewport-height, 100dvh);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2074,7 +2074,7 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
   .selling-photo-layout .sell-inputs textarea { height: 80px; min-height: 60px; }
   .selling-photo-layout .sell-inputs > .quiet-caption { display: none; }
 }
-@media (max-height: 620px) {
+@media (max-height: 620px) and (min-width: 600px) {
   .selling-photo-layout .steps, .selling-photo-layout .page-title { display: none; }
   .selling-photo-layout .sell-layout { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 12px; }
   .selling-photo-layout .sell-layout > div { max-height: none; }

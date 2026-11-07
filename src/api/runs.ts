@@ -1,3 +1,5 @@
+import { accountAccessToken } from "../cloud/session.ts";
+import { reportAgentQuota } from "./agent.ts";
 import { negotiationSchema } from "../../shared/negotiation.ts";
 import type {
   AgentRunEvent,
@@ -656,8 +658,14 @@ export async function streamAgentRun(
   {
     onEvent,
     signal,
-  }: { onEvent: (event: AgentRunEvent) => void; signal?: AbortSignal },
+    accessToken,
+  }: {
+    onEvent: (event: AgentRunEvent) => void;
+    signal?: AbortSignal;
+    accessToken?: string;
+  },
 ): Promise<void> {
+  accessToken ??= await accountAccessToken();
   // Inventory objects can originate from full listings. Pick only the agreed
   // fields, never attached photos, account data, or incidental client state.
   const payload: AgentRunRequest = {
@@ -700,6 +708,7 @@ export async function streamAgentRun(
       headers: {
         "Content-Type": "application/json",
         Accept: "application/x-ndjson",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
       body: JSON.stringify(payload),
       signal,
@@ -713,10 +722,15 @@ export async function streamAgentRun(
   }
   signal?.throwIfAborted();
   if (!response.ok) {
+    reportAgentQuota(response);
     const error = await failureMessage(response);
     signal?.throwIfAborted();
     throw error;
   }
   if (!response.body) throw invalidStream();
-  await readAgentRunStream(response.body, onEvent, signal);
+  try {
+    await readAgentRunStream(response.body, onEvent, signal);
+  } finally {
+    reportAgentQuota(response);
+  }
 }

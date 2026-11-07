@@ -9,6 +9,7 @@ import {
 } from "react";
 import {
   Armchair,
+  Image as ImageIcon,
   ArrowLeft,
   CalendarDays,
   Check,
@@ -42,6 +43,7 @@ export type ListingDraft = {
 };
 
 type SellFlowProps = {
+  cloud?: boolean;
   draft: ListingDraft;
   step: number;
   editing: boolean;
@@ -62,6 +64,7 @@ type SellFlowProps = {
 };
 
 export default function SellFlow({
+  cloud = false,
   draft,
   step,
   editing,
@@ -83,6 +86,38 @@ export default function SellFlow({
   const [photosOpen, setPhotosOpen] = useState(false);
   const photos = listingPhotos(draft);
   const isPhotoStep = step === 1;
+  const checks = [
+    {
+      label: "Photos",
+      ready: photos.length > 0,
+      open: () => setPhotosOpen(true),
+    },
+    {
+      label: "Title",
+      ready: Boolean(draft.title.trim()),
+      open: () => setFieldsOpen(true),
+    },
+    {
+      label: "Description",
+      ready: Boolean(draft.description.trim()),
+      open: () => setFieldsOpen(true),
+    },
+    {
+      label: "Price",
+      ready:
+        draft.price.trim() !== "" &&
+        Number.isFinite(Number(draft.price)) &&
+        Number(draft.price) >= 0 &&
+        Number(draft.price) <= 10000,
+      open: () => setFieldsOpen(true),
+    },
+    {
+      label: "Pickup area",
+      ready: Boolean(draft.location.trim()),
+      open: () => setFieldsOpen(true),
+    },
+  ];
+  const missing = checks.filter((check) => !check.ready);
   const measurementField = listingMeasurementField(draft);
   const unavailable = busy || photoReading;
   const photoEditor = (
@@ -133,7 +168,9 @@ export default function SellFlow({
         <p>
           {isPhotoStep
             ? "Add photos and a few details to create a draft."
-            : "Your agent updates the draft as you talk. Save when you’re ready."}
+            : cloud
+              ? "Edit your draft with the agent, review the details, then publish."
+              : "Your agent updates the draft as you talk. Save when you’re ready."}
         </p>
       </div>
       <div className="steps">
@@ -148,7 +185,8 @@ export default function SellFlow({
           className={step === 2 ? "active" : ""}
           aria-current={step === 2 ? "step" : undefined}
         >
-          <i>2</i>Draft & save
+          <i>2</i>
+          {cloud ? "Review & publish" : "Draft & save"}
         </span>
       </div>
 
@@ -177,7 +215,7 @@ export default function SellFlow({
                 disabled={unavailable}
                 value={draft.raw}
                 onChange={(event) => onDraftChange({ raw: event.target.value })}
-                placeholder="For example: Two books, CHF 10, pickup this weekend. Minor wear on the covers."
+                placeholder="Price, condition or pickup details…"
               />
             </label>
             <button
@@ -199,19 +237,46 @@ export default function SellFlow({
                 title="Improve description"
                 onClose={() => setSuggestionsOpen(false)}
               >
-                {listingAssist.status === "success" && listingAssist.response?.metadata.description ? (
+                {listingAssist.status === "success" &&
+                listingAssist.response?.metadata.description ? (
                   <>
-                    <p className="quiet-caption">Based on your photos and everything you wrote. Using this replaces the notes below.</p>
-                    <p className="proposal-message-preview">{listingAssist.response.metadata.description}</p>
-                    <button className="button primary" type="button" onClick={() => {
-                      onSuggestionSelected(listingAssist.response!.metadata.description!);
-                      setSuggestionsOpen(false);
-                    }}>Use this description</button>
+                    <p className="quiet-caption">
+                      Based on your photos and everything you wrote. Using this
+                      replaces the notes below.
+                    </p>
+                    <p className="proposal-message-preview">
+                      {listingAssist.response.metadata.description}
+                    </p>
+                    <button
+                      className="button primary"
+                      type="button"
+                      onClick={() => {
+                        onSuggestionSelected(
+                          listingAssist.response!.metadata.description!,
+                        );
+                        setSuggestionsOpen(false);
+                      }}
+                    >
+                      Use this description
+                    </button>
                   </>
                 ) : (
                   <div role="status">
-                    <p>{listingAssist.status === "loading" ? "Combining your photos and notes…" : listingAssist.error ?? "No description available yet."}</p>
-                    {listingAssist.status !== "loading" && <button type="button" className="button secondary" onClick={listingAssist.retry}>Try again</button>}
+                    <p>
+                      {listingAssist.status === "loading"
+                        ? "Combining your photos and notes…"
+                        : (listingAssist.error ??
+                          "No description available yet.")}
+                    </p>
+                    {listingAssist.status !== "loading" && (
+                      <button
+                        type="button"
+                        className="button secondary"
+                        onClick={listingAssist.retry}
+                      >
+                        Try again
+                      </button>
+                    )}
                   </div>
                 )}
               </Modal>
@@ -243,17 +308,26 @@ export default function SellFlow({
       ) : (
         <div className="review-layout agent-review-layout">
           <div className="listing-workspace">
+            <button
+              type="button"
+              className="listing-readiness-mobile"
+              onClick={() =>
+                missing.length ? missing[0].open() : setFieldsOpen(true)
+              }
+            >
+              <span>Required details</span>
+              <small>
+                {missing.length
+                  ? `${missing.length} details to complete`
+                  : "Complete"}
+              </small>
+            </button>
             {agentConversation}
             <form
               onSubmit={(event) => {
-                if (
-                  !draft.title.trim() ||
-                  !draft.description.trim() ||
-                  !draft.price.trim() ||
-                  !draft.location.trim()
-                ) {
+                if (missing.length) {
                   event.preventDefault();
-                  setFieldsOpen(true);
+                  missing[0].open();
                   return;
                 }
                 onPublish(event);
@@ -399,17 +473,50 @@ export default function SellFlow({
               <button
                 className="button primary full"
                 type="submit"
-                disabled={agentWorking}
+                disabled={agentWorking || busy || photoReading}
               >
                 <Check size={17} />
-                {editing ? "Save changes" : "Save listing locally"}
+                {busy
+                  ? "Saving…"
+                  : editing
+                    ? "Save changes"
+                    : cloud
+                      ? "Publish listing"
+                      : "Save listing locally"}
               </button>
               <span className="quiet-caption">
-                Saved in this browser. Not published to an external marketplace.
+                {cloud
+                  ? "Your listing will be visible on Takeover. You can edit or archive it later."
+                  : "Saved in this browser."}
               </span>
             </form>
           </div>
           <aside className="listing-preview">
+            <div className="listing-readiness">
+              <strong>
+                {missing.length
+                  ? `${missing.length} detail${missing.length === 1 ? "" : "s"} to complete`
+                  : "Required details complete"}
+              </strong>
+              <div>
+                {checks.map((check) => (
+                  <button
+                    key={check.label}
+                    type="button"
+                    className={check.ready ? "complete" : "missing"}
+                    onClick={check.open}
+                  >
+                    {check.ready && <Check size={12} />}
+                    {check.label}
+                  </button>
+                ))}
+              </div>
+              <small>
+                {draft.condition
+                  ? ""
+                  : "Adding the condition helps buyers decide."}
+              </small>
+            </div>
             <button
               type="button"
               className="text-button preview-label"
@@ -423,7 +530,13 @@ export default function SellFlow({
               onClick={() => setPhotosOpen(true)}
               aria-label={`Edit listing photos (${photos.length})`}
             >
-              <img src={draft.image} alt="Listing preview" />
+              {draft.image ? (
+                <img src={draft.image} alt="Listing preview" />
+              ) : (
+                <span className="listing-no-photo">
+                  <ImageIcon size={28} />
+                </span>
+              )}
               <span>
                 {photos.length} photo{photos.length === 1 ? "" : "s"} · Edit
               </span>

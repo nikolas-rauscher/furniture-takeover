@@ -341,3 +341,64 @@ test("local samples remain eligible and common multilingual queries find them", 
   };
   assert.deepEqual(inventorySearch([mirror], "speigle"), [mirror]);
 });
+
+test("hosted search includes other sellers and ignores browser-injected inventory", async () => {
+  const model = new MockLanguageModelV4({
+    doStream: [
+      toolCall(
+        "inventory_search",
+        { query: "desk", maxPrice: 100 },
+        "shared-catalog",
+      ),
+      toolCall(
+        "show_takeover_listings",
+        { ids: ["shared-desk"] },
+        "shared-result",
+      ),
+      answer("One desk matches."),
+    ],
+  });
+  const events = await eventsFor(
+    createAgentRuntime({
+      apiKey: "test",
+      modelImpl: model,
+      inventoryAuthoritative: true,
+      inventoryProvider: async () => [
+        {
+          ...ownDesk,
+          id: "shared-desk",
+          own: false,
+          demo: true,
+          source: "takeover",
+          status: "active",
+          category: "All",
+          image: "",
+          images: [],
+          condition: "Used",
+          dimensions: "",
+          seller: "Another user",
+          initials: "AU",
+          distance: 0,
+          pickupBy: "",
+          available: "Weekend pickup",
+        },
+      ],
+    }),
+    {
+      text: "desk under CHF 100",
+      context: { source: "takeover", maxPrice: 100 },
+      inventory: [{ ...ownDesk, id: "browser-injected-desk" }],
+    },
+  );
+  assert.ok(
+    events.some(
+      (event) =>
+        event.type === "inventory_matches" && event.ids.includes("shared-desk"),
+    ),
+  );
+  assert.ok(events.some((event) => event.type === "complete"));
+  assert.doesNotMatch(
+    JSON.stringify(model.doStreamCalls[0].prompt),
+    /browser-injected-desk/,
+  );
+});
