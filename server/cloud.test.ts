@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createCloud } from "./cloud.ts";
+import { AgentError } from "./errors.ts";
 test("cloud config is opt-in and rejects missing or privileged credentials", () => {
   assert.equal(createCloud({}), undefined);
   assert.throws(
@@ -31,6 +32,58 @@ test("cloud config is opt-in and rejects missing or privileged credentials", () 
         SUPABASE_PUBLISHABLE_KEY: token,
       }),
     /publishable or anon/,
+  );
+});
+
+test("daily quotas use the caller's session and fail closed on database errors", async (t) => {
+  const original = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = original;
+  });
+  let result: unknown = {
+    allowed: true,
+    limit: 50,
+    remaining: 49,
+    resetAt: "2026-12-01T00:00:00Z",
+  };
+  let status = 200;
+  globalThis.fetch = async (url, init) => {
+    assert.equal(url, "https://example.supabase.co/rest/v1/rpc/ai_quota");
+    assert.equal(
+      new Headers(init?.headers).get("Authorization"),
+      "Bearer alice",
+    );
+    assert.deepEqual(JSON.parse(init?.body as string), { spend: true });
+    return new Response(JSON.stringify(result), { status });
+  };
+  const cloud = createCloud({
+    SUPABASE_URL: "https://example.supabase.co",
+    SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
+  })!;
+  assert.equal((await cloud.quota("Bearer alice", true)).remaining, 49);
+  for (const invalid of [
+    null,
+    {},
+    { ...(result as object), remaining: -1 },
+    { ...(result as object), resetAt: "bad date" },
+  ]) {
+    result = invalid;
+    await assert.rejects(
+      cloud.quota("Bearer alice", true),
+      (e) => e instanceof AgentError && e.code === "QUOTA_UNAVAILABLE",
+    );
+  }
+  status = 503;
+  await assert.rejects(
+    cloud.quota("Bearer alice", true),
+    /temporarily unavailable/,
+  );
+  globalThis.fetch = async () => {
+    throw new Error("network unavailable");
+  };
+  await assert.rejects(
+    cloud.quota("Bearer alice", true),
+    /temporarily unavailable/,
   );
 });
 test("cloud AI authorization verifies user and applies a per-user budget", async (t) => {

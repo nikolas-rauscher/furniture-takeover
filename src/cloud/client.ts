@@ -1,5 +1,31 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 export type CloudConfig = { supabaseUrl: string; supabaseKey: string };
+/** Supabase dashboard invitations use a token fragment, rather than a PKCE code. */
+export function readAuthRedirect(url: URL) {
+  const fragment = new URLSearchParams(url.hash.slice(1));
+  const access_token = fragment.get("access_token"),
+    refresh_token = fragment.get("refresh_token");
+  const invite = fragment.get("type") === "invite";
+  const failed =
+    fragment.has("error") ||
+    fragment.has("error_description") ||
+    url.searchParams.has("error") ||
+    url.searchParams.has("error_description");
+  const invitation =
+    invite && access_token && refresh_token && !failed
+      ? { access_token, refresh_token }
+      : null;
+  const error =
+    failed || (invite && !invitation)
+      ? "This sign-in link is invalid or has expired. Ask for a new invitation or reset your password."
+      : "";
+  if (invitation || error) {
+    url.hash = "settings";
+    for (const key of ["error", "error_description", "error_code", "code"])
+      url.searchParams.delete(key);
+  }
+  return { invitation, error };
+}
 export function cloudClient(config: CloudConfig): SupabaseClient {
   return createClient(config.supabaseUrl, config.supabaseKey, {
     auth: { flowType: "pkce" },

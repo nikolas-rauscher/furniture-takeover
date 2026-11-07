@@ -35,6 +35,10 @@ Create a project at [Supabase](https://supabase.com/dashboard), run all SQL migr
 
 This enables email-confirmed accounts, shared listings and photo uploads, private conversations, saved listings, profile settings, blocking/reporting, data export and account deletion. The assistant requires sign-in. Without these two settings the original local demo runs as before. Demo data is not copied into Supabase automatically.
 
+Access is by invitation. In Supabase Auth, disable new user signups, set the public app URL under URL Configuration, and invite testers under Users → Add user → Send invitation. Configure [custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp) to send invitations and password resets to addresses outside your Supabase team. The app accepts dashboard invitations, then asks the user to set a password; normal sign-in and reset requests keep PKCE enabled.
+
+Migration `202611060001_ai_quota.sql` limits AI usage to 50 requests per account and 500 across the app per UTC day. Reservations are atomic and survive server restarts; typing suggestions count too. Each request can include several bounded model/tool calls, so these limits are not a currency budget. Existing minute, concurrency and timeout limits also apply.
+
 Users can save personal DeepSeek and Brave keys under **Account settings → API keys**. Apply migration `202610300004_profile_and_api_keys.sql` and configure `ACCOUNT_KEYS_ENCRYPTION_KEY` using `.env.example`. Keep that server encryption key backed up and unchanged across redeployments. Personal keys override the server defaults for that user; providers bill their usage. Payments are marked **Coming soon** and collect no payment data.
 
 ## Commands
@@ -48,11 +52,14 @@ Users can save personal DeepSeek and Brave keys under **Account settings → API
 | `npm run check`         | Check TypeScript and run all tests                          |
 | `npm test`              | Discover and run tests, including tests in new subfolders   |
 | `npm run build`         | Check types and build the frontend into `dist/`             |
+| `npm start`             | Serve the built frontend and API together on port 8787      |
 | `npm run start:backend` | Run the API without a file watcher                          |
 | `npm run preview`       | Preview the built frontend, with an API proxy, on port 4173 |
 | `npm run format`        | Format application source with Prettier                     |
 
 For a local build preview, run `npm run build`, then keep `npm run start:backend` in one terminal and `npm run preview` in another. This is a local verification workflow, not a production deployment.
+
+For hosting, run `npm run build` followed by `npm start`. Forward your HTTPS tunnel to `http://127.0.0.1:8787` and add its exact public origin to `API_ALLOWED_ORIGINS`. Add the same URL to Supabase Auth's allowed redirect URLs. Keep the existing `ACCOUNT_KEYS_ENCRYPTION_KEY` when moving the service to another machine.
 
 ## Where to make changes
 

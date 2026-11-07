@@ -2,6 +2,7 @@ import { presentSampleListing } from "../shared/sampleListingPresentation.ts";
 import { createClient } from "@supabase/supabase-js";
 import { AgentError } from "./errors.ts";
 import type { Product } from "../shared/marketplace.ts";
+import type { AgentQuota } from "../shared/agent.ts";
 export function createCloud(env: NodeJS.ProcessEnv = process.env) {
   const url = env.SUPABASE_URL?.trim(),
     key = env.SUPABASE_PUBLISHABLE_KEY?.trim();
@@ -34,10 +35,54 @@ export function createCloud(env: NodeJS.ProcessEnv = process.env) {
   }
   const client = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      fetch: (input, init) =>
+        fetch(input, {
+          ...init,
+          signal: init?.signal
+            ? AbortSignal.any([init.signal, AbortSignal.timeout(10_000)])
+            : AbortSignal.timeout(10_000),
+        }),
+    },
   });
   const requests = new Map<string, { count: number; reset: number }>();
   return {
     config: { supabaseUrl: url, supabaseKey: key },
+    async quota(
+      authorization: string,
+      spend = false,
+    ): Promise<AgentQuota & { allowed: boolean }> {
+      const response = await fetch(`${url}/rest/v1/rpc/ai_quota`, {
+        method: "POST",
+        headers: {
+          apikey: key,
+          Authorization: authorization,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ spend }),
+        signal: AbortSignal.timeout(10_000),
+      }).catch(() => null);
+      const value = response?.ok
+        ? await response.json().catch(() => null)
+        : null;
+      if (
+        !value ||
+        typeof value.allowed !== "boolean" ||
+        !Number.isInteger(value.limit) ||
+        value.limit <= 0 ||
+        !Number.isInteger(value.remaining) ||
+        value.remaining < 0 ||
+        value.remaining > value.limit ||
+        typeof value.resetAt !== "string" ||
+        !Number.isFinite(Date.parse(value.resetAt))
+      )
+        throw new AgentError(
+          503,
+          "QUOTA_UNAVAILABLE",
+          "AI usage limits are temporarily unavailable. Please retry shortly.",
+        );
+      return value;
+    },
     async authorize(header: string | undefined, charge = true) {
       const token = header?.match(/^Bearer (.+)$/)?.[1];
       if (!token)

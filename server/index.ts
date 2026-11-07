@@ -6,6 +6,14 @@ import { createAgentRuntime } from "./runtime.ts";
 import { readServerConfig } from "./config.ts";
 import { createListingsStore } from "./database.ts";
 import { createAccountKeyStore } from "./account-keys.ts";
+import { access } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+
+const staticDirectory = process.argv.includes("--serve")
+  ? fileURLToPath(new URL("../dist/", import.meta.url))
+  : undefined;
+if (staticDirectory)
+  await access(new URL("../dist/index.html", import.meta.url));
 
 const config = readServerConfig();
 const cloud = createCloud();
@@ -67,6 +75,7 @@ const server = createAgentServer(service, {
   listings,
   messages,
   allowedOrigins: config.allowedOrigins,
+  staticDirectory,
 });
 server.once("close", () => messages?.close());
 server.once("close", () => listings?.close());

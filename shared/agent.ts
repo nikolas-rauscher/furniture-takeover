@@ -50,11 +50,14 @@ export type AssistResponse = {
   metadata: AgentMetadata;
 };
 
+export type AgentQuota = { limit: number; remaining: number; resetAt: string };
+
 export type HealthResponse = {
   mode: "live" | "unconfigured";
   webSearchConfigured?: boolean;
   configured: boolean;
   model: string;
+  quota?: AgentQuota;
 };
 
 export type AgentErrorResponse = {

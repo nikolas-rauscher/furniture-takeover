@@ -3,7 +3,11 @@ import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import App from "../App";
 import Modal from "../components/Modal";
 import Auth from "./Auth";
-import { getCloudClient, setAccountScope } from "./session";
+import {
+  getCloudClient,
+  restoreAccountSession,
+  setAccountScope,
+} from "./session";
 import "./account.css";
 export type AccountConnection = {
   client: SupabaseClient;
@@ -29,14 +33,15 @@ export default function AccountSession() {
       data: { subscription },
     } = client.auth.onAuthStateChange((event, next) => {
       update(next);
+      if (event === "SIGNED_IN" && alive) setError("");
       if (event === "PASSWORD_RECOVERY" && alive) setRecovery(true);
     });
-    void client.auth
-      .getSession()
-      .then(({ data, error }) => {
+    void restoreAccountSession()
+      .then(({ session, error, invited }) => {
         if (!alive) return;
-        if (error) setError(error.message);
-        update(data.session);
+        if (error) setError(error);
+        if (invited) setRecovery(true);
+        update(session);
       })
       .catch(() => {
         if (alive) {
@@ -55,23 +60,20 @@ export default function AccountSession() {
         Loading takeover…
       </p>
     );
-  if (error)
-    return (
-      <div className="empty-state">
-        <p role="alert">{error}</p>
-        <button className="button secondary" onClick={() => location.reload()}>
-          Retry
-        </button>
-      </div>
-    );
   return (
     <>
+      {error && (
+        <div className="database-status" role="alert">
+          {error}
+          <button onClick={() => setError("")}>Dismiss</button>
+        </div>
+      )}
       <App
         key={session?.user.id ?? "guest"}
         account={client ? { client, session } : undefined}
       />
       {recovery && client && (
-        <Modal title="Reset your password" onClose={() => setRecovery(false)}>
+        <Modal title="Set your password" onClose={() => setRecovery(false)}>
           <Auth client={client} recovery onDone={() => setRecovery(false)} />
         </Modal>
       )}

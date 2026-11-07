@@ -321,7 +321,9 @@ export default function App({ account }: { account?: AccountConnection }) {
   const running = agentRun.state.status === "running";
   const hasSearchDraft = query.trim().length > 0;
   const searchHeading = "Your search";
-  const configured = agentHealth?.configured === true && signedIn;
+  const quotaExhausted = agentHealth?.quota?.remaining === 0;
+  const configured =
+    agentHealth?.configured === true && signedIn && !quotaExhausted;
   const normalizedFilterDraft = {
     ...filterDraft,
     category: "All",
@@ -1288,6 +1290,17 @@ export default function App({ account }: { account?: AccountConnection }) {
           Sign in to use your agent
         </button>
       </div>
+    ) : quotaExhausted ? (
+      <div className="agent-footnote" role="status">
+        Daily AI allowance used. Resets{" "}
+        {new Date(agentHealth!.quota!.resetAt).toLocaleString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          day: "numeric",
+          month: "short",
+        })}
+        . Listings and messages remain available.
+      </div>
     ) : !configured || healthError ? (
       <div className="agent-footnote">
         <span role="status" title={healthError || undefined}>
@@ -1313,6 +1326,11 @@ export default function App({ account }: { account?: AccountConnection }) {
             Web search is unavailable. Your local listings are still accessible.
           </span>
         )}
+      </div>
+    ) : agentHealth?.quota ? (
+      <div className="agent-footnote" role="status">
+        {agentHealth.quota.remaining} of {agentHealth.quota.limit} AI requests
+        available today
       </div>
     ) : null;
 

@@ -3,6 +3,103 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 
+test("AI quotas persist, isolate users, enforce the project cap and cannot be refunded by deleting an account", async () => {
+  const db = new PGlite();
+  try {
+    await db.exec(`create role anon; create role authenticated;
+      create schema auth; create table auth.users(id uuid primary key);
+      create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+      grant usage on schema auth to anon,authenticated;`);
+    await db.exec(
+      await readFile(
+        new URL(
+          "../supabase/migrations/202611060001_ai_quota.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    );
+    const users = Array.from(
+      { length: 11 },
+      (_, i) => `00000000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`,
+    );
+    for (const id of users)
+      await db.query("insert into auth.users values ($1)", [id]);
+    async function as(id: string | null) {
+      await db.exec("reset role");
+      await db.query("select set_config('request.jwt.claim.sub',$1,false)", [
+        id ?? "",
+      ]);
+      await db.exec(`set role ${id ? "authenticated" : "anon"}`);
+    }
+    type Budget = {
+      allowed: boolean;
+      limit: number;
+      remaining: number;
+      resetAt: string;
+    };
+    async function quota(spend = false) {
+      return (
+        await db.query<{ quota: Budget }>(
+          "select public.ai_quota($1) as quota",
+          [spend],
+        )
+      ).rows[0].quota;
+    }
+    await as(null);
+    await assert.rejects(quota(true), /permission denied/);
+    await as(users[0]);
+    assert.equal((await quota()).remaining, 50);
+    assert.equal((await quota()).remaining, 50); // Reading never consumes an allowance.
+    const spent = await db.query<{ quota: Budget }>(
+      "select public.ai_quota(true) as quota from generate_series(1,50)",
+    );
+    assert.equal(spent.rows[49].quota.allowed, true);
+    assert.equal(spent.rows[49].quota.remaining, 0);
+    assert.equal((await quota(true)).allowed, false);
+    assert.equal(
+      (await db.query("select * from public.ai_daily_usage")).rows.length,
+      1,
+    );
+    await assert.rejects(
+      db.exec("update public.ai_daily_usage set requests=0"),
+      /permission denied/,
+    );
+    await assert.rejects(
+      db.exec("delete from public.ai_daily_totals"),
+      /permission denied/,
+    );
+    await as(users[1]);
+    assert.equal(
+      (await db.query("select * from public.ai_daily_usage")).rows.length,
+      0,
+    );
+    assert.equal((await quota()).remaining, 50);
+    for (const id of users.slice(1, 10)) {
+      await as(id);
+      await db.query("select public.ai_quota(true) from generate_series(1,50)");
+    }
+    await as(users[10]);
+    assert.equal((await quota(true)).allowed, false); // A fresh account cannot bypass the app cap.
+    await db.exec("reset role");
+    await db.query("delete from auth.users where id=$1", [users[0]]);
+    await as(users[10]);
+    assert.equal((await quota()).remaining, 0);
+    await db.exec("reset role");
+    // Move a completed day into history and check that the next UTC day has a fresh budget.
+    await db.exec(
+      "update public.ai_daily_usage set day=day-1; update public.ai_daily_totals set day=day-1; set timezone='Pacific/Honolulu'",
+    );
+    await as(users[10]);
+    const next = await quota(true);
+    assert.equal(next.allowed, true);
+    assert.equal(next.remaining, 49);
+    assert.equal(new Date(next.resetAt).getUTCHours(), 0);
+  } finally {
+    await db.close();
+  }
+});
+
 test("Supabase migration enforces listing ownership, private chats and photo ownership", async () => {
   const db = new PGlite();
   try {

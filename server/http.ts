@@ -4,7 +4,7 @@ import {
   type IncomingMessage,
   type ServerResponse,
 } from "node:http";
-import type { AgentErrorResponse } from "../shared/agent.ts";
+import type { AgentErrorResponse, AgentQuota } from "../shared/agent.ts";
 import { AgentError } from "./errors.ts";
 import type { AgentService } from "./service.ts";
 import type { AgentRunEvent, AgentRuntimeHealth } from "../shared/runs.ts";
@@ -13,6 +13,7 @@ import { reversePickupLocation } from "./location.ts";
 import { localOrigins } from "./config.ts";
 import { unavailableKeyStatus, type AccountKeyStore } from "./account-keys.ts";
 import type { AgentRuntime } from "./runtime.ts";
+import { serveFrontend } from "./frontend.ts";
 
 export const MAX_BODY_BYTES = 3 * 1024 * 1024;
 
@@ -26,7 +27,10 @@ function send(response: ServerResponse, status: number, body: unknown) {
   response.end(JSON.stringify(body));
 }
 
-function readBody(request: IncomingMessage): Promise<unknown> {
+function readBody(
+  request: IncomingMessage,
+  limit = MAX_BODY_BYTES,
+): Promise<unknown> {
   return new Promise((resolve, reject) => {
     let size = 0;
     let done = false;
@@ -34,7 +38,7 @@ function readBody(request: IncomingMessage): Promise<unknown> {
     request.on("data", (chunk: Buffer) => {
       if (done) return;
       size += chunk.length;
-      if (size > MAX_BODY_BYTES) {
+      if (size > limit) {
         done = true;
         reject(
           new AgentError(
@@ -94,10 +98,11 @@ export function createAgentServer(
   options: {
     cloud?: {
       config: { supabaseUrl: string; supabaseKey: string };
-      authorize(
-        header: string | undefined,
-        charge?: boolean,
-      ): Promise<string | void>;
+      authorize(header: string | undefined, charge?: boolean): Promise<string>;
+      quota(
+        authorization: string,
+        spend?: boolean,
+      ): Promise<AgentQuota & { allowed: boolean }>;
     };
     accountKeys?: AccountKeyStore;
     forAccount?: (
@@ -105,6 +110,7 @@ export function createAgentServer(
       authorization: string,
     ) => Promise<{ service: AgentService; runtime: AgentRuntime }>;
     maxConcurrent?: number;
+    staticDirectory?: string;
     allowedOrigins?: readonly string[];
     listings?: ListingsStore;
     messages?: MessagesStore;
@@ -122,7 +128,59 @@ export function createAgentServer(
   let lastLocationLookup = 0;
   const maxConcurrent = options.maxConcurrent ?? 4;
   const allowedOrigins = new Set(options.allowedOrigins ?? localOrigins());
+  let authenticationChecks = 0,
+    authenticationReset = 0,
+    pendingAuthentication = 0;
+  async function authorize(header: string | undefined, charge = true) {
+    if (!header) return options.cloud!.authorize(header, charge);
+    if (header.length > 4096)
+      throw new AgentError(
+        401,
+        "AUTH_REQUIRED",
+        "Sign in with a valid session.",
+      );
+    if (Date.now() >= authenticationReset) {
+      authenticationChecks = 0;
+      authenticationReset = Date.now() + 60_000;
+    }
+    // Funnel proxies all callers to loopback; spoofable forwarded IPs are not a security boundary.
+    if (pendingAuthentication >= 8 || authenticationChecks >= 120)
+      throw new AgentError(
+        429,
+        "AUTH_BUSY",
+        "Sign-in checks are busy. Please retry in a minute.",
+      );
+    authenticationChecks++;
+    pendingAuthentication++;
+    try {
+      return await options.cloud!.authorize(header, charge);
+    } finally {
+      pendingAuthentication--;
+    }
+  }
   const server = createServer(async (request, response) => {
+    response.setHeader("X-Frame-Options", "DENY");
+    response.setHeader("Referrer-Policy", "no-referrer");
+    if (options.staticDirectory) {
+      const cloudOrigin = options.cloud
+        ? new URL(options.cloud.config.supabaseUrl).origin
+        : "";
+      response.setHeader(
+        "Content-Security-Policy",
+        [
+          "default-src 'self'",
+          "script-src 'self'",
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+          "font-src 'self' https://fonts.gstatic.com",
+          "img-src 'self' data: blob: https:",
+          `connect-src 'self' ${cloudOrigin} ${cloudOrigin.replace(/^http/, "ws")}`,
+          "object-src 'none'",
+          "base-uri 'none'",
+          "frame-ancestors 'none'",
+          "form-action 'self'",
+        ].join("; "),
+      );
+    }
     const controller = new AbortController();
     request.once("aborted", () => controller.abort());
     response.once("close", () => {
@@ -140,6 +198,19 @@ export function createAgentServer(
       response.setHeader("Vary", "Origin");
       const url = new URL(request.url ?? "/", "http://127.0.0.1");
       const pathname = url.pathname;
+      if (
+        options.staticDirectory &&
+        pathname !== "/api" &&
+        !pathname.startsWith("/api/")
+      ) {
+        await serveFrontend(
+          request,
+          response,
+          options.staticDirectory,
+          pathname,
+        );
+        return;
+      }
       if (request.method === "OPTIONS" && pathname.startsWith("/api/")) {
         response.writeHead(204, {
           "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -169,7 +240,7 @@ export function createAgentServer(
           pathname.startsWith("/api/agent/") ||
           pathname === "/api/account/keys"
         )
-          actor = await options.cloud.authorize(
+          actor = await authorize(
             request.headers.authorization,
             pathname.startsWith("/api/agent/"),
           );
@@ -226,7 +297,7 @@ export function createAgentServer(
           await options.accountKeys.change(
             actor,
             request.headers.authorization,
-            await readBody(request),
+            await readBody(request, 2048),
             request.method === "PUT",
           ),
         );
@@ -279,19 +350,21 @@ export function createAgentServer(
       }
       if (pathname === "/api/health" && request.method === "GET") {
         const owner =
-          options.forAccount && request.headers.authorization
-            ? await options.cloud?.authorize(
-                request.headers.authorization,
-                false,
-              )
+          options.cloud && request.headers.authorization
+            ? await authorize(request.headers.authorization, false)
             : undefined;
         const agents =
-          owner && request.headers.authorization
+          owner && request.headers.authorization && options.forAccount
             ? await options.forAccount!(owner, request.headers.authorization)
             : { service, runtime: options.runtime };
         send(response, 200, {
           ...agents.service.health(),
           ...(agents.runtime?.health() ?? {}),
+          ...(owner && request.headers.authorization && options.cloud
+            ? {
+                quota: await options.cloud.quota(request.headers.authorization),
+              }
+            : {}),
         });
         return;
       }
@@ -447,6 +520,29 @@ export function createAgentServer(
           actor && request.headers.authorization && options.forAccount
             ? await options.forAccount(actor, request.headers.authorization)
             : { service, runtime: options.runtime };
+        if (actor && request.headers.authorization && options.cloud) {
+          const quota = await options.cloud.quota(
+            request.headers.authorization,
+            true,
+          );
+          response.setHeader("X-AI-Quota-Limit", quota.limit);
+          response.setHeader("X-AI-Quota-Remaining", quota.remaining);
+          response.setHeader("X-AI-Quota-Reset", quota.resetAt);
+          if (!quota.allowed) {
+            response.setHeader(
+              "Retry-After",
+              Math.max(
+                1,
+                Math.ceil((Date.parse(quota.resetAt) - Date.now()) / 1000),
+              ),
+            );
+            throw new AgentError(
+              429,
+              "AI_QUOTA_EXCEEDED",
+              `The daily AI allowance is used up. It resets at ${quota.resetAt}. Listings and messages are still available.`,
+            );
+          }
+        }
         if (pathname === "/api/agent/run") {
           if (!agents.runtime)
             throw new AgentError(

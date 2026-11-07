@@ -1,4 +1,5 @@
 import { accountAccessToken } from "../cloud/session.ts";
+import { reportAgentQuota } from "./agent.ts";
 import { negotiationSchema } from "../../shared/negotiation.ts";
 import type {
   AgentRunEvent,
@@ -721,10 +722,15 @@ export async function streamAgentRun(
   }
   signal?.throwIfAborted();
   if (!response.ok) {
+    reportAgentQuota(response);
     const error = await failureMessage(response);
     signal?.throwIfAborted();
     throw error;
   }
   if (!response.body) throw invalidStream();
-  await readAgentRunStream(response.body, onEvent, signal);
+  try {
+    await readAgentRunStream(response.body, onEvent, signal);
+  } finally {
+    reportAgentQuota(response);
+  }
 }

@@ -8,6 +8,31 @@ import type {
 
 type RequestOptions = { signal?: AbortSignal; accessToken?: string };
 
+export function reportAgentQuota(response: Response) {
+  if (
+    typeof window === "undefined" ||
+    !response.headers.has("X-AI-Quota-Limit")
+  )
+    return;
+  const limit = Number(response.headers.get("X-AI-Quota-Limit"));
+  const remaining = Number(response.headers.get("X-AI-Quota-Remaining"));
+  const resetAt = response.headers.get("X-AI-Quota-Reset");
+  if (
+    Number.isInteger(limit) &&
+    limit > 0 &&
+    Number.isInteger(remaining) &&
+    remaining >= 0 &&
+    remaining <= limit &&
+    resetAt &&
+    Number.isFinite(Date.parse(resetAt))
+  )
+    window.dispatchEvent(
+      new CustomEvent("takeover-ai-quota", {
+        detail: { limit, remaining, resetAt },
+      }),
+    );
+}
+
 export class AgentApiError extends Error {
   readonly code: string;
   readonly status: number;
@@ -83,6 +108,7 @@ async function requestJson(
     return null;
   });
   options.signal?.throwIfAborted();
+  reportAgentQuota(response);
   if (!response.ok) {
     const error = isRecord(body) && isRecord(body.error) ? body.error : null;
     throw new AgentApiError(
