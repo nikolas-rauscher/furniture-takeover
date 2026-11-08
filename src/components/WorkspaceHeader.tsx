@@ -1,4 +1,5 @@
-import type { ReactNode, Ref } from "react";
+import { useEffect, useState, type ReactNode, type Ref } from "react";
+import type { AgentQuota } from "../../shared/agent";
 import {
   ArrowLeft,
   Bookmark,
@@ -7,6 +8,14 @@ import {
   UserRound,
 } from "./icons";
 import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
+import {
+  Popover,
+  PopoverContent,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+} from "./ui/popover";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,10 +33,34 @@ type WorkspaceHeaderProps = {
   onAccount: () => void;
   preferences?: { summary: string; compactSummary: string; onOpen: () => void };
   save?: { disabled: boolean; onSave: () => void };
-  quota?: { remaining: number; limit: number };
+  quota?: AgentQuota;
   titleRef?: Ref<HTMLHeadingElement>;
   actions?: ReactNode;
 };
+
+function QuotaDetails({ quota }: { quota: AgentQuota }) {
+  return (
+    <div className="workspace-quota-details">
+      <p>
+        <strong>
+          {quota.remaining} of {quota.limit}
+        </strong>{" "}
+        AI requests left today
+      </p>
+      <p className="workspace-quota-reset">
+        Resets{" "}
+        <time dateTime={quota.resetAt}>
+          {new Date(quota.resetAt).toLocaleString([], {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </time>
+      </p>
+    </div>
+  );
+}
 
 export default function WorkspaceHeader({
   title,
@@ -41,6 +74,14 @@ export default function WorkspaceHeader({
   titleRef,
   actions,
 }: WorkspaceHeaderProps) {
+  const [quotaOpen, setQuotaOpen] = useState(false);
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 761px)");
+    const closeQuota = () => setQuotaOpen(false);
+    desktop.addEventListener("change", closeQuota);
+    return () => desktop.removeEventListener("change", closeQuota);
+  }, []);
+
   return (
     <header className="workspace-header">
       <div className="workspace-toolbar">
@@ -65,6 +106,29 @@ export default function WorkspaceHeader({
           )}
         </div>
         {actions && <div className="workspace-extra-actions">{actions}</div>}
+        {quota && (
+          <div className="workspace-desktop-quota">
+            <Popover open={quotaOpen} onOpenChange={setQuotaOpen}>
+              <PopoverTrigger
+                render={<Button variant="ghost" />}
+                aria-label={`AI allowance: ${quota.remaining} of ${quota.limit} requests left today`}
+              >
+                AI
+                <Badge
+                  variant={quota.remaining <= 5 ? "destructive" : "secondary"}
+                >
+                  {quota.remaining} left
+                </Badge>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="workspace-quota-popover">
+                <PopoverHeader>
+                  <PopoverTitle>Daily AI allowance</PopoverTitle>
+                </PopoverHeader>
+                <QuotaDetails quota={quota} />
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
         <div className="workspace-mobile-actions">
           {preferences && (
             <Button
@@ -99,9 +163,10 @@ export default function WorkspaceHeader({
               {quota && (
                 <>
                   <DropdownMenuSeparator />
-                  <p className="workspace-quota" role="status">
-                    {quota.remaining} of {quota.limit} AI requests left today
-                  </p>
+                  <div className="workspace-quota-menu" role="status">
+                    <strong>Daily AI allowance</strong>
+                    <QuotaDetails quota={quota} />
+                  </div>
                 </>
               )}
             </DropdownMenuContent>

@@ -27,6 +27,7 @@ import {
   type Category,
 } from "../../shared/marketplace";
 import type { AgentAssistState } from "../hooks/useAgentAssist";
+import type { AgentQuota } from "../../shared/agent";
 import Modal from "./Modal";
 import PhotoGallery from "./PhotoGallery";
 import ListingChecklist from "./ListingChecklist";
@@ -62,7 +63,7 @@ type SellFlowProps = {
   agentConversation?: ReactNode;
   agentTools?: ReactNode;
   agentWorking?: boolean;
-  quota?: { remaining: number; limit: number };
+  quota?: AgentQuota;
   onAccount: () => void;
   onBack: () => void;
   onDraftChange: (changes: Partial<ListingDraft>) => void;

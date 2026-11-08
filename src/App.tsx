@@ -5,6 +5,7 @@ import {
   DropdownMenuItem,
 } from "./components/ui/dropdown-menu";
 import { Button } from "./components/ui/button";
+import { Badge } from "./components/ui/badge";
 import { Textarea } from "./components/ui/textarea";
 import { Input } from "./components/ui/input";
 import { readRoute, type View } from "./navigation";
@@ -1408,8 +1409,15 @@ export default function App({ account }: { account?: AccountConnection }) {
         role="status"
         aria-label={`${agentHealth.quota.remaining} of ${agentHealth.quota.limit} AI requests available today`}
       >
-        {agentHealth.quota.remaining} AI{" "}
-        {agentHealth.quota.remaining === 1 ? "request" : "requests"} left today
+        <Badge
+          variant={
+            agentHealth.quota.remaining <= 5 ? "destructive" : "secondary"
+          }
+        >
+          {agentHealth.quota.remaining} AI{" "}
+          {agentHealth.quota.remaining === 1 ? "request" : "requests"} left
+          today
+        </Badge>
       </div>
     ) : null;
 

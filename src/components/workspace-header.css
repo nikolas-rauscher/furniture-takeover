@@ -84,12 +84,54 @@
   padding: 8px 12px;
   font-size: 14px;
 }
-.workspace-quota {
-  max-width: 26ch;
-  margin: 8px 12px;
-  font-size: 12px;
+.workspace-desktop-quota [data-slot="popover-trigger"] {
+  min-height: 44px;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.workspace-desktop-quota [data-slot="popover-trigger"]:hover {
+  background: var(--mist);
+}
+.workspace-quota-popover {
+  width: 280px;
+  max-width: calc(100vw - 24px);
+  padding: 16px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.workspace-quota-popover [data-slot="popover-title"] {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 550;
+  line-height: 1.4;
+}
+.workspace-quota-menu {
+  padding: 8px 12px;
+}
+.workspace-quota-menu > strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 550;
+}
+.workspace-quota-details {
+  font-size: 13px;
   line-height: 1.5;
+}
+.workspace-quota-details p {
+  margin: 0;
+}
+.workspace-quota-details .workspace-quota-reset {
+  margin-top: 4px;
+  font-size: 12px;
   color: var(--muted);
+}
+.chat-layout .agent-footnote.quota-available,
+.selling-chat-layout .agent-footnote.quota-available {
+  display: none;
 }
 @media (max-width: 760px) {
   #root:has(.chat-layout, .selling-chat-layout) > .app-header {
@@ -132,16 +174,15 @@
     flex: 0 0 auto;
     gap: 0;
   }
+  .workspace-desktop-quota {
+    display: none;
+  }
   .workspace-mobile-actions > button {
     width: 44px;
     height: 44px;
     padding: 0;
   }
   .workspace-preferences {
-    display: none;
-  }
-  .chat-layout .agent-footnote.quota-available,
-  .selling-chat-layout .agent-footnote.quota-available {
     display: none;
   }
 }
