@@ -34,9 +34,6 @@ export default function AgentListings({
         <h3>On Takeover</h3>
         <Badge variant="secondary">{listings.length}</Badge>
       </div>
-      <p className="agent-listings-note">
-        Check pickup distance before collecting.
-      </p>
       <ItemGroup>
         {listings.map((item, index) => {
           const details = [item.condition, item.dimensions]
@@ -69,16 +66,16 @@ export default function AgentListings({
                       variant="link"
                       onClick={() => onOpen(item)}
                     >
-                      {item.title}
+                      <span>{item.title}</span>
+                      <span className="agent-listing-price">
+                        <strong>
+                          {item.price === 0 ? "Free" : money(item.price)}
+                        </strong>
+                        {" · "}
+                        {item.location}
+                      </span>
                     </Button>
                   </ItemTitle>
-                  <ItemDescription>
-                    <strong>
-                      {item.price === 0 ? "Free" : money(item.price)}
-                    </strong>
-                    {" · "}
-                    {item.location}
-                  </ItemDescription>
                   {details && <ItemDescription>{details}</ItemDescription>}
                   {item.available && (
                     <ItemDescription title={item.available}>
@@ -107,8 +104,10 @@ export default function AgentListings({
                     aria-pressed={isCompared}
                     onClick={() => onCompare(item.id)}
                   >
-                    <GitCompareArrows size={16} aria-hidden="true" />
-                    {isCompared ? "Selected" : "Compare"}
+                    <GitCompareArrows size={18} aria-hidden="true" />
+                    <span className="agent-listing-compare-label">
+                      {isCompared ? "Selected" : "Compare"}
+                    </span>
                   </Button>
                 </ItemActions>
               </Item>
