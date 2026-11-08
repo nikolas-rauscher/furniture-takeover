@@ -16,7 +16,16 @@ if (staticDirectory)
   await access(new URL("../dist/index.html", import.meta.url));
 
 const config = readServerConfig();
-const cloud = createCloud();
+const cloud = createCloud(process.env, {
+  localTesting:
+    !staticDirectory &&
+    ["127.0.0.1", "localhost", "::1"].includes(
+      process.env.APP_HOST ?? "127.0.0.1",
+    ) &&
+    config.allowedOrigins.every((origin) =>
+      ["127.0.0.1", "localhost", "[::1]"].includes(new URL(origin).hostname),
+    ),
+});
 const { port, baseUrl, apiKey, model } = config;
 const accountKeys =
   cloud && process.env.ACCOUNT_KEYS_ENCRYPTION_KEY

@@ -3,7 +3,10 @@ import { createClient } from "@supabase/supabase-js";
 import { AgentError } from "./errors.ts";
 import type { Product } from "../shared/marketplace.ts";
 import type { AgentQuota } from "../shared/agent.ts";
-export function createCloud(env: NodeJS.ProcessEnv = process.env) {
+export function createCloud(
+  env: NodeJS.ProcessEnv = process.env,
+  { localTesting = false }: { localTesting?: boolean } = {},
+) {
   const url = env.SUPABASE_URL?.trim(),
     key = env.SUPABASE_PUBLISHABLE_KEY?.trim();
   if (!url && !key) return undefined;
@@ -46,12 +49,41 @@ export function createCloud(env: NodeJS.ProcessEnv = process.env) {
     },
   });
   const requests = new Map<string, { count: number; reset: number }>();
+  const testUntil = Date.parse(env.LOCAL_AI_TEST_UNTIL ?? "");
+  const testEmail = env.LOCAL_AI_TEST_EMAIL?.trim().toLowerCase();
+  const testEnabled =
+    localTesting &&
+    env.NODE_ENV !== "production" &&
+    testEmail &&
+    testUntil > Date.now() &&
+    testUntil <= Date.now() + 86_400_000;
+  let testUsed = 0;
   return {
     config: { supabaseUrl: url, supabaseKey: key },
     async quota(
       authorization: string,
       spend = false,
     ): Promise<AgentQuota & { allowed: boolean }> {
+      if (testEnabled && Date.now() < testUntil) {
+        const token = authorization.match(/^Bearer (.+)$/)?.[1];
+        if (token) {
+          const { data, error } = await client.auth.getUser(token);
+          if (
+            !error &&
+            data.user?.email_confirmed_at &&
+            data.user.email?.toLowerCase() === testEmail
+          ) {
+            const allowed = testUsed < 250;
+            if (spend && allowed) testUsed++;
+            return {
+              allowed,
+              limit: 250,
+              remaining: 250 - testUsed,
+              resetAt: new Date(testUntil).toISOString(),
+            };
+          }
+        }
+      }
       const response = await fetch(`${url}/rest/v1/rpc/ai_quota`, {
         method: "POST",
         headers: {
