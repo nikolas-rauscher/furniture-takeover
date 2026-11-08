@@ -643,7 +643,9 @@ export default function App({ account }: { account?: AccountConnection }) {
     setModal(null);
     setSearching(true);
     if (!preserveHistory) setQuery(search.originalRequest);
-    setFollowUp("");
+    setFollowUp((current) =>
+      !preserveHistory || current.trim() === search.text.trim() ? "" : current,
+    );
     storeSearch(search);
 
     const request = agentSearchRequest(search, activeListings);
@@ -895,7 +897,9 @@ export default function App({ account }: { account?: AccountConnection }) {
     const baseline = { ...listingRevisions.current };
     const current = draftRef.current;
     lastListingRequest.current = { text, question };
-    setListingInput("");
+    setListingInput((current) =>
+      current.trim() === text.trim() ? "" : current,
+    );
     await listingRun.run(
       {
         text: text.trim(),

@@ -4,7 +4,7 @@ import {
   InputGroupButton,
   InputGroupTextarea,
 } from "./ui/input-group";
-import { ArrowRight, X } from "@/components/icons";
+import { ArrowRight, Square } from "@/components/icons";
 import { useLayoutEffect, useRef } from "react";
 import { fitTextarea } from "../textarea";
 import "./agent-composer.css";
@@ -64,13 +64,15 @@ export default function AgentComposer({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
-          disabled={disabled}
+          disabled={disabled && !onStop}
+          enterKeyHint={onStop ? "enter" : "send"}
           rows={1}
           maxLength={4000}
           onKeyDown={(event) => {
             if (
               event.key === "Enter" &&
               !event.shiftKey &&
+              !onStop &&
               !event.nativeEvent.isComposing
             ) {
               event.preventDefault();
@@ -80,15 +82,29 @@ export default function AgentComposer({
         />
         <InputGroupAddon align="inline-end">
           <InputGroupButton
+            key={onStop ? "stop" : "send"}
             animateIcon
             size="icon-sm"
             variant="plain"
             type={onStop ? "button" : "submit"}
             aria-label={onStop ? "Stop agent" : sendLabel}
+            title={onStop ? "Stop agent" : sendLabel}
             disabled={!onStop && (disabled || !value.trim())}
-            onClick={onStop}
+            onClick={
+              onStop
+                ? (event) => {
+                    event.preventDefault();
+                    onStop();
+                    textarea.current?.focus({ preventScroll: true });
+                  }
+                : undefined
+            }
           >
-            {onStop ? <X size={18} /> : <ArrowRight size={18} />}
+            {onStop ? (
+              <Square size={14} fill="currentColor" aria-hidden="true" />
+            ) : (
+              <ArrowRight size={18} aria-hidden="true" />
+            )}
           </InputGroupButton>
         </InputGroupAddon>
       </InputGroup>

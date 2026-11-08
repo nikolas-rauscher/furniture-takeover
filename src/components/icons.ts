@@ -43,6 +43,7 @@ export {
   Package,
   Globe,
   ArrowUpRight,
+  Square,
 } from "lucide-react";
 
 export { Copy, CopyIcon } from "./animate-ui/icons/copy";
