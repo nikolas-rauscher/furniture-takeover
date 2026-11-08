@@ -1,4 +1,6 @@
 import { Button } from "../components/ui/button";
+import { Skeleton } from "../components/ui/skeleton";
+import { Spinner } from "../components/ui/spinner";
 import { Suggestion, Suggestions } from "../components/ui/suggestion";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import { ChevronDown, Sparkles } from "@/components/icons";
@@ -144,9 +146,13 @@ export default function ReplySuggestions({
           disabled={disabled || current?.status === "loading"}
           onClick={() => void suggest()}
         >
-          <Sparkles size={14} aria-hidden="true" />
+          {current?.status === "loading" ? (
+            <Spinner aria-hidden="true" role="presentation" />
+          ) : (
+            <Sparkles size={14} aria-hidden="true" />
+          )}
           {current?.status === "loading"
-            ? "Thinking…"
+            ? "Preparing replies…"
             : current?.status === "error"
               ? "Try again"
               : "Suggest replies"}
@@ -164,19 +170,28 @@ export default function ReplySuggestions({
             <ChevronDown size={14} aria-hidden="true" />
           </Button>
         )}
-        <small>
-          {current?.status === "ready" && current.suggestions?.length
-            ? draft.trim()
-              ? "Choose a reply to replace your draft."
-              : "Choose a reply, then make it yours."
-            : "AI uses this listing and recent messages."}
-        </small>
+        {current?.status !== "loading" && (
+          <small>
+            {current?.status === "ready" && current.suggestions?.length
+              ? draft.trim()
+                ? "Choose a reply to replace your draft."
+                : "Choose a reply, then make it yours."
+              : "AI uses this listing and recent messages."}
+          </small>
+        )}
       </div>
       <div role="status" aria-live="polite">
         {current?.status === "loading" && (
-          <p className="reply-assistance-note">
-            Finding replies for this conversation…
-          </p>
+          <div className="reply-loading">
+            <span className="sr-only">
+              Preparing reply suggestions for this conversation.
+            </span>
+            <div className="reply-loading-placeholders" aria-hidden="true">
+              <Skeleton />
+              <Skeleton />
+              <Skeleton />
+            </div>
+          </div>
         )}
         {current?.status === "error" && (
           <p className="reply-assistance-note reply-assistance-error">

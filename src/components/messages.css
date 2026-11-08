@@ -781,3 +781,39 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.reply-loading-placeholders {
+  display: flex;
+  gap: 8px;
+  overflow: hidden;
+  padding-block: 2px;
+}
+.reply-loading-placeholders [data-slot="skeleton"] {
+  flex: 0 0 38%;
+  height: 36px;
+  border: 1px solid var(--line);
+  background: var(--mist);
+}
+.reply-loading-placeholders [data-slot="skeleton"]:nth-child(2) {
+  flex-basis: 30%;
+  animation-delay: 100ms;
+}
+.reply-loading-placeholders [data-slot="skeleton"]:nth-child(3) {
+  flex-basis: 25%;
+  animation-delay: 200ms;
+}
+.inbox-loading > div {
+  display: grid;
+  gap: 8px;
+}
+.inbox-loading [data-slot="skeleton"] {
+  height: 72px;
+  background: var(--mist);
+}
+@media (prefers-reduced-motion: reduce) {
+  .reply-assistance [data-slot="spinner"],
+  .reply-loading-placeholders [data-slot="skeleton"],
+  .inbox-loading [data-slot="skeleton"] {
+    animation: none;
+  }
+}

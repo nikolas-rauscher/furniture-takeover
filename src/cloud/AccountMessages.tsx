@@ -7,6 +7,7 @@ import {
 } from "../components/ui/dropdown-menu";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+import { Skeleton } from "../components/ui/skeleton";
 import {
   InputGroup,
   InputGroupAddon,
@@ -366,7 +367,16 @@ export default function AccountMessages({
               </span>
             </Button>
           )}
-          {!loaded && !loadError && <p>Loading conversations…</p>}
+          {!loaded && !loadError && (
+            <div className="inbox-loading" role="status">
+              <span className="sr-only">Loading conversations…</span>
+              <div aria-hidden="true">
+                <Skeleton />
+                <Skeleton />
+                <Skeleton />
+              </div>
+            </div>
+          )}
           {loaded && !visibleThreads.length && !selected.startsWith("new:") && (
             <p>
               {query || filter !== "all"
