@@ -10,6 +10,7 @@ import { useStreamingText } from "../hooks/useStreamingText";
 import { useId, type ReactNode } from "react";
 import AgentRunDetails from "./AgentRunDetails";
 import AgentSources from "./AgentSources";
+import AgentWebResults from "./AgentWebResults";
 import { Ellipsis, MessageCircle } from "./icons";
 import { MessageAvatar } from "./ui/message";
 import {
@@ -77,6 +78,8 @@ export default function AgentRunPanel({
   const safeSources = state.sources.filter((source) =>
     safeSourceUrl(source.url),
   );
+  const webSearches = state.steps.filter((step) => step.task === "web");
+  const webRetry = !readOnly && state.status !== "error" ? onRetry : undefined;
   const priceQuestion = state.questions.find(
     (question) => question.input?.type === "price",
   );
@@ -291,7 +294,8 @@ export default function AgentRunPanel({
           searchAnswer.takeover ||
           searchAnswer.answer ||
           sourceLinks ||
-          searchAnswer.web) && (
+          searchAnswer.web ||
+          webSearches.length > 0) && (
           <div className="agent-search-result-messages">
             {(localListings || searchAnswer.takeover) && (
               <section
@@ -314,20 +318,19 @@ export default function AgentRunPanel({
                 {answerBlocks(searchAnswer.answer, safeSources, textArriving)}
               </div>
             )}
-            {(sourceLinks || searchAnswer.web) && (
-              <section
-                className="agent-search-result-message"
-                aria-label="Web search results"
-              >
-                <h3>Web search</h3>
-                {searchAnswer.web && (
-                  <div className="agent-run-answer">
-                    {answerBlocks(searchAnswer.web, safeSources, textArriving)}
-                  </div>
-                )}
-                {sourceLinks}
-              </section>
-            )}
+            <AgentWebResults
+              sources={safeSources}
+              searches={webSearches}
+              running={running}
+              stopped={stopped}
+              onRetry={webRetry}
+            >
+              {searchAnswer.web ? (
+                <div className="agent-run-answer">
+                  {answerBlocks(searchAnswer.web, safeSources, textArriving)}
+                </div>
+              ) : null}
+            </AgentWebResults>
           </div>
         )}
       {!splitSearchResults && state.text && !questionOnlyAnswer && (
@@ -339,7 +342,15 @@ export default function AgentRunPanel({
           </div>
         </>
       )}
-      {!splitSearchResults && sourceLinks}
+      {!splitSearchResults && (
+        <AgentWebResults
+          sources={safeSources}
+          searches={webSearches}
+          running={running}
+          stopped={stopped}
+          onRetry={webRetry}
+        />
+      )}
       {standaloneActions.length > 0 && (
         <div className="agent-run-changes">
           {standaloneActions.map((action) => (

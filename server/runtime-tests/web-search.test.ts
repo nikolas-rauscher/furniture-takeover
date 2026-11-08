@@ -301,6 +301,18 @@ test("search tool failures produce actual error status without fictional source 
       new Response("secret upstream detail", { status: 503 }),
   });
   const events = await eventsFor(runtime, { text: "desk" });
+  const failed = events.find(
+    (event) =>
+      event.type === "status" &&
+      event.id === "failed-search" &&
+      event.state === "error",
+  );
+  assert.ok(failed?.type === "status");
+  assert.deepEqual(failed.failure, {
+    code: "WEB_SEARCH_UNAVAILABLE",
+    message: "Web search is temporarily unavailable. Try again shortly.",
+    retryable: true,
+  });
   assert.ok(
     events.some(
       (event) =>
@@ -317,6 +329,66 @@ test("search tool failures produce actual error status without fictional source 
     false,
   );
 });
+test("a later failed web query retains earlier sources and curated Takeover listings", async () => {
+  let searches = 0;
+  const model = new MockLanguageModelV4({
+    doStream: [
+      toolCall("show_takeover_listings", { ids: [ownDesk.id] }, "curate-local"),
+      toolCall("web_search", { query: "bureau Lausanne" }, "successful-web"),
+      toolCall(
+        "web_search",
+        { query: "white desk Lausanne" },
+        "later-web-failure",
+      ),
+      answer(
+        "## Takeover\nThe local desk is still available in the catalog.\n## Web search\nA returned offer [web-1].",
+      ),
+    ],
+  });
+  const events = await eventsFor(
+    createAgentRuntime({
+      apiKey: "partial-web-model-key",
+      braveApiKey: "partial-web-search-key",
+      modelImpl: model,
+      fetchImpl: async () => {
+        searches++;
+        return searches === 1
+          ? Response.json({
+              web: {
+                results: [
+                  {
+                    title: "Desk",
+                    url: "https://www.petitesannonces.ch/a/1234567",
+                    description: "Collection in Lausanne",
+                  },
+                ],
+              },
+            })
+          : new Response("private service detail", { status: 503 });
+      },
+    }),
+    { text: "Find local and web desks", inventory: [ownDesk] },
+  );
+  const complete = events.find((event) => event.type === "complete");
+  assert.ok(complete?.type === "complete");
+  assert.equal(complete.sources.length, 1);
+  const failed = events.find(
+    (event) =>
+      event.type === "status" &&
+      event.id === "later-web-failure" &&
+      event.state === "error",
+  );
+  assert.ok(failed?.type === "status" && failed.failure?.retryable);
+  assert.deepEqual(
+    events.filter((event) => event.type === "inventory_matches").at(-1),
+    { type: "inventory_matches", ids: [ownDesk.id] },
+  );
+  assert.equal(
+    JSON.stringify(events).includes("private service detail"),
+    false,
+  );
+});
+
 test("ordinary discovery cannot bypass offer filtering with product_info scope", async () => {
   let fetched = false;
   const model = new MockLanguageModelV4({

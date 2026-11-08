@@ -92,6 +92,46 @@ test("NDJSON handles every byte boundary, including fragmented emoji and accente
   assert.deepEqual(seen, input);
 });
 
+test("tool failures preserve safe recovery details and reject malformed metadata", async () => {
+  const step: AgentRunEvent = {
+    type: "status",
+    id: "web-error",
+    task: "web",
+    label: "Searching the web",
+    state: "error",
+    failure: {
+      code: "WEB_SEARCH_BUSY",
+      message: "Web search is busy. Try again shortly.",
+      retryable: true,
+    },
+  };
+  const seen: AgentRunEvent[] = [];
+  await readAgentRunStream(body([step, complete], 1), (event) =>
+    seen.push(event),
+  );
+  assert.deepEqual(seen, [step, complete]);
+  for (const failure of [
+    null,
+    { code: "x", message: "", retryable: true },
+    { code: "x", message: "x".repeat(501), retryable: true },
+    { code: "x", message: "Try again", retryable: "yes" },
+  ])
+    await assert.rejects(
+      readAgentRunStream(
+        body([{ ...step, failure } as AgentRunEvent, complete]),
+        () => {},
+      ),
+      { code: "INVALID_STREAM" },
+    );
+  await assert.rejects(
+    readAgentRunStream(
+      body([{ ...step, state: "complete" }, complete]),
+      () => {},
+    ),
+    { code: "INVALID_STREAM" },
+  );
+});
+
 test("reasoning streams reject invalid ordering, durations and oversized output", async () => {
   const start = { type: "reasoning_start", id: "thinking-1" } as const;
   const end = {

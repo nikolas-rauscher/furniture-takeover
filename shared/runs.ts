@@ -73,6 +73,13 @@ export type AgentRunSource = {
   imageUrl?: string;
 };
 
+/** Sanitized tool failure, suitable for inline recovery without provider details. */
+export type AgentToolFailure = {
+  code: string;
+  message: string;
+  retryable: boolean;
+};
+
 export type AgentRunEvent =
   | AgentActionEvent
   | NegotiationUpdate
@@ -83,6 +90,7 @@ export type AgentRunEvent =
       state: "running" | "complete" | "error" | "needs_input";
       /** The work this observed step belongs to; never a pre-generated plan. */
       task?: AgentTaskKind;
+      failure?: AgentToolFailure;
     }
   | { type: "text_delta"; text: string }
   | { type: "reasoning_start"; id: string }

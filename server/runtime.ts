@@ -22,6 +22,7 @@ import type {
   AgentRunSource,
   AgentRuntimeHealth,
   AgentTaskKind,
+  AgentToolFailure,
 } from "../shared/runs.ts";
 import { WebSearchError } from "./web-search.ts";
 import { MAX_REASONING_CHARS, MAX_REASONING_PARTS } from "../shared/runs.ts";
@@ -220,6 +221,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
         label: string,
         state: "running" | "complete" | "error" | "needs_input",
         task?: AgentTaskKind,
+        failure?: AgentToolFailure,
       ) => {
         task ??= statusTasks.get(id);
         if (task) statusTasks.set(id, task);
@@ -231,6 +233,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
           label,
           state,
           ...(task ? { task } : {}),
+          ...(failure ? { failure } : {}),
         });
       };
       const cleanReferences = (value: string) =>
@@ -516,6 +519,39 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
             );
           },
           onToolExecutionEnd: async ({ toolCall, toolOutput }) => {
+            const webError =
+              toolCall.toolName === "web_search" &&
+              toolOutput.type === "tool-error"
+                ? toolOutput.error
+                : null;
+            const failure: AgentToolFailure | undefined = webError
+              ? {
+                  code:
+                    webError instanceof WebSearchError ||
+                    webError instanceof RunError
+                      ? webError.code
+                      : "WEB_SEARCH_UNAVAILABLE",
+                  message:
+                    webError instanceof WebSearchError ||
+                    webError instanceof RunError
+                      ? webError.message
+                      : "Web search could not finish. Try again shortly.",
+                  retryable:
+                    !(
+                      webError instanceof WebSearchError ||
+                      webError instanceof RunError
+                    ) ||
+                    ![
+                      "WEB_SEARCH_AUTH",
+                      "WEB_SEARCH_QUOTA",
+                      "WEB_SEARCH_NOT_CONFIGURED",
+                      "WEB_SEARCH_LIMIT",
+                      "SOURCE_RESTRICTED",
+                      "INVALID_RESEARCH_SCOPE",
+                      "UNSUPPORTED_SOURCE",
+                    ].includes(webError.code),
+                }
+              : undefined;
             const output =
               toolOutput.type === "tool-result" ? toolOutput.output : null;
             const needsInput =
@@ -533,6 +569,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
                   ? "needs_input"
                   : "complete",
               toolActivity[toolCall.toolName]?.task,
+              failure,
             );
           },
         });

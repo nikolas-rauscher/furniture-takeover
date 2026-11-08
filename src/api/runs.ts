@@ -11,6 +11,7 @@ import type {
   AgentRunRequest,
   AgentRunSource,
   AgentTaskKind,
+  AgentToolFailure,
 } from "../../shared/runs";
 import type {
   AgentListingDraft,
@@ -75,6 +76,22 @@ function boundedNumber(value: unknown, max: number): value is number {
     value >= 0 &&
     value <= max
   );
+}
+
+function toolFailure(value: unknown): AgentToolFailure | undefined {
+  if (value === undefined) return undefined;
+  if (
+    !record(value) ||
+    !boundedString(value.code, 100) ||
+    !boundedString(value.message, 500) ||
+    typeof value.retryable !== "boolean"
+  )
+    throw invalidStream();
+  return {
+    code: value.code,
+    message: value.message,
+    retryable: value.retryable,
+  };
 }
 
 const listingStringLimits = {
@@ -458,6 +475,7 @@ function parseEvent(line: string): AgentRunEvent {
         !boundedString(value.label, 1000) ||
         (value.task !== undefined &&
           !AGENT_TASK_KINDS.includes(value.task as AgentTaskKind)) ||
+        (value.failure !== undefined && value.state !== "error") ||
         (value.state !== "running" &&
           value.state !== "complete" &&
           value.state !== "error" &&
@@ -471,6 +489,9 @@ function parseEvent(line: string): AgentRunEvent {
         state: value.state,
         ...(value.task !== undefined
           ? { task: value.task as AgentTaskKind }
+          : {}),
+        ...(value.failure !== undefined
+          ? { failure: toolFailure(value.failure) }
           : {}),
       };
     case "text_delta":
