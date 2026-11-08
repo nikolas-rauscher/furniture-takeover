@@ -22,6 +22,7 @@ import SavedSearchesPage from "./components/SavedSearchesPage";
 import { listingPhotos, MAX_LISTING_PHOTOS } from "../shared/listingPhotos";
 import { readListingPhoto } from "./listingPhotos";
 import WorkspacePage from "./components/WorkspacePage";
+import WorkspaceHeader from "./components/WorkspaceHeader";
 import MessagesPage from "./components/MessagesPage";
 import { useNegotiations } from "./hooks/useNegotiations";
 import NegotiationSummary, {
@@ -47,7 +48,6 @@ import {
   type SetStateAction,
 } from "react";
 import {
-  ArrowLeft,
   ArrowRight,
   Bookmark,
   Camera,
@@ -56,6 +56,7 @@ import {
   GitCompareArrows,
   Plus,
   Search,
+  SquarePen,
   UserRound,
   X,
 } from "@/components/icons";
@@ -340,14 +341,28 @@ export default function App({ account }: { account?: AccountConnection }) {
   }, [pageKey]);
   const reviewingListing =
     !isHome && committedSearch?.intent === "listing_review";
+  const resultCriteria = committedSearch?.criteria ?? criteria;
+  const budgetLabel =
+    resultCriteria.maxPrice >= 1_000_000
+      ? "Any budget"
+      : resultCriteria.maxPrice === 0
+        ? "Free only"
+        : "Up to " + money(resultCriteria.maxPrice);
+  const sourceLabel =
+    resultCriteria.source === "All"
+      ? "All sources"
+      : resultCriteria.source === "takeover"
+        ? "Takeover"
+        : resultCriteria.source;
+  const compactPreferences = [
+    budgetLabel,
+    `${resultCriteria.radius} km`,
+    sourceLabel,
+  ].join(" · ");
   const activePreferences =
     committedSearch && !reviewingListing
       ? [
-          committedSearch.criteria.maxPrice >= 1_000_000
-            ? "Any budget"
-            : committedSearch.criteria.maxPrice === 0
-              ? "Free only"
-              : "Up to " + money(committedSearch.criteria.maxPrice),
+          budgetLabel,
           committedSearch.criteria.radius +
             " km of " +
             committedSearch.location,
@@ -357,11 +372,9 @@ export default function App({ account }: { account?: AccountConnection }) {
           committedSearch.criteria.condition === "All"
             ? "Any condition"
             : committedSearch.criteria.condition + " condition",
-          committedSearch.criteria.source === "All"
-            ? "All sources"
-            : committedSearch.criteria.source === "takeover"
-              ? "Takeover listings only"
-              : committedSearch.criteria.source,
+          resultCriteria.source === "takeover"
+            ? "Takeover listings only"
+            : sourceLabel,
         ].join(" · ")
       : "";
   const running = agentRun.state.status === "running";
@@ -1235,46 +1248,45 @@ export default function App({ account }: { account?: AccountConnection }) {
         : "Listing status updated.",
     );
   }
+  const listingTools = (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={<Button variant="outline" size="sm" />}
+        disabled={!configured || listingRun.state.status === "running"}
+      >
+        Agent tools <ChevronDown size={14} />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="agent-tools-menu">
+        {[
+          [
+            "Research this item",
+            "Research comparable individual secondhand offers for this item.",
+          ],
+          [
+            "Suggest a price",
+            "Research comparable asking prices and suggest a price for this listing.",
+          ],
+          [
+            "Check listing",
+            "Check my listing for missing condition, dimensions and pickup details.",
+          ],
+          [
+            "Improve description",
+            "Improve my description using the photos and details I provided. Keep it concise and natural.",
+          ],
+        ].map(([label, request]) => (
+          <DropdownMenuItem
+            key={label}
+            onClick={() => void runListing(request, undefined, true)}
+          >
+            {label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
   const listingConversation = (
     <section className="listing-conversation" aria-label="Listing agent">
-      <div className="listing-research-actions">
-        <h2 className="listing-assistant-title">Listing assistant</h2>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={<Button variant="outline" size="sm" />}
-            disabled={!configured || listingRun.state.status === "running"}
-          >
-            Agent tools <ChevronDown size={14} />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="agent-tools-menu">
-            {[
-              [
-                "Research this item",
-                "Research comparable individual secondhand offers for this item.",
-              ],
-              [
-                "Suggest a price",
-                "Research comparable asking prices and suggest a price for this listing.",
-              ],
-              [
-                "Check listing",
-                "Check my listing for missing condition, dimensions and pickup details.",
-              ],
-              [
-                "Improve description",
-                "Improve my description using the photos and details I provided. Keep it concise and natural.",
-              ],
-            ].map(([label, request]) => (
-              <DropdownMenuItem
-                key={label}
-                onClick={() => void runListing(request, undefined, true)}
-              >
-                {label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
       <AgentConversation
         state={listingRun.state}
         footer={
@@ -1392,7 +1404,7 @@ export default function App({ account }: { account?: AccountConnection }) {
       </div>
     ) : agentHealth?.quota ? (
       <div
-        className="agent-footnote"
+        className={`agent-footnote${agentHealth.quota.remaining > 5 ? " quota-available" : ""}`}
         role="status"
         aria-label={`${agentHealth.quota.remaining} of ${agentHealth.quota.limit} AI requests available today`}
       >
@@ -1688,62 +1700,43 @@ export default function App({ account }: { account?: AccountConnection }) {
                 </section>
               ) : (
                 <>
-                  <div className="page-title search-title">
-                    <Button className="back-link" onClick={goHome}>
-                      <ArrowLeft size={15} />
-                      New search
-                    </Button>
-                    <h1>
-                      {reviewingListing ? "Listing review" : searchHeading}
-                    </h1>
-                    {reviewingListing && (
-                      <p>
-                        Review the details you supplied and ask what could help
-                        a buyer.
-                      </p>
-                    )}
-                  </div>
-                  {!reviewingListing && (
-                    <>
-                      <div className="results-controls">
-                        <Button
-                          className="search-settings"
-                          title={activePreferences || undefined}
-                          onClick={() => {
-                            setFilterDraft(criteria);
-                            setModal("filters");
-                          }}
-                        >
-                          <span>Search preferences</span>
-                          <span className="edit-settings">Edit</span>
-                        </Button>
-                        <Button
-                          className="save-search"
-                          disabled={running || !committedSearch}
-                          onClick={() => {
-                            setEditingJob(null);
-                            setJobTitle(
-                              (committedSearch?.originalRequest || "").slice(
-                                0,
-                                90,
-                              ),
-                            );
-                            setModal("save");
-                          }}
-                        >
-                          Save this search
-                        </Button>
-                      </div>
-                      {activePreferences && (
-                        <p
-                          className="quiet-caption"
-                          style={{ textAlign: "left" }}
-                        >
-                          Active preferences: {activePreferences}
-                        </p>
-                      )}
-                    </>
-                  )}
+                  <WorkspaceHeader
+                    title={reviewingListing ? "Listing review" : searchHeading}
+                    backLabel="New search"
+                    backIcon={<SquarePen size={20} aria-hidden="true" />}
+                    onBack={goHome}
+                    onAccount={() => navigate("settings")}
+                    quota={agentHealth?.quota}
+                    preferences={
+                      !reviewingListing
+                        ? {
+                            summary: activePreferences,
+                            compactSummary: compactPreferences,
+                            onOpen: () => {
+                              setFilterDraft(criteria);
+                              setModal("filters");
+                            },
+                          }
+                        : undefined
+                    }
+                    save={
+                      !reviewingListing
+                        ? {
+                            disabled: running || !committedSearch,
+                            onSave: () => {
+                              setEditingJob(null);
+                              setJobTitle(
+                                (committedSearch?.originalRequest || "").slice(
+                                  0,
+                                  90,
+                                ),
+                              );
+                              setModal("save");
+                            },
+                          }
+                        : undefined
+                    }
+                  />
                   {negotiations.error && (
                     <p role="alert">{negotiations.error}</p>
                   )}
@@ -2032,6 +2025,9 @@ export default function App({ account }: { account?: AccountConnection }) {
                 onDraftChange={changeDraft}
                 agentWorking={listingRun.state.status === "running"}
                 agentConversation={listingConversation}
+                agentTools={listingTools}
+                quota={agentHealth?.quota}
+                onAccount={() => navigate("settings")}
                 onPhotoSelected={upload}
                 onCreateDraft={generateDraft}
                 onSuggestionSelected={addListingSuggestion}

@@ -30,6 +30,7 @@ import type { AgentAssistState } from "../hooks/useAgentAssist";
 import Modal from "./Modal";
 import PhotoGallery from "./PhotoGallery";
 import ListingChecklist from "./ListingChecklist";
+import WorkspaceHeader from "./WorkspaceHeader";
 import { listingPhotos } from "../../shared/listingPhotos";
 
 export type ListingDraft = {
@@ -59,7 +60,10 @@ type SellFlowProps = {
   liveAgent: boolean;
   listingAssist: AgentAssistState;
   agentConversation?: ReactNode;
+  agentTools?: ReactNode;
   agentWorking?: boolean;
+  quota?: { remaining: number; limit: number };
+  onAccount: () => void;
   onBack: () => void;
   onDraftChange: (changes: Partial<ListingDraft>) => void;
   onPhotoSelected: (files: File[]) => void;
@@ -80,7 +84,10 @@ export default function SellFlow({
   liveAgent,
   listingAssist,
   agentConversation,
+  agentTools,
   agentWorking = false,
+  quota,
+  onAccount,
   onBack,
   onDraftChange,
   onPhotoSelected,
@@ -158,42 +165,40 @@ export default function SellFlow({
           )}
         </Modal>
       )}
-      <Button className="back-link" type="button" onClick={onBack}>
-        <ArrowLeft size={16} />
-        {step === 2 && !editing
-          ? "Back to photos"
-          : editing
-            ? "Back to my listings"
-            : "Back to search"}
-      </Button>
-      <div className="page-title">
-        <h1 ref={headingRef} tabIndex={-1}>
-          {isPhotoStep ? "What are you selling?" : "Your listing"}
-        </h1>
-        <p>
-          {isPhotoStep
-            ? "Add photos and a few details to create a draft."
-            : cloud
-              ? "Edit your draft with the agent, review the details, then publish."
-              : "Your agent updates the draft as you talk. Save when you’re ready."}
-        </p>
-      </div>
-      <div className="steps">
-        <span
-          className={isPhotoStep ? "active" : "completed"}
-          aria-current={isPhotoStep ? "step" : undefined}
-        >
-          <i>{step === 2 ? <Check size={13} /> : 1}</i>Photos & details
-        </span>
-        <div />
-        <span
-          className={step === 2 ? "active" : ""}
-          aria-current={step === 2 ? "step" : undefined}
-        >
-          <i>2</i>
-          {cloud ? "Review & publish" : "Draft & save"}
-        </span>
-      </div>
+      {!isPhotoStep ? (
+        <WorkspaceHeader
+          title="Your listing"
+          titleRef={headingRef}
+          backLabel={editing ? "Back to my listings" : "Back to photos"}
+          onBack={onBack}
+          onAccount={onAccount}
+          quota={quota}
+          actions={agentTools}
+        />
+      ) : (
+        <>
+          <Button className="back-link" type="button" onClick={onBack}>
+            <ArrowLeft size={16} />
+            {editing ? "Back to my listings" : "Back to search"}
+          </Button>
+          <div className="page-title">
+            <h1 ref={headingRef} tabIndex={-1}>
+              What are you selling?
+            </h1>
+            <p>Add photos and a few details to create a draft.</p>
+          </div>
+          <div className="steps">
+            <span className="active" aria-current="step">
+              <i>1</i>Photos & details
+            </span>
+            <div />
+            <span>
+              <i>2</i>
+              {cloud ? "Review & publish" : "Draft & save"}
+            </span>
+          </div>
+        </>
+      )}
 
       {isPhotoStep ? (
         <div className="sell-layout" aria-busy={unavailable}>

@@ -773,20 +773,6 @@ label > textarea {
 }
 .listing-conversation .agent-run-changes h3 { font-size: 15px; }
 .listing-conversation .agent-run-changes p { font-size: 14px; line-height: 1.5; }
-
-
-.listing-research-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 28px;
-  margin: 24px 0 8px;
-}
-.listing-research-actions button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-}
 .listing-save-form {
   margin-top: 40px;
   padding-top: 28px;
@@ -857,9 +843,6 @@ label > textarea {
   .agent-review-layout .listing-preview .listing-preview-description { display: none; }
   .review-layout.agent-review-layout { gap: 12px; }
   .view-sell .page-title + .steps { margin-bottom: 12px; }
-  .listing-research-actions {
-    gap: 8px 20px;
-  }
 
 }
 .review-layout {
@@ -1640,9 +1623,6 @@ label > textarea {
   .view-sell > .page-title h1 { font-size: 26px; line-height: 1.2; margin-bottom: 10px; }
   .view-sell > .page-title p { font-size: 13px; line-height: 1.5; }
   .view-sell > .steps { margin-bottom: 20px; font-size: 12px; gap: 12px; }
-
-
-  .listing-research-actions { margin: 12px 0 0; gap: 4px 16px; font-size: 12px; }
   .listing-save-form { margin-top: 24px; padding-top: 20px; }
 }
 
@@ -1657,8 +1637,6 @@ label > textarea {
 .results-controls { margin-bottom: 16px; }
 .search-title .back-link { margin-bottom: 8px; }
 .assistant-composer { margin-top: 20px; padding: 16px; }
-
-.listing-research-actions { margin: 12px 0 4px; gap: 4px 20px; }
 
 .listing-save-form { margin-top: 24px; padding-top: 20px; }
 .listing-manual-fields[open] > summary { margin-bottom: 16px; }
@@ -1855,8 +1833,6 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
 .selling-chat-layout .page-title p, .selling-chat-layout .steps { display: none; }
 .selling-chat-layout .agent-review-layout { flex: 1 1 0; min-height: 0; margin: 0; align-items: stretch; gap: 20px; }
 .selling-chat-layout .listing-workspace, .selling-chat-layout .listing-conversation { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }
-.selling-chat-layout .listing-research-actions { margin: 0; gap: 8px 20px; flex-shrink: 0; }
-.selling-chat-layout .listing-research-actions button { min-height: 32px; font-size: 12px; }
 .selling-chat-layout .chat-workspace { flex: 1 1 0; min-height: 0; height: auto; max-width: none; margin: 6px 0; }
 .selling-chat-layout .chat-composer-dock { min-height: 0; padding-top: 8px; }
 .selling-chat-layout .chat-composer-dock textarea { max-height: 100px; overflow-y: auto; }

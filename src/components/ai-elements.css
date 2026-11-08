@@ -302,32 +302,6 @@
   .agent-search-result-messages:has(> :only-child) {
   grid-template-columns: minmax(0, 1fr);
 }
-
-/* The editor has one assistant toolbar; optional tools open in the shared menu. */
-.selling-chat-layout .listing-research-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 4px 0 8px;
-  border-bottom: 1px solid var(--line);
-}
-.selling-chat-layout .listing-assistant-title {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 550;
-  color: var(--ink);
-}
-.selling-chat-layout
-  .listing-research-actions
-  [data-slot="dropdown-menu-trigger"] {
-  flex: 0 0 auto;
-  width: auto;
-  min-height: 44px;
-  padding: 8px 12px;
-  font-size: 13px;
-  white-space: nowrap;
-}
 .selling-chat-layout .listing-save-form > .listing-edit-button {
   min-height: 44px;
 }

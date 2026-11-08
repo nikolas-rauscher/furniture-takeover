@@ -44,6 +44,8 @@ export {
   Globe,
   ArrowUpRight,
   Square,
+  SlidersHorizontal,
+  SquarePen,
 } from "lucide-react";
 
 export { Copy, CopyIcon } from "./animate-ui/icons/copy";

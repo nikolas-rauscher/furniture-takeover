@@ -1,0 +1,134 @@
+.workspace-header {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.workspace-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 44px;
+}
+.workspace-heading {
+  flex: 1;
+  min-width: 0;
+}
+.workspace-criteria {
+  display: none;
+}
+.workspace-toolbar h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 550;
+}
+.workspace-toolbar .workspace-back {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.workspace-mobile-actions {
+  display: none;
+}
+.workspace-extra-actions {
+  display: flex;
+  flex: 0 0 auto;
+}
+.workspace-extra-actions [data-slot="dropdown-menu-trigger"] {
+  min-height: 44px;
+  padding: 8px 12px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.workspace-preferences {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 12px;
+}
+.workspace-preferences > button {
+  min-height: 36px;
+  padding: 0;
+  font-size: 12px;
+}
+.workspace-preferences > button + button {
+  color: var(--blue);
+}
+.workspace-preferences .quiet-caption {
+  flex-basis: 100%;
+  margin: 0 0 4px;
+  text-align: left;
+  font-size: 11px;
+}
+.workspace-options {
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  min-width: 220px;
+}
+.workspace-options [data-slot="dropdown-menu-item"] {
+  min-height: 44px;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+.workspace-quota {
+  max-width: 26ch;
+  margin: 8px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+@media (max-width: 760px) {
+  #root:has(.chat-layout, .selling-chat-layout) > .app-header {
+    display: none;
+  }
+  .app-layout.chat-layout .main-content.view-discover {
+    padding: env(safe-area-inset-top, 0px) 12px 4px;
+  }
+  .app-layout.selling-chat-layout .main-content.view-sell {
+    padding: env(safe-area-inset-top, 0px) 12px 4px;
+  }
+  .workspace-toolbar {
+    min-height: 52px;
+    gap: 4px;
+  }
+  .workspace-toolbar h1 {
+    font-size: 16px;
+    line-height: 1.3;
+  }
+  .workspace-criteria {
+    display: block;
+    margin: 2px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .workspace-toolbar .workspace-back {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+  }
+  .workspace-back > span {
+    display: none;
+  }
+  .workspace-mobile-actions {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 0;
+  }
+  .workspace-mobile-actions > button {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+  }
+  .workspace-preferences {
+    display: none;
+  }
+  .chat-layout .agent-footnote.quota-available,
+  .selling-chat-layout .agent-footnote.quota-available {
+    display: none;
+  }
+}
