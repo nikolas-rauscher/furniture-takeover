@@ -1,16 +1,17 @@
+import { Button } from "./ui/button";
 import type { ReactNode } from "react";
 import {
   ArrowLeft,
   GitCompareArrows,
-  Heart,
   MapPin,
   MessageCircle,
   Pencil,
-} from "lucide-react";
+} from "@/components/icons";
 import { listingPhotos } from "../../shared/listingPhotos";
 import { money, type Product } from "../../shared/marketplace";
 import { relatedListings } from "../../shared/relatedListings";
 import PhotoGallery from "./PhotoGallery";
+import SaveToggle from "./SaveToggle";
 import "./listing-detail.css";
 
 type ListingDetailPageProps = {
@@ -48,9 +49,9 @@ export default function ListingDetailPage({
     return (
       <div className="empty-state">
         <h1>Listing not found</h1>
-        <button className="button secondary" onClick={onBack}>
+        <Button className="button secondary" onClick={onBack}>
           Back to listings
-        </button>
+        </Button>
       </div>
     );
   const similar = renderProduct ? relatedListings(selected, catalog) : [];
@@ -66,9 +67,9 @@ export default function ListingDetailPage({
     <article
       className={`listing-detail${mobileContact ? " has-mobile-contact" : ""}`}
     >
-      <button className="back-link" type="button" onClick={onBack}>
+      <Button className="back-link" type="button" onClick={onBack}>
         <ArrowLeft size={16} /> Back to listings
-      </button>
+      </Button>
       <div className="listing-detail-main">
         <div className="listing-detail-media">
           <PhotoGallery
@@ -162,58 +163,52 @@ export default function ListingDetailPage({
                   mobileContact ? "listing-detail-mobile-contact" : undefined
                 }
               >
-                <button
+                <Button animateIcon
                   className="button primary full"
                   type="button"
                   disabled={selected.status !== "active"}
                   onClick={onMessage}
                 >
                   <MessageCircle size={17} /> Message seller
-                </button>
+                </Button>
               </div>
             )}
             {(!cloud || selected.own) && (
               <div className="listing-detail-owner-actions">
-                <button
+                <Button
                   className="button secondary"
                   type="button"
                   onClick={onEdit}
                 >
                   <Pencil size={16} /> Edit listing
-                </button>
-                <button
+                </Button>
+                <Button
                   className="button secondary"
                   type="button"
                   onClick={onAskAgent}
                 >
                   Ask the agent
-                </button>
+                </Button>
               </div>
             )}
             {(onToggleFavorite || onToggleCompare) && (
               <div className="listing-detail-tools">
                 {onToggleFavorite && (
-                  <button
-                    type="button"
-                    onClick={onToggleFavorite}
-                    aria-pressed={favorite}
-                  >
-                    <Heart
-                      size={16}
-                      fill={favorite ? "currentColor" : "none"}
-                    />
-                    {favorite ? "Saved" : "Save item"}
-                  </button>
+                  <SaveToggle
+                    title={selected.title}
+                    saved={favorite}
+                    onToggle={onToggleFavorite}
+                  />
                 )}
                 {onToggleCompare && (
-                  <button
+                  <Button
                     type="button"
                     onClick={onToggleCompare}
                     aria-pressed={compared}
                   >
                     <GitCompareArrows size={16} />
                     {compared ? "Added to compare" : "Compare"}
-                  </button>
+                  </Button>
                 )}
               </div>
             )}

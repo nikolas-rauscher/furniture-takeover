@@ -150,6 +150,9 @@
   display: block;
 }
 .listing-preview-photos > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   position: absolute;
   bottom: 8px;
   right: 8px;
@@ -181,6 +184,9 @@
   object-fit: contain;
 }
 @media (max-width: 760px) {
+  .selling-chat-layout .listing-preview-photo-caption {
+    display: none;
+  }
   .selling-chat-layout .listing-preview-photos {
     width: 40px;
     height: 44px;

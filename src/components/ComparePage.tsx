@@ -1,4 +1,5 @@
-import { ArrowLeft, Image as ImageIcon } from "lucide-react";
+import { Button } from "./ui/button";
+import { ArrowLeft, Image as ImageIcon } from "@/components/icons";
 import { money, type Product } from "../../shared/marketplace";
 import "./compare-page.css";
 
@@ -18,10 +19,10 @@ export default function ComparePage({
   return (
     <section className="compare-page">
       <div className="page-title">
-        <button className="back-link" onClick={() => onBack()}>
+        <Button className="back-link" onClick={() => onBack()}>
           <ArrowLeft size={16} />
           Back
-        </button>
+        </Button>
         <h1>Compare items</h1>
       </div>
       {items.length ? (
@@ -69,19 +70,19 @@ export default function ComparePage({
                 </div>
               </dl>
               <div className="comparison-card-actions">
-                <button
+                <Button
                   className="button secondary full"
                   onClick={() => onOpen(item)}
                 >
                   Open listing
-                </button>
-                <button
+                </Button>
+                <Button
                   className="text-button"
                   aria-label={`Remove ${item.title} from comparison`}
                   onClick={() => onRemove(item.id)}
                 >
                   Remove
-                </button>
+                </Button>
               </div>
             </article>
           ))}
@@ -89,9 +90,9 @@ export default function ComparePage({
       ) : (
         <div className="empty-state">
           <h2>Select listings to compare</h2>
-          <button className="button secondary" onClick={() => onBack()}>
+          <Button className="button secondary" onClick={() => onBack()}>
             My listings
-          </button>
+          </Button>
         </div>
       )}
     </section>

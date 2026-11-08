@@ -1,5 +1,13 @@
+import { Input } from "./ui/input";
+import { Button } from "./ui/button";
+import {
+  Attachment,
+  AttachmentGroup,
+  AttachmentMedia,
+  AttachmentTrigger,
+} from "./ui/attachment";
 import { useState } from "react";
-import { Plus, X, Image as ImageIcon } from "lucide-react";
+import { Plus, X, Image as ImageIcon } from "@/components/icons";
 import { MAX_LISTING_PHOTOS } from "../../shared/listingPhotos";
 import "./photo-gallery.css";
 
@@ -28,7 +36,7 @@ export default function PhotoGallery({
     >
       {images.length > 0 && <Plus size={15} />}
       {label}
-      <input
+      <Input
         type="file"
         aria-label={label}
         accept="image/jpeg,image/png,image/webp"
@@ -63,11 +71,13 @@ export default function PhotoGallery({
               src={active}
               alt={`${title} — photo ${index + 1} of ${images.length}`}
             />
-            <span className="photo-gallery-count">
-              {index + 1} / {images.length}
-            </span>
+            {images.length > 1 && (
+              <span className="photo-gallery-count">
+                {index + 1} / {images.length}
+              </span>
+            )}
             {editable && (
-              <button
+              <Button
                 className="icon-button photo-gallery-remove"
                 type="button"
                 aria-label={`Remove photo ${index + 1}`}
@@ -77,7 +87,7 @@ export default function PhotoGallery({
                 }
               >
                 <X size={17} />
-              </button>
+              </Button>
             )}
           </>
         ) : !editable ? (
@@ -96,31 +106,40 @@ export default function PhotoGallery({
           </>
         )}
       </div>
-      {images.length > 0 && (
+      {images.length > 0 && (editable || images.length > 1) && (
         <div className="photo-gallery-controls">
-          <div
+          <AttachmentGroup
             className="photo-gallery-thumbnails"
             role="group"
             aria-label="Listing photos"
           >
             {images.map((image, photoIndex) => (
-              <button
+              <Attachment
                 key={image}
-                type="button"
-                aria-label={`Show photo ${photoIndex + 1}${photoIndex === 0 ? " (cover)" : ""}`}
-                aria-pressed={active === image}
-                onClick={() => setSelected(image)}
+                orientation="vertical"
+                size="xs"
+                className="photo-attachment"
+                data-selected={active === image}
               >
-                <img src={image} alt="" />
-                {photoIndex === 0 && editable && <span>Cover</span>}
-              </button>
+                <AttachmentTrigger
+                  aria-label={`Show photo ${photoIndex + 1}${photoIndex === 0 ? " (cover)" : ""}`}
+                  aria-pressed={active === image}
+                  onClick={() => setSelected(image)}
+                />
+                <AttachmentMedia variant="image">
+                  <img src={image} alt="" />
+                </AttachmentMedia>
+                {photoIndex === 0 && editable && (
+                  <span className="photo-cover-label">Cover</span>
+                )}
+              </Attachment>
             ))}
-          </div>
+          </AttachmentGroup>
           {editable && (
             <div className="photo-gallery-actions">
               {addControl("Add photos")}
               {index > 0 && (
-                <button
+                <Button
                   className="text-button"
                   type="button"
                   disabled={disabled}
@@ -132,7 +151,7 @@ export default function PhotoGallery({
                   }
                 >
                   Make cover
-                </button>
+                </Button>
               )}
               <span>
                 {images.length}/{MAX_LISTING_PHOTOS}
