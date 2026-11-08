@@ -31,11 +31,6 @@
   .chat-layout .agent-run-panel .agent-run-answer {
     max-width: 72ch;
   }
-  .chat-layout .workspace-preferences > button {
-    min-height: 44px;
-    font-size: 13px;
-  }
-  .chat-layout .workspace-preferences .quiet-caption,
   .chat-layout .agent-footnote > span {
     font-size: 12px;
   }

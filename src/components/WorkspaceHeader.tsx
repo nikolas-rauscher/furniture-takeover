@@ -71,6 +71,7 @@ export default function WorkspaceHeader({
               variant="ghost"
               size="icon"
               aria-label="Search preferences"
+              aria-haspopup="dialog"
               onClick={preferences.onOpen}
             >
               <SlidersHorizontal size={20} aria-hidden="true" />
@@ -109,16 +110,30 @@ export default function WorkspaceHeader({
       </div>
       {preferences && (
         <div className="workspace-preferences">
-          <Button variant="link" onClick={preferences.onOpen}>
-            Search preferences <span className="edit-settings">Edit</span>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-haspopup="dialog"
+            onClick={preferences.onOpen}
+          >
+            <SlidersHorizontal
+              size={16}
+              data-icon="inline-start"
+              aria-hidden="true"
+            />
+            Search preferences
           </Button>
           {save && (
             <Button
-              variant="link"
+              variant="outline"
+              size="sm"
+              animateIcon
+              aria-haspopup="dialog"
               disabled={save.disabled}
               onClick={save.onSave}
             >
-              Save this search
+              <Bookmark size={16} data-icon="inline-start" aria-hidden="true" />
+              Save search
             </Button>
           )}
           {preferences.summary && (

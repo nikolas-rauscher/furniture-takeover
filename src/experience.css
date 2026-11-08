@@ -390,11 +390,6 @@ label > textarea {
   text-align: left;
   line-height: 1.7;
 }
-.edit-settings {
-  color: var(--blue);
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
 .save-search {
   font-size: 13px;
   padding: 8px 0;
