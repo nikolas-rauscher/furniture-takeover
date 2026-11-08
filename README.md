@@ -59,7 +59,9 @@ Users can save personal DeepSeek and Brave keys under **Account settings → API
 
 For a local build preview, run `npm run build`, then keep `npm run start:backend` in one terminal and `npm run preview` in another. This is a local verification workflow, not a production deployment.
 
-For hosting, run `npm run build` followed by `npm start`. Forward your HTTPS tunnel to `http://127.0.0.1:8787` and add its exact public origin to `API_ALLOWED_ORIGINS`. Add the same URL to Supabase Auth's allowed redirect URLs. Keep the existing `ACCOUNT_KEYS_ENCRYPTION_KEY` when moving the service to another machine.
+For hosting, run `npm run build` followed by `npm start`. Add the app's exact public origin to `API_ALLOWED_ORIGINS` and to Supabase Auth's allowed redirect URLs. Keep the existing `ACCOUNT_KEYS_ENCRYPTION_KEY` when moving the service to another machine.
+
+For a self-hosted Supabase on a private network behind your own nginx, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). `SUPABASE_URL` is the address browsers use and `SUPABASE_INTERNAL_URL` is the LAN address the server uses. `API_HOST` lets a proxy on another machine reach the API.
 
 ## Where to make changes
 

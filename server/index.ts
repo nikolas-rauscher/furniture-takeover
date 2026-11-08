@@ -3,7 +3,7 @@ import { createMessagesStore } from "./messages.ts";
 import { createAgentService } from "./service.ts";
 import { createAgentServer } from "./http.ts";
 import { createAgentRuntime } from "./runtime.ts";
-import { readServerConfig } from "./config.ts";
+import { isLoopbackHost, readServerConfig } from "./config.ts";
 import { createListingsStore } from "./database.ts";
 import { createAccountKeyStore } from "./account-keys.ts";
 import { access } from "node:fs/promises";
@@ -18,10 +18,15 @@ if (staticDirectory)
 const config = readServerConfig();
 const cloud = createCloud();
 const { port, baseUrl, apiKey, model } = config;
+// Demo mode has no accounts, so it must not be reachable from other machines.
+if (!isLoopbackHost(config.host) && !cloud)
+  throw new Error(
+    "API_HOST can only be set beyond this machine when Supabase accounts are configured.",
+  );
 const accountKeys =
   cloud && process.env.ACCOUNT_KEYS_ENCRYPTION_KEY
     ? createAccountKeyStore({
-        url: cloud.config.supabaseUrl,
+        url: cloud.internalUrl,
         publishableKey: cloud.config.supabaseKey,
         encryptionKey: process.env.ACCOUNT_KEYS_ENCRYPTION_KEY.trim(),
       })
@@ -79,10 +84,10 @@ const server = createAgentServer(service, {
 });
 server.once("close", () => messages?.close());
 server.once("close", () => listings?.close());
-server.listen(port, "127.0.0.1", () => {
+server.listen(port, config.host, () => {
   const state = service.health();
   console.log(
-    `Agent API listening at http://127.0.0.1:${port} (${state.mode}; ${state.model}).`,
+    `Agent API listening at http://${config.host}:${port} (${state.mode}; ${state.model}).`,
   );
 });
 const shutdown = () => server.close(() => process.exit(0));

@@ -1,25 +1,59 @@
 import { presentSampleListing } from "../shared/sampleListingPresentation.ts";
+import { isIPv4 } from "node:net";
 import { createClient } from "@supabase/supabase-js";
 import { AgentError } from "./errors.ts";
 import type { Product } from "../shared/marketplace.ts";
 import type { AgentQuota } from "../shared/agent.ts";
-export function createCloud(env: NodeJS.ProcessEnv = process.env) {
-  const url = env.SUPABASE_URL?.trim(),
-    key = env.SUPABASE_PUBLISHABLE_KEY?.trim();
-  if (!url && !key) return undefined;
-  if (!url || !key)
-    throw new Error("Set both SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY.");
-  const parsed = new URL(url);
+/** Loopback, private-network and Tailscale addresses; never a public host. */
+export function isPrivateHost(hostname: string): boolean {
+  if (hostname === "localhost" || hostname === "[::1]") return true;
+  if (!isIPv4(hostname)) return false;
+  const [a, b] = hostname.split(".").map(Number);
+  return (
+    a === 127 ||
+    a === 10 ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 100 && b >= 64 && b <= 127)
+  );
+}
+
+/** HTTPS anywhere; plain HTTP only on this machine or a private network. */
+function supabaseUrl(value: string, name: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error(`${name} must be a valid URL.`);
+  }
   if (
     parsed.protocol !== "https:" &&
-    !(
-      ["localhost", "127.0.0.1"].includes(parsed.hostname) &&
-      parsed.protocol === "http:"
-    )
+    !(parsed.protocol === "http:" && isPrivateHost(parsed.hostname))
   )
-    throw new Error("Supabase requires HTTPS.");
+    throw new Error(
+      `${name} requires HTTPS, or HTTP on localhost or a private LAN IP address.`,
+    );
   if (parsed.username || parsed.password || parsed.search || parsed.hash)
-    throw new Error("Use a plain Supabase project URL.");
+    throw new Error(`Use a plain Supabase URL for ${name}.`);
+  return parsed.toString().replace(/\/+$/, "");
+}
+
+/**
+ * SUPABASE_URL is what browsers use, so it must be reachable from their
+ * devices (a path on the app's own HTTPS origin works). SUPABASE_INTERNAL_URL
+ * is what this server uses, such as a LAN IP; it never reaches the browser.
+ */
+export function createCloud(env: NodeJS.ProcessEnv = process.env) {
+  const configured = env.SUPABASE_URL?.trim(),
+    key = env.SUPABASE_PUBLISHABLE_KEY?.trim();
+  if (!configured && !key) return undefined;
+  if (!configured || !key)
+    throw new Error("Set both SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY.");
+  const publicUrl = supabaseUrl(configured, "SUPABASE_URL");
+  const internal = env.SUPABASE_INTERNAL_URL?.trim();
+  const url = internal
+    ? supabaseUrl(internal, "SUPABASE_INTERNAL_URL")
+    : publicUrl;
   if (key.startsWith("sb_secret_"))
     throw new Error("Use a Supabase publishable key, never a secret key.");
   if (key.split(".").length === 3) {
@@ -46,8 +80,14 @@ export function createCloud(env: NodeJS.ProcessEnv = process.env) {
     },
   });
   const requests = new Map<string, { count: number; reset: number }>();
+  // Built from the public URL: photo links must work for browsers, not just here.
+  const photoUrl = (path: string) =>
+    `${publicUrl}/storage/v1/object/public/listing-photos/${encodeURI(path)}`;
   return {
-    config: { supabaseUrl: url, supabaseKey: key },
+    /** Sent to browsers by /api/config; holds only the public URL. */
+    config: { supabaseUrl: publicUrl, supabaseKey: key },
+    /** Used by this server only; may be a private address. */
+    internalUrl: url,
     async quota(
       authorization: string,
       spend = false,
@@ -133,15 +173,8 @@ export function createCloud(env: NodeJS.ProcessEnv = process.env) {
           condition: row.condition,
           dimensions: row.dimensions,
           status: row.status,
-          image: row.images[0]
-            ? client.storage.from("listing-photos").getPublicUrl(row.images[0])
-                .data.publicUrl
-            : "",
-          images: row.images.map(
-            (p: string) =>
-              client.storage.from("listing-photos").getPublicUrl(p).data
-                .publicUrl,
-          ),
+          image: row.images[0] ? photoUrl(row.images[0]) : "",
+          images: row.images.map(photoUrl),
           seller: "Seller",
           initials: "S",
           category: "",
