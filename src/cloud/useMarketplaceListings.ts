@@ -11,6 +11,7 @@ import type { Product } from "../../shared/marketplace";
 import { listingPhotos } from "../../shared/listingPhotos";
 import { useListings } from "../hooks/useListings";
 import { fail, photoUrl, type Listing } from "./client";
+import { listingPhotoBlob } from "./listingPhoto";
 import type { AccountConnection } from "./AccountSession";
 
 export function toProduct(
@@ -149,8 +150,10 @@ export function useMarketplaceListings(account?: AccountConnection) {
             throw Error("Use photos uploaded with your account.");
           let path = uploads.current.get(image);
           if (!path) {
-            path = `${userId}/${crypto.randomUUID()}.jpg`;
-            const blob = await (await fetch(image)).blob();
+            const blob = listingPhotoBlob(image);
+            const extension =
+              blob.type === "image/jpeg" ? "jpg" : blob.type.slice(6);
+            path = `${userId}/${crypto.randomUUID()}.${extension}`;
             fail(
               (
                 await client.storage
