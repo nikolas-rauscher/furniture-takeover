@@ -1,0 +1,94 @@
+.ui-select-trigger {
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  min-height: var(--control-size);
+  justify-content: space-between;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 4px);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+}
+.ui-select-trigger:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+[data-slot="select-value"] {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+[data-slot="select-content"] {
+  max-width: min(var(--available-width), calc(100vw - 24px));
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+.ui-select-popup {
+  padding: 4px;
+}
+.ui-select-popup [data-slot="select-item"] {
+  min-height: 40px;
+  padding: 9px 32px 9px 10px;
+}
+.ui-select-popup [data-highlighted] {
+  background: var(--mist);
+  color: var(--blue);
+}
+.ui-select-popup [data-slot="select-item"] > span {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.ui-toggle {
+  transition:
+    color 160ms ease,
+    background-color 160ms ease;
+}
+[data-slot="dropdown-menu-content"] {
+  width: max-content;
+  min-width: 200px;
+  max-width: min(var(--available-width), calc(100vw - 24px));
+  max-height: var(--available-height);
+  padding: 5px;
+  border: 0;
+  background: var(--surface);
+  color: var(--ink);
+  scrollbar-width: thin;
+}
+[data-slot="dropdown-menu-item"] {
+  min-height: 40px;
+  padding: 9px 12px;
+  font: var(--type-label)/1.5 var(--font-family);
+  gap: 8px;
+  cursor: pointer;
+}
+[data-slot="dropdown-menu-item"][data-highlighted] {
+  background: var(--mist);
+  color: var(--blue);
+}
+[data-slot="dropdown-menu-separator"] {
+  height: 1px;
+  margin: 4px 0;
+  border: 0;
+  background: var(--line);
+}
+@media (max-width: 760px) {
+  .ui-select-trigger,
+  .ui-select-popup {
+    font-size: 16px;
+  }
+  [data-slot="dropdown-menu-item"] {
+    min-height: 44px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-toggle {
+    transition: none;
+  }
+  [data-slot="select-content"] {
+    animation: none;
+  }
+}

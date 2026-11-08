@@ -1,11 +1,15 @@
+import { TooltipProvider } from "./components/ui/tooltip";
+import { Button } from "./components/ui/button";
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import AccountSession from "./cloud/AccountSession";
 import { configureCloud } from "./cloud/session";
 import type { CloudConfig } from "./cloud/client";
+import "./tailwind.css";
 import "./styles.css";
 import "./experience.css";
 import "./responsive.css";
+import "./components/ui/ui.css";
 function Bootstrap() {
   const [config, setConfig] = useState<CloudConfig | null | undefined>(),
     [error, setError] = useState("");
@@ -37,7 +41,7 @@ function Bootstrap() {
       <main style={{ padding: 32 }}>
         <h1>Connection unavailable</h1>
         <p role="alert">{error}</p>
-        <button onClick={() => location.reload()}>Try again</button>
+        <Button onClick={() => location.reload()}>Try again</Button>
       </main>
     );
   if (config === undefined)
@@ -50,6 +54,8 @@ function Bootstrap() {
 }
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <Bootstrap />
+    <TooltipProvider delay={400}>
+      <Bootstrap />
+    </TooltipProvider>
   </React.StrictMode>,
 );

@@ -1,7 +1,7 @@
 :root {
-  font-family: "DM Sans", sans-serif;
-  color: #292929;
-  background: #fbfbf9;
+  font-family: var(--font-family);
+  color: var(--ink);
+  background: var(--background);
   font-synthesis: none;
   font-weight: 400;
   --blue: #344eb5;
@@ -13,7 +13,31 @@
   --canvas: #f4f4f1;
   --yellow: #f4f2e8;
   --radius: 4px;
+  --font-family: "DM Sans", sans-serif;
+  --background: #fbfbf9;
+  --surface: #fff;
+  --on-primary: #fff;
+  --focus-ring: #8297f5;
+  --danger: #a42c36;
   --mobile-nav-height: 0px;
+  --app-header-height: 64px;
+  /* Shared roles keep type zoomable and spacing fluid between phone and desktop. */
+  --type-caption: 0.75rem;
+  --type-label: 0.875rem;
+  --type-body: 1rem;
+  --type-item: clamp(0.9375rem, 0.9rem + 0.2vw, 1.0625rem);
+  --type-section: clamp(1.125rem, 1.05rem + 0.3vw, 1.375rem);
+  --type-title: clamp(1.5rem, 1.25rem + 0.75vw, 1.875rem);
+  --type-display: clamp(1.5rem, 1.1rem + 1.2vw, 2rem);
+  --type-price: clamp(1.5rem, 1.3rem + 0.6vw, 1.875rem);
+  --space-page: clamp(1rem, 0.5rem + 2vw, 3rem);
+  --space-section: clamp(1.5rem, 1rem + 1.25vw, 2.5rem);
+  --space-group: clamp(1rem, 0.75rem + 0.6vw, 1.5rem);
+  --space-panel: clamp(0.875rem, 0.75rem + 0.4vw, 1.25rem);
+  --space-field: 0.75rem;
+  --space-label: 0.5rem;
+  --control-size: 2.75rem;
+  --measure-prose: 68ch;
 }
 * {
   box-sizing: border-box;
@@ -57,22 +81,22 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid #8297f5;
+  outline: 3px solid var(--focus-ring);
   outline-offset: 3px;
 }
 input,
 textarea,
 select {
-  border: 1px solid #dce0e9;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   color: var(--ink);
   padding: 11px 12px;
   min-width: 0;
 }
 input::placeholder,
 textarea::placeholder {
-  color: #9499a5;
+  color: var(--muted);
 }
 textarea {
   resize: vertical;
