@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import { money, type Product } from "../../shared/marketplace";
-import { GitCompareArrows, Image as ImageIcon } from "./icons";
+import { Image as ImageIcon } from "./icons";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import {
@@ -17,16 +17,12 @@ import "./agent-listings.css";
 
 export default function AgentListings({
   listings,
-  compared,
   onOpen,
   onOffer,
-  onCompare,
 }: {
   listings: readonly Product[];
-  compared: readonly string[];
   onOpen: (item: Product) => void;
   onOffer: (item: Product) => void;
-  onCompare: (id: string) => void;
 }) {
   return (
     <section className="agent-listings" aria-label="Takeover listings">
@@ -40,7 +36,6 @@ export default function AgentListings({
             .filter((value) => value && value !== "Not specified")
             .join(" · ");
           const canOffer = !item.own && item.status === "active";
-          const isCompared = compared.includes(item.id);
           return (
             <Fragment key={item.id}>
               {index > 0 && <ItemSeparator />}
@@ -95,19 +90,6 @@ export default function AgentListings({
                       : item.price === 0
                         ? "Arrange pickup"
                         : "Prepare an offer"}
-                  </Button>
-                  <Button
-                    className="agent-listing-compare"
-                    variant="ghost"
-                    size="sm"
-                    aria-label={`${isCompared ? "Remove from comparison" : "Compare"}: ${item.title}`}
-                    aria-pressed={isCompared}
-                    onClick={() => onCompare(item.id)}
-                  >
-                    <GitCompareArrows size={18} aria-hidden="true" />
-                    <span className="agent-listing-compare-label">
-                      {isCompared ? "Selected" : "Compare"}
-                    </span>
                   </Button>
                 </ItemActions>
               </Item>

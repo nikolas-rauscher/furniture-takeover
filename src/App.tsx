@@ -1876,10 +1876,8 @@ export default function App({ account }: { account?: AccountConnection }) {
                             localMatches.length > 0 ? (
                               <AgentListings
                                 listings={localMatches}
-                                compared={compared}
                                 onOpen={openProduct}
                                 onOffer={continueOffer}
-                                onCompare={toggleCompare}
                               />
                             ) : undefined
                           }

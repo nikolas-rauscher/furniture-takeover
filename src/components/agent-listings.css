@@ -94,17 +94,6 @@
   font-size: var(--type-caption);
   color: var(--blue);
 }
-.agent-listing .agent-listing-compare {
-  width: auto;
-  min-height: var(--control-size);
-  padding: var(--space-label);
-  font-size: var(--type-caption);
-  color: var(--muted);
-}
-.agent-listing-compare[aria-pressed="true"] {
-  color: var(--blue);
-  background: var(--mist);
-}
 @container agent-listings (min-width: 560px) {
   .agent-listing[data-slot="item"] {
     grid-template-columns: 64px minmax(0, 1fr) auto;
@@ -132,11 +121,5 @@
   .agent-listing [data-slot="item-actions"] > .agent-listing-offer {
     flex: 1;
     font-size: 14px;
-  }
-  .agent-listing .agent-listing-compare {
-    flex: 0 0 auto;
-    width: auto;
-    min-width: 88px;
-    padding: 8px;
   }
 }
