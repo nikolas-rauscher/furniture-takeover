@@ -24,7 +24,7 @@
 .agent-web-recovery > p {
   flex: 1 1 16rem;
 }
-.agent-web-recovery > .button {
+.agent-run-panel .agent-web-recovery > .button {
   min-height: var(--control-size);
 }
 .agent-sources.has-previews {

@@ -3,7 +3,9 @@
   max-width: var(--measure-prose);
   gap: 0;
 }
-.agent-run-details > [data-slot="trace-collapsible"] > [data-slot="trace-collapsible-trigger"],
+.agent-run-details
+  > [data-slot="trace-collapsible"]
+  > [data-slot="trace-collapsible-trigger"],
 .agent-run-details-header > [data-slot="trace-collapsible-trigger"] {
   min-height: var(--control-size);
   padding: 0;
@@ -11,8 +13,11 @@
   background: transparent;
   font: inherit;
 }
-.agent-run-details > [data-slot="trace-collapsible"] > [data-slot="trace-collapsible-trigger"]:focus-visible,
-.agent-run-details-header > [data-slot="trace-collapsible-trigger"]:focus-visible {
+.agent-run-details
+  > [data-slot="trace-collapsible"]
+  > [data-slot="trace-collapsible-trigger"]:focus-visible,
+.agent-run-details-header
+  > [data-slot="trace-collapsible-trigger"]:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
   box-shadow: none;
@@ -24,16 +29,23 @@
   min-height: var(--control-size);
 }
 .agent-run-details-header > [data-slot="trace-collapsible-trigger"] {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   min-width: 0;
 }
 .agent-run-details-header > .agent-run-actions {
   margin-left: auto;
 }
 .agent-run-details-header .agent-run-sender {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-width: 0;
   align-items: center;
   gap: 6px;
+}
+@media (max-width: 480px) {
+  .agent-run-sender .agent-run-header-status {
+    flex-basis: 100%;
+    padding-left: 26px;
+  }
 }
 .agent-run-sender .agent-avatar {
   width: 20px;
@@ -62,8 +74,12 @@
   padding-inline-start: var(--space-field);
   border-color: var(--line);
 }
-.agent-run-details-content > :first-child { margin-top: 0; }
-.agent-run-details-content > :last-child { margin-bottom: 0; }
+.agent-run-details-content > :first-child {
+  margin-top: 0;
+}
+.agent-run-details-content > :last-child {
+  margin-bottom: 0;
+}
 .agent-tasks {
   margin-block: var(--space-label) var(--space-field);
   max-width: var(--measure-prose);

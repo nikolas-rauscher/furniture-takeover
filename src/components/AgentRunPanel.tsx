@@ -118,7 +118,7 @@ export default function AgentRunPanel({
         : state.status === "error"
           ? "Could not finish"
           : state.steps.some((step) => step.state === "error")
-            ? "Finished · Some steps failed"
+            ? "Partly completed"
             : state.steps.some((step) => step.state === "needs_input")
               ? "Some changes need more details"
               : "Finished";
@@ -428,58 +428,32 @@ export default function AgentRunPanel({
           )}
         </div>
       )}
-      {!running &&
-        state.status !== "idle" &&
-        (!compact ||
-          state.diagnostic ||
-          state.steps.some((step) => step.state === "error")) && (
-          <details className="agent-run-debug">
-            <summary>Debug details</summary>
-            {state.diagnostic ? (
+      {!running && state.status !== "idle" && state.diagnostic && (
+        <details className="agent-run-debug">
+          <summary>Error details</summary>
+          <p>{state.diagnostic.hint}</p>
+          <dl>
+            <dt>Run ID</dt>
+            <dd>{state.diagnostic.runId}</dd>
+            <dt>Error</dt>
+            <dd>
+              {state.diagnostic.code} · {state.diagnostic.errorType}
+            </dd>
+            <dt>Model</dt>
+            <dd>{state.diagnostic.model}</dd>
+            <dt>Stage</dt>
+            <dd>{state.diagnostic.stage}</dd>
+            <dt>Duration</dt>
+            <dd>{(state.diagnostic.elapsedMs / 1000).toFixed(1)} s</dd>
+            {state.diagnostic.providerStatus && (
               <>
-                <p>{state.diagnostic.hint}</p>
-                <dl>
-                  <dt>Run ID</dt>
-                  <dd>{state.diagnostic.runId}</dd>
-                  <dt>Error</dt>
-                  <dd>
-                    {state.diagnostic.code} · {state.diagnostic.errorType}
-                  </dd>
-                  <dt>Model</dt>
-                  <dd>{state.diagnostic.model}</dd>
-                  <dt>Stage</dt>
-                  <dd>{state.diagnostic.stage}</dd>
-                  <dt>Duration</dt>
-                  <dd>{(state.diagnostic.elapsedMs / 1000).toFixed(1)} s</dd>
-                  {state.diagnostic.providerStatus && (
-                    <>
-                      <dt>Provider HTTP</dt>
-                      <dd>{state.diagnostic.providerStatus}</dd>
-                    </>
-                  )}
-                </dl>
+                <dt>Provider HTTP</dt>
+                <dd>{state.diagnostic.providerStatus}</dd>
               </>
-            ) : (
-              <dl>
-                <dt>Run ID</dt>
-                <dd>{state.id ?? "No server run ID received"}</dd>
-                <dt>Status</dt>
-                <dd>{statusLabel}</dd>
-                <dt>Activity</dt>
-                <dd>
-                  {state.steps
-                    .map((step) => `${step.label}: ${step.state}`)
-                    .join(" · ") || "No activity received"}
-                </dd>
-                <dt>Matches</dt>
-                <dd>{state.inventoryMatchIds?.length ?? "Not checked"}</dd>
-              </dl>
             )}
-            <p>
-              No API keys, private prompts or raw provider responses are shown.
-            </p>
-          </details>
-        )}
+          </dl>
+        </details>
+      )}
       {stopped && !state.text && (
         <p className="agent-run-empty">
           Stopped. You can run this request again when you are ready.
