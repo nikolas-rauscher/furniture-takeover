@@ -234,6 +234,7 @@ export default function App({ account }: { account?: AccountConnection }) {
   const own = database.listings;
   const setOwn = database.setListings;
   const [compared, setCompared] = useState<string[]>([]);
+  const comparisonOrigin = useRef<View>("discover");
   const [selectedId, setSelectedId] = useState<string | null>(
     readRoute(window.location.hash).view === "detail"
       ? (readRoute(window.location.hash).listingId ?? null)
@@ -560,6 +561,10 @@ export default function App({ account }: { account?: AccountConnection }) {
         ? current.filter((item) => item !== id)
         : [...current, id],
     );
+  }
+  function openComparison() {
+    comparisonOrigin.current = view;
+    navigate("compare");
   }
   function toggleCompare(id: string) {
     setCompared((current) => {
@@ -1750,20 +1755,64 @@ export default function App({ account }: { account?: AccountConnection }) {
                       proposalSummary(negotiations.active, true)
                     }
                     footer={
-                      <AgentComposer
-                        value={followUp}
-                        onChange={setFollowUp}
-                        onSend={() => void runSearch(followUp, criteria, true)}
-                        label="Ask the agent"
-                        placeholder={
-                          reviewingListing
-                            ? "Ask about your listing…"
-                            : "Ask a follow-up…"
-                        }
-                        sendLabel="Send to the agent"
-                        disabled={running}
-                        onStop={running ? agentRun.cancel : undefined}
-                      />
+                      <>
+                        {comparison.length > 0 && (
+                          <div
+                            className="chat-comparison"
+                            role="group"
+                            aria-label="Listing comparison"
+                          >
+                            <span role="status">
+                              {comparison.length < 2
+                                ? "Choose one more"
+                                : `${comparison.length} selected`}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={comparison.length < 2}
+                              onClick={openComparison}
+                            >
+                              Compare
+                              {comparison.length > 1
+                                ? ` ${comparison.length}`
+                                : ""}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label="Clear comparison"
+                              onClick={(event) => {
+                                const messages = event.currentTarget
+                                  .closest(".chat-workspace")
+                                  ?.querySelector<HTMLElement>(
+                                    '[aria-label="Conversation messages"]',
+                                  );
+                                setCompared([]);
+                                messages?.focus({ preventScroll: true });
+                              }}
+                            >
+                              <X size={16} aria-hidden="true" />
+                            </Button>
+                          </div>
+                        )}
+                        <AgentComposer
+                          value={followUp}
+                          onChange={setFollowUp}
+                          onSend={() =>
+                            void runSearch(followUp, criteria, true)
+                          }
+                          label="Ask the agent"
+                          placeholder={
+                            reviewingListing
+                              ? "Ask about your listing…"
+                              : "Ask a follow-up…"
+                          }
+                          sendLabel="Send to the agent"
+                          disabled={running}
+                          onStop={running ? agentRun.cancel : undefined}
+                        />
+                      </>
                     }
                   >
                     {(turn, archived) => {
@@ -2025,9 +2074,7 @@ export default function App({ account }: { account?: AccountConnection }) {
           {view === "compare" && (
             <ComparePage
               items={comparison}
-              onBack={() =>
-                account && !selected?.own ? openBrowse() : navigate("account")
-              }
+              onBack={() => navigate(comparisonOrigin.current)}
               onOpen={openProduct}
               onRemove={toggleCompare}
             />
@@ -2113,7 +2160,13 @@ export default function App({ account }: { account?: AccountConnection }) {
             <Button
               animateIcon
               className="button primary small"
-              onClick={() => navigate("compare")}
+              disabled={comparison.length < 2}
+              title={
+                comparison.length < 2
+                  ? "Select one more listing to compare"
+                  : undefined
+              }
+              onClick={openComparison}
             >
               Compare
               <ArrowRight size={14} />

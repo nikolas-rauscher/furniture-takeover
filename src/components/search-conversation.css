@@ -334,3 +334,20 @@
 .agent-search-result-message > .agent-local-listings + .agent-run-answer {
   margin-top: 16px;
 }
+
+.chat-comparison {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--space-label);
+  padding-bottom: var(--space-label);
+}
+.chat-comparison > span {
+  flex: 1;
+  min-width: 6rem;
+  color: var(--muted);
+  font-size: var(--type-caption);
+}
+.chat-composer-dock .chat-comparison > .button {
+  min-height: var(--control-size);
+}

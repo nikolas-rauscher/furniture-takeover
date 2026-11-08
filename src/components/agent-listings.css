@@ -75,7 +75,9 @@
   font-weight: 550;
 }
 .agent-listing [data-slot="item-actions"] {
-  grid-column: 2;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 4px;
 }
 .agent-listing [data-slot="item-actions"] > .agent-listing-offer {
@@ -85,8 +87,10 @@
   color: var(--blue);
 }
 .agent-listing .agent-listing-compare {
-  width: var(--control-size);
-  height: var(--control-size);
+  width: auto;
+  min-height: var(--control-size);
+  padding: var(--space-label);
+  font-size: var(--type-caption);
   color: var(--muted);
 }
 .agent-listing-compare[aria-pressed="true"] {

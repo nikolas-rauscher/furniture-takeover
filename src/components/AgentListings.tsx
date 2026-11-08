@@ -102,12 +102,13 @@ export default function AgentListings({
                   <Button
                     className="agent-listing-compare"
                     variant="ghost"
-                    size="icon-sm"
+                    size="sm"
                     aria-label={`${isCompared ? "Remove from comparison" : "Compare"}: ${item.title}`}
                     aria-pressed={isCompared}
                     onClick={() => onCompare(item.id)}
                   >
                     <GitCompareArrows size={16} aria-hidden="true" />
+                    {isCompared ? "Selected" : "Compare"}
                   </Button>
                 </ItemActions>
               </Item>
