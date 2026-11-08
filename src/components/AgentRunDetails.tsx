@@ -106,8 +106,8 @@ export default function AgentRunDetails({
           keepMounted
           className="agent-run-details-content"
         >
-          <AgentReasoning parts={reasoning} running={running} />
           <AgentActivity steps={steps} running={running} />
+          <AgentReasoning parts={reasoning} running={running} />
         </TraceCollapsibleContent>
       </TraceCollapsible>
     </Trace>

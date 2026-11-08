@@ -51,7 +51,7 @@ export default function AgentReasoning({
         )}
       </TraceIcon>
       <TraceTitle>
-        {streaming ? "Thinking" : stopped ? "Thinking stopped" : "Thought"}
+        {streaming ? "Thinking…" : stopped ? "Reasoning stopped" : "Reasoning"}
       </TraceTitle>
       {!streaming && !stopped && durationMs > 0 && (
         <TraceDescription>
