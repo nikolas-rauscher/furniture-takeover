@@ -29,7 +29,9 @@ export function answerParts(
       );
     if (part.kind === "emphasis")
       return <em key={index}>{answerParts(part.text, sources, streaming)}</em>;
-    if (part.kind === "citation") return `[${part.text}]`;
+    // A citation may precede its source event during streaming. Never expose
+    // internal IDs or create an unverified link while waiting for the source.
+    if (part.kind === "citation") return null;
     return part.text.split(/(\s+)/).map((word, wordIndex) =>
       /^\s*$/.test(word) ? (
         word

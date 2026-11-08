@@ -100,7 +100,7 @@ export default function AgentRunPanel({
 
   const searchAnswer = splitSearchAnswer(
     questionOnlyAnswer ? "" : displayText,
-    safeSources.length > 0,
+    textArriving,
   );
   const sourceLinks =
     safeSources.length > 0 ? <AgentSources sources={safeSources} /> : null;
@@ -289,6 +289,7 @@ export default function AgentRunPanel({
       {splitSearchResults &&
         (localListings ||
           searchAnswer.takeover ||
+          searchAnswer.answer ||
           sourceLinks ||
           searchAnswer.web) && (
           <div className="agent-search-result-messages">
@@ -307,6 +308,11 @@ export default function AgentRunPanel({
                   </div>
                 )}
               </section>
+            )}
+            {searchAnswer.answer && (
+              <div className="agent-run-answer">
+                {answerBlocks(searchAnswer.answer, safeSources, textArriving)}
+              </div>
             )}
             {(sourceLinks || searchAnswer.web) && (
               <section

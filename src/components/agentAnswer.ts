@@ -1,14 +1,25 @@
 /** Explicit answer sections keep platform recommendations separate from web evidence. */
-export function splitSearchAnswer(text: string, hasWebSources: boolean) {
-  const sections = { takeover: "", web: "" };
+export function splitSearchAnswer(text: string, streaming = false) {
+  if (streaming) {
+    const lastLine = text.slice(text.lastIndexOf("\n") + 1);
+    const partial = /^\s*#{1,3}\s*(.*)$/.exec(lastLine);
+    if (
+      partial &&
+      ["takeover", "web search"].some((heading) =>
+        heading.startsWith(partial[1].trim().toLowerCase()),
+      )
+    )
+      text = text.slice(0, text.length - lastLine.length);
+  }
+  const sections = { takeover: "", web: "", answer: "" };
   const heading = /^\s*#{1,3}\s+(Takeover|Web search)\s*$/gim;
   const matches = [...text.matchAll(heading)];
   if (!matches.length) {
-    sections[hasWebSources ? "web" : "takeover"] = text.trim();
+    sections.answer = text.trim();
     return sections;
   }
   const prefix = text.slice(0, matches[0].index).trim();
-  if (prefix) sections[hasWebSources ? "web" : "takeover"] = prefix;
+  if (prefix) sections.answer = prefix;
   matches.forEach((match, index) => {
     const key = match[1].toLowerCase() === "takeover" ? "takeover" : "web";
     const content = text
@@ -103,6 +114,7 @@ export function parseAnswerInline(
   // Providers sometimes return Markdown links around citation IDs. The verified
   // source already supplies the link, so omit only its matching duplicate URL.
   return text
+    .replace(/\[(?:w(?:e(?:b(?:-\d*)?)?)?)?$/, "")
     .replace(
       /\[(web-\d+)\][ \t]*\((https:\/\/[^\s()]+)\)/g,
       (link, id: string, url: string) =>

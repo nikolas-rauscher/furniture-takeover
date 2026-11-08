@@ -6,44 +6,74 @@ import {
   splitSearchAnswer,
 } from "./agentAnswer.ts";
 
-test("platform and web comparisons remain in separate messages", () => {
+test("platform and web comparisons remain in separate sections", () => {
   assert.deepEqual(
     splitSearchAnswer(
       "## Takeover\nThe city bike is CHF 45.\n\n## Web search\nThe snippet lists another bike [web-1].",
-      true,
     ),
     {
       takeover: "The city bike is CHF 45.",
       web: "The snippet lists another bike [web-1].",
+      answer: "",
     },
   );
   assert.deepEqual(
     splitSearchAnswer(
       "## Takeover\nNo platform matches.\n\n## Web search\nNo suitable external offers.",
-      false,
     ),
     {
       takeover: "No platform matches.",
       web: "No suitable external offers.",
+      answer: "",
     },
   );
 });
 
 test("a platform-only answer does not manufacture a web message", () => {
-  assert.deepEqual(
-    splitSearchAnswer("## Takeover\nThe desk is CHF 40.", false),
-    { takeover: "The desk is CHF 40.", web: "" },
-  );
-  assert.deepEqual(splitSearchAnswer("The desk is CHF 40.", false), {
+  assert.deepEqual(splitSearchAnswer("## Takeover\nThe desk is CHF 40."), {
     takeover: "The desk is CHF 40.",
     web: "",
+    answer: "",
+  });
+  assert.deepEqual(splitSearchAnswer("The desk is CHF 40."), {
+    takeover: "",
+    web: "",
+    answer: "The desk is CHF 40.",
   });
 });
 
-test("legacy external answers do not get attributed to platform inventory", () => {
+test("unheaded answers stay neutral instead of being attributed to a source", () => {
+  assert.deepEqual(splitSearchAnswer("A bike in the search results [web-1]."), {
+    takeover: "",
+    web: "",
+    answer: "A bike in the search results [web-1].",
+  });
+});
+
+test("streamed section labels and internal citation IDs do not appear half written", () => {
+  for (const ending of ["#", "## ", "## W", "## Web sea", "## Web search"]) {
+    assert.deepEqual(
+      splitSearchAnswer(`## Takeover\nLocal desk.\n${ending}`, true),
+      {
+        takeover: "Local desk.",
+        web: "",
+        answer: "",
+      },
+    );
+  }
+  for (const ending of ["[", "[w", "[we", "[web", "[web-", "[web-12"])
+    assert.deepEqual(parseAnswerInline(`Desk ${ending}`), [
+      { kind: "text", text: "Desk " },
+    ]);
   assert.deepEqual(
-    splitSearchAnswer("A bike in the search results [web-1].", true),
-    { takeover: "", web: "A bike in the search results [web-1]." },
+    splitSearchAnswer(
+      "Introduction.\n## Takeover\nLocal.\n## Web search\nExternal.",
+    ),
+    {
+      answer: "Introduction.",
+      takeover: "Local.",
+      web: "External.",
+    },
   );
 });
 
