@@ -21,8 +21,10 @@ import type {
   AgentRunRequest,
   AgentRunSource,
   AgentRuntimeHealth,
+  AgentTaskKind,
 } from "../shared/runs.ts";
 import { WebSearchError } from "./web-search.ts";
+import { MAX_REASONING_CHARS, MAX_REASONING_PARTS } from "../shared/runs.ts";
 import { dateSchema, listingDraftSchema } from "./actions.ts";
 
 export type AgentRuntimeConfig = {
@@ -136,22 +138,42 @@ export function validateRunRequest(input: unknown): AgentRunRequest {
   return parsed.data;
 }
 
-const toolLabel = (name: string) =>
-  ({
-    web_search: "Searching the web",
-    inventory_search: "Searching takeover listings",
-    show_takeover_listings: "Selecting takeover matches",
-    suggest_takeover_offer: "Suggesting an offer",
-    get_listing: "Checking listing details",
-    get_negotiation: "Reading your proposal",
-    select_listing: "Starting your proposal",
-    update_negotiation: "Updating your proposal",
-    prepare_offer_draft: "Preparing your draft",
-    discard_offer_draft: "Discarding your draft",
-    ask_user: "Asking a question",
-    update_listing: "Preparing listing changes",
-    update_search_preferences: "Updating search preferences",
-  })[name] ?? "Using a tool";
+const toolActivity: Record<string, { label: string; task: AgentTaskKind }> = {
+  web_search: { label: "Searching the web", task: "web" },
+  inventory_search: { label: "Searching takeover listings", task: "listings" },
+  show_takeover_listings: {
+    label: "Selecting takeover matches",
+    task: "listings",
+  },
+  suggest_takeover_offer: { label: "Suggesting an offer", task: "listings" },
+  get_listing: { label: "Checking listing details", task: "listings" },
+  get_negotiation: { label: "Reading your proposal", task: "proposal" },
+  select_listing: { label: "Starting your proposal", task: "proposal" },
+  update_negotiation: { label: "Updating your proposal", task: "proposal" },
+  prepare_offer_draft: { label: "Preparing your draft", task: "proposal" },
+  discard_offer_draft: { label: "Discarding your draft", task: "proposal" },
+  ask_user: { label: "Asking a question", task: "request" },
+  update_listing: { label: "Preparing listing changes", task: "listing" },
+  update_search_preferences: {
+    label: "Updating search preferences",
+    task: "request",
+  },
+};
+const toolLabel = (name: string) => toolActivity[name]?.label ?? "Using a tool";
+const toolStepLabel = (name: string, input: unknown) => {
+  const label = toolLabel(name);
+  if (
+    (name === "web_search" || name === "inventory_search") &&
+    input &&
+    typeof input === "object" &&
+    "query" in input &&
+    typeof input.query === "string"
+  ) {
+    const query = input.query.replace(/\s+/g, " ").trim().slice(0, 180);
+    if (query) return `${label}: ${query}`;
+  }
+  return label;
+};
 
 export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
   const model = config.model?.trim() || "deepseek-flash";
@@ -179,9 +201,13 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
       ]);
       const sources: AgentRunSource[] = [];
       const statuses = new Map<string, string>();
+      const statusTasks = new Map<string, AgentTaskKind>();
       let publicBuffer = "";
       let outputLength = 0;
       let toolCalls = 0;
+      let reasoningLength = 0;
+      let reasoningCount = 0;
+      const reasoning = new Map<string, { id: string; startedAt: number }>();
 
       const questionController = new AbortController();
       const workSignal = AbortSignal.any([signal, questionController.signal]);
@@ -193,10 +219,19 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
         id: string,
         label: string,
         state: "running" | "complete" | "error" | "needs_input",
+        task?: AgentTaskKind,
       ) => {
+        task ??= statusTasks.get(id);
+        if (task) statusTasks.set(id, task);
         if (state === "running") statuses.set(id, label);
         else statuses.delete(id);
-        await send({ type: "status", id, label, state });
+        await send({
+          type: "status",
+          id,
+          label,
+          state,
+          ...(task ? { task } : {}),
+        });
       };
       const cleanReferences = (value: string) =>
         value.replace(/\[(?:web-\d+|\d+)\]/g, (token) =>
@@ -314,12 +349,14 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
           await send({
             type: "status",
             id: "takeover-catalog",
+            task: "listings",
             label: "Searching takeover listings",
             state: "running",
           });
           await send({
             type: "status",
             id: "takeover-catalog",
+            task: "listings",
             label: "Takeover listings checked",
             state: "complete",
           });
@@ -405,8 +442,14 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
                       stepNumber > 0
                     ? "show_takeover_listings"
                     : undefined;
-            // Some compatible providers reject named tool_choice. Restrict the
-            // available tools and require a call instead; the same ordering holds.
+            const requiresTool = Boolean(
+              requiredTool ||
+              (negotiations.getCurrent()?.status === "draft" &&
+                !negotiations.getCurrent()?.draft) ||
+              (stepNumber === 0 && (!listingMode || listingAssist)),
+            );
+            // DeepSeek cannot combine thinking with forced tool selection.
+            // Keep mandatory workflow steps enforced, then reason over the results.
             return {
               ...languageInstructions,
               activeTools: requiredTool
@@ -420,13 +463,13 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
                       Boolean(negotiations.getCurrent()),
                       state.allowWebSearch,
                     ),
-              toolChoice:
-                requiredTool ||
-                (negotiations.getCurrent()?.status === "draft" &&
-                  !negotiations.getCurrent()?.draft) ||
-                (stepNumber === 0 && (!listingMode || listingAssist))
-                  ? "required"
-                  : "auto",
+              toolChoice: requiresTool ? "required" : "auto",
+              providerOptions: {
+                deepseek: {
+                  thinking: { type: requiresTool ? "disabled" : "enabled" },
+                  reasoningEffort: "low",
+                },
+              },
             };
           },
           // ToolLoopAgent forwards prepared stream options. Override streamText's
@@ -438,8 +481,10 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
             },
           }),
           maxRetries: 2,
-          maxOutputTokens: 1400,
-          providerOptions: { deepseek: { thinking: { type: "disabled" } } },
+          maxOutputTokens: 4096,
+          providerOptions: {
+            deepseek: { thinking: { type: "enabled" }, reasoningEffort: "low" },
+          },
           onStepStart: async ({ stepNumber }) => {
             lastStage =
               stepNumber === 0
@@ -465,8 +510,9 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
             lastStage = toolLabel(toolCall.toolName);
             return status(
               toolCall.toolCallId,
-              toolLabel(toolCall.toolName),
+              toolStepLabel(toolCall.toolName, toolCall.input),
               "running",
+              toolActivity[toolCall.toolName]?.task,
             );
           },
           onToolExecutionEnd: async ({ toolCall, toolOutput }) => {
@@ -480,12 +526,13 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
               output.needsInput.length > 0;
             return status(
               toolCall.toolCallId,
-              toolLabel(toolCall.toolName),
+              toolStepLabel(toolCall.toolName, toolCall.input),
               toolOutput.type === "tool-error"
                 ? "error"
                 : needsInput
                   ? "needs_input"
                   : "complete",
+              toolActivity[toolCall.toolName]?.task,
             );
           },
         });
@@ -510,7 +557,47 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
           abortSignal: signal,
         });
         for await (const part of result.fullStream) {
-          if (part.type === "text-delta") {
+          if (part.type === "reasoning-start") {
+            if (++reasoningCount > MAX_REASONING_PARTS) {
+              controller.abort();
+              throw new RunError(
+                "OUTPUT_LIMIT",
+                "The agent reached its thinking limit. Try a more focused request.",
+              );
+            }
+            // Provider part IDs may repeat in later tool steps.
+            const item = {
+              id: `${runId}-reasoning-${reasoningCount}`,
+              startedAt: performance.now(),
+            };
+            reasoning.set(part.id, item);
+            await send({ type: "reasoning_start", id: item.id });
+          } else if (part.type === "reasoning-delta") {
+            const item = reasoning.get(part.id);
+            if (!item) continue;
+            reasoningLength += part.text.length;
+            if (reasoningLength > MAX_REASONING_CHARS) {
+              controller.abort();
+              throw new RunError(
+                "OUTPUT_LIMIT",
+                "The agent reached its thinking limit. Try a more focused request.",
+              );
+            }
+            await send({
+              type: "reasoning_delta",
+              id: item.id,
+              text: part.text,
+            });
+          } else if (part.type === "reasoning-end") {
+            const item = reasoning.get(part.id);
+            if (!item) continue;
+            await send({
+              type: "reasoning_end",
+              id: item.id,
+              durationMs: Math.round(performance.now() - item.startedAt),
+            });
+            reasoning.delete(part.id);
+          } else if (part.type === "text-delta") {
             outputLength += part.text.length;
             if (outputLength > 18_000) {
               controller.abort();
@@ -526,7 +613,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
               "REQUEST_CANCELLED",
               "The agent run was cancelled.",
             );
-          // Reasoning, raw provider chunks and tool input fragments are never emitted.
+          // Raw provider chunks and tool input fragments stay server-side.
         }
         signal.throwIfAborted();
         if (streamFailed) throw streamFailed;

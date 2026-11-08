@@ -34,7 +34,7 @@ test("actual SDK tool loop searches Brave, reads supplied inventory, and streams
         {
           type: "reasoning-delta",
           id: "private",
-          delta: "private reasoning never shown",
+          delta: "Compare the local desk with the returned offers.",
         },
         { type: "reasoning-end", id: "private" },
         { type: "text-start", id: "answer" },
@@ -93,6 +93,25 @@ test("actual SDK tool loop searches Brave, reads supplied inventory, and streams
   assert.ok(catalogChecked >= 0 && catalogChecked < webStarted);
   assert.match(JSON.stringify(model.doStreamCalls[0].prompt), /own-desk/);
   assert.equal(searches, 1);
+  for (const [id, task] of [
+    ["web-call", "web"],
+    ["inventory-call", "listings"],
+    ["curate-inventory", "listings"],
+  ]) {
+    const steps = events.filter(
+      (event) => event.type === "status" && event.id === id,
+    );
+    assert.equal(steps.length, 2);
+    assert.ok(
+      steps.every((step) => step.type === "status" && step.task === task),
+    );
+    if (id === "web-call" || id === "inventory-call")
+      assert.ok(
+        steps.every(
+          (step) => step.type === "status" && step.label.includes("white desk"),
+        ),
+      );
+  }
   assert.deepEqual(
     events.filter((event) => event.type === "inventory_matches"),
     [
@@ -103,7 +122,10 @@ test("actual SDK tool loop searches Brave, reads supplied inventory, and streams
   assert.equal(model.doStreamCalls.length, 4);
   assert.deepEqual(model.doStreamCalls[0].toolChoice, { type: "required" });
   assert.deepEqual(model.doStreamCalls[0].providerOptions, {
-    deepseek: { thinking: { type: "disabled" } },
+    deepseek: { thinking: { type: "disabled" }, reasoningEffort: "low" },
+  });
+  assert.deepEqual(model.doStreamCalls[3].providerOptions, {
+    deepseek: { thinking: { type: "enabled" }, reasoningEffort: "low" },
   });
   assert.match(
     JSON.stringify(model.doStreamCalls[3].prompt),
@@ -141,7 +163,14 @@ test("actual SDK tool loop searches Brave, reads supplied inventory, and streams
   );
   assert.equal("price" in complete.sources[0], false);
   assert.ok(events.filter((event) => event.type === "text_delta").length >= 2);
-  assert.equal(JSON.stringify(events).includes("private reasoning"), false);
+  assert.ok(events.some((event) => event.type === "reasoning_delta"));
+  assert.equal(complete.text.includes("Compare the local desk"), false);
+  assert.equal(
+    events
+      .filter((event) => event.type === "text_delta")
+      .some((event) => event.text.includes("Compare the local desk")),
+    false,
+  );
   assert.equal(JSON.stringify(events).includes("model-test-key"), false);
 });
 test("source IDs deduplicate real URLs and unknown references are not emitted", async () => {
