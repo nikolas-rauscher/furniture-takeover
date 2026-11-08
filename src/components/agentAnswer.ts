@@ -95,8 +95,19 @@ export function parseAnswerBlocks(text: string): AnswerBlock[] {
   return blocks;
 }
 
-export function parseAnswerInline(text: string): AnswerInline[] {
+export function parseAnswerInline(
+  text: string,
+  sources: readonly { id: string; url: string }[] = [],
+): AnswerInline[] {
+  const sourceUrls = new Map(sources.map((source) => [source.id, source.url]));
+  // Providers sometimes return Markdown links around citation IDs. The verified
+  // source already supplies the link, so omit only its matching duplicate URL.
   return text
+    .replace(
+      /\[(web-\d+)\][ \t]*\((https:\/\/[^\s()]+)\)/g,
+      (link, id: string, url: string) =>
+        sourceUrls.get(id) === url ? `[${id}]` : link,
+    )
     .split(/(\[web-\d+\]|\*\*[^*\n]+\*\*|(?<!\*)\*[^*\n]+\*(?!\*))/g)
     .filter(Boolean)
     .map((part) => {

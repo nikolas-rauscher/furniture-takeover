@@ -1267,9 +1267,14 @@ export default function App({ account }: { account?: AccountConnection }) {
             onChange={setListingInput}
             onSend={() => void runListing(listingInput)}
             label="Tell the listing agent"
-            placeholder="Add a detail, change the price or plan pickup…"
+            placeholder="Add a detail…"
             sendLabel="Send to listing agent"
             disabled={!configured || listingRun.state.status === "running"}
+            onStop={
+              listingRun.state.status === "running"
+                ? listingRun.cancel
+                : undefined
+            }
           />
         }
         requestLabel={(request) =>
@@ -1369,9 +1374,13 @@ export default function App({ account }: { account?: AccountConnection }) {
         )}
       </div>
     ) : agentHealth?.quota ? (
-      <div className="agent-footnote" role="status">
-        {agentHealth.quota.remaining} of {agentHealth.quota.limit} AI requests
-        available today
+      <div
+        className="agent-footnote"
+        role="status"
+        aria-label={`${agentHealth.quota.remaining} of ${agentHealth.quota.limit} AI requests available today`}
+      >
+        {agentHealth.quota.remaining} AI{" "}
+        {agentHealth.quota.remaining === 1 ? "request" : "requests"} left today
       </div>
     ) : null;
 
@@ -1599,11 +1608,10 @@ export default function App({ account }: { account?: AccountConnection }) {
                     <span>Find something</span>
                     <Button onClick={startSell}>Sell from a photo</Button>
                   </div>
-                  <HeroHeadline compact={hasSearchDraft} />
+                  <HeroHeadline compact={false} />
                   <p>
-                    {hasSearchDraft
-                      ? `Add a budget, condition or pickup time. Your agent will search around ${location}.`
-                      : `Describe what you need. Your agent searches around ${location}.`}
+                    Describe what you need. Your agent searches around{" "}
+                    {location}.
                   </p>
                   <form
                     className="agent-search"
@@ -1680,28 +1688,6 @@ export default function App({ account }: { account?: AccountConnection }) {
                   </div>
                   {!reviewingListing && (
                     <>
-                      <form
-                        className="main-search"
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          void runSearch(query);
-                        }}
-                      >
-                        <input
-                          aria-label="Search furniture"
-                          maxLength={4000}
-                          value={query}
-                          onChange={(event) => setQuery(event.target.value)}
-                          placeholder="Describe what you need…"
-                        />
-                        <button
-                          className="button primary"
-                          type="submit"
-                          disabled={!query.trim() || running}
-                        >
-                          Search
-                        </button>
-                      </form>
                       <div className="results-controls">
                         <Button
                           className="search-settings"
@@ -1760,10 +1746,11 @@ export default function App({ account }: { account?: AccountConnection }) {
                         placeholder={
                           reviewingListing
                             ? "Ask about your listing…"
-                            : "Ask a follow-up or refine the search…"
+                            : "Ask a follow-up…"
                         }
                         sendLabel="Send to the agent"
                         disabled={running}
+                        onStop={running ? agentRun.cancel : undefined}
                       />
                     }
                   >

@@ -88,3 +88,31 @@ test("appending stream text preserves earlier block keys and incomplete emphasis
     { kind: "text", text: "An *unfinished phrase" },
   ]);
 });
+
+test("verified Markdown citations omit duplicate URLs while unmatched links stay visible", () => {
+  assert.deepEqual(
+    parseAnswerInline(
+      "Chair [web-1](https://example.com/chair), also [web-1] (https://example.com/chair).",
+      [{ id: "web-1", url: "https://example.com/chair" }],
+    ),
+    [
+      { kind: "text", text: "Chair " },
+      { kind: "citation", text: "web-1" },
+      { kind: "text", text: ", also " },
+      { kind: "citation", text: "web-1" },
+      { kind: "text", text: "." },
+    ],
+  );
+  for (const sources of [
+    [],
+    [{ id: "web-1", url: "https://other.example/chair" }],
+  ]) {
+    assert.deepEqual(
+      parseAnswerInline("[web-1](https://example.com/chair)", sources),
+      [
+        { kind: "citation", text: "web-1" },
+        { kind: "text", text: "(https://example.com/chair)" },
+      ],
+    );
+  }
+});

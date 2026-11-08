@@ -1,26 +1,8 @@
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { AgentRunSource } from "../../shared/runs";
 import { safeSourceUrl } from "../api/runs";
+import AgentCitation from "./AgentCitation";
 import { parseAnswerBlocks, parseAnswerInline } from "./agentAnswer";
-
-export function SourceThumbnail({ imageUrl }: { imageUrl: string }) {
-  const [failed, setFailed] = useState(false);
-  const url = safeSourceUrl(imageUrl);
-  if (failed || !url) return null;
-  return (
-    <img
-      className="agent-run-source-image"
-      src={url}
-      alt=""
-      width={48}
-      height={48}
-      loading="lazy"
-      decoding="async"
-      referrerPolicy="no-referrer"
-      onError={() => setFailed(true)}
-    />
-  );
-}
 
 export function answerParts(
   text: string,
@@ -28,22 +10,16 @@ export function answerParts(
   streaming = false,
 ): ReactNode[] {
   const byId = new Map(sources.map((source) => [source.id, source]));
-  return parseAnswerInline(text).map((part, index) => {
+  return parseAnswerInline(text, sources).map((part, index) => {
     const source = part.kind === "citation" && byId.get(part.text);
     const url = source ? safeSourceUrl(source.url) : null;
     if (source && url)
       return (
-        <a
+        <AgentCitation
           key={index}
-          className="agent-run-citation"
-          href={url}
-          target="_blank"
-          rel="noreferrer noopener"
-          aria-label={`Source: ${source.title}`}
-          title={source.title}
-        >
-          [{part.text.replace(/^web-/, "")}]
-        </a>
+          source={source}
+          label={part.text.replace(/^web-/, "")}
+        />
       );
     if (part.kind === "bold")
       return (

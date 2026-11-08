@@ -10,6 +10,7 @@ import "./styles.css";
 import "./experience.css";
 import "./responsive.css";
 import "./components/ui/ui.css";
+import "./components/ai-elements.css";
 function Bootstrap() {
   const [config, setConfig] = useState<CloudConfig | null | undefined>(),
     [error, setError] = useState("");

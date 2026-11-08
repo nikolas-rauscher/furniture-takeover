@@ -1,0 +1,154 @@
+.agent-run-details {
+  margin: 0 0 var(--space-label);
+  max-width: var(--measure-prose);
+  gap: 0;
+}
+.agent-run-details > [data-slot="trace-collapsible"] > [data-slot="trace-collapsible-trigger"],
+.agent-run-details-header > [data-slot="trace-collapsible-trigger"] {
+  min-height: var(--control-size);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+}
+.agent-run-details > [data-slot="trace-collapsible"] > [data-slot="trace-collapsible-trigger"]:focus-visible,
+.agent-run-details-header > [data-slot="trace-collapsible-trigger"]:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+.agent-run-details-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-label);
+  min-height: var(--control-size);
+}
+.agent-run-details-header > [data-slot="trace-collapsible-trigger"] {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.agent-run-details-header > .agent-run-actions {
+  margin-left: auto;
+}
+.agent-run-details-header .agent-run-sender {
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+.agent-run-sender .agent-avatar {
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+  align-self: center;
+  border-radius: 4px;
+  background: var(--mist);
+  color: var(--blue);
+}
+.agent-run-details-header .agent-run-sender h2 {
+  margin: 0;
+  font-size: var(--type-caption);
+  line-height: 1.5;
+  font-weight: 550;
+}
+.agent-run-details [data-slot="trace-line"] {
+  font-size: var(--type-label);
+}
+.agent-run-details [data-slot="trace-description"] {
+  color: var(--muted);
+  font-size: var(--type-caption);
+}
+.agent-run-details .agent-run-details-content {
+  margin-block: 0 var(--space-label);
+  padding-inline-start: var(--space-field);
+  border-color: var(--line);
+}
+.agent-run-details-content > :first-child { margin-top: 0; }
+.agent-run-details-content > :last-child { margin-bottom: 0; }
+.agent-tasks {
+  margin-block: var(--space-label) var(--space-field);
+  max-width: var(--measure-prose);
+  gap: 0;
+}
+.agent-task [data-slot="trace-collapsible-trigger"] {
+  min-height: var(--control-size);
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: inherit;
+}
+.agent-task [data-slot="trace-collapsible-trigger"]:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+.agent-task [data-slot="trace-line"] {
+  align-items: baseline;
+  font-size: var(--type-label);
+  line-height: 1.5;
+}
+.agent-task [data-slot="trace-title"] {
+  flex: 1;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.agent-task [data-slot="trace-line"] > [data-slot="trace-icon"] {
+  align-self: start;
+  margin-top: 2px;
+}
+.agent-task [data-slot="trace-description"] {
+  color: var(--muted);
+  font-size: var(--type-caption);
+}
+.agent-task [data-slot="trace-collapsible-content-inner"] {
+  margin-block: 0 var(--space-field);
+  border-color: var(--line);
+}
+.agent-task [role="listitem"] {
+  width: 100%;
+}
+.agent-trace-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.agent-reasoning {
+  margin-block: var(--space-label) var(--space-field);
+}
+.agent-reasoning [data-slot="trace-collapsible-trigger"] {
+  min-height: var(--control-size);
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.agent-reasoning [data-slot="trace-collapsible-trigger"]:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+.agent-reasoning [data-slot="trace-line"] {
+  font-size: var(--type-label);
+}
+.agent-reasoning [data-slot="trace-description"] {
+  color: var(--muted);
+  font-size: var(--type-caption);
+}
+.agent-reasoning .agent-reasoning-content {
+  max-width: var(--measure-prose);
+  margin-block: var(--space-label) 0;
+  padding-inline-start: var(--space-group);
+  border-color: var(--line);
+  color: var(--muted);
+  font-size: var(--type-label);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  .agent-task
+    [data-slot="trace-collapsible-trigger"]
+    > [data-slot="trace-line"] {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+}
