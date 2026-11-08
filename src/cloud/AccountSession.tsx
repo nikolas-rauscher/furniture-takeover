@@ -6,6 +6,8 @@ import Modal from "../components/Modal";
 import Auth from "./Auth";
 import {
   getCloudClient,
+  completePasswordSetup,
+  requiresPasswordSetup,
   restoreAccountSession,
   setAccountScope,
 } from "./session";
@@ -27,6 +29,7 @@ export default function AccountSession() {
       if (alive) {
         setAccountScope(next?.user.id);
         setSession(next);
+        setRecovery(requiresPasswordSetup(next));
         setReady(true);
       }
     }
@@ -35,13 +38,11 @@ export default function AccountSession() {
     } = client.auth.onAuthStateChange((event, next) => {
       update(next);
       if (event === "SIGNED_IN" && alive) setError("");
-      if (event === "PASSWORD_RECOVERY" && alive) setRecovery(true);
     });
     void restoreAccountSession()
-      .then(({ session, error, invited }) => {
+      .then(({ session, error }) => {
         if (!alive) return;
         if (error) setError(error);
-        if (invited) setRecovery(true);
         update(session);
       })
       .catch(() => {
@@ -75,7 +76,14 @@ export default function AccountSession() {
       />
       {recovery && client && (
         <Modal title="Set your password" onClose={() => setRecovery(false)}>
-          <Auth client={client} recovery onDone={() => setRecovery(false)} />
+          <Auth
+            client={client}
+            recovery
+            onDone={() => {
+              completePasswordSetup();
+              setRecovery(false);
+            }}
+          />
         </Modal>
       )}
     </>
