@@ -63,7 +63,7 @@
   color: var(--ink);
 }
 .agent-listing-price {
-  font-size: var(--type-caption);
+  font-size: var(--type-support);
   font-weight: 400;
   line-height: 1.5;
   color: var(--muted);
@@ -73,8 +73,11 @@
   font-weight: 550;
 }
 .agent-listing [data-slot="item-description"] {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
   margin: 0;
-  font-size: var(--type-caption);
+  font-size: var(--type-support);
   line-height: 1.5;
   color: var(--muted);
 }
@@ -109,10 +112,10 @@
     padding-block: 8px;
   }
   .agent-listing .agent-listing-title {
-    font-size: 15px;
+    font-size: var(--type-item);
   }
   .agent-listing [data-slot="item-description"] {
-    font-size: 13px;
+    font-size: var(--type-support);
     line-height: 1.45;
   }
   .agent-listing [data-slot="item-actions"] {
@@ -120,6 +123,6 @@
   }
   .agent-listing [data-slot="item-actions"] > .agent-listing-offer {
     flex: 1;
-    font-size: 14px;
+    font-size: var(--type-label);
   }
 }

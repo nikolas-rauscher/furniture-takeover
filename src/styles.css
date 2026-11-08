@@ -23,6 +23,7 @@
   --app-header-height: 64px;
   /* Shared roles keep type zoomable and spacing fluid between phone and desktop. */
   --type-caption: 0.75rem;
+  --type-support: 0.8125rem;
   --type-label: 0.875rem;
   --type-body: 1rem;
   --type-item: clamp(0.9375rem, 0.9rem + 0.2vw, 1.0625rem);
@@ -3097,7 +3098,7 @@ form > label {
 }
 .quiet-caption,
 .modal-intro {
-  color: #737f95;
+  color: var(--muted);
 }
 @media (min-width: 1021px) {
   .categories button {

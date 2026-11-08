@@ -13,7 +13,7 @@
 .pickup-location-heading label {
   margin: 0;
   flex-direction: row;
-  font-size: 14px;
+  font-size: var(--type-label);
   font-weight: 500;
 }
 .pickup-location-heading button {
@@ -26,7 +26,7 @@
   background: transparent;
   color: var(--blue);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--type-label);
   cursor: pointer;
 }
 .pickup-location-heading button:disabled {
@@ -43,7 +43,7 @@
 .pickup-location-help,
 .pickup-location-status {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--type-support);
   line-height: 1.5;
   color: var(--muted);
 }
@@ -57,6 +57,6 @@
 }
 @media (max-width: 760px) {
   .pickup-location-field input {
-    font-size: 16px;
+    font-size: var(--type-body);
   }
 }

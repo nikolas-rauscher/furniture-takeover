@@ -64,9 +64,6 @@
   :root[data-keyboard-open] .mobile-nav {
     display: none;
   }
-  .mobile-nav {
-    min-height: var(--mobile-nav-height);
-  }
   .mobile-nav-item {
     min-width: 0;
   }
@@ -91,7 +88,7 @@
     white-space: normal;
   }
   :is(input, textarea, select) {
-    font-size: 16px;
+    font-size: var(--type-body);
     scroll-margin-block: 80px;
   }
   .search-hero textarea,
@@ -104,7 +101,7 @@
   label > input,
   label > select,
   label > textarea {
-    font-size: 16px;
+    font-size: var(--type-body);
   }
   .title-with-action,
   .section-heading,
@@ -136,7 +133,10 @@
     align-self: flex-start;
   }
   .own-listing h2 {
-    font-size: 15px;
+    font-size: var(--type-item);
+  }
+  .product-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
   }
   .listing-actions :is(.text-button, .button),
   .job-actions > button {
@@ -263,6 +263,16 @@
   }
   :root[data-compact-viewport] .messages-page .composer-actions .button {
     min-height: 44px;
+  }
+}
+
+/* Reduce display emphasis on narrow phones, keeping reading and input sizes intact. */
+@media (max-width: 360px) {
+  :root {
+    --type-title: 1.375rem;
+    --type-display: 1.375rem;
+    --space-section: 1.25rem;
+    --space-group: 0.875rem;
   }
 }
 

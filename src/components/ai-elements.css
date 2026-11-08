@@ -180,7 +180,7 @@
     padding: 12px;
   }
   .agent-message-scroller .agent-run-answer {
-    font-size: 16px;
+    font-size: var(--type-body);
     line-height: 1.5;
   }
   .chat-workspace .agent-search-result-message > h3 {
@@ -252,9 +252,9 @@
   overflow-y: hidden;
 }
 .photo-gallery .photo-attachment {
-  flex: 0 0 52px;
-  width: 52px;
-  height: 52px;
+  flex: 0 0 max(44px, 3.25rem);
+  width: max(44px, 3.25rem);
+  height: max(44px, 3.25rem);
   padding: 2px;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -282,8 +282,8 @@
   bottom: 2px;
   left: 2px;
   right: 2px;
-  font-size: 9px;
-  line-height: 12px;
+  font-size: var(--type-caption);
+  line-height: 1.2;
   text-align: center;
   background: var(--surface);
   pointer-events: none;

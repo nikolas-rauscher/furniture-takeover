@@ -39,13 +39,14 @@
   line-height: 1.35;
 }
 .account-settings small {
-  font-size: 12px;
+  font-size: var(--type-support);
   color: var(--muted);
   line-height: 1.5;
 }
 .account-settings label {
   display: grid;
   gap: 6px;
+  font-size: var(--type-label);
 }
 .account-settings .account-danger {
   color: #a42c36;
@@ -340,7 +341,7 @@
   .account-settings textarea,
   .settings-mobile-nav select {
     /* Avoid iOS focus zoom, which can leave a narrow page horizontally panned. */
-    font-size: 16px;
+    font-size: var(--type-body);
   }
   .account-key-actions a {
     display: inline-flex;
@@ -380,12 +381,12 @@
 .account-field-group .quiet-caption {
   margin-bottom: 2px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-support);
 }
 .account-optional {
   margin-left: 6px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 400;
 }
 .account-settings textarea {
@@ -401,13 +402,14 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
   gap: var(--space-group);
 }
-.account-character-count {
+.account-settings .account-character-count {
   justify-self: end;
   margin-top: -8px;
+  font-size: var(--type-caption);
 }
 .account-key-security {
   color: var(--muted);
-  font-size: 12px !important;
+  font-size: var(--type-support) !important;
   margin: 12px 0 24px;
 }
 .account-key-provider {
@@ -449,7 +451,7 @@
 }
 .account-key-actions a {
   color: var(--blue);
-  font-size: 12px;
+  font-size: var(--type-label);
   text-underline-offset: 3px;
   margin-left: auto;
 }

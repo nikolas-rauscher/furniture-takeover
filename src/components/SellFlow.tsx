@@ -198,6 +198,11 @@ export default function SellFlow({
                   {uploadError}
                 </p>
               )}
+              <p className="sell-photo-help">
+                {photos.length > 0
+                  ? "Review and edit before publishing."
+                  : "Add at least one photo to create your draft."}
+              </p>
             </div>
             <form
               id={formId}
@@ -311,11 +316,6 @@ export default function SellFlow({
                   ? "Preparing draft…"
                   : "Create draft"}
             </Button>
-            <span className="quiet-caption">
-              {photos.length > 0
-                ? "Review and edit before publishing."
-                : "Add at least one photo to create your draft."}
-            </span>
           </div>
         </div>
       ) : (

@@ -29,7 +29,7 @@
   padding: 3px 8px;
   border-radius: 20px;
   background: #fff;
-  font-size: 11px;
+  font-size: var(--type-caption);
 }
 .photo-gallery-controls {
   flex: 0 0 auto;
@@ -103,7 +103,7 @@
   min-height: 44px;
   padding: 8px 12px;
   margin: 0;
-  font-size: 13px;
+  font-size: var(--type-label);
 }
 .photo-gallery-remove {
   position: absolute;
@@ -272,12 +272,12 @@
 }
 .photo-upload-empty [data-slot="empty-title"] {
   color: var(--ink);
-  font-size: 17px;
+  font-size: 1.0625rem;
   font-weight: 550;
 }
 .photo-upload-empty [data-slot="empty-description"] {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-support);
 }
 .photo-upload-empty [data-slot="empty-content"] {
   gap: 8px;
@@ -285,7 +285,7 @@
 .photo-upload-empty .file-hint {
   margin: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
   line-height: 1.4;
 }
 .photo-gallery-actions > span {

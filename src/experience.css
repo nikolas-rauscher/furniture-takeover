@@ -248,7 +248,8 @@ label > textarea {
 }
 .section-heading > div > span {
   display: block;
-  font-size: 13px;
+  font-size: var(--type-support);
+  color: var(--muted);
   margin-top: 10px;
 }
 .sort-label select {
@@ -324,7 +325,7 @@ label > textarea {
 }
 .product-source {
   display: block;
-  font-size: 12px;
+  font-size: var(--type-caption);
   color: var(--muted);
   margin-bottom: 10px;
 }
@@ -347,9 +348,9 @@ label > textarea {
 .product-location,
 .product-location > span,
 .pickup {
-  font-size: 12px;
+  font-size: var(--type-support);
   color: var(--muted);
-  line-height: 1.65;
+  line-height: 1.5;
 }
 .product-location {
   margin-top: var(--space-label);
@@ -740,7 +741,7 @@ label > textarea {
   font-size: 12px;
 }
 .quiet-caption {
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .review-layout.agent-review-layout {
@@ -1252,7 +1253,7 @@ label > textarea {
     min-height: 42px;
   }
   .product-source {
-    font-size: 11px;
+    font-size: var(--type-caption);
     margin-bottom: 8px;
   }
   .product-title-row > strong {
@@ -1267,7 +1268,7 @@ label > textarea {
   .product-location,
   .product-location > span,
   .pickup {
-    font-size: 11px;
+    font-size: var(--type-support);
   }
   .market-footer {
     margin-top: 48px;
@@ -1622,7 +1623,7 @@ label > textarea {
 }
 
 .product-tags { display:flex; flex-wrap:wrap; gap:4px 8px; min-height:20px; margin-bottom:8px; }
-.product-tags > span { font-size:11px; line-height:1.5; color:var(--muted); background:#f0f0ed; padding:2px 6px; border-radius:2px; overflow-wrap:anywhere; }
+.product-tags > span { font-size:var(--type-caption); line-height:1.5; color:var(--muted); background:#f0f0ed; padding:2px 6px; border-radius:2px; overflow-wrap:anywhere; }
 
 /* Keep related copy together while preserving generous control targets. */
 .page-title { margin-bottom: var(--space-group); }
@@ -1869,19 +1870,19 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
 .selling-photo-layout .upload-zone img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
 .selling-photo-layout .sell-inputs { grid-area: fields; min-height: 0; min-width: 0; align-self: center; gap: 16px; }
 .selling-photo-layout .sell-inputs [data-slot="field"] { gap: 6px; }
-.selling-photo-layout .sell-inputs [data-slot="field-label"] { margin: 0; width: 100%; flex-direction: row; color: var(--ink); font-size: 14px; font-weight: 500; line-height: 1.4; }
-.sell-field-optional { margin-left: auto; color: var(--muted); font-size: 12px; font-weight: 400; }
-.selling-photo-layout .sell-inputs textarea { min-height: 80px; height: 100px; resize: none; padding: 10px 12px; overflow-y: auto; }
+.selling-photo-layout .sell-inputs [data-slot="field-label"] { margin: 0; width: 100%; flex-direction: row; color: var(--ink); font-size: var(--type-label); font-weight: 500; line-height: 1.4; }
+.sell-field-optional { margin-left: auto; color: var(--muted); font-size: var(--type-caption); font-weight: 400; }
+.selling-photo-layout .sell-inputs textarea { min-height: 80px; height: 6.25rem; resize: none; padding: 10px 12px; overflow-y: auto; }
 .selling-photo-layout .sell-inputs :is(input, textarea):focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
-.selling-photo-layout .photo-suggestions-button { min-height: 44px; padding: 8px 12px; margin-top: -8px; font-size: 13px; text-align: left; align-self: flex-start; }
+.selling-photo-layout .photo-suggestions-button { min-height: 44px; padding: 8px 12px; margin-top: -8px; font-size: var(--type-label); text-align: left; align-self: flex-start; }
 .selling-photo-layout .pickup-location-heading { gap: 4px 8px; }
 .selling-photo-layout .pickup-location-heading [data-slot="field-label"] { width: auto; }
 .selling-photo-layout .pickup-location-heading button { min-height: 44px; }
 .selling-photo-layout .pickup-location-field input { min-height: 44px; padding: 10px 12px; }
 .selling-photo-layout .pickup-location-help { display: block; }
 .sell-photo-footer { grid-area: actions; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.sell-photo-footer > .button { min-height: 44px; margin: 0; padding: 10px 16px; }
-.sell-photo-footer > .quiet-caption { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
+.sell-photo-footer > .button { font-size: var(--type-label); min-height: 44px; margin: 0; padding: 10px 16px; }
+.sell-photo-help { margin: 8px 0 0; color: var(--muted); font-size: var(--type-caption); line-height: 1.4; }
 .selling-photo-layout .form-error { margin: 4px 0; font-size: 12px; }
 .selling-photo-layout .agent-footnote { margin-top: 8px; }
 @media (max-width: 760px) {
@@ -1894,6 +1895,6 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
   .selling-photo-layout .photo-gallery.is-editable .upload-zone { flex: 0 0 auto; min-height: 160px; padding: 12px; }
   .selling-photo-layout .photo-gallery.is-editable .upload-zone.has-image { height: 160px; min-height: 160px; padding: 0; }
   .selling-photo-layout .sell-inputs { flex: 0 0 auto; width: 100%; align-self: stretch; }
-  .selling-photo-layout .sell-inputs textarea { height: 80px; }
+  .selling-photo-layout .sell-inputs textarea { height: 5rem; }
   .selling-photo-layout .sell-photo-footer { flex: 0 0 auto; padding: 8px 0 4px; border-top: 1px solid var(--line); }
 }

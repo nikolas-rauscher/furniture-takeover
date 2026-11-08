@@ -6,6 +6,7 @@ export function useAppViewport() {
     const root = document.documentElement;
     const visual = window.visualViewport;
     const mobile = window.matchMedia("(max-width: 760px)");
+    const navigation = document.querySelector<HTMLElement>(".mobile-nav");
     let baseline = window.innerHeight;
     let width = window.innerWidth;
     let frame = 0;
@@ -36,8 +37,19 @@ export function useAppViewport() {
           "data-compact-viewport",
           mobile.matches && unzoomed && height < 460,
         );
+        // Enlarged text can wrap the navigation onto additional rows.
+        if (mobile.matches && navigation)
+          root.style.setProperty(
+            "--mobile-nav-height",
+            `${navigation.getBoundingClientRect().height}px`,
+          );
+        else root.style.removeProperty("--mobile-nav-height");
+        if (keyboard && active instanceof HTMLElement)
+          active.scrollIntoView({ block: "nearest", inline: "nearest" });
       });
     };
+    const navigationResize = new ResizeObserver(update);
+    if (navigation) navigationResize.observe(navigation);
     update();
     visual?.addEventListener("resize", update);
     window.addEventListener("resize", update);
@@ -49,7 +61,9 @@ export function useAppViewport() {
       window.removeEventListener("resize", update);
       document.removeEventListener("focusin", update);
       document.removeEventListener("focusout", update);
+      navigationResize.disconnect();
       root.style.removeProperty("--app-viewport-height");
+      root.style.removeProperty("--mobile-nav-height");
       root.removeAttribute("data-keyboard-open");
       root.removeAttribute("data-compact-viewport");
     };

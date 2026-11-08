@@ -78,7 +78,7 @@
 @media (max-width: 760px) {
   .ui-select-trigger,
   .ui-select-popup {
-    font-size: 16px;
+    font-size: var(--type-body);
   }
   [data-slot="dropdown-menu-item"] {
     min-height: 44px;
