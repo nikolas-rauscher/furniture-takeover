@@ -7,7 +7,11 @@ import {
 } from "../components/ui/dropdown-menu";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { Textarea } from "../components/ui/textarea";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupTextarea,
+} from "../components/ui/input-group";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Image as ImageIcon,
@@ -16,6 +20,7 @@ import {
   Ellipsis,
   ArrowLeft,
   Send,
+  LoaderCircle,
   MessageCircle,
 } from "@/components/icons";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
@@ -218,6 +223,24 @@ export default function AccountMessages({
   });
   const role = current?.seller_id === userId ? "seller" : "buyer";
   const text = drafts[selected] ?? "";
+  const messageInput = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const input = messageInput.current;
+    if (!input) return;
+    const fit = () => {
+      input.style.height = "auto";
+      input.style.height = `${input.scrollHeight}px`;
+    };
+    fit();
+    let width = input.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (input.clientWidth === width) return;
+      width = input.clientWidth;
+      fit();
+    });
+    observer.observe(input);
+    return () => observer.disconnect();
+  }, [text, selected, current?.id]);
   const thumbnail = (image?: string, title = "") =>
     image ? (
       <img className="chat-item-thumbnail" src={image} alt={title} />
@@ -565,47 +588,57 @@ export default function AccountMessages({
                     setDrafts((xs) => ({ ...xs, [selected]: reply }));
                   }}
                 />
-                <Textarea
-                  aria-label="Message"
-                  placeholder="Write a message…"
-                  maxLength={4000}
-                  rows={2}
-                  value={text}
-                  disabled={busy || (!!otherId && blocked.includes(otherId))}
-                  onKeyDown={(e) => {
-                    if (
-                      e.key === "Enter" &&
-                      (e.ctrlKey || e.metaKey) &&
-                      !e.nativeEvent.isComposing
-                    ) {
-                      e.preventDefault();
-                      e.currentTarget.form?.requestSubmit();
+                <InputGroup className="seller-message-input">
+                  <InputGroupTextarea
+                    ref={messageInput}
+                    aria-label="Message"
+                    placeholder="Write a message…"
+                    maxLength={4000}
+                    rows={1}
+                    value={text}
+                    disabled={busy || (!!otherId && blocked.includes(otherId))}
+                    onKeyDown={(e) => {
+                      if (
+                        e.key === "Enter" &&
+                        (e.ctrlKey || e.metaKey) &&
+                        !e.nativeEvent.isComposing
+                      ) {
+                        e.preventDefault();
+                        e.currentTarget.form?.requestSubmit();
+                      }
+                    }}
+                    onChange={(e) =>
+                      setDrafts((xs) => ({ ...xs, [selected]: e.target.value }))
                     }
-                  }}
-                  onChange={(e) =>
-                    setDrafts((xs) => ({ ...xs, [selected]: e.target.value }))
-                  }
-                />
-                <div className="composer-actions">
-                  <small>
-                    {text.length}/4,000
-                    <span className="composer-keyboard-hint">
-                      {" "}
-                      · Ctrl / ⌘ + Enter to send
-                    </span>
+                  />
+                  <InputGroupAddon align="inline-end">
+                    <Button
+                      animateIcon
+                      type="submit"
+                      className="button primary seller-message-send"
+                      aria-label={busy ? "Sending message" : "Send message"}
+                      disabled={
+                        busy ||
+                        !text.trim() ||
+                        (!!otherId && blocked.includes(otherId))
+                      }
+                    >
+                      {busy ? (
+                        <LoaderCircle animate size={18} aria-hidden="true" />
+                      ) : (
+                        <Send size={18} aria-hidden="true" />
+                      )}
+                      <span>{busy ? "Sending…" : "Send"}</span>
+                    </Button>
+                  </InputGroupAddon>
+                </InputGroup>
+                <div className="seller-message-meta">
+                  <small className="composer-keyboard-hint">
+                    Ctrl / ⌘ + Enter to send
                   </small>
-                  <Button
-                    animateIcon
-                    type="submit"
-                    className="button primary"
-                    disabled={
-                      busy ||
-                      !text.trim() ||
-                      (!!otherId && blocked.includes(otherId))
-                    }
-                  >
-                    <Send size={15} /> {busy ? "Sending…" : "Send"}
-                  </Button>
+                  {text.length >= 3500 && (
+                    <small>{text.length.toLocaleString()}/4,000</small>
+                  )}
                 </div>
                 {error && (
                   <p className="account-chat-error" role="alert">

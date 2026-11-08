@@ -719,3 +719,65 @@
     display: none;
   }
 }
+
+/* A shared input group keeps sending within reach without a second action row. */
+.messages-page .seller-message-input {
+  height: auto;
+  align-items: flex-end;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--surface);
+}
+.messages-page .seller-chat .seller-message-input textarea {
+  resize: none;
+  min-height: max(44px, calc(1.5em + 20px));
+  max-height: min(160px, 24dvh);
+  padding: 10px 8px;
+  font-size: var(--type-body);
+  line-height: 1.5;
+  overflow-y: auto;
+  border: 0;
+  outline: none;
+  box-shadow: none;
+}
+.messages-page .seller-message-input [data-slot="input-group-addon"] {
+  align-self: flex-end;
+  padding: 0;
+  margin: 0;
+}
+.messages-page .seller-message-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+}
+.seller-message-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: var(--type-caption);
+}
+.seller-message-meta small {
+  font-size: inherit;
+}
+@media (max-width: 760px) {
+  .messages-page .seller-message-send {
+    width: 44px;
+    padding: 10px;
+  }
+  .messages-page .seller-message-send span {
+    display: none;
+  }
+  .seller-message-meta:not(:has(small:not(.composer-keyboard-hint))) {
+    display: none;
+  }
+  :root[data-compact-viewport] .messages-page .conversation-composer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
