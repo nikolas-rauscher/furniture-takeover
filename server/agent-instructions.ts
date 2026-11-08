@@ -75,6 +75,10 @@ export function buildAgentInstructions({
     listingAssist
       ? `${sellerWorkflowSkill}\nThis turn is listing_assist: prepare useful draft changes with tools, perform requested research, or ask the next necessary question. Do not stop at generic advice when a grounded field update is possible.`
       : "",
-    `Web search is ${allowWebSearch ? "available" : ownInventoryOnly ? "excluded by the user's takeover-only source preference; use the local inventory" : "not configured; say so if external offers are requested"}.`,
+    allowWebSearch
+      ? "The web_search tool is configured and available. If the user requests external offers, call it before reporting web findings. Never say web search is unavailable unless an actual tool attempt failed. The UI supplies source previews and failure/empty status; keep your explanation focused on relevance and useful next steps."
+      : ownInventoryOnly
+        ? "Web search is excluded by the current takeover-only source preference. Use the local inventory. If the latest user message explicitly asks to include the web, first update the source preference with update_search_preferences and exact user evidence. This restriction does not mean the search API is unconfigured."
+        : "Web search is not configured; say so if external offers are requested.",
   ].join("\n");
 }

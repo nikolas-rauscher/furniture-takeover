@@ -133,6 +133,15 @@ test("explicit source changes leave a previous own-only restriction", () => {
   assert.equal(own.criteria.query, "white desk");
   const web = newSearch("Search the web too", own.criteria, "Lausanne", own);
   assert.equal(web.criteria.source, "All");
+  for (const request of [
+    "Search Takeover and the web for white desks",
+    "Takeover und das Web durchsuchen",
+    "Takeover + web",
+  ])
+    assert.equal(
+      newSearch(request, own.criteria, "Lausanne", own).criteria.source,
+      "All",
+    );
   const ricardo = newSearch("Search Ricardo", own.criteria, "Lausanne", own);
   assert.equal(ricardo.criteria.source, "Ricardo");
   assert.equal(

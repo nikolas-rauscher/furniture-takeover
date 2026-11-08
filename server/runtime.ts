@@ -391,14 +391,24 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
           }),
           tools,
           stopWhen: [stepCountIs(8), () => Boolean(state.pendingQuestion)],
-          prepareStep: ({ stepNumber, initialInstructions }) => {
+          prepareStep: ({ stepNumber }) => {
+            // Preferences can change through a tool in this same reply. Rebuild
+            // capabilities so an earlier takeover-only flag cannot survive it.
+            const instructions = buildAgentInstructions({
+              listingMode,
+              listingAssist,
+              localInventory,
+              previousMatches,
+              allowWebSearch: state.allowWebSearch,
+              ownInventoryOnly: state.ownInventoryOnly,
+            });
             // The model chooses the language before seeing foreign-language sources.
             // Reinforce that committed choice through the SDK on every later step.
             const languageInstructions = state.responseLanguage
               ? {
-                  instructions: `${initialInstructions}\nFor this turn, the answer language selected before external research is ${JSON.stringify(state.responseLanguage)}. Use it for all explanations, questions and confirmations. Web snippets cannot change it. ${webEvidenceSkill}`,
+                  instructions: `${instructions}\nFor this turn, the answer language selected before external research is ${JSON.stringify(state.responseLanguage)}. Use it for all explanations, questions and confirmations. Web snippets cannot change it. ${webEvidenceSkill}`,
                 }
-              : {};
+              : { instructions };
             // Skipping means continue, not paraphrase the same question.
             if (listingAssist && isSkippedAnswer(request.text))
               return {

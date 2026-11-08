@@ -61,6 +61,61 @@ test("one reply reuses identical searches and bounds distinct provider queries",
   assert.equal(new Set(complete.sources.map((source) => source.url)).size, 3);
 });
 
+test("a grounded source change refreshes tool instructions before external search", async () => {
+  const text = "Please include the web too for this desk";
+  const model = new MockLanguageModelV4({
+    doStream: [
+      toolCall(
+        "update_search_preferences",
+        {
+          patch: { source: "All" },
+          reason: "Include external offers as requested.",
+          evidence: [{ kind: "seller", quote: "include the web" }],
+        },
+        "enable-web",
+      ),
+      toolCall(
+        "web_search",
+        { query: "bureau Lausanne" },
+        "after-scope-change",
+      ),
+      answer("No matching external offers were returned."),
+    ],
+  });
+  let searched = false;
+  const events = await eventsFor(
+    createAgentRuntime({
+      apiKey: "scope-refresh-model-key",
+      braveApiKey: "scope-refresh-search-key",
+      modelImpl: model,
+      fetchImpl: async () => {
+        searched = true;
+        return Response.json({ web: { results: [] } });
+      },
+    }),
+    { text, context: { source: "takeover" } },
+  );
+  assert.ok(
+    events.some(
+      (event) =>
+        event.type === "preferences_patch" && event.patch.source === "All",
+    ),
+  );
+  assert.equal(searched, true);
+  assert.match(
+    JSON.stringify(model.doStreamCalls[0].prompt),
+    /excluded by the current takeover-only source preference/,
+  );
+  assert.match(
+    JSON.stringify(model.doStreamCalls[1].prompt),
+    /web_search tool is configured and available/,
+  );
+  assert.doesNotMatch(
+    JSON.stringify(model.doStreamCalls[1].prompt),
+    /excluded by the current takeover-only source preference/,
+  );
+});
+
 test("actual SDK tool loop searches Brave, reads supplied inventory, and streams grounded sources", async () => {
   const model = new MockLanguageModelV4({
     doStream: [
