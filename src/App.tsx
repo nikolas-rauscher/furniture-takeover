@@ -12,7 +12,7 @@ import ComparePage from "./components/ComparePage";
 import SavedSearchesPage from "./components/SavedSearchesPage";
 import { listingPhotos, MAX_LISTING_PHOTOS } from "../shared/listingPhotos";
 import { readListingPhoto } from "./listingPhotos";
-import { animateUiChange, scrollToPageStart } from "./uiMotion";
+import WorkspacePage from "./components/WorkspacePage";
 import MessagesPage from "./components/MessagesPage";
 import { useNegotiations } from "./hooks/useNegotiations";
 import NegotiationSummary, {
@@ -246,6 +246,7 @@ export default function App({ account }: { account?: AccountConnection }) {
   const [sellStep, setSellStep] = useState(1);
   const [editingListing, setEditingListing] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState("");
+  const hasSellingDraft = useRef(view === "sell");
   const [photoReading, setPhotoReading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toastNotice, setToastNotice] = useState<{
@@ -283,15 +284,50 @@ export default function App({ account }: { account?: AccountConnection }) {
   const comparison = visibleListings.filter((item) =>
     compared.includes(item.id),
   );
-  const isHome = view === "discover" && !searching;
+  const searchIsHome = !searching;
+  const isHome = view === "discover" && searchIsHome;
+  const mainContent = useRef<HTMLElement>(null);
+  const pageKey =
+    view === "discover"
+      ? isHome
+        ? "home"
+        : "search"
+      : view === "account"
+        ? `account-${accountTab}`
+        : view === "sell"
+          ? `sell-${sellStep}`
+          : view === "detail"
+            ? `listing-${selectedId}`
+            : view;
+  const previousPage = useRef(pageKey);
+  const scrollPositions = useRef(
+    new Map<string, { top: number; left: number }>(),
+  );
+  useEffect(() => {
+    const previous = window.history.scrollRestoration;
+    window.history.scrollRestoration = "manual";
+    return () => {
+      window.history.scrollRestoration = previous;
+    };
+  }, []);
   useLayoutEffect(() => {
-    if (
-      view === "sell" ||
-      view === "messages" ||
-      (view === "discover" && !isHome)
-    )
-      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-  }, [view, isHome]);
+    const changed = previousPage.current !== pageKey;
+    previousPage.current = pageKey;
+    const position = scrollPositions.current.get(pageKey) ?? {
+      top: 0,
+      left: 0,
+    };
+    if (changed) window.scrollTo({ ...position, behavior: "instant" });
+    if (changed && document.activeElement === document.body)
+      mainContent.current?.focus({ preventScroll: true });
+    const remember = () =>
+      scrollPositions.current.set(pageKey, {
+        top: window.scrollY,
+        left: window.scrollX,
+      });
+    window.addEventListener("scroll", remember, { passive: true });
+    return () => window.removeEventListener("scroll", remember);
+  }, [pageKey]);
   const reviewingListing =
     !isHome && committedSearch?.intent === "listing_review";
   const activePreferences =
@@ -392,14 +428,20 @@ export default function App({ account }: { account?: AccountConnection }) {
       navigate("settings", fromHistory);
       return;
     }
-    searchRunToken.current += 1;
-    listingRunToken.current += 1;
-    agentRun.cancel();
-    listingRun.cancel();
-    listingRequest.current?.abort();
-    cancelPhotoRead();
-    setBusy(false);
-    animateUiChange(() => setView(next));
+    if (next !== view) {
+      scrollPositions.current.set(pageKey, {
+        top: window.scrollY,
+        left: window.scrollX,
+      });
+      searchRunToken.current += 1;
+      listingRunToken.current += 1;
+      agentRun.cancel();
+      listingRun.cancel();
+      listingRequest.current?.abort();
+      cancelPhotoRead();
+      setBusy(false);
+    }
+    setView(next);
     if (!fromHistory) {
       const hash =
         next === "discover"
@@ -415,7 +457,6 @@ export default function App({ account }: { account?: AccountConnection }) {
         );
     }
     setModal(null);
-    scrollToPageStart();
   }
   useEffect(() => {
     const restore = () => {
@@ -439,8 +480,10 @@ export default function App({ account }: { account?: AccountConnection }) {
       navigate("settings");
       return;
     }
-    setMessageProposal(proposal);
-    setMessageListingId(listingId);
+    if (listingId) {
+      setMessageProposal(proposal);
+      setMessageListingId(listingId);
+    }
     navigate("messages");
     if (listingId)
       window.history.replaceState(
@@ -450,6 +493,7 @@ export default function App({ account }: { account?: AccountConnection }) {
       );
   }
   function goHome() {
+    scrollPositions.current.delete("home");
     navigate("discover");
     agentRun.reset();
     setSearching(false);
@@ -471,6 +515,7 @@ export default function App({ account }: { account?: AccountConnection }) {
       return;
     }
     if (view === "sell") return;
+    hasSellingDraft.current = true;
     navigate("sell");
     resetListingConversation();
     listingRevisions.current = {};
@@ -478,6 +523,13 @@ export default function App({ account }: { account?: AccountConnection }) {
     setSellStep(1);
     setEditingListing(null);
     setUploadError("");
+  }
+  function openSell() {
+    if (hasSellingDraft.current) navigate("sell");
+    else startSell();
+  }
+  function openBrowse() {
+    navigate("discover");
   }
   function openProduct(item: Product) {
     if (item.status === "withdrawn") return;
@@ -1006,8 +1058,7 @@ export default function App({ account }: { account?: AccountConnection }) {
       const current = draftRef.current;
       const prepared = prepareListingDraft(current, metadata);
       setDraft(prepared);
-      animateUiChange(() => setSellStep(2));
-      scrollToPageStart();
+      setSellStep(2);
       void runListing(
         "Help me finish this listing using the recognised photo details already in the draft. If there is no asking price, research comparable second-hand offers and propose a source-backed starting price for my review, then let me choose a price with a slider or give it away. Ask only the next necessary missing detail using short clickable answers, including pickup times when relevant.",
       );
@@ -1110,6 +1161,7 @@ export default function App({ account }: { account?: AccountConnection }) {
       );
       return;
     }
+    hasSellingDraft.current = false;
     setAccountTab("listings");
     navigate("account");
     setToast(
@@ -1121,6 +1173,7 @@ export default function App({ account }: { account?: AccountConnection }) {
   function editListing(item: Product) {
     if (account && !item.own) return;
     if (item.status === "withdrawn") return;
+    hasSellingDraft.current = true;
     navigate("sell");
     resetListingConversation();
     listingRevisions.current = {};
@@ -1372,7 +1425,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                 ? "active"
                 : ""
             }
-            onClick={goHome}
+            onClick={openBrowse}
           >
             Find
           </button>
@@ -1433,7 +1486,11 @@ export default function App({ account }: { account?: AccountConnection }) {
             : "")
         }
       >
-        <main className={"main-content view-" + view}>
+        <main
+          ref={mainContent}
+          tabIndex={-1}
+          className={"main-content view-" + view}
+        >
           {view === "settings" &&
             (account?.session ? (
               <AccountSettings
@@ -1477,9 +1534,8 @@ export default function App({ account }: { account?: AccountConnection }) {
                 </button>
               </section>
             ))}
-          {view === "messages" && (
+          <WorkspacePage active={view === "messages"}>
             <MessagesPage
-              key={messageListingId ?? "inbox"}
               listingId={messageListingId}
               initialMessage={
                 messageProposal
@@ -1539,10 +1595,10 @@ export default function App({ account }: { account?: AccountConnection }) {
                 if (item) openProduct(item);
               }}
             />
-          )}
-          {view === "discover" && (
+          </WorkspacePage>
+          <WorkspacePage active={view === "discover"}>
             <>
-              {isHome ? (
+              {searchIsHome ? (
                 <section
                   className={`agent-hero search-entry${hasSearchDraft ? " has-query" : ""}`}
                   aria-labelledby="agent-title"
@@ -1838,19 +1894,19 @@ export default function App({ account }: { account?: AccountConnection }) {
                   {connectionStatus}
                 </>
               )}
-              {isHome && negotiations.error && (
+              {searchIsHome && negotiations.error && (
                 <p role="alert">{negotiations.error}</p>
               )}
-              {isHome &&
+              {searchIsHome &&
                 negotiations.items
                   .filter((item) => item.status === "draft")
                   .map((proposal) => proposalSummary(proposal))}
-              {isHome && visibleListings.length > 0 && (
+              {searchIsHome && visibleListings.length > 0 && (
                 <>
                   <div className="section-heading">
                     <div>
                       <h2>
-                        {isHome
+                        {searchIsHome
                           ? "Your local listings"
                           : "From your local listings"}
                       </h2>
@@ -1875,7 +1931,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                   </div>
                 </>
               )}
-              {isHome && !visibleListings.length && (
+              {searchIsHome && !visibleListings.length && (
                 <div className="section-heading">
                   <div>
                     <h2>Something to sell?</h2>
@@ -1890,7 +1946,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                 </div>
               )}
             </>
-          )}
+          </WorkspacePage>
 
           {view === "searches" && (
             <SavedSearchesPage
@@ -1926,7 +1982,7 @@ export default function App({ account }: { account?: AccountConnection }) {
             />
           )}
 
-          {view === "sell" && (
+          <WorkspacePage active={view === "sell"}>
             <>
               <SellFlow
                 draft={draft}
@@ -1944,7 +2000,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                     resetListingConversation();
                     setSellStep(1);
                   } else if (editingListing) navigate("account");
-                  else goHome();
+                  else openBrowse();
                 }}
                 onDraftChange={changeDraft}
                 agentWorking={listingRun.state.status === "running"}
@@ -1956,7 +2012,7 @@ export default function App({ account }: { account?: AccountConnection }) {
               />
               {connectionStatus}
             </>
-          )}
+          </WorkspacePage>
 
           {view === "detail" && (
             <ListingDetailPage
@@ -1974,7 +2030,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                 ) : undefined
               }
               onBack={() =>
-                account && !selected?.own ? goHome() : navigate("account")
+                account && !selected?.own ? openBrowse() : navigate("account")
               }
               onMessage={() => selected && openMessages(selected.id)}
               onEdit={() => selected && editListing(selected)}
@@ -1992,14 +2048,14 @@ export default function App({ account }: { account?: AccountConnection }) {
             <ComparePage
               items={comparison}
               onBack={() =>
-                account && !selected?.own ? goHome() : navigate("account")
+                account && !selected?.own ? openBrowse() : navigate("account")
               }
               onOpen={openProduct}
               onRemove={toggleCompare}
             />
           )}
 
-          {view === "account" && (
+          <WorkspacePage active={view === "account"}>
             <AccountPage
               accountTab={accountTab}
               setAccountTab={(tab) => {
@@ -2032,7 +2088,7 @@ export default function App({ account }: { account?: AccountConnection }) {
               onStatusChange={setStatus}
               renderProduct={productCard}
             />
-          )}
+          </WorkspacePage>
         </main>
       </div>
 
@@ -2053,8 +2109,8 @@ export default function App({ account }: { account?: AccountConnection }) {
                     : "browse"
         }
         onNavigate={(destination) => {
-          if (destination === "browse") goHome();
-          else if (destination === "sell") startSell();
+          if (destination === "browse") openBrowse();
+          else if (destination === "sell") openSell();
           else if (destination === "messages") openMessages();
           else if (destination === "searches") navigate("searches");
           else {

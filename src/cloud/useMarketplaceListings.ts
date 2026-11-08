@@ -91,8 +91,10 @@ export function useMarketplaceListings(account?: AccountConnection) {
     try {
       const values = await loadProducts(client, userId);
       if (mounted.current && generation.current === token) {
-        current.current = values;
-        setListingsState(values);
+        if (JSON.stringify(current.current) !== JSON.stringify(values)) {
+          current.current = values;
+          setListingsState(values);
+        }
         setReady(true);
         setError("");
       }
