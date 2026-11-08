@@ -74,6 +74,8 @@ export function beginAgentRun(
     !retrying &&
     previous.id &&
     (previous.text ||
+      previous.sources.length ||
+      previous.inventoryMatchIds?.length ||
       previous.questions.length ||
       previous.actions.length ||
       previous.reasoning?.some((part) => part.text) ||

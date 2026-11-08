@@ -105,6 +105,29 @@ test("inventory matches are authoritative per-run snapshots and never leak into 
   );
 });
 
+test("partial search results survive a follow-up even when the agent produced no prose", () => {
+  const source = {
+    id: "web-1",
+    title: "Desk",
+    url: "https://www.ricardo.ch/fr/a/desk-123456789/",
+    snippet: "Collection in Lausanne",
+  };
+  for (const partial of [
+    { ...initial, status: "error" as const, sources: [source] },
+    { ...initial, status: "error" as const, inventoryMatchIds: ["local-desk"] },
+  ]) {
+    const next = beginAgentRun(partial, "Try another web search", "next-run");
+    assert.equal(next.history.length, 1);
+    assert.deepEqual(next.history[0].sources, partial.sources);
+    assert.deepEqual(
+      next.history[0].inventoryMatchIds,
+      partial.inventoryMatchIds,
+    );
+    assert.deepEqual(next.sources, []);
+    assert.equal(next.inventoryMatchIds, null);
+  }
+});
+
 test("a question is visible immediately and survives a successful question-only completion", () => {
   const question = {
     type: "question" as const,
