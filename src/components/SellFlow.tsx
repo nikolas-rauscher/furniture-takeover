@@ -1,3 +1,7 @@
+import { SelectField } from "./ui/select-field";
+import { Button } from "./ui/button";
+import { Textarea } from "./ui/textarea";
+import { Input } from "./ui/input";
 import { listingMeasurementField } from "../listingPreparation";
 import { PickupLocationInput } from "./PickupLocationInput";
 import {
@@ -15,7 +19,7 @@ import {
   Check,
   LoaderCircle,
   MapPin,
-} from "lucide-react";
+} from "@/components/icons";
 import {
   TODAY,
   money,
@@ -25,6 +29,7 @@ import {
 import type { AgentAssistState } from "../hooks/useAgentAssist";
 import Modal from "./Modal";
 import PhotoGallery from "./PhotoGallery";
+import ListingChecklist from "./ListingChecklist";
 import { listingPhotos } from "../../shared/listingPhotos";
 
 export type ListingDraft = {
@@ -153,14 +158,14 @@ export default function SellFlow({
           )}
         </Modal>
       )}
-      <button className="back-link" type="button" onClick={onBack}>
+      <Button className="back-link" type="button" onClick={onBack}>
         <ArrowLeft size={16} />
         {step === 2 && !editing
           ? "Back to photos"
           : editing
             ? "Back to my listings"
             : "Back to search"}
-      </button>
+      </Button>
       <div className="page-title">
         <h1 ref={headingRef} tabIndex={-1}>
           {isPhotoStep ? "What are you selling?" : "Your listing"}
@@ -209,7 +214,7 @@ export default function SellFlow({
           >
             <label>
               A few details<span className="optional">Optional</span>
-              <textarea
+              <Textarea
                 rows={6}
                 maxLength={4000}
                 disabled={unavailable}
@@ -218,20 +223,22 @@ export default function SellFlow({
                 placeholder="Price, condition or pickup details…"
               />
             </label>
-            <button
-              type="button"
-              className="text-button photo-suggestions-button"
-              disabled={
-                unavailable ||
-                listingAssist.status === "idle" ||
-                listingAssist.status === "loading"
-              }
-              onClick={() => setSuggestionsOpen(true)}
-            >
-              {listingAssist.status === "loading"
-                ? "Combining photos & notes…"
-                : "Improve description"}
-            </button>
+            {(photos.length > 0 || draft.raw.trim()) && (
+              <Button
+                type="button"
+                className="text-button photo-suggestions-button"
+                disabled={
+                  unavailable ||
+                  listingAssist.status === "idle" ||
+                  listingAssist.status === "loading"
+                }
+                onClick={() => setSuggestionsOpen(true)}
+              >
+                {listingAssist.status === "loading"
+                  ? "Combining photos & notes…"
+                  : "Improve description"}
+              </Button>
+            )}
             {suggestionsOpen && (
               <Modal
                 title="Improve description"
@@ -247,7 +254,8 @@ export default function SellFlow({
                     <p className="proposal-message-preview">
                       {listingAssist.response.metadata.description}
                     </p>
-                    <button
+                    <Button
+                      animateIcon
                       className="button primary"
                       type="button"
                       onClick={() => {
@@ -258,7 +266,7 @@ export default function SellFlow({
                       }}
                     >
                       Use this description
-                    </button>
+                    </Button>
                   </>
                 ) : (
                   <div role="status">
@@ -269,13 +277,13 @@ export default function SellFlow({
                           "No description available yet.")}
                     </p>
                     {listingAssist.status !== "loading" && (
-                      <button
+                      <Button
                         type="button"
                         className="button secondary"
                         onClick={listingAssist.retry}
                       >
                         Try again
-                      </button>
+                      </Button>
                     )}
                   </div>
                 )}
@@ -286,18 +294,19 @@ export default function SellFlow({
               disabled={unavailable}
               onChange={(location) => onDraftChange({ location })}
             />
-            <button
+            <Button
+              animateIcon
               className="button primary full"
               type="submit"
               disabled={unavailable || !liveAgent}
             >
-              {unavailable && <LoaderCircle className="spin" size={17} />}
+              {unavailable && <LoaderCircle animate size={17} />}
               {photoReading
                 ? "Loading photo…"
                 : busy
                   ? "Preparing draft…"
                   : "Create draft"}
-            </button>
+            </Button>
             <span className="quiet-caption">
               {liveAgent
                 ? "Your photos and notes are combined into one listing description."
@@ -308,20 +317,22 @@ export default function SellFlow({
       ) : (
         <div className="review-layout agent-review-layout">
           <div className="listing-workspace">
-            <button
-              type="button"
-              className="listing-readiness-mobile"
-              onClick={() =>
-                missing.length ? missing[0].open() : setFieldsOpen(true)
-              }
-            >
-              <span>Required details</span>
-              <small>
-                {missing.length
-                  ? `${missing.length} details to complete`
-                  : "Complete"}
-              </small>
-            </button>
+            {missing.length > 0 && (
+              <Button
+                type="button"
+                className="listing-readiness-mobile"
+                onClick={() =>
+                  missing.length ? missing[0].open() : setFieldsOpen(true)
+                }
+              >
+                <span>Required details</span>
+                <small>
+                  {missing.length
+                    ? `${missing.length} details to complete`
+                    : "Complete"}
+                </small>
+              </Button>
+            )}
             {agentConversation}
             <form
               onSubmit={(event) => {
@@ -342,13 +353,14 @@ export default function SellFlow({
                 );
               }}
             >
-              <button
+              <Button
                 type="button"
                 className="text-button listing-edit-button"
+                aria-label="Edit listing details"
                 onClick={() => setFieldsOpen(true)}
               >
-                Edit listing details
-              </button>
+                Edit details
+              </Button>
               {fieldsOpen && (
                 <Modal
                   title="Listing details"
@@ -357,7 +369,7 @@ export default function SellFlow({
                   <div className="review-form">
                     <label>
                       Title
-                      <input
+                      <Input
                         required
                         maxLength={180}
                         pattern=".*\S.*"
@@ -370,7 +382,7 @@ export default function SellFlow({
                     </label>
                     <label>
                       Description
-                      <textarea
+                      <Textarea
                         required
                         rows={5}
                         maxLength={4000}
@@ -383,7 +395,7 @@ export default function SellFlow({
                     <div className="form-grid">
                       <label>
                         Price (CHF)
-                        <input
+                        <Input
                           required
                           type="number"
                           inputMode="decimal"
@@ -400,27 +412,31 @@ export default function SellFlow({
                       <label>
                         Condition{" "}
                         <span className="optional-label">Optional</span>
-                        <select
+                        <SelectField
+                          aria-label="Condition"
                           value={draft.condition}
-                          onChange={(event) =>
-                            onDraftChange({ condition: event.target.value })
+                          onValueChange={(condition) =>
+                            onDraftChange({ condition })
                           }
-                        >
-                          <option value="">Not specified</option>
-                          {draft.condition &&
-                            !["Very good", "Good", "Used"].includes(
+                          options={[
+                            ...new Set([
+                              "",
+                              "Very good",
+                              "Good",
+                              "Used",
                               draft.condition,
-                            ) && <option>{draft.condition}</option>}
-                          <option>Very good</option>
-                          <option>Good</option>
-                          <option>Used</option>
-                        </select>
+                            ]),
+                          ].map((value) => ({
+                            value,
+                            label: value || "Not specified",
+                          }))}
+                        />
                       </label>
                       {measurementField && (
                         <label>
                           {measurementField.label}
                           <span className="optional">Optional</span>
-                          <input
+                          <Input
                             value={draft.dimensions}
                             maxLength={160}
                             onChange={(event) =>
@@ -437,7 +453,7 @@ export default function SellFlow({
                     <div className="form-grid">
                       <label>
                         Pickup location
-                        <input
+                        <Input
                           required
                           maxLength={120}
                           pattern=".*\S.*"
@@ -450,7 +466,7 @@ export default function SellFlow({
                       </label>
                       <label>
                         Pickup by<span className="optional">Optional</span>
-                        <input
+                        <Input
                           type="date"
                           min={pickupMin}
                           value={draft.pickup}
@@ -461,16 +477,18 @@ export default function SellFlow({
                       </label>
                     </div>
                   </div>
-                  <button
+                  <Button
+                    animateIcon
                     type="button"
                     className="button primary full"
                     onClick={() => setFieldsOpen(false)}
                   >
                     Done
-                  </button>
+                  </Button>
                 </Modal>
               )}
-              <button
+              <Button
+                animateIcon
                 className="button primary full"
                 type="submit"
                 disabled={agentWorking || busy || photoReading}
@@ -483,7 +501,7 @@ export default function SellFlow({
                     : cloud
                       ? "Publish listing"
                       : "Save listing locally"}
-              </button>
+              </Button>
               <span className="quiet-caption">
                 {cloud
                   ? "Your listing will be visible on Takeover. You can edit or archive it later."
@@ -493,38 +511,14 @@ export default function SellFlow({
           </div>
           <aside className="listing-preview">
             <div className="listing-readiness">
-              <strong>
-                {missing.length
-                  ? `${missing.length} detail${missing.length === 1 ? "" : "s"} to complete`
-                  : "Required details complete"}
-              </strong>
-              <div>
-                {checks.map((check) => (
-                  <button
-                    key={check.label}
-                    type="button"
-                    className={check.ready ? "complete" : "missing"}
-                    onClick={check.open}
-                  >
-                    {check.ready && <Check size={12} />}
-                    {check.label}
-                  </button>
-                ))}
-              </div>
+              <ListingChecklist checks={checks} />
               <small>
                 {draft.condition
                   ? ""
                   : "Adding the condition helps buyers decide."}
               </small>
             </div>
-            <button
-              type="button"
-              className="text-button preview-label"
-              onClick={() => setFieldsOpen(true)}
-            >
-              View listing details
-            </button>
-            <button
+            <Button
               type="button"
               className="listing-preview-photos"
               onClick={() => setPhotosOpen(true)}
@@ -538,9 +532,13 @@ export default function SellFlow({
                 </span>
               )}
               <span>
-                {photos.length} photo{photos.length === 1 ? "" : "s"} · Edit
+                <ImageIcon size={12} aria-hidden="true" />
+                {photos.length}
+                <span className="listing-preview-photo-caption">
+                  photo{photos.length === 1 ? "" : "s"} · Edit
+                </span>
               </span>
-            </button>
+            </Button>
             <div>
               <span className="source-label">
                 <Armchair size={13} />
