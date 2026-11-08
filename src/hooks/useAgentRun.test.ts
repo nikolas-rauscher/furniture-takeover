@@ -18,6 +18,71 @@ const initial: AgentRunState = {
   error: null,
 };
 
+test("reasoning streams separately from the answer and survives in turn history", () => {
+  let state = applyAgentRunEvent(initial, {
+    type: "reasoning_start",
+    id: "r-1",
+  });
+  state = applyAgentRunEvent(state, {
+    type: "reasoning_delta",
+    id: "r-1",
+    text: "Check ",
+  });
+  state = applyAgentRunEvent(state, {
+    type: "reasoning_delta",
+    id: "r-1",
+    text: "the listing.",
+  });
+  assert.equal(state.reasoning?.[0].text, "Check the listing.");
+  assert.equal(state.reasoning?.[0].status, "streaming");
+  assert.equal(state.text, "");
+  state = applyAgentRunEvent(state, {
+    type: "reasoning_end",
+    id: "r-1",
+    durationMs: 2300,
+  });
+  state = applyAgentRunEvent(state, {
+    type: "complete",
+    text: "One match.",
+    sources: [],
+    runId: "done",
+  });
+  assert.equal(state.reasoning?.[0].durationMs, 2300);
+  assert.equal(state.reasoning?.[0].status, "complete");
+  const next = beginAgentRun(state, "What about a lamp?", "next");
+  assert.deepEqual(next.reasoning, []);
+  assert.deepEqual(next.history[0].reasoning, state.reasoning);
+  assert.deepEqual(
+    beginAgentRun(state, "Retry", "retry", true, true).reasoning,
+    [],
+  );
+});
+
+test("an interrupted reasoning stream keeps its partial text without a thinking spinner", () => {
+  const started = applyAgentRunEvent(initial, {
+    type: "reasoning_start",
+    id: "r-1",
+  });
+  const partial = applyAgentRunEvent(started, {
+    type: "reasoning_delta",
+    id: "r-1",
+    text: "Checking the available item.",
+  });
+  const failed = applyAgentRunEvent(partial, {
+    type: "error",
+    code: "REQUEST_CANCELLED",
+    message: "Stopped.",
+  });
+  assert.equal(failed.reasoning?.[0].status, "stopped");
+  assert.equal(failed.reasoning?.[0].text, "Checking the available item.");
+  assert.equal(failed.reasoning?.[0].durationMs, undefined);
+  assert.equal(
+    beginAgentRun(partial, "New request", "next").history[0].reasoning?.[0]
+      .status,
+    "stopped",
+  );
+});
+
 test("inventory matches are authoritative per-run snapshots and never leak into a new run", () => {
   const matches = applyAgentRunEvent(initial, {
     type: "inventory_matches",
@@ -38,6 +103,29 @@ test("inventory matches are authoritative per-run snapshots and never leak into 
       .inventoryMatchIds,
     null,
   );
+});
+
+test("partial search results survive a follow-up even when the agent produced no prose", () => {
+  const source = {
+    id: "web-1",
+    title: "Desk",
+    url: "https://www.ricardo.ch/fr/a/desk-123456789/",
+    snippet: "Collection in Lausanne",
+  };
+  for (const partial of [
+    { ...initial, status: "error" as const, sources: [source] },
+    { ...initial, status: "error" as const, inventoryMatchIds: ["local-desk"] },
+  ]) {
+    const next = beginAgentRun(partial, "Try another web search", "next-run");
+    assert.equal(next.history.length, 1);
+    assert.deepEqual(next.history[0].sources, partial.sources);
+    assert.deepEqual(
+      next.history[0].inventoryMatchIds,
+      partial.inventoryMatchIds,
+    );
+    assert.deepEqual(next.sources, []);
+    assert.equal(next.inventoryMatchIds, null);
+  }
 });
 
 test("a question is visible immediately and survives a successful question-only completion", () => {
@@ -116,15 +204,18 @@ test("a tool completion updates the existing real activity step in place", () =>
     id: "tool-1",
     label: "Searching listings",
     state: "running",
+    task: "listings",
   });
   const done = applyAgentRunEvent(running, {
     type: "status",
     id: "tool-1",
     label: "Searching listings",
     state: "complete",
+    task: "listings",
   });
   assert.equal(done.steps.length, 1);
   assert.equal(done.steps[0].state, "complete");
+  assert.equal(done.steps[0].task, "listings");
   assert.equal(initial.steps.length, 0);
 });
 
@@ -256,20 +347,49 @@ test("completion and follow-ups keep a stable UI turn and its listing cards", ()
 test("tool-created message drafts stay with their turn and revisions do not rewrite history", () => {
   const proposal = {
     schemaVersion: 1 as const,
-    id: "proposal-1", listingId: "chair-1", version: 2,
+    id: "proposal-1",
+    listingId: "chair-1",
+    version: 2,
     status: "draft" as const,
-    terms: { amount: 25, fulfillment: "pickup" as const, pickupTime: "Tomorrow", pickupPoint: null, note: null },
+    terms: {
+      amount: 25,
+      fulfillment: "pickup" as const,
+      pickupTime: "Tomorrow",
+      pickupPoint: null,
+      note: null,
+    },
     evidence: {},
-    draft: { message: "Hi, may I collect the chair tomorrow for CHF 25?", version: 2 },
+    draft: {
+      message: "Hi, may I collect the chair tomorrow for CHF 25?",
+      version: 2,
+    },
   };
-  const ready = applyAgentRunEvent(initial, { type: "negotiation_update", previousVersion: 1, negotiation: proposal });
+  const ready = applyAgentRunEvent(initial, {
+    type: "negotiation_update",
+    previousVersion: 1,
+    negotiation: proposal,
+  });
   assert.equal(ready.proposal?.draft?.message, proposal.draft.message);
   const next = beginAgentRun(ready, "Make that Saturday", "next-turn");
-  assert.equal(next.history[0]?.proposal?.draft?.message, proposal.draft.message);
+  assert.equal(
+    next.history[0]?.proposal?.draft?.message,
+    proposal.draft.message,
+  );
   assert.equal(next.proposal, undefined);
   const { draft: _draft, ...withoutDraft } = proposal;
-  const revised = applyAgentRunEvent(next, { type: "negotiation_update", previousVersion: 2, negotiation: { ...withoutDraft, version: 3, terms: { ...proposal.terms, pickupTime: "Saturday" } } });
+  const revised = applyAgentRunEvent(next, {
+    type: "negotiation_update",
+    previousVersion: 2,
+    negotiation: {
+      ...withoutDraft,
+      version: 3,
+      terms: { ...proposal.terms, pickupTime: "Saturday" },
+    },
+  });
   assert.equal(revised.proposal?.draft, undefined);
   assert.equal(revised.history[0]?.proposal?.terms.pickupTime, "Tomorrow");
-  assert.equal(beginAgentRun(revised, "New search", "reset-turn", false).history.length, 0);
+  assert.equal(
+    beginAgentRun(revised, "New search", "reset-turn", false).history.length,
+    0,
+  );
 });

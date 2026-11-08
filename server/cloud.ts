@@ -43,7 +43,10 @@ function supabaseUrl(value: string, name: string): string {
  * devices (a path on the app's own HTTPS origin works). SUPABASE_INTERNAL_URL
  * is what this server uses, such as a LAN IP; it never reaches the browser.
  */
-export function createCloud(env: NodeJS.ProcessEnv = process.env) {
+export function createCloud(
+  env: NodeJS.ProcessEnv = process.env,
+  { localTesting = false }: { localTesting?: boolean } = {},
+) {
   const configured = env.SUPABASE_URL?.trim(),
     key = env.SUPABASE_PUBLISHABLE_KEY?.trim();
   if (!configured && !key) return undefined;
@@ -83,6 +86,15 @@ export function createCloud(env: NodeJS.ProcessEnv = process.env) {
   // Built from the public URL: photo links must work for browsers, not just here.
   const photoUrl = (path: string) =>
     `${publicUrl}/storage/v1/object/public/listing-photos/${encodeURI(path)}`;
+  const testUntil = Date.parse(env.LOCAL_AI_TEST_UNTIL ?? "");
+  const testEmail = env.LOCAL_AI_TEST_EMAIL?.trim().toLowerCase();
+  const testEnabled =
+    localTesting &&
+    env.NODE_ENV !== "production" &&
+    testEmail &&
+    testUntil > Date.now() &&
+    testUntil <= Date.now() + 86_400_000;
+  let testUsed = 0;
   return {
     /** Sent to browsers by /api/config; holds only the public URL. */
     config: { supabaseUrl: publicUrl, supabaseKey: key },
@@ -92,6 +104,26 @@ export function createCloud(env: NodeJS.ProcessEnv = process.env) {
       authorization: string,
       spend = false,
     ): Promise<AgentQuota & { allowed: boolean }> {
+      if (testEnabled && Date.now() < testUntil) {
+        const token = authorization.match(/^Bearer (.+)$/)?.[1];
+        if (token) {
+          const { data, error } = await client.auth.getUser(token);
+          if (
+            !error &&
+            data.user?.email_confirmed_at &&
+            data.user.email?.toLowerCase() === testEmail
+          ) {
+            const allowed = testUsed < 250;
+            if (spend && allowed) testUsed++;
+            return {
+              allowed,
+              limit: 250,
+              remaining: 250 - testUsed,
+              resetAt: new Date(testUntil).toISOString(),
+            };
+          }
+        }
+      }
       const response = await fetch(`${url}/rest/v1/rpc/ai_quota`, {
         method: "POST",
         headers: {

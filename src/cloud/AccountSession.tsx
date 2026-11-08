@@ -1,3 +1,4 @@
+import { Button } from "../components/ui/button";
 import { useEffect, useState } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import App from "../App";
@@ -65,7 +66,7 @@ export default function AccountSession() {
       {error && (
         <div className="database-status" role="alert">
           {error}
-          <button onClick={() => setError("")}>Dismiss</button>
+          <Button onClick={() => setError("")}>Dismiss</Button>
         </div>
       )}
       <App

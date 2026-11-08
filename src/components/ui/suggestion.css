@@ -1,0 +1,45 @@
+.ai-suggestions {
+  --scroll-fade-size: 20px;
+  --scroll-fade-reveal: 24px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+.ai-suggestions > .ai-suggestion[data-slot="button"] {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: none;
+  min-height: var(--control-size);
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--blue);
+  font-size: var(--type-label);
+  line-height: 1.5;
+  white-space: nowrap;
+  text-align: left;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+.ai-suggestions > .ai-suggestion:hover:not(:disabled) {
+  border-color: var(--blue);
+  background: var(--mist);
+  text-decoration: none;
+}
+.ai-suggestions > .ai-suggestion:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+@supports not (animation-timeline: scroll()) {
+  .ai-suggestions {
+    mask-image: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-suggestion {
+    transition: none;
+  }
+}

@@ -29,27 +29,5 @@ function selectHeadline() {
 
 export function HeroHeadline({ compact }: { compact: boolean }) {
   const text = selectHeadline();
-  let character = 0;
-  return (
-    <h1 id="agent-title" aria-label={compact ? "Your search" : text}>
-      {compact ? (
-        "Your search"
-      ) : (
-        <span aria-hidden="true" className="hero-written-headline">
-          {text.split(" ").map((word, index) => (
-            <span key={index} className="hero-headline-word">
-              {[...(index ? " " : ""), ...word].map((letter, letterIndex) => (
-                <span
-                  key={letterIndex}
-                  style={{ animationDelay: `${character++ * 14}ms` }}
-                >
-                  {letter}
-                </span>
-              ))}
-            </span>
-          ))}
-        </span>
-      )}
-    </h1>
-  );
+  return <h1 id="agent-title">{compact ? "Your search" : text}</h1>;
 }

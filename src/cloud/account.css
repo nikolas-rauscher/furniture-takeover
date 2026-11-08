@@ -8,7 +8,7 @@
 .account-settings form {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
+  gap: var(--space-field);
 }
 .account-actions {
   display: flex;
@@ -34,17 +34,19 @@
   margin-top: 20px;
 }
 .account-settings h2 {
-  font-size: 17px;
-  margin: 0 0 12px;
+  font-size: var(--type-section);
+  margin: 0;
+  line-height: 1.35;
 }
 .account-settings small {
-  font-size: 12px;
+  font-size: var(--type-support);
   color: var(--muted);
   line-height: 1.5;
 }
 .account-settings label {
   display: grid;
   gap: 6px;
+  font-size: var(--type-label);
 }
 .account-settings .account-danger {
   color: #a42c36;
@@ -112,7 +114,7 @@
 .settings-layout {
   display: grid;
   grid-template-columns: 230px minmax(0, 620px);
-  gap: 48px;
+  gap: var(--space-section);
   align-items: start;
 }
 .account-page {
@@ -137,7 +139,7 @@
   display: none;
 }
 .account-page .page-title h1 {
-  font-size: 28px;
+  font-size: var(--type-title);
 }
 .account-page .page-title p {
   font-size: 14px;
@@ -149,7 +151,7 @@
 .settings-identity {
   display: grid;
   gap: 8px;
-  padding-bottom: 24px;
+  padding-bottom: var(--space-group);
   overflow-wrap: anywhere;
 }
 .settings-identity > span:last-child {
@@ -185,7 +187,7 @@
 .account-settings > form,
 .account-settings > section {
   margin: 0;
-  padding: 24px 0;
+  padding: var(--space-group) 0;
 }
 .account-settings [hidden] {
   display: none !important;
@@ -199,8 +201,9 @@
   margin: 0 0 12px;
 }
 .account-settings p {
-  font-size: 14px;
+  font-size: var(--type-label);
   line-height: 1.6;
+  max-width: var(--measure-prose);
 }
 .account-settings .account-danger {
   margin-top: 24px;
@@ -222,16 +225,17 @@
   justify-self: start;
 }
 .listing-toolbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 440px);
   gap: 12px;
   margin: 0 0 24px;
 }
-.listing-toolbar input {
-  flex: 1;
-  max-width: 440px;
+.listing-toolbar:has([data-slot="select-trigger"]) {
+  grid-template-columns: minmax(0, 440px) minmax(180px, 240px);
 }
-.listing-toolbar select {
-  width: auto;
+.listing-toolbar input {
+  width: 100%;
+  min-width: 0;
 }
 .listing-readiness {
   padding: 16px;
@@ -273,7 +277,7 @@
 @media (max-width: 760px) {
   .settings-layout {
     grid-template-columns: minmax(0, 1fr);
-    gap: 20px;
+    gap: var(--space-group);
   }
   .settings-sidebar {
     position: static;
@@ -308,6 +312,10 @@
     flex-wrap: nowrap;
     gap: 12px;
     align-items: flex-start;
+    margin-bottom: 20px;
+  }
+  .account-page .page-title p {
+    display: none;
   }
   .account-page .title-with-action > div {
     min-width: 0;
@@ -333,26 +341,20 @@
   .account-settings textarea,
   .settings-mobile-nav select {
     /* Avoid iOS focus zoom, which can leave a narrow page horizontally panned. */
-    font-size: 16px;
+    font-size: var(--type-body);
   }
   .account-key-actions a {
     display: inline-flex;
     align-items: center;
   }
-  .account-page .page-title h1 {
-    font-size: 24px;
-  }
-  .listing-toolbar {
-    flex-wrap: wrap;
+  .listing-toolbar,
+  .listing-toolbar:has([data-slot="select-trigger"]) {
+    grid-template-columns: minmax(0, 1fr);
     gap: 8px;
   }
   .listing-toolbar input {
     width: 100%;
     max-width: none;
-    flex-basis: 100%;
-  }
-  .listing-toolbar select {
-    width: 100%;
   }
 }
 .account-settings .quiet-caption {
@@ -361,15 +363,15 @@
 }
 .account-field-group {
   display: grid;
-  gap: 14px;
+  gap: var(--space-field);
   min-width: 0;
-  margin: 16px 0 8px;
+  margin: var(--space-label) 0 0;
   padding: 0;
   border: 0;
 }
 .account-field-group legend {
-  padding: 0 0 10px;
-  font-size: 14px;
+  padding: 0 0 var(--space-field);
+  font-size: var(--type-label);
   font-weight: 600;
 }
 .account-field-group + .account-field-group {
@@ -379,12 +381,12 @@
 .account-field-group .quiet-caption {
   margin-bottom: 2px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-support);
 }
 .account-optional {
   margin-left: 6px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-caption);
   font-weight: 400;
 }
 .account-settings textarea {
@@ -398,15 +400,16 @@
 .account-field-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-  gap: 16px;
+  gap: var(--space-group);
 }
-.account-character-count {
+.account-settings .account-character-count {
   justify-self: end;
   margin-top: -8px;
+  font-size: var(--type-caption);
 }
 .account-key-security {
   color: var(--muted);
-  font-size: 12px !important;
+  font-size: var(--type-support) !important;
   margin: 12px 0 24px;
 }
 .account-key-provider {
@@ -448,7 +451,7 @@
 }
 .account-key-actions a {
   color: var(--blue);
-  font-size: 12px;
+  font-size: var(--type-label);
   text-underline-offset: 3px;
   margin-left: auto;
 }
@@ -525,5 +528,168 @@
   .listing-readiness-mobile small {
     white-space: nowrap;
     color: var(--blue);
+  }
+}
+
+/* Owned listings use compact rows; saved items stay in the browsing grid. */
+.focused-layout .main-content.view-account:has(> .items-page) {
+  padding: var(--space-section) var(--space-page) calc(2 * var(--space-section));
+}
+.items-page .page-title {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: var(--space-group);
+}
+.items-page .page-title h1 {
+  font-size: var(--type-title);
+  line-height: 1.2;
+  font-weight: 550;
+  margin: 0;
+  letter-spacing: -0.6px;
+}
+.items-page .page-title p {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: var(--type-label);
+  color: var(--muted);
+}
+.items-page .page-title > .button {
+  min-height: var(--control-size);
+  font-size: var(--type-label);
+}
+.items-page .account-tabs {
+  display: flex;
+  gap: var(--space-group);
+  margin: 0 0 var(--space-group);
+}
+.items-page .account-tabs button {
+  min-height: 44px;
+  padding: 8px 0;
+  gap: 6px;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+}
+.items-page .account-tabs [aria-selected="true"] {
+  color: var(--blue);
+  border-bottom-color: var(--blue);
+}
+.items-page .listing-toolbar {
+  max-width: 720px;
+  margin-bottom: var(--space-group);
+}
+.items-page .listing-toolbar:has([data-slot="select-trigger"]) {
+  grid-template-columns: minmax(0, 1fr) 190px;
+}
+.items-page .own-listings {
+  gap: 0;
+  border-top: 1px solid var(--line);
+}
+.items-page .own-listing {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-group);
+  padding: var(--space-group) 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+.items-page .own-listing-image {
+  width: 80px;
+  height: 80px;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: var(--mist);
+  color: var(--muted);
+}
+.items-page .own-listing-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.items-page .own-listing-heading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 6px;
+}
+.items-page .own-listing h2 {
+  min-width: 0;
+  margin: 0;
+  font-size: var(--type-item);
+  font-weight: 550;
+  line-height: 1.4;
+}
+.items-page .own-listing-title {
+  padding: 0;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+}
+.items-page .own-listing-title:hover {
+  color: var(--blue);
+}
+.items-page .own-listing strong {
+  font-size: var(--type-body);
+  font-weight: 550;
+}
+.items-page .own-listing p {
+  overflow: hidden;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.items-page .listing-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.items-page .listing-actions .button {
+  min-height: 40px;
+  font-size: 13px;
+}
+.items-page .listing-actions .icon-button {
+  width: 44px;
+  height: 44px;
+  color: var(--muted);
+}
+@media (max-width: 760px) {
+  .focused-layout .main-content.view-account:has(> .items-page) {
+    padding-bottom: calc(var(--mobile-nav-height) + var(--space-section));
+  }
+  .items-page .page-title > .button {
+    min-height: 44px;
+    padding: 10px;
+    font-size: 13px;
+  }
+  .items-page .listing-toolbar:has([data-slot="select-trigger"]) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .items-page .own-listing {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 8px 12px;
+  }
+  .items-page .own-listing-image {
+    width: 64px;
+    height: 80px;
+  }
+  .items-page .listing-actions {
+    grid-column: 2;
+  }
+  .items-page .own-listing-heading {
+    gap: 4px 8px;
+  }
+  .items-page .listing-actions .button {
+    min-height: 44px;
   }
 }

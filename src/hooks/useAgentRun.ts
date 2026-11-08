@@ -5,6 +5,7 @@ import type {
   AgentRunDiagnostic,
   AgentRunRequest,
   AgentRunSource,
+  AgentReasoningPart,
 } from "../../shared/runs";
 import type {
   AgentActionEvent,
@@ -21,6 +22,7 @@ export type AgentRunTurn = {
   request: string;
   status: "idle" | "running" | "complete" | "error";
   text: string;
+  reasoning?: AgentReasoningPart[];
   sources: AgentRunSource[];
   questions: AgentQuestionEvent[];
   answers: Record<string, string>;
@@ -48,6 +50,7 @@ export const emptyAgentRunState = (): AgentRunState => ({
   request: "",
   status: "idle",
   text: "",
+  reasoning: [],
   sources: [],
   inventoryMatchIds: null,
   questions: [],
@@ -71,8 +74,11 @@ export function beginAgentRun(
     !retrying &&
     previous.id &&
     (previous.text ||
+      previous.sources.length ||
+      previous.inventoryMatchIds?.length ||
       previous.questions.length ||
       previous.actions.length ||
+      previous.reasoning?.some((part) => part.text) ||
       previous.proposal?.draft)
   ) {
     history = [
@@ -84,6 +90,7 @@ export function beginAgentRun(
         request: previous.request,
         status: previous.status,
         text: previous.text,
+        reasoning: stopReasoning(previous.reasoning),
         sources: previous.sources,
         questions: previous.questions,
         answers: previous.answers,
@@ -109,6 +116,32 @@ export function applyAgentRunEvent(
   event: AgentRunEvent,
 ): AgentRunState {
   switch (event.type) {
+    case "reasoning_start":
+      return {
+        ...state,
+        reasoning: [
+          ...(state.reasoning ?? []),
+          { id: event.id, text: "", status: "streaming" },
+        ],
+      };
+    case "reasoning_delta":
+      return {
+        ...state,
+        reasoning: state.reasoning?.map((part) =>
+          part.id === event.id
+            ? { ...part, text: part.text + event.text }
+            : part,
+        ),
+      };
+    case "reasoning_end":
+      return {
+        ...state,
+        reasoning: state.reasoning?.map((part) =>
+          part.id === event.id
+            ? { ...part, status: "complete", durationMs: event.durationMs }
+            : part,
+        ),
+      };
     case "negotiation_update":
       return { ...state, proposal: event.negotiation };
     case "status": {
@@ -157,6 +190,7 @@ export function applyAgentRunEvent(
         ...state,
         id: event.runId,
         status: "complete",
+        reasoning: stopReasoning(state.reasoning),
         text: event.text,
         sources: event.sources,
         error: null,
@@ -165,10 +199,19 @@ export function applyAgentRunEvent(
       return {
         ...state,
         status: "error",
+        reasoning: stopReasoning(state.reasoning),
         error: event.message,
         diagnostic: event.diagnostic,
       };
   }
+}
+
+function stopReasoning(parts?: AgentReasoningPart[]) {
+  return parts?.map((part) =>
+    part.status === "streaming"
+      ? { ...part, status: "stopped" as const }
+      : part,
+  );
 }
 
 export function answerAgentQuestion(
@@ -247,6 +290,7 @@ export function useAgentRun() {
           setState((previous) => ({
             ...previous,
             status: "error",
+            reasoning: stopReasoning(previous.reasoning),
             error:
               error instanceof Error
                 ? error.message
@@ -270,7 +314,12 @@ export function useAgentRun() {
     active.current = null;
     setState((previous) =>
       previous.status === "running"
-        ? { ...previous, status: "idle", error: null }
+        ? {
+            ...previous,
+            status: "idle",
+            error: null,
+            reasoning: stopReasoning(previous.reasoning),
+          }
         : previous,
     );
   }, []);

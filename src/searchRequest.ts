@@ -102,7 +102,7 @@ export function newSearch(
   const ownOnly =
     /\b(?:only (?:my|local|your|our)(?: active)? listings|(?:do not|don't|don’t) search (?:the )?web)\b/gi;
   const allSources =
-    /\b(?:all (?:sources|platforms)|(?:search|include|use) (?:the )?web|any (?:source|platform))\b/gi;
+    /\b(?:all (?:sources|platforms)|(?:search|include|use) (?:the )?web|takeover\s+(?:and|und|\+)\s+(?:(?:the|das)\s+)?web|any (?:source|platform))\b/gi;
   const criteria = parseSearch(
     request.replace(ownOnly, "").replace(allSources, ""),
     base,

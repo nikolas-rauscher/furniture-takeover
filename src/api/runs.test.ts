@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import type { AgentRunEvent, AgentRunRequest } from "../../shared/runs.ts";
 import { readAgentRunStream, safeSourceUrl, streamAgentRun } from "./runs.ts";
+import { MAX_REASONING_CHARS } from "../../shared/runs.ts";
 
 const encoder = new TextEncoder();
 const source = {
@@ -79,6 +80,9 @@ test("NDJSON handles every byte boundary, including fragmented emoji and accente
       state: "running",
     },
     { type: "text_delta", text: "Genève " },
+    { type: "reasoning_start", id: "thinking-1" },
+    { type: "reasoning_delta", id: "thinking-1", text: "Compare Genève 🪑" },
+    { type: "reasoning_end", id: "thinking-1", durationMs: 1200 },
     { type: "text_delta", text: "🪑" },
     { type: "sources", sources: [source] },
     complete,
@@ -86,6 +90,79 @@ test("NDJSON handles every byte boundary, including fragmented emoji and accente
   const seen: AgentRunEvent[] = [];
   await readAgentRunStream(body(input, 1), (event) => seen.push(event));
   assert.deepEqual(seen, input);
+});
+
+test("tool failures preserve safe recovery details and reject malformed metadata", async () => {
+  const step: AgentRunEvent = {
+    type: "status",
+    id: "web-error",
+    task: "web",
+    label: "Searching the web",
+    state: "error",
+    failure: {
+      code: "WEB_SEARCH_BUSY",
+      message: "Web search is busy. Try again shortly.",
+      retryable: true,
+    },
+  };
+  const seen: AgentRunEvent[] = [];
+  await readAgentRunStream(body([step, complete], 1), (event) =>
+    seen.push(event),
+  );
+  assert.deepEqual(seen, [step, complete]);
+  for (const failure of [
+    null,
+    { code: "x", message: "", retryable: true },
+    { code: "x", message: "x".repeat(501), retryable: true },
+    { code: "x", message: "Try again", retryable: "yes" },
+  ])
+    await assert.rejects(
+      readAgentRunStream(
+        body([{ ...step, failure } as AgentRunEvent, complete]),
+        () => {},
+      ),
+      { code: "INVALID_STREAM" },
+    );
+  await assert.rejects(
+    readAgentRunStream(
+      body([{ ...step, state: "complete" }, complete]),
+      () => {},
+    ),
+    { code: "INVALID_STREAM" },
+  );
+});
+
+test("reasoning streams reject invalid ordering, durations and oversized output", async () => {
+  const start = { type: "reasoning_start", id: "thinking-1" } as const;
+  const end = {
+    type: "reasoning_end",
+    id: "thinking-1",
+    durationMs: 20,
+  } as const;
+  const delta = {
+    type: "reasoning_delta",
+    id: "thinking-1",
+    text: "Check the listing.",
+  } as const;
+  const invalid: unknown[][] = [
+    [delta],
+    [end],
+    [start, start],
+    [start, end, delta],
+    [start, { ...end, durationMs: -1 }],
+    [start, { ...end, durationMs: 120_001 }],
+    [start, { ...delta, text: "a".repeat(MAX_REASONING_CHARS) }, delta],
+    Array.from({ length: 33 }, (_, index) => ({ ...start, id: String(index) })),
+  ];
+  for (const events of invalid) {
+    await assert.rejects(
+      readAgentRunStream(
+        body([...events, complete] as AgentRunEvent[]),
+        () => {},
+      ),
+      { code: "INVALID_STREAM" },
+    );
+  }
 });
 
 test("stream accepts a listing step awaiting seller details without turning it into an error", async () => {
@@ -100,6 +177,57 @@ test("stream accepts a listing step awaiting seller details without turning it i
     seen.push(event),
   );
   assert.deepEqual(seen, [needsInput, complete]);
+});
+
+test("task groups survive streaming status updates while legacy steps stay supported", async () => {
+  const events: AgentRunEvent[] = [
+    {
+      type: "status",
+      id: "read",
+      label: "Reading your request",
+      state: "complete",
+    },
+    ...(["request", "listings", "web", "listing", "proposal"] as const).flatMap(
+      (task) => [
+        {
+          type: "status",
+          id: task,
+          label: "Checking details",
+          state: "running",
+          task,
+        } as const,
+        {
+          type: "status",
+          id: task,
+          label: "Checked details",
+          state: "complete",
+          task,
+        } as const,
+      ],
+    ),
+    complete,
+  ];
+  const seen: AgentRunEvent[] = [];
+  await readAgentRunStream(body(events, 1), (event) => seen.push(event));
+  assert.deepEqual(seen, events);
+  for (const task of [null, {}, 42, "unknown", "web\n"]) {
+    await assert.rejects(
+      readAgentRunStream(
+        body([
+          {
+            type: "status",
+            id: "web",
+            label: "Searching",
+            state: "running",
+            task,
+          },
+          complete,
+        ] as AgentRunEvent[]),
+        () => {},
+      ),
+      { code: "INVALID_STREAM" },
+    );
+  }
 });
 
 test("a final complete event does not require a trailing newline", async () => {
@@ -319,6 +447,34 @@ test("real HTTPS thumbnails survive source and completion events", async () => {
     seen[0].type === "sources" && seen[0].sources[0].url,
     source.url,
   );
+});
+
+test("sources accept optional titles and use the hostname without losing citation IDs", async () => {
+  for (const title of [undefined, "", "   ", "  Oak chair  "]) {
+    const input = { ...source, title, url: "https://www.example.com/chair" };
+    const seen: AgentRunEvent[] = [];
+    await readAgentRunStream(
+      body([{ ...complete, sources: [input] }] as AgentRunEvent[], 3),
+      (event) => seen.push(event),
+    );
+    assert.deepEqual(seen, [
+      {
+        ...complete,
+        sources: [{ ...input, title: title?.trim() || "example.com" }],
+      },
+    ]);
+  }
+  for (const title of [null, 42, "a".repeat(1001)]) {
+    await assert.rejects(
+      readAgentRunStream(
+        body([
+          { ...complete, sources: [{ ...source, title }] },
+        ] as AgentRunEvent[]),
+        () => {},
+      ),
+      { code: "INVALID_STREAM" },
+    );
+  }
 });
 
 test("an unsafe or malformed optional thumbnail is removed without losing the source", async () => {

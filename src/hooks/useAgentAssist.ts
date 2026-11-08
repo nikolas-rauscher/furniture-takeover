@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AssistRequest, AssistResponse } from "../../shared/agent";
 import { requestAgentAssist } from "../api/agent";
 
@@ -47,6 +47,11 @@ export function useAgentAssist(
 ): AgentAssistState {
   const requestKey = requestKeyFor(request);
   const [attempt, setAttempt] = useState(0);
+  const completed = useRef<{
+    requestKey: string;
+    attempt: number;
+    response: AssistResponse;
+  } | null>(null);
   const [result, setResult] = useState<Result>({
     requestKey: null,
     status: "idle",
@@ -57,6 +62,20 @@ export function useAgentAssist(
 
   useEffect(() => {
     if (!requestKey) return;
+    const cached = completed.current;
+    if (cached?.requestKey === requestKey && cached.attempt === attempt) {
+      setResult((current) =>
+        current.requestKey === requestKey && current.status === "success"
+          ? current
+          : {
+              requestKey,
+              status: "success",
+              response: cached.response,
+              error: null,
+            },
+      );
+      return;
+    }
     const controller = new AbortController();
     let active = true;
     setResult({ requestKey, status: "idle", response: null, error: null });
@@ -68,8 +87,10 @@ export function useAgentAssist(
           JSON.parse(requestKey) as TypingAssistRequest,
           { signal: controller.signal },
         );
-        if (active)
+        if (active) {
+          completed.current = { requestKey, attempt, response };
           setResult({ requestKey, status: "success", response, error: null });
+        }
       } catch (error) {
         if (!active || controller.signal.aborted) return;
         setResult({
@@ -93,6 +114,15 @@ export function useAgentAssist(
 
   // Never show suggestions for the previous text, even during the render before
   // the effect cleans up an older request.
+  // Pausing a visited tab keeps its completed suggestions in place. An empty
+  // or changed input still hides results that belong to the previous text.
+  if (!request && (result.status === "success" || result.status === "error"))
+    return {
+      status: result.status,
+      response: result.response,
+      error: result.error,
+      retry,
+    };
   if (!requestKey)
     return { status: "idle", response: null, error: null, retry };
   if (result.requestKey !== requestKey)

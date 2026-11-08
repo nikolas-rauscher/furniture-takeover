@@ -1,3 +1,5 @@
+import { Input } from "../components/ui/input";
+import { Button } from "../components/ui/button";
 import { useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fail } from "./client";
@@ -72,7 +74,7 @@ export default function Auth({
         {mode !== "password" && (
           <label>
             Email
-            <input
+            <Input
               type="email"
               autoComplete="email"
               required
@@ -84,7 +86,7 @@ export default function Auth({
         {mode !== "reset" && (
           <label>
             Password
-            <input
+            <Input
               type="password"
               autoComplete={
                 mode === "login" ? "current-password" : "new-password"
@@ -99,7 +101,7 @@ export default function Auth({
         {mode === "password" && (
           <label>
             Confirm password
-            <input
+            <Input
               type="password"
               autoComplete="new-password"
               minLength={8}
@@ -109,7 +111,12 @@ export default function Auth({
             />
           </label>
         )}
-        <button className="button primary" disabled={busy}>
+        <Button
+          animateIcon
+          type="submit"
+          className="button primary"
+          disabled={busy}
+        >
           {busy
             ? "Please wait…"
             : mode === "reset"
@@ -117,29 +124,29 @@ export default function Auth({
               : mode === "password"
                 ? "Save password"
                 : "Sign in"}
-        </button>
+        </Button>
       </form>
       {notice && <p role="status">{notice}</p>}
       {!recovery && (
         <div className="account-actions">
           {mode === "reset" && (
-            <button
+            <Button
               onClick={() => {
                 setMode("login");
                 setNotice("");
               }}
             >
               Back to sign in
-            </button>
+            </Button>
           )}
-          <button
+          <Button
             onClick={() => {
               setMode("reset");
               setNotice("");
             }}
           >
             Forgot password?
-          </button>
+          </Button>
         </div>
       )}
     </section>

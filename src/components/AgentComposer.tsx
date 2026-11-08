@@ -1,4 +1,10 @@
-import { ArrowRight } from "lucide-react";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupTextarea,
+} from "./ui/input-group";
+import { ArrowRight, Square } from "@/components/icons";
 import { useLayoutEffect, useRef } from "react";
 import { fitTextarea } from "../textarea";
 import "./agent-composer.css";
@@ -11,6 +17,7 @@ type AgentComposerProps = {
   placeholder: string;
   sendLabel: string;
   disabled?: boolean;
+  onStop?: () => void;
 };
 
 export default function AgentComposer({
@@ -21,6 +28,7 @@ export default function AgentComposer({
   placeholder,
   sendLabel,
   disabled = false,
+  onStop,
 }: AgentComposerProps) {
   const textarea = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => {
@@ -43,41 +51,63 @@ export default function AgentComposer({
   };
   return (
     <form
-      className="assistant-composer conversation-composer"
+      className="agent-prompt-form"
       onSubmit={(event) => {
         event.preventDefault();
         send();
       }}
     >
-      <textarea
-        ref={textarea}
-        aria-label={label}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        disabled={disabled}
-        rows={1}
-        maxLength={4000}
-        onKeyDown={(event) => {
-          if (
-            event.key === "Enter" &&
-            !event.shiftKey &&
-            !event.nativeEvent.isComposing
-          ) {
-            event.preventDefault();
-            send();
-          }
-        }}
-      />
-      <div>
-        <button
-          type="submit"
-          aria-label={sendLabel}
-          disabled={disabled || !value.trim()}
-        >
-          <ArrowRight size={18} />
-        </button>
-      </div>
+      <InputGroup className="assistant-composer conversation-composer">
+        <InputGroupTextarea
+          ref={textarea}
+          aria-label={label}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          disabled={disabled && !onStop}
+          enterKeyHint={onStop ? "enter" : "send"}
+          rows={1}
+          maxLength={4000}
+          onKeyDown={(event) => {
+            if (
+              event.key === "Enter" &&
+              !event.shiftKey &&
+              !onStop &&
+              !event.nativeEvent.isComposing
+            ) {
+              event.preventDefault();
+              send();
+            }
+          }}
+        />
+        <InputGroupAddon align="inline-end">
+          <InputGroupButton
+            key={onStop ? "stop" : "send"}
+            animateIcon
+            size="icon-sm"
+            variant="plain"
+            type={onStop ? "button" : "submit"}
+            aria-label={onStop ? "Stop agent" : sendLabel}
+            title={onStop ? "Stop agent" : sendLabel}
+            disabled={!onStop && (disabled || !value.trim())}
+            onClick={
+              onStop
+                ? (event) => {
+                    event.preventDefault();
+                    onStop();
+                    textarea.current?.focus({ preventScroll: true });
+                  }
+                : undefined
+            }
+          >
+            {onStop ? (
+              <Square size={14} fill="currentColor" aria-hidden="true" />
+            ) : (
+              <ArrowRight size={18} aria-hidden="true" />
+            )}
+          </InputGroupButton>
+        </InputGroupAddon>
+      </InputGroup>
     </form>
   );
 }

@@ -1,3 +1,5 @@
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 import { useEffect, useState } from "react";
 import {
   getAccountKeys,
@@ -89,12 +91,12 @@ export default function AccountApiKeys() {
         <div role="alert" className="account-notice">
           <p>{error}</p>
           {!status && !loading && (
-            <button
+            <Button
               type="button"
               onClick={() => setAttempt((value) => value + 1)}
             >
               Retry loading keys
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -139,7 +141,7 @@ export default function AccountApiKeys() {
             <p className="quiet-caption">{provider.description}</p>
             <label>
               {saved?.saved ? "Replacement API key" : "API key"}
-              <input
+              <Input
                 type="password"
                 autoComplete="off"
                 autoCapitalize="none"
@@ -160,7 +162,9 @@ export default function AccountApiKeys() {
               />
             </label>
             <div className="account-key-actions">
-              <button
+              <Button
+                animateIcon
+                type="submit"
                 className="button primary"
                 disabled={unavailable || !drafts[provider.id].trim()}
               >
@@ -169,15 +173,15 @@ export default function AccountApiKeys() {
                   : saved?.saved
                     ? "Replace key"
                     : "Save key"}
-              </button>
+              </Button>
               {saved?.saved && (
-                <button
+                <Button
                   type="button"
                   disabled={unavailable}
                   onClick={() => void updateKey(provider.id, true)}
                 >
                   Remove key
-                </button>
+                </Button>
               )}
               <a href={provider.url} target="_blank" rel="noopener noreferrer">
                 Get a {provider.name} key

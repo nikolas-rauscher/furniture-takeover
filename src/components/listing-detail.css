@@ -13,7 +13,7 @@
 .listing-detail-main {
   display: grid;
   grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
-  gap: 32px;
+  gap: var(--space-section);
   align-items: start;
 }
 .listing-detail-media,
@@ -40,7 +40,7 @@
 .listing-detail-provenance {
   margin-top: 12px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--type-caption);
   line-height: 1.55;
   max-width: 56ch;
 }
@@ -63,10 +63,10 @@
 }
 .listing-detail-heading h1 {
   margin: 0 0 12px;
-  font-size: clamp(24px, 2.2vw, 29px);
+  font-size: var(--type-title);
   font-weight: 600;
   line-height: 1.2;
-  letter-spacing: -0.7px;
+  letter-spacing: -0.025em;
   overflow-wrap: anywhere;
 }
 .listing-detail-price-row {
@@ -78,7 +78,7 @@
 .listing-detail-price {
   min-width: 0;
   max-width: 100%;
-  font-size: 28px;
+  font-size: var(--type-price);
   font-weight: 600;
   line-height: 1.25;
   letter-spacing: -0.7px;
@@ -105,9 +105,9 @@
 .listing-detail-facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 13px 20px;
-  padding: 18px 0;
-  margin: 18px 0 0;
+  gap: var(--space-field) var(--space-group);
+  padding: var(--space-group) 0;
+  margin: var(--space-group) 0 0;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
 }
@@ -116,12 +116,12 @@
 }
 .listing-detail-facts dt {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--type-caption);
   margin-bottom: 4px;
 }
 .listing-detail-facts dd {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--type-label);
   line-height: 1.45;
   font-weight: 500;
   overflow-wrap: anywhere;
@@ -153,7 +153,7 @@
   font-weight: 600;
 }
 .listing-detail-seller div > span {
-  font-size: 11px;
+  font-size: var(--type-caption);
   color: var(--muted);
 }
 .listing-detail-actions .button {
@@ -218,8 +218,9 @@
 .listing-detail-description > p {
   margin: 7px 0 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-body);
   line-height: 1.65;
+  max-width: var(--measure-prose);
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
@@ -262,15 +263,15 @@
   font-size: 11px;
 }
 .listing-detail-related {
-  margin-top: 36px;
-  padding-top: 24px;
+  margin-top: var(--space-section);
+  padding-top: var(--space-group);
   border-top: 1px solid var(--line);
 }
 .listing-detail-related-heading {
   margin-bottom: 18px;
 }
 .listing-detail-related h2 {
-  font-size: 20px;
+  font-size: var(--type-section);
   letter-spacing: -0.4px;
 }
 .listing-detail-related-heading p {
@@ -281,7 +282,7 @@
 .listing-detail-related-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
+  gap: var(--space-group);
 }
 .listing-detail-related-grid > div {
   min-width: 0;
@@ -328,7 +329,6 @@
   }
   .listing-detail-main {
     grid-template-columns: minmax(0, 1fr);
-    gap: 22px;
   }
   .listing-detail > .back-link {
     margin-bottom: 16px;
@@ -337,15 +337,8 @@
     aspect-ratio: 4 / 3;
     max-height: 52dvh;
   }
-  .listing-detail-heading h1 {
-    font-size: 25px;
-  }
   .listing-detail-provenance {
     max-width: none;
-  }
-  .listing-detail-related {
-    margin-top: 28px;
-    padding-top: 21px;
   }
   .listing-detail-related-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

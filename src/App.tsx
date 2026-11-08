@@ -1,3 +1,13 @@
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "./components/ui/dropdown-menu";
+import { Button } from "./components/ui/button";
+import { Badge } from "./components/ui/badge";
+import { Textarea } from "./components/ui/textarea";
+import { Input } from "./components/ui/input";
 import { readRoute, type View } from "./navigation";
 import type { AccountConnection } from "./cloud/AccountSession";
 import Auth from "./cloud/Auth";
@@ -12,7 +22,8 @@ import ComparePage from "./components/ComparePage";
 import SavedSearchesPage from "./components/SavedSearchesPage";
 import { listingPhotos, MAX_LISTING_PHOTOS } from "../shared/listingPhotos";
 import { readListingPhoto } from "./listingPhotos";
-import { animateUiChange, scrollToPageStart } from "./uiMotion";
+import WorkspacePage from "./components/WorkspacePage";
+import WorkspaceHeader from "./components/WorkspaceHeader";
 import MessagesPage from "./components/MessagesPage";
 import { useNegotiations } from "./hooks/useNegotiations";
 import NegotiationSummary, {
@@ -25,6 +36,7 @@ import {
   type Negotiation,
 } from "../shared/negotiation";
 import AgentConversation from "./components/AgentConversation";
+import AgentListings from "./components/AgentListings";
 import AgentComposer from "./components/AgentComposer";
 import { prepareListingDraft } from "./listingPreparation";
 import { HeroHeadline } from "./components/HeroHeadline";
@@ -37,7 +49,6 @@ import {
   type SetStateAction,
 } from "react";
 import {
-  ArrowLeft,
   ArrowRight,
   Bookmark,
   Camera,
@@ -45,11 +56,11 @@ import {
   ChevronDown,
   GitCompareArrows,
   Plus,
-  Pencil,
   Search,
+  SquarePen,
   UserRound,
   X,
-} from "lucide-react";
+} from "@/components/icons";
 import MobileNav from "./MobileNav";
 import Modal from "./components/Modal";
 import ProductCard from "./components/ProductCard";
@@ -225,6 +236,7 @@ export default function App({ account }: { account?: AccountConnection }) {
   const own = database.listings;
   const setOwn = database.setListings;
   const [compared, setCompared] = useState<string[]>([]);
+  const comparisonOrigin = useRef<View>("discover");
   const [selectedId, setSelectedId] = useState<string | null>(
     readRoute(window.location.hash).view === "detail"
       ? (readRoute(window.location.hash).listingId ?? null)
@@ -246,6 +258,7 @@ export default function App({ account }: { account?: AccountConnection }) {
   const [sellStep, setSellStep] = useState(1);
   const [editingListing, setEditingListing] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState("");
+  const hasSellingDraft = useRef(view === "sell");
   const [photoReading, setPhotoReading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toastNotice, setToastNotice] = useState<{
@@ -283,25 +296,74 @@ export default function App({ account }: { account?: AccountConnection }) {
   const comparison = visibleListings.filter((item) =>
     compared.includes(item.id),
   );
-  const isHome = view === "discover" && !searching;
+  const searchIsHome = !searching;
+  const isHome = view === "discover" && searchIsHome;
+  const mainContent = useRef<HTMLElement>(null);
+  const pageKey =
+    view === "discover"
+      ? isHome
+        ? "home"
+        : "search"
+      : view === "account"
+        ? `account-${accountTab}`
+        : view === "sell"
+          ? `sell-${sellStep}`
+          : view === "detail"
+            ? `listing-${selectedId}`
+            : view;
+  const previousPage = useRef(pageKey);
+  const scrollPositions = useRef(
+    new Map<string, { top: number; left: number }>(),
+  );
+  useEffect(() => {
+    const previous = window.history.scrollRestoration;
+    window.history.scrollRestoration = "manual";
+    return () => {
+      window.history.scrollRestoration = previous;
+    };
+  }, []);
   useLayoutEffect(() => {
-    if (
-      view === "sell" ||
-      view === "messages" ||
-      (view === "discover" && !isHome)
-    )
-      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-  }, [view, isHome]);
+    const changed = previousPage.current !== pageKey;
+    previousPage.current = pageKey;
+    const position = scrollPositions.current.get(pageKey) ?? {
+      top: 0,
+      left: 0,
+    };
+    if (changed) window.scrollTo({ ...position, behavior: "instant" });
+    if (changed && document.activeElement === document.body)
+      mainContent.current?.focus({ preventScroll: true });
+    const remember = () =>
+      scrollPositions.current.set(pageKey, {
+        top: window.scrollY,
+        left: window.scrollX,
+      });
+    window.addEventListener("scroll", remember, { passive: true });
+    return () => window.removeEventListener("scroll", remember);
+  }, [pageKey]);
   const reviewingListing =
     !isHome && committedSearch?.intent === "listing_review";
+  const resultCriteria = committedSearch?.criteria ?? criteria;
+  const budgetLabel =
+    resultCriteria.maxPrice >= 1_000_000
+      ? "Any budget"
+      : resultCriteria.maxPrice === 0
+        ? "Free only"
+        : "Up to " + money(resultCriteria.maxPrice);
+  const sourceLabel =
+    resultCriteria.source === "All"
+      ? "All sources"
+      : resultCriteria.source === "takeover"
+        ? "Takeover"
+        : resultCriteria.source;
+  const compactPreferences = [
+    budgetLabel,
+    `${resultCriteria.radius} km`,
+    sourceLabel,
+  ].join(" · ");
   const activePreferences =
     committedSearch && !reviewingListing
       ? [
-          committedSearch.criteria.maxPrice >= 1_000_000
-            ? "Any budget"
-            : committedSearch.criteria.maxPrice === 0
-              ? "Free only"
-              : "Up to " + money(committedSearch.criteria.maxPrice),
+          budgetLabel,
           committedSearch.criteria.radius +
             " km of " +
             committedSearch.location,
@@ -311,11 +373,9 @@ export default function App({ account }: { account?: AccountConnection }) {
           committedSearch.criteria.condition === "All"
             ? "Any condition"
             : committedSearch.criteria.condition + " condition",
-          committedSearch.criteria.source === "All"
-            ? "All sources"
-            : committedSearch.criteria.source === "takeover"
-              ? "Your listings only"
-              : committedSearch.criteria.source,
+          resultCriteria.source === "takeover"
+            ? "Takeover listings only"
+            : sourceLabel,
         ].join(" · ")
       : "";
   const running = agentRun.state.status === "running";
@@ -392,14 +452,20 @@ export default function App({ account }: { account?: AccountConnection }) {
       navigate("settings", fromHistory);
       return;
     }
-    searchRunToken.current += 1;
-    listingRunToken.current += 1;
-    agentRun.cancel();
-    listingRun.cancel();
-    listingRequest.current?.abort();
-    cancelPhotoRead();
-    setBusy(false);
-    animateUiChange(() => setView(next));
+    if (next !== view) {
+      scrollPositions.current.set(pageKey, {
+        top: window.scrollY,
+        left: window.scrollX,
+      });
+      searchRunToken.current += 1;
+      listingRunToken.current += 1;
+      agentRun.cancel();
+      listingRun.cancel();
+      listingRequest.current?.abort();
+      cancelPhotoRead();
+      setBusy(false);
+    }
+    setView(next);
     if (!fromHistory) {
       const hash =
         next === "discover"
@@ -415,7 +481,6 @@ export default function App({ account }: { account?: AccountConnection }) {
         );
     }
     setModal(null);
-    scrollToPageStart();
   }
   useEffect(() => {
     const restore = () => {
@@ -439,8 +504,10 @@ export default function App({ account }: { account?: AccountConnection }) {
       navigate("settings");
       return;
     }
-    setMessageProposal(proposal);
-    setMessageListingId(listingId);
+    if (listingId) {
+      setMessageProposal(proposal);
+      setMessageListingId(listingId);
+    }
     navigate("messages");
     if (listingId)
       window.history.replaceState(
@@ -450,6 +517,7 @@ export default function App({ account }: { account?: AccountConnection }) {
       );
   }
   function goHome() {
+    scrollPositions.current.delete("home");
     navigate("discover");
     agentRun.reset();
     setSearching(false);
@@ -471,6 +539,7 @@ export default function App({ account }: { account?: AccountConnection }) {
       return;
     }
     if (view === "sell") return;
+    hasSellingDraft.current = true;
     navigate("sell");
     resetListingConversation();
     listingRevisions.current = {};
@@ -478,6 +547,13 @@ export default function App({ account }: { account?: AccountConnection }) {
     setSellStep(1);
     setEditingListing(null);
     setUploadError("");
+  }
+  function openSell() {
+    if (hasSellingDraft.current) navigate("sell");
+    else startSell();
+  }
+  function openBrowse() {
+    navigate("discover");
   }
   function openProduct(item: Product) {
     if (item.status === "withdrawn") return;
@@ -499,6 +575,10 @@ export default function App({ account }: { account?: AccountConnection }) {
         ? current.filter((item) => item !== id)
         : [...current, id],
     );
+  }
+  function openComparison() {
+    comparisonOrigin.current = view;
+    navigate("compare");
   }
   function toggleCompare(id: string) {
     setCompared((current) => {
@@ -553,6 +633,7 @@ export default function App({ account }: { account?: AccountConnection }) {
     proposal?: Negotiation,
     preserveConversation = false,
   ) {
+    if (quotaExhausted) return;
     if (!signedIn) {
       navigate("settings");
       return;
@@ -582,7 +663,9 @@ export default function App({ account }: { account?: AccountConnection }) {
     setModal(null);
     setSearching(true);
     if (!preserveHistory) setQuery(search.originalRequest);
-    setFollowUp("");
+    setFollowUp((current) =>
+      !preserveHistory || current.trim() === search.text.trim() ? "" : current,
+    );
     storeSearch(search);
 
     const request = agentSearchRequest(search, activeListings);
@@ -640,7 +723,7 @@ export default function App({ account }: { account?: AccountConnection }) {
     isFollowUp = false,
     question?: string,
   ) {
-    if (!text.trim() || running) return;
+    if (!text.trim() || running || quotaExhausted) return;
     const unanswered =
       isFollowUp && !question
         ? agentRun.state.questions.find(
@@ -723,11 +806,12 @@ export default function App({ account }: { account?: AccountConnection }) {
     );
   }
   function answerSearchQuestion(id: string, answer: string) {
-    if (running) return;
+    if (running) return false;
     const question = agentRun.state.questions.find((item) => item.id === id);
-    if (!question) return;
+    if (!question || agentRun.state.answers[id]) return false;
     agentRun.markQuestionAnswered(id, answer);
     void runSearch(answer, criteria, true, question.question);
+    return true;
   }
   function resetListingConversation() {
     listingRunToken.current += 1;
@@ -813,10 +897,14 @@ export default function App({ account }: { account?: AccountConnection }) {
         : "Undone. Previous details restored.",
     }));
   }
-  async function runListing(text: string, question?: string, action = false) {
+  async function runListing(
+    text: string,
+    question?: string,
+    explicitRequest = false,
+  ) {
     if (!text.trim()) return;
     const unanswered =
-      !question && !action
+      !question && !explicitRequest
         ? listingRun.state.questions.find(
             (item) => !listingRun.state.answers[item.id],
           )
@@ -829,7 +917,9 @@ export default function App({ account }: { account?: AccountConnection }) {
     const baseline = { ...listingRevisions.current };
     const current = draftRef.current;
     lastListingRequest.current = { text, question };
-    setListingInput("");
+    setListingInput((current) =>
+      current.trim() === text.trim() ? "" : current,
+    );
     await listingRun.run(
       {
         text: text.trim(),
@@ -892,11 +982,12 @@ export default function App({ account }: { account?: AccountConnection }) {
     );
   }
   function answerListingQuestion(id: string, answer: string) {
-    if (listingRun.state.status === "running") return;
+    if (listingRun.state.status === "running") return false;
     const question = listingRun.state.questions.find((item) => item.id === id);
-    if (!question) return;
+    if (!question || listingRun.state.answers[id]) return false;
     listingRun.markQuestionAnswered(id, answer);
     void runListing(answer, question.question);
+    return true;
   }
   function saveSearch() {
     const existing = editingJob
@@ -1006,8 +1097,7 @@ export default function App({ account }: { account?: AccountConnection }) {
       const current = draftRef.current;
       const prepared = prepareListingDraft(current, metadata);
       setDraft(prepared);
-      animateUiChange(() => setSellStep(2));
-      scrollToPageStart();
+      setSellStep(2);
       void runListing(
         "Help me finish this listing using the recognised photo details already in the draft. If there is no asking price, research comparable second-hand offers and propose a source-backed starting price for my review, then let me choose a price with a slider or give it away. Ask only the next necessary missing detail using short clickable answers, including pickup times when relevant.",
       );
@@ -1110,6 +1200,7 @@ export default function App({ account }: { account?: AccountConnection }) {
       );
       return;
     }
+    hasSellingDraft.current = false;
     setAccountTab("listings");
     navigate("account");
     setToast(
@@ -1121,6 +1212,7 @@ export default function App({ account }: { account?: AccountConnection }) {
   function editListing(item: Product) {
     if (account && !item.own) return;
     if (item.status === "withdrawn") return;
+    hasSellingDraft.current = true;
     navigate("sell");
     resetListingConversation();
     listingRevisions.current = {};
@@ -1158,66 +1250,45 @@ export default function App({ account }: { account?: AccountConnection }) {
         : "Listing status updated.",
     );
   }
+  const listingTools = (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={<Button variant="outline" size="sm" />}
+        disabled={!configured || listingRun.state.status === "running"}
+      >
+        Agent tools <ChevronDown size={14} />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="agent-tools-menu">
+        {[
+          [
+            "Research this item",
+            "Research comparable individual secondhand offers for this item.",
+          ],
+          [
+            "Suggest a price",
+            "Research comparable asking prices and suggest a price for this listing.",
+          ],
+          [
+            "Check listing",
+            "Check my listing for missing condition, dimensions and pickup details.",
+          ],
+          [
+            "Improve description",
+            "Improve my description using the photos and details I provided. Keep it concise and natural.",
+          ],
+        ].map(([label, request]) => (
+          <DropdownMenuItem
+            key={label}
+            onClick={() => void runListing(request, undefined, true)}
+          >
+            {label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
   const listingConversation = (
     <section className="listing-conversation" aria-label="Listing agent">
-      <div className="listing-research-actions">
-        <button
-          type="button"
-          className="text-button"
-          disabled={!configured || listingRun.state.status === "running"}
-          onClick={() =>
-            void runListing(
-              "Research comparable individual secondhand offers for this item.",
-              undefined,
-              true,
-            )
-          }
-        >
-          Research this item <ArrowRight size={14} />
-        </button>
-        <button
-          type="button"
-          className="text-button"
-          disabled={!configured || listingRun.state.status === "running"}
-          onClick={() =>
-            void runListing(
-              "Research comparable asking prices and suggest a price for this listing.",
-              undefined,
-              true,
-            )
-          }
-        >
-          Suggest a price <ArrowRight size={14} />
-        </button>
-        <button
-          type="button"
-          className="text-button"
-          disabled={!configured || listingRun.state.status === "running"}
-          onClick={() =>
-            void runListing(
-              "Check my listing for missing condition, dimensions and pickup details.",
-              undefined,
-              true,
-            )
-          }
-        >
-          Check listing <Check size={14} />
-        </button>
-        <button
-          type="button"
-          className="text-button"
-          disabled={!configured || listingRun.state.status === "running"}
-          onClick={() =>
-            void runListing(
-              "Improve my description using the photos and details I provided. Keep it concise and natural.",
-              undefined,
-              true,
-            )
-          }
-        >
-          Improve description <Pencil size={14} />
-        </button>
-      </div>
       <AgentConversation
         state={listingRun.state}
         footer={
@@ -1226,9 +1297,14 @@ export default function App({ account }: { account?: AccountConnection }) {
             onChange={setListingInput}
             onSend={() => void runListing(listingInput)}
             label="Tell the listing agent"
-            placeholder="Add a detail, change the price or plan pickup…"
+            placeholder="Add a detail…"
             sendLabel="Send to listing agent"
             disabled={!configured || listingRun.state.status === "running"}
+            onStop={
+              listingRun.state.status === "running"
+                ? listingRun.cancel
+                : undefined
+            }
           />
         }
         requestLabel={(request) =>
@@ -1242,6 +1318,7 @@ export default function App({ account }: { account?: AccountConnection }) {
             className={archived ? "archived-agent-response" : ""}
             conversational
             externalComposer
+            readOnly={archived}
             showHistory={false}
             state={turn}
             onCancel={() => {
@@ -1251,7 +1328,7 @@ export default function App({ account }: { account?: AccountConnection }) {
             onReset={resetListingConversation}
             onRetry={() => {
               const last = lastListingRequest.current;
-              if (last) void runListing(last.text, last.question);
+              if (last) void runListing(last.text, last.question, true);
             }}
             onAnswer={answerListingQuestion}
             onSkipQuestion={(id) =>
@@ -1286,9 +1363,9 @@ export default function App({ account }: { account?: AccountConnection }) {
   const connectionStatus =
     account && !signedIn ? (
       <div className="agent-footnote">
-        <button type="button" onClick={() => navigate("settings")}>
+        <Button type="button" onClick={() => navigate("settings")}>
           Sign in to use your agent
-        </button>
+        </Button>
       </div>
     ) : quotaExhausted ? (
       <div className="agent-footnote" role="status">
@@ -1313,13 +1390,13 @@ export default function App({ account }: { account?: AccountConnection }) {
               : "Connecting…"}
         </span>
         {(!configured || healthError) && (
-          <button
+          <Button
             type="button"
             onClick={refreshHealth}
             disabled={healthChecking}
           >
             {healthChecking ? "Reconnecting…" : "Retry"}
-          </button>
+          </Button>
         )}
         {configured && agentHealth?.webSearchConfigured === false && (
           <span>
@@ -1328,9 +1405,20 @@ export default function App({ account }: { account?: AccountConnection }) {
         )}
       </div>
     ) : agentHealth?.quota ? (
-      <div className="agent-footnote" role="status">
-        {agentHealth.quota.remaining} of {agentHealth.quota.limit} AI requests
-        available today
+      <div
+        className={`agent-footnote${agentHealth.quota.remaining > 5 ? " quota-available" : ""}`}
+        role="status"
+        aria-label={`${agentHealth.quota.remaining} of ${agentHealth.quota.limit} AI requests available today`}
+      >
+        <Badge
+          variant={
+            agentHealth.quota.remaining <= 5 ? "destructive" : "secondary"
+          }
+        >
+          {agentHealth.quota.remaining} AI{" "}
+          {agentHealth.quota.remaining === 1 ? "request" : "requests"} left
+          today
+        </Badge>
       </div>
     ) : null;
 
@@ -1347,9 +1435,9 @@ export default function App({ account }: { account?: AccountConnection }) {
               ? "Saving listing changes…"
               : "Loading listings…")}
           {database.error && (
-            <button className="text-button" onClick={database.retry}>
+            <Button className="text-button" onClick={database.retry}>
               Retry
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -1366,30 +1454,30 @@ export default function App({ account }: { account?: AccountConnection }) {
           takeover
         </a>
         <nav aria-label="Main navigation">
-          <button
+          <Button
             className={
               view === "discover" || view === "detail" || view === "compare"
                 ? "active"
                 : ""
             }
-            onClick={goHome}
+            onClick={openBrowse}
           >
             Find
-          </button>
-          <button
+          </Button>
+          <Button
             className={view === "searches" ? "active" : ""}
             onClick={() => navigate("searches")}
           >
             Saved searches
             <span className="nav-count">{savedSearches.length}</span>
-          </button>
-          <button
+          </Button>
+          <Button
             className={view === "messages" ? "active" : ""}
             onClick={() => openMessages()}
           >
             Messages
-          </button>
-          <button
+          </Button>
+          <Button
             className={view === "account" ? "active" : ""}
             onClick={() => {
               setAccountTab("listings");
@@ -1397,14 +1485,18 @@ export default function App({ account }: { account?: AccountConnection }) {
             }}
           >
             My listings
-          </button>
+          </Button>
         </nav>
         <div className="header-actions">
-          <button className="button primary sell-nav" onClick={startSell}>
+          <Button
+            animateIcon
+            className="button primary sell-nav"
+            onClick={openSell}
+          >
             <Plus size={17} />
             Sell furniture
-          </button>
-          <button
+          </Button>
+          <Button
             className={`icon-button${view === "settings" ? " active" : ""}`}
             aria-current={view === "settings" ? "page" : undefined}
             aria-label={
@@ -1417,7 +1509,7 @@ export default function App({ account }: { account?: AccountConnection }) {
             onClick={() => navigate("settings")}
           >
             <UserRound size={20} />
-          </button>
+          </Button>
         </div>
       </header>
       <div
@@ -1433,7 +1525,11 @@ export default function App({ account }: { account?: AccountConnection }) {
             : "")
         }
       >
-        <main className={"main-content view-" + view}>
+        <main
+          ref={mainContent}
+          tabIndex={-1}
+          className={"main-content view-" + view}
+        >
           {view === "settings" &&
             (account?.session ? (
               <AccountSettings
@@ -1457,29 +1553,28 @@ export default function App({ account }: { account?: AccountConnection }) {
                   </p>
                 </div>
                 {connectionStatus}
-                <button
+                <Button
                   className="button secondary"
                   onClick={() => void database.addDemo()}
                 >
                   Add sample listings
-                </button>
-                <button
+                </Button>
+                <Button
                   className="text-button"
                   onClick={() => setModal("help")}
                 >
                   How the agent works
-                </button>
-                <button
+                </Button>
+                <Button
                   className="text-button"
                   onClick={() => setModal("clear")}
                 >
                   Clear local workspace
-                </button>
+                </Button>
               </section>
             ))}
-          {view === "messages" && (
+          <WorkspacePage active={view === "messages"}>
             <MessagesPage
-              key={messageListingId ?? "inbox"}
               listingId={messageListingId}
               initialMessage={
                 messageProposal
@@ -1539,23 +1634,22 @@ export default function App({ account }: { account?: AccountConnection }) {
                 if (item) openProduct(item);
               }}
             />
-          )}
-          {view === "discover" && (
+          </WorkspacePage>
+          <WorkspacePage active={view === "discover"}>
             <>
-              {isHome ? (
+              {searchIsHome ? (
                 <section
                   className={`agent-hero search-entry${hasSearchDraft ? " has-query" : ""}`}
                   aria-labelledby="agent-title"
                 >
                   <div className="agent-modes">
                     <span>Find something</span>
-                    <button onClick={startSell}>Sell from a photo</button>
+                    <Button onClick={startSell}>Sell from a photo</Button>
                   </div>
-                  <HeroHeadline compact={hasSearchDraft} />
+                  <HeroHeadline compact={false} />
                   <p>
-                    {hasSearchDraft
-                      ? `Add a budget, condition or pickup time. Your agent will search around ${location}.`
-                      : `Describe what you need. Your agent searches around ${location}.`}
+                    Describe what you need. Your agent searches around{" "}
+                    {location}.
                   </p>
                   <form
                     className="agent-search"
@@ -1564,12 +1658,12 @@ export default function App({ account }: { account?: AccountConnection }) {
                       void runSearch(query);
                     }}
                   >
-                    <textarea
+                    <Textarea
                       aria-label="Search furniture"
                       maxLength={4000}
                       value={query}
                       onChange={(event) => setQuery(event.target.value)}
-                      rows={3}
+                      rows={1}
                       placeholder="A desk under CHF 80, nearby, ready to collect by Friday…"
                       onKeyDown={(event) => {
                         if (
@@ -1583,111 +1677,75 @@ export default function App({ account }: { account?: AccountConnection }) {
                       }}
                     />
                     <div className="agent-search-actions">
-                      <div className="search-area-status">
-                        <button
-                          type="button"
-                          className="search-area"
-                          onClick={() => {
-                            setAreaDraft({ location, radius: criteria.radius });
-                            setModal("location");
-                          }}
-                        >
-                          {location}
-                          <ChevronDown size={13} />
-                        </button>
-                        {connectionStatus}
-                      </div>
-                      <button
+                      <Button
+                        type="button"
+                        className="search-area"
+                        onClick={() => {
+                          setAreaDraft({ location, radius: criteria.radius });
+                          setModal("location");
+                        }}
+                      >
+                        {location}
+                        <ChevronDown size={13} />
+                      </Button>
+                      <Button
+                        animateIcon
                         className="button primary"
                         type="submit"
-                        disabled={!query.trim() || running}
+                        disabled={!query.trim() || running || quotaExhausted}
                       >
                         Find it
-                      </button>
+                      </Button>
                     </div>
                   </form>
-                  <AgentSuggestions state={searchAssist} onSelect={setQuery} />
+                  {connectionStatus}
+                  <AgentSuggestions
+                    state={searchAssist}
+                    onSelect={(suggestion) => {
+                      setQuery(suggestion);
+                      void runSearch(suggestion);
+                    }}
+                  />
                 </section>
               ) : (
                 <>
-                  <div className="page-title search-title">
-                    <button className="back-link" onClick={goHome}>
-                      <ArrowLeft size={15} />
-                      New search
-                    </button>
-                    <h1>
-                      {reviewingListing ? "Listing review" : searchHeading}
-                    </h1>
-                    {reviewingListing && (
-                      <p>
-                        Review the details you supplied and ask what could help
-                        a buyer.
-                      </p>
-                    )}
-                  </div>
-                  {!reviewingListing && (
-                    <>
-                      <form
-                        className="main-search"
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          void runSearch(query);
-                        }}
-                      >
-                        <input
-                          aria-label="Search furniture"
-                          maxLength={4000}
-                          value={query}
-                          onChange={(event) => setQuery(event.target.value)}
-                          placeholder="Describe what you need…"
-                        />
-                        <button
-                          className="button primary"
-                          type="submit"
-                          disabled={!query.trim() || running}
-                        >
-                          Search
-                        </button>
-                      </form>
-                      <div className="results-controls">
-                        <button
-                          className="search-settings"
-                          title={activePreferences || undefined}
-                          onClick={() => {
-                            setFilterDraft(criteria);
-                            setModal("filters");
-                          }}
-                        >
-                          <span>Search preferences</span>
-                          <span className="edit-settings">Edit</span>
-                        </button>
-                        <button
-                          className="save-search"
-                          disabled={running || !committedSearch}
-                          onClick={() => {
-                            setEditingJob(null);
-                            setJobTitle(
-                              (committedSearch?.originalRequest || "").slice(
-                                0,
-                                90,
-                              ),
-                            );
-                            setModal("save");
-                          }}
-                        >
-                          Save this search
-                        </button>
-                      </div>
-                      {activePreferences && (
-                        <p
-                          className="quiet-caption"
-                          style={{ textAlign: "left" }}
-                        >
-                          Active preferences: {activePreferences}
-                        </p>
-                      )}
-                    </>
-                  )}
+                  <WorkspaceHeader
+                    title={reviewingListing ? "Listing review" : searchHeading}
+                    backLabel="New search"
+                    backIcon={<SquarePen size={20} aria-hidden="true" />}
+                    onBack={goHome}
+                    onAccount={() => navigate("settings")}
+                    quota={agentHealth?.quota}
+                    preferences={
+                      !reviewingListing
+                        ? {
+                            summary: activePreferences,
+                            compactSummary: compactPreferences,
+                            onOpen: () => {
+                              setFilterDraft(criteria);
+                              setModal("filters");
+                            },
+                          }
+                        : undefined
+                    }
+                    save={
+                      !reviewingListing
+                        ? {
+                            disabled: running || !committedSearch,
+                            onSave: () => {
+                              setEditingJob(null);
+                              setJobTitle(
+                                (committedSearch?.originalRequest || "").slice(
+                                  0,
+                                  90,
+                                ),
+                              );
+                              setModal("save");
+                            },
+                          }
+                        : undefined
+                    }
+                  />
                   {negotiations.error && (
                     <p role="alert">{negotiations.error}</p>
                   )}
@@ -1699,19 +1757,67 @@ export default function App({ account }: { account?: AccountConnection }) {
                       proposalSummary(negotiations.active, true)
                     }
                     footer={
-                      <AgentComposer
-                        value={followUp}
-                        onChange={setFollowUp}
-                        onSend={() => void runSearch(followUp, criteria, true)}
-                        label="Ask the agent"
-                        placeholder={
-                          reviewingListing
-                            ? "Ask about your listing…"
-                            : "Ask a follow-up or refine the search…"
-                        }
-                        sendLabel="Send to the agent"
-                        disabled={running}
-                      />
+                      <>
+                        {comparison.length > 0 && (
+                          <div
+                            className="chat-comparison"
+                            role="group"
+                            aria-label="Listing comparison"
+                          >
+                            <span role="status">
+                              {comparison.length < 2
+                                ? "Choose one more"
+                                : `${comparison.length} selected`}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={comparison.length < 2}
+                              onClick={openComparison}
+                            >
+                              Compare
+                              {comparison.length > 1
+                                ? ` ${comparison.length}`
+                                : ""}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label="Clear comparison"
+                              onClick={(event) => {
+                                const messages = event.currentTarget
+                                  .closest(".chat-workspace")
+                                  ?.querySelector<HTMLElement>(
+                                    '[aria-label="Conversation messages"]',
+                                  );
+                                setCompared([]);
+                                messages?.focus({ preventScroll: true });
+                              }}
+                            >
+                              <X size={16} aria-hidden="true" />
+                            </Button>
+                          </div>
+                        )}
+                        <div className="composer-status">
+                          {connectionStatus}
+                        </div>
+                        <AgentComposer
+                          value={followUp}
+                          onChange={setFollowUp}
+                          onSend={() =>
+                            void runSearch(followUp, criteria, true)
+                          }
+                          label="Ask the agent"
+                          placeholder={
+                            reviewingListing
+                              ? "Ask about your listing…"
+                              : "Ask a follow-up…"
+                          }
+                          sendLabel="Send to the agent"
+                          disabled={running || quotaExhausted}
+                          onStop={running ? agentRun.cancel : undefined}
+                        />
+                      </>
                     }
                   >
                     {(turn, archived) => {
@@ -1727,6 +1833,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                         <AgentRunPanel
                           state={turn}
                           externalComposer
+                          readOnly={archived}
                           outcome={
                             turn.proposal?.draft && (
                               <MessageDraftPreview
@@ -1779,32 +1886,11 @@ export default function App({ account }: { account?: AccountConnection }) {
                             !reviewingListing &&
                             turn.inventoryMatchIds !== null &&
                             localMatches.length > 0 ? (
-                              <>
-                                <div className="section-heading">
-                                  <div>
-                                    <h3>On takeover ({localMatches.length})</h3>
-                                    <span>
-                                      Check pickup distance before collecting.
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="product-grid">
-                                  {localMatches.map((item) => (
-                                    <div key={item.id}>
-                                      {productCard(item, false)}
-                                      <button
-                                        className="prepare-offer-button"
-                                        type="button"
-                                        onClick={() => continueOffer(item)}
-                                      >
-                                        {item.price === 0
-                                          ? "Arrange pickup"
-                                          : "Prepare an offer"}
-                                      </button>
-                                    </div>
-                                  ))}
-                                </div>
-                              </>
+                              <AgentListings
+                                listings={localMatches}
+                                onOpen={openProduct}
+                                onOffer={continueOffer}
+                              />
                             ) : undefined
                           }
                           onCancel={agentRun.cancel}
@@ -1835,22 +1921,21 @@ export default function App({ account }: { account?: AccountConnection }) {
                       );
                     }}
                   </AgentConversation>
-                  {connectionStatus}
                 </>
               )}
-              {isHome && negotiations.error && (
+              {searchIsHome && negotiations.error && (
                 <p role="alert">{negotiations.error}</p>
               )}
-              {isHome &&
+              {searchIsHome &&
                 negotiations.items
                   .filter((item) => item.status === "draft")
                   .map((proposal) => proposalSummary(proposal))}
-              {isHome && visibleListings.length > 0 && (
+              {searchIsHome && visibleListings.length > 0 && (
                 <>
                   <div className="section-heading">
                     <div>
                       <h2>
-                        {isHome
+                        {searchIsHome
                           ? "Your local listings"
                           : "From your local listings"}
                       </h2>
@@ -1860,7 +1945,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                           : "Personal browser listings & demo database"}
                       </span>
                     </div>
-                    <button
+                    <Button
                       className="browse-filter"
                       onClick={() => {
                         setAccountTab("listings");
@@ -1868,14 +1953,14 @@ export default function App({ account }: { account?: AccountConnection }) {
                       }}
                     >
                       Manage listings
-                    </button>
+                    </Button>
                   </div>
                   <div className="product-grid">
                     {visibleListings.map((item) => productCard(item))}
                   </div>
                 </>
               )}
-              {isHome && !visibleListings.length && (
+              {searchIsHome && !visibleListings.length && (
                 <div className="section-heading">
                   <div>
                     <h2>Something to sell?</h2>
@@ -1883,14 +1968,14 @@ export default function App({ account }: { account?: AccountConnection }) {
                       Upload a photo. Your agent prepares the listing.
                     </span>
                   </div>
-                  <button className="button secondary" onClick={startSell}>
+                  <Button className="button secondary" onClick={startSell}>
                     Create a listing
                     <ArrowRight size={16} />
-                  </button>
+                  </Button>
                 </div>
               )}
             </>
-          )}
+          </WorkspacePage>
 
           {view === "searches" && (
             <SavedSearchesPage
@@ -1926,7 +2011,7 @@ export default function App({ account }: { account?: AccountConnection }) {
             />
           )}
 
-          {view === "sell" && (
+          <WorkspacePage active={view === "sell"}>
             <>
               <SellFlow
                 draft={draft}
@@ -1944,11 +2029,14 @@ export default function App({ account }: { account?: AccountConnection }) {
                     resetListingConversation();
                     setSellStep(1);
                   } else if (editingListing) navigate("account");
-                  else goHome();
+                  else openBrowse();
                 }}
                 onDraftChange={changeDraft}
                 agentWorking={listingRun.state.status === "running"}
                 agentConversation={listingConversation}
+                agentTools={listingTools}
+                quota={agentHealth?.quota}
+                onAccount={() => navigate("settings")}
                 onPhotoSelected={upload}
                 onCreateDraft={generateDraft}
                 onSuggestionSelected={addListingSuggestion}
@@ -1956,7 +2044,7 @@ export default function App({ account }: { account?: AccountConnection }) {
               />
               {connectionStatus}
             </>
-          )}
+          </WorkspacePage>
 
           {view === "detail" && (
             <ListingDetailPage
@@ -1974,7 +2062,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                 ) : undefined
               }
               onBack={() =>
-                account && !selected?.own ? goHome() : navigate("account")
+                account && !selected?.own ? openBrowse() : navigate("account")
               }
               onMessage={() => selected && openMessages(selected.id)}
               onEdit={() => selected && editListing(selected)}
@@ -1991,15 +2079,13 @@ export default function App({ account }: { account?: AccountConnection }) {
           {view === "compare" && (
             <ComparePage
               items={comparison}
-              onBack={() =>
-                account && !selected?.own ? goHome() : navigate("account")
-              }
+              onBack={() => navigate(comparisonOrigin.current)}
               onOpen={openProduct}
               onRemove={toggleCompare}
             />
           )}
 
-          {view === "account" && (
+          <WorkspacePage active={view === "account"}>
             <AccountPage
               accountTab={accountTab}
               setAccountTab={(tab) => {
@@ -2027,12 +2113,13 @@ export default function App({ account }: { account?: AccountConnection }) {
                   : archivedListings
               }
               onSell={startSell}
+              onBrowse={openBrowse}
               onOpen={openProduct}
               onEdit={editListing}
               onStatusChange={setStatus}
               renderProduct={productCard}
             />
-          )}
+          </WorkspacePage>
         </main>
       </div>
 
@@ -2053,8 +2140,8 @@ export default function App({ account }: { account?: AccountConnection }) {
                     : "browse"
         }
         onNavigate={(destination) => {
-          if (destination === "browse") goHome();
-          else if (destination === "sell") startSell();
+          if (destination === "browse") openBrowse();
+          else if (destination === "sell") openSell();
           else if (destination === "messages") openMessages();
           else if (destination === "searches") navigate("searches");
           else {
@@ -2075,20 +2162,27 @@ export default function App({ account }: { account?: AccountConnection }) {
               <GitCompareArrows size={18} />
               <strong>{comparison.length}</strong> selected
             </span>
-            <button
+            <Button
+              animateIcon
               className="button primary small"
-              onClick={() => navigate("compare")}
+              disabled={comparison.length < 2}
+              title={
+                comparison.length < 2
+                  ? "Select one more listing to compare"
+                  : undefined
+              }
+              onClick={openComparison}
             >
               Compare
               <ArrowRight size={14} />
-            </button>
-            <button
+            </Button>
+            <Button
               className="icon-button"
               aria-label="Clear comparison"
               onClick={() => setCompared([])}
             >
               <X size={16} />
-            </button>
+            </Button>
           </div>
         )}
       {toast && (
@@ -2096,7 +2190,7 @@ export default function App({ account }: { account?: AccountConnection }) {
           <Check size={18} />
           {toast}
           {toastNotice?.deletedSearch && (
-            <button
+            <Button
               className="text-button"
               style={{
                 pointerEvents: "auto",
@@ -2125,15 +2219,15 @@ export default function App({ account }: { account?: AccountConnection }) {
               }}
             >
               Undo
-            </button>
+            </Button>
           )}
-          <button
+          <Button
             className="icon-button"
             aria-label="Dismiss notification"
             onClick={() => setToast("")}
           >
             <X size={14} />
-          </button>
+          </Button>
         </div>
       )}
 
@@ -2159,16 +2253,16 @@ export default function App({ account }: { account?: AccountConnection }) {
               onChange={setFilterDraft}
             />
             <div className="modal-actions">
-              <button
+              <Button
                 type="button"
                 className="text-button"
                 onClick={() => setFilterDraft({ ...defaults })}
               >
                 Reset
-              </button>
-              <button className="button primary" type="submit">
+              </Button>
+              <Button animateIcon className="button primary" type="submit">
                 Search with these preferences
-              </button>
+              </Button>
             </div>
           </form>
         </Modal>
@@ -2189,7 +2283,7 @@ export default function App({ account }: { account?: AccountConnection }) {
           >
             <label>
               Search name
-              <input
+              <Input
                 required
                 maxLength={90}
                 pattern=".*\S.*"
@@ -2208,10 +2302,10 @@ export default function App({ account }: { account?: AccountConnection }) {
             <p className="quiet-caption">
               Saved in this browser. Run it again from Saved searches.
             </p>
-            <button className="button primary full" type="submit">
+            <Button animateIcon className="button primary full" type="submit">
               <Bookmark size={16} />
               Save search
-            </button>
+            </Button>
           </form>
         </Modal>
       )}
@@ -2233,7 +2327,7 @@ export default function App({ account }: { account?: AccountConnection }) {
           >
             <label>
               Location
-              <input
+              <Input
                 required
                 maxLength={120}
                 pattern=".*\S.*"
@@ -2248,7 +2342,7 @@ export default function App({ account }: { account?: AccountConnection }) {
             </label>
             <label>
               Distance (km)
-              <input
+              <Input
                 required
                 type="number"
                 min="0"
@@ -2263,9 +2357,9 @@ export default function App({ account }: { account?: AccountConnection }) {
                 }
               />
             </label>
-            <button className="button primary full" type="submit">
+            <Button animateIcon className="button primary full" type="submit">
               Use this area
-            </button>
+            </Button>
           </form>
         </Modal>
       )}
@@ -2306,10 +2400,11 @@ export default function App({ account }: { account?: AccountConnection }) {
             browser.
           </p>
           <div className="modal-actions">
-            <button className="button secondary" onClick={() => setModal(null)}>
+            <Button className="button secondary" onClick={() => setModal(null)}>
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
+              animateIcon
               className="button primary"
               onClick={() => {
                 setOwn([]);
@@ -2326,7 +2421,7 @@ export default function App({ account }: { account?: AccountConnection }) {
               }}
             >
               Clear workspace
-            </button>
+            </Button>
           </div>
         </Modal>
       )}
