@@ -875,10 +875,14 @@ export default function App({ account }: { account?: AccountConnection }) {
         : "Undone. Previous details restored.",
     }));
   }
-  async function runListing(text: string, question?: string, action = false) {
+  async function runListing(
+    text: string,
+    question?: string,
+    explicitRequest = false,
+  ) {
     if (!text.trim()) return;
     const unanswered =
-      !question && !action
+      !question && !explicitRequest
         ? listingRun.state.questions.find(
             (item) => !listingRun.state.answers[item.id],
           )
@@ -1301,7 +1305,7 @@ export default function App({ account }: { account?: AccountConnection }) {
             onReset={resetListingConversation}
             onRetry={() => {
               const last = lastListingRequest.current;
-              if (last) void runListing(last.text, last.question);
+              if (last) void runListing(last.text, last.question, true);
             }}
             onAnswer={answerListingQuestion}
             onSkipQuestion={(id) =>
