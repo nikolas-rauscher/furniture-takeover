@@ -937,6 +937,21 @@
   margin-bottom: 0;
 }
 
+.agent-run-recovery {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-label) var(--space-field);
+  margin-top: var(--space-field);
+}
+.agent-run-recovery .agent-run-error {
+  flex: 1 1 16rem;
+  margin: 0;
+}
+.agent-run-panel .agent-run-recovery > .button {
+  min-height: var(--control-size);
+}
+
 .agent-run-question .agent-run-choices.ai-suggestions {
   flex-wrap: wrap;
   gap: var(--space-label);

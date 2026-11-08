@@ -178,10 +178,8 @@ export default function AgentRunPanel({
           <Ellipsis size={18} aria-hidden="true" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          {!running && (
-            <DropdownMenuItem onClick={onRetry}>
-              {state.status === "error" ? "Try again" : "Run again"}
-            </DropdownMenuItem>
+          {!running && !state.error && (
+            <DropdownMenuItem onClick={onRetry}>Run again</DropdownMenuItem>
           )}
           <DropdownMenuItem onClick={onReset}>
             Clear conversation
@@ -402,9 +400,16 @@ export default function AgentRunPanel({
       ))}
       {outcome}
       {state.error && (
-        <p className="agent-run-error" role="alert">
-          {state.error}
-        </p>
+        <div className="agent-run-recovery">
+          <p className="agent-run-error" role="alert">
+            {state.error}
+          </p>
+          {!readOnly && !running && (
+            <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+              Try again
+            </Button>
+          )}
+        </div>
       )}
       {!running &&
         state.status !== "idle" &&
