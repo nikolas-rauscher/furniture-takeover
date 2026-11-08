@@ -34,6 +34,7 @@ import {
   type Negotiation,
 } from "../shared/negotiation";
 import AgentConversation from "./components/AgentConversation";
+import AgentListings from "./components/AgentListings";
 import AgentComposer from "./components/AgentComposer";
 import { prepareListingDraft } from "./listingPreparation";
 import { HeroHeadline } from "./components/HeroHeadline";
@@ -1819,32 +1820,13 @@ export default function App({ account }: { account?: AccountConnection }) {
                             !reviewingListing &&
                             turn.inventoryMatchIds !== null &&
                             localMatches.length > 0 ? (
-                              <>
-                                <div className="section-heading">
-                                  <div>
-                                    <h3>On takeover ({localMatches.length})</h3>
-                                    <span>
-                                      Check pickup distance before collecting.
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="product-grid">
-                                  {localMatches.map((item) => (
-                                    <div key={item.id}>
-                                      {productCard(item, false)}
-                                      <button
-                                        className="prepare-offer-button"
-                                        type="button"
-                                        onClick={() => continueOffer(item)}
-                                      >
-                                        {item.price === 0
-                                          ? "Arrange pickup"
-                                          : "Prepare an offer"}
-                                      </button>
-                                    </div>
-                                  ))}
-                                </div>
-                              </>
+                              <AgentListings
+                                listings={localMatches}
+                                compared={compared}
+                                onOpen={openProduct}
+                                onOffer={continueOffer}
+                                onCompare={toggleCompare}
+                              />
                             ) : undefined
                           }
                           onCancel={agentRun.cancel}
