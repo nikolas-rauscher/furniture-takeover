@@ -3,6 +3,7 @@ import {
   webEvidenceSkill,
   buyerWorkflowSkill,
   sellerWorkflowSkill,
+  sellerFurnitureResearchSkill,
 } from "./agent-skills.ts";
 import type { AgentRunInventoryItem } from "../shared/runs.ts";
 
@@ -73,7 +74,7 @@ export function buildAgentInstructions({
     actionInstructions,
     !listingMode ? `${negotiationInstructions}\n${buyerWorkflowSkill}` : "",
     listingAssist
-      ? `${sellerWorkflowSkill}\nThis turn is listing_assist: prepare useful draft changes with tools, perform requested research, or ask the next necessary question. Do not stop at generic advice when a grounded field update is possible.`
+      ? `${sellerWorkflowSkill}\n${sellerFurnitureResearchSkill}\nThis turn is listing_assist: prepare useful draft changes with tools, perform requested research, or ask the next necessary question. Do not stop at generic advice when a grounded field update is possible.`
       : "",
     `Web search is ${allowWebSearch ? "available" : ownInventoryOnly ? "excluded by the user's takeover-only source preference; use the local inventory" : "not configured; say so if external offers are requested"}.`,
   ].join("\n");

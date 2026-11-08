@@ -368,7 +368,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
       ? {
           web_search: tool({
             description:
-              "Search Brave for individual second-hand offers on supported marketplaces (default purpose offers). Category, profile, property and non-marketplace pages are excluded. Use furniture/item-specific search phrases, not category URLs. In listing modes only, purpose product_info can research manufacturer/product specifications when explicitly requested; it cannot supply asking-price evidence. Returns real titles, HTTPS URLs and snippets, not opened pages or verified availability. Never an arbitrary URL-fetch tool.",
+              "Search Brave for individual second-hand offers on supported marketplaces (default purpose offers). Category, profile, property and non-marketplace pages are excluded. Use furniture/item-specific search phrases, not category URLs. In listing modes only, purpose product_info can research manufacturer/product specifications and purpose similar_items can find comparable furniture examples; neither can supply asking-price evidence. Returns real titles, HTTPS URLs and snippets, not opened pages or verified availability. Never an arbitrary URL-fetch tool.",
             inputSchema: z.object({
               query: z.string().trim().min(1).max(400),
               responseLanguage: z
@@ -379,7 +379,9 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                 .describe(
                   "Answer language selected from the user's chat before reading web results (e.g. English). Never use the query, listing or source language to choose it.",
                 ),
-              purpose: z.enum(["offers", "product_info"]).optional(),
+              purpose: z
+                .enum(["offers", "product_info", "similar_items"])
+                .optional(),
             }),
             execute: async ({
               query,
@@ -388,7 +390,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
             }: {
               query: string;
               responseLanguage: string;
-              purpose?: "offers" | "product_info";
+              purpose?: "offers" | "product_info" | "similar_items";
             }) => {
               claimTool();
               if (state.ownInventoryOnly || negotiations.getCurrent())
@@ -401,6 +403,11 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                   "INVALID_RESEARCH_SCOPE",
                   "Product specifications are only available when reviewing or preparing a listing.",
                 );
+              if (purpose === "similar_items" && !listingAssist)
+                throw new RunError(
+                  "INVALID_RESEARCH_SCOPE",
+                  "Similar-item research is only available when preparing a listing.",
+                );
               state.responseLanguage ??= selectedLanguage;
               const requestedSource = request.context?.source;
               const found = await searchWeb(
@@ -408,8 +415,11 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                 {
                   apiKey: braveApiKey,
                   fetchImpl,
-                  scope: purpose === "product_info" ? "research" : "offers",
-                  ...(purpose !== "product_info"
+                  scope:
+                    purpose === "product_info" || purpose === "similar_items"
+                      ? "research"
+                      : "offers",
+                  ...(purpose !== "product_info" && purpose !== "similar_items"
                     ? { source: requestedSource }
                     : {}),
                 },
@@ -417,6 +427,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
               );
               if (
                 purpose !== "product_info" &&
+                purpose !== "similar_items" &&
                 requestedSource !== request.context?.source
               )
                 throw new RunError(
@@ -424,12 +435,16 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                   "The selected marketplace changed during this search. Search the current source again.",
                 );
               const current = found
+                .slice(0, purpose === "similar_items" ? 3 : found.length)
                 .map((foundSource) => {
                   const previous = sources.find(
                     (source) => source.url === foundSource.url,
                   );
                   if (previous) {
-                    if (purpose !== "product_info")
+                    if (
+                      purpose !== "product_info" &&
+                      purpose !== "similar_items"
+                    )
                       offerSourceIds.add(previous.id);
                     return previous;
                   }
@@ -439,7 +454,11 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                     id: `web-${++sourceSequence}`,
                   };
                   sources.push(source);
-                  if (purpose !== "product_info") offerSourceIds.add(source.id);
+                  if (
+                    purpose !== "product_info" &&
+                    purpose !== "similar_items"
+                  )
+                    offerSourceIds.add(source.id);
                   return source;
                 })
                 .filter((source): source is AgentRunSource => Boolean(source));
@@ -450,7 +469,10 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                 displayedTakeoverListings: state.displayedInventoryIds.map(
                   (id) => state.observedInventory.get(id),
                 ),
-                note: "External snippets only, not facts about Takeover listings. Keep the selected answer language. Wanted ads are not offers. Current details and availability are unverified.",
+                note:
+                  purpose === "similar_items"
+                    ? "Comparable online examples only, not the seller's item or verified offers. Dimensions and current availability are unverified. Keep the selected answer language."
+                    : "External snippets only, not facts about Takeover listings. Keep the selected answer language. Wanted ads are not offers. Current details and availability are unverified.",
               };
             },
           }),

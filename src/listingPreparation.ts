@@ -47,7 +47,8 @@ export function listingMeasurementField(
   )
     return {
       label: "Measurements",
-      placeholder: "Width × depth × height in cm",
+      placeholder:
+        "Width × depth × height in cm (largest piece if disassembled)",
     };
   return draft.dimensions
     ? { label: "Measurements", placeholder: "Size or measurements" }

@@ -667,6 +667,15 @@ label > textarea {
   margin-top: 64px;
   max-width: 760px;
 }
+.transport-guidance {
+  margin-top: 20px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.transport-guidance > p {
+  margin-top: 8px;
+}
 .detail-description > p {
   font-size: 16px;
   line-height: 1.85;

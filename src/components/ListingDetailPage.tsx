@@ -1,6 +1,7 @@
 import { ArrowLeft, MapPin, Pencil } from "lucide-react";
 import { listingPhotos } from "../../shared/listingPhotos";
 import { money, type Product } from "../../shared/marketplace";
+import { transportGuidance } from "../transportGuidance";
 import PhotoGallery from "./PhotoGallery";
 
 type ListingDetailPageProps = {
@@ -18,6 +19,9 @@ export default function ListingDetailPage({
   onEdit,
   onAskAgent,
 }: ListingDetailPageProps) {
+  const transport = selected
+    ? transportGuidance(selected.title, selected.dimensions)
+    : null;
   return selected ? (
     <>
       <button className="back-link" onClick={() => onBack()}>
@@ -101,6 +105,13 @@ export default function ListingDetailPage({
               <strong>{selected.available}</strong>
             </div>
           </div>
+          {transport && (
+            <div className="detail-description transport-guidance">
+              <strong>{transport.label}</strong>
+              <p>{transport.message}</p>
+              <p className="quiet-caption">{transport.note}</p>
+            </div>
+          )}
           <button
             className="button primary full"
             disabled={selected.status !== "active"}
