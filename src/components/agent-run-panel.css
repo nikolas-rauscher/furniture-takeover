@@ -936,3 +936,17 @@
 .agent-run-question.is-answered .agent-question-heading {
   margin-bottom: 0;
 }
+
+.agent-run-question .agent-run-choices.ai-suggestions {
+  flex-wrap: wrap;
+  gap: var(--space-label);
+  overflow: visible;
+  mask-image: none;
+}
+.agent-run-choices.ai-suggestions > .ai-suggestion[data-slot="button"] {
+  flex: 0 1 auto;
+  padding-inline: var(--space-label);
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

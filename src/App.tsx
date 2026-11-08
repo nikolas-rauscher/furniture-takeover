@@ -784,11 +784,12 @@ export default function App({ account }: { account?: AccountConnection }) {
     );
   }
   function answerSearchQuestion(id: string, answer: string) {
-    if (running) return;
+    if (running) return false;
     const question = agentRun.state.questions.find((item) => item.id === id);
-    if (!question) return;
+    if (!question || agentRun.state.answers[id]) return false;
     agentRun.markQuestionAnswered(id, answer);
     void runSearch(answer, criteria, true, question.question);
+    return true;
   }
   function resetListingConversation() {
     listingRunToken.current += 1;
@@ -953,11 +954,12 @@ export default function App({ account }: { account?: AccountConnection }) {
     );
   }
   function answerListingQuestion(id: string, answer: string) {
-    if (listingRun.state.status === "running") return;
+    if (listingRun.state.status === "running") return false;
     const question = listingRun.state.questions.find((item) => item.id === id);
-    if (!question) return;
+    if (!question || listingRun.state.answers[id]) return false;
     listingRun.markQuestionAnswered(id, answer);
     void runListing(answer, question.question);
+    return true;
   }
   function saveSearch() {
     const existing = editingJob
@@ -1289,6 +1291,7 @@ export default function App({ account }: { account?: AccountConnection }) {
             className={archived ? "archived-agent-response" : ""}
             conversational
             externalComposer
+            readOnly={archived}
             showHistory={false}
             state={turn}
             onCancel={() => {
@@ -1768,6 +1771,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                         <AgentRunPanel
                           state={turn}
                           externalComposer
+                          readOnly={archived}
                           outcome={
                             turn.proposal?.draft && (
                               <MessageDraftPreview

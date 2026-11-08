@@ -24,8 +24,8 @@ import { motionBehavior } from "../uiMotion";
 import { answerParts } from "./AgentAnswerContent";
 
 export type AgentActionHandlers = {
-  onAnswer?: (questionId: string, answer: string) => void;
-  onSkipQuestion?: (questionId: string) => void;
+  onAnswer?: (questionId: string, answer: string) => void | boolean;
+  onSkipQuestion?: (questionId: string) => void | boolean;
   onApplyAction?: (actionId: string) => void;
   onUndoAction?: (actionId: string) => void;
   onEditFields?: () => void;
@@ -39,6 +39,8 @@ export function AgentQuestion({
   compact = false,
   suggestion,
   externalComposer = false,
+  disabled = false,
+  readOnly = false,
 }: {
   question: AgentQuestionEvent;
   answer?: string;
@@ -47,6 +49,8 @@ export function AgentQuestion({
   compact?: boolean;
   suggestion?: ReactNode;
   externalComposer?: boolean;
+  disabled?: boolean;
+  readOnly?: boolean;
 }) {
   const [text, setText] = useState("");
   const [sent, setSent] = useState("");
@@ -98,14 +102,12 @@ export function AgentQuestion({
       .catch(() => {});
   }, [response, externalComposer]);
   const skip = () => {
-    if (response || !onSkip) return;
-    setSent("Skipped");
-    onSkip(question.id);
+    if (disabled || readOnly || response || !onSkip) return;
+    if (onSkip(question.id) !== false) setSent("Skipped");
   };
   const submit = (value: string) => {
-    if (!value.trim() || response || !onAnswer) return;
-    setSent(value.trim());
-    onAnswer(question.id, value.trim());
+    if (disabled || readOnly || !value.trim() || response || !onAnswer) return;
+    if (onAnswer(question.id, value.trim()) !== false) setSent(value.trim());
   };
   return (
     <Item
@@ -116,10 +118,11 @@ export function AgentQuestion({
     >
       <div className="agent-question-heading">
         <h3>{question.question}</h3>
-        {!response && externalComposer && onSkip && (
+        {!response && !readOnly && externalComposer && onSkip && (
           <Button
             type="button"
             className="text-button question-skip"
+            disabled={disabled}
             onClick={skip}
           >
             Skip for now
@@ -133,6 +136,8 @@ export function AgentQuestion({
             {response}
           </p>
         )
+      ) : readOnly ? (
+        suggestion
       ) : (
         <>
           {question.input?.type === "price" && onAnswer && (
@@ -147,6 +152,7 @@ export function AgentQuestion({
                 max={question.input.max}
                 step={question.input.step}
                 value={price}
+                disabled={disabled}
                 onChange={(event) => setPrice(Number(event.target.value))}
               />
               <div>
@@ -157,6 +163,7 @@ export function AgentQuestion({
                 animateIcon
                 type="button"
                 className="button primary"
+                disabled={disabled}
                 onClick={() => submit(`CHF ${price}`)}
               >
                 {price === 0 ? "Give it away for free" : `Use CHF ${price}`}
@@ -173,7 +180,7 @@ export function AgentQuestion({
                 <Suggestion
                   type="button"
                   key={choice}
-                  disabled={!onAnswer}
+                  disabled={disabled || !onAnswer}
                   onClick={() => submit(choice)}
                 >
                   {choice}
@@ -188,6 +195,7 @@ export function AgentQuestion({
                 id={inputId}
                 rows={compact ? 1 : 2}
                 value={text}
+                disabled={disabled}
                 maxLength={4000}
                 placeholder="Or answer in your own words…"
                 onChange={(event) => setText(event.target.value)}
@@ -207,13 +215,18 @@ export function AgentQuestion({
                   animateIcon
                   className="button primary"
                   type="button"
-                  disabled={!text.trim()}
+                  disabled={disabled || !text.trim()}
                   onClick={() => submit(text)}
                 >
                   {compact ? "Send" : "Send answer"}
                 </Button>
                 {onSkip && (
-                  <Button className="text-button" type="button" onClick={skip}>
+                  <Button
+                    className="text-button"
+                    type="button"
+                    disabled={disabled}
+                    onClick={skip}
+                  >
                     Skip for now
                   </Button>
                 )}

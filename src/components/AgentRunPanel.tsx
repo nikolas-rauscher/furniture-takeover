@@ -35,6 +35,7 @@ type AgentRunPanelProps = AgentActionHandlers & {
   splitSearchResults?: boolean;
   conversational?: boolean;
   externalComposer?: boolean;
+  readOnly?: boolean;
   appliedActionIds?: readonly string[];
   undoneActionIds?: readonly string[];
   actionNotices?: Readonly<Record<string, string>>;
@@ -52,6 +53,7 @@ export default function AgentRunPanel({
   splitSearchResults = false,
   conversational = false,
   externalComposer = false,
+  readOnly = false,
   onAnswer,
   onSkipQuestion,
   onApplyAction,
@@ -360,6 +362,8 @@ export default function AgentRunPanel({
           onSkip={onSkipQuestion}
           compact={compact}
           externalComposer={externalComposer}
+          disabled={running}
+          readOnly={readOnly}
           suggestion={
             question.id === priceQuestion?.id && priceSuggestions.length > 0 ? (
               <details className="agent-run-evidence price-suggestion-details">
