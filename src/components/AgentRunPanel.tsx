@@ -168,7 +168,7 @@ export default function AgentRunPanel({
   );
   const actions = (
     <div className="agent-run-actions">
-      {running && (
+      {running && !externalComposer && (
         <Button type="button" onClick={onCancel}>
           Stop
         </Button>

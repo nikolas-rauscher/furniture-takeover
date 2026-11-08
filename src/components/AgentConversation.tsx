@@ -115,6 +115,15 @@ export default function AgentConversation({
               )}
             </MessageScrollerContent>
           </MessageScrollerViewport>
+        </MessageScroller>
+        <div className="chat-composer-dock">
+          <div className="chat-composer-content">
+            {footer || (
+              <span className="quiet-caption">
+                Choose an option or reply above.
+              </span>
+            )}
+          </div>
           <MessageScrollerButton
             className="chat-jump-latest"
             size="icon-sm"
@@ -122,18 +131,19 @@ export default function AgentConversation({
             aria-label="Latest messages"
             title="Latest messages"
             behavior={motionBehavior()}
+            onClick={(event) => {
+              event.currentTarget
+                .closest(".chat-workspace")
+                ?.querySelector<HTMLElement>(
+                  '[aria-label="Conversation messages"]',
+                )
+                ?.focus({ preventScroll: true });
+            }}
           >
             <ChevronDown size={18} aria-hidden="true" />
           </MessageScrollerButton>
-        </MessageScroller>
+        </div>
       </MessageScrollerProvider>
-      <div className="chat-composer-dock">
-        {footer || (
-          <span className="quiet-caption">
-            Choose an option or reply above.
-          </span>
-        )}
-      </div>
     </section>
   );
 }

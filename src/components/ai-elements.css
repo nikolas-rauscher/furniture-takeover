@@ -11,18 +11,6 @@
 .agent-message-scroller .search-conversation-turn {
   content-visibility: visible;
 }
-.agent-message-scroller .chat-jump-latest.button {
-  inset-inline-start: auto;
-  inset-inline-end: var(--space-field);
-  bottom: var(--space-label);
-  translate: none;
-  transform: none;
-  width: var(--control-size);
-  height: var(--control-size);
-  min-height: var(--control-size);
-  padding: 0;
-  border-radius: 50%;
-}
 .agent-message-scroller .agent-user-bubble {
   max-width: min(80%, 64ch);
 }

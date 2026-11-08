@@ -10,7 +10,7 @@
 
 @media (max-width: 760px) {
   :root {
-    --mobile-nav-height: calc(69px + env(safe-area-inset-bottom, 0px));
+    --mobile-nav-height: calc(60px + env(safe-area-inset-bottom, 0px));
     --app-header-height: calc(56px + env(safe-area-inset-top, 0px));
     --space-page: 1rem;
   }
