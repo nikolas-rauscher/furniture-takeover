@@ -1798,6 +1798,9 @@ export default function App({ account }: { account?: AccountConnection }) {
                             </Button>
                           </div>
                         )}
+                        <div className="composer-status">
+                          {connectionStatus}
+                        </div>
                         <AgentComposer
                           value={followUp}
                           onChange={setFollowUp}
@@ -1918,7 +1921,6 @@ export default function App({ account }: { account?: AccountConnection }) {
                       );
                     }}
                   </AgentConversation>
-                  {connectionStatus}
                 </>
               )}
               {searchIsHome && negotiations.error && (

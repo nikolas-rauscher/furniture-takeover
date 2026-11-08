@@ -141,6 +141,11 @@
 .chat-composer-content {
   min-width: 0;
 }
+.chat-layout .composer-status > .agent-footnote {
+  margin: 0 0 6px;
+  gap: 8px;
+  font-size: var(--type-caption);
+}
 .app-layout:is(.chat-layout, .selling-chat-layout) .chat-composer-dock {
   padding-top: 6px;
 }
