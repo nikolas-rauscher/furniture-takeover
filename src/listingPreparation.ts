@@ -1,5 +1,8 @@
 import type { AgentMetadata } from "../shared/agent";
+import { listingPhotos } from "../shared/listingPhotos.ts";
+import { shortDate, type Product } from "../shared/marketplace.ts";
 import type { ListingDraft } from "./components/SellFlow";
+import { validListingPickup } from "./listingValidation.ts";
 
 /** Keep grounded model facts intact when moving from photo analysis to review. */
 export function prepareListingDraft(
@@ -49,4 +52,58 @@ export function listingMeasurementField(
   return draft.dimensions
     ? { label: "Measurements", placeholder: "Size or measurements" }
     : null;
+}
+
+/** Everything a draft needs before it can be saved as a listing. */
+export function listingDraftReady(draft: ListingDraft, original?: Product) {
+  const price = Number(draft.price);
+  return Boolean(
+    draft.image &&
+    draft.title.trim() &&
+    draft.description.trim() &&
+    draft.price.trim() &&
+    Number.isFinite(price) &&
+    price >= 0 &&
+    price <= 10000 &&
+    draft.location.trim() &&
+    validListingPickup(draft.pickup, original),
+  );
+}
+
+/** Build the stored listing; an edited listing keeps provenance that still applies. */
+export function listingFromDraft(
+  draft: ListingDraft,
+  id: string,
+  original?: Product,
+): Product {
+  return {
+    id,
+    title: draft.title.trim(),
+    description: draft.description.trim(),
+    tags: draft.tags,
+    price: Number(draft.price),
+    image: draft.image,
+    images: listingPhotos(draft),
+    category: "All",
+    location: draft.location.trim(),
+    distance: 0,
+    condition: draft.condition,
+    dimensions: draft.dimensions.trim() || "Not specified",
+    source: "takeover",
+    seller: "You",
+    initials: "Y",
+    own: true,
+    demo: original?.demo,
+    pickupPoint:
+      draft.location.trim() === original?.location
+        ? original?.pickupPoint
+        : undefined,
+    photoSourceUrl:
+      draft.image === original?.image ? original?.photoSourceUrl : undefined,
+    pickupBy: draft.pickup,
+    available: draft.pickup
+      ? "Pickup by " + shortDate(draft.pickup)
+      : "Flexible pickup",
+    status: original?.status || "active",
+  };
 }

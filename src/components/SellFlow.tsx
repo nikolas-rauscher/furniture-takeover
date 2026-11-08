@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   CalendarDays,
   Check,
+  Images,
   LoaderCircle,
   MapPin,
 } from "lucide-react";
@@ -59,6 +60,8 @@ type SellFlowProps = {
   onCreateDraft: () => void;
   onSuggestionSelected: (suggestion: string) => void;
   onPublish: (event: FormEvent<HTMLFormElement>) => void;
+  /** Switch to uploading several items at once. */
+  onSellSeveral?: () => void;
 };
 
 export default function SellFlow({
@@ -79,6 +82,7 @@ export default function SellFlow({
   onCreateDraft,
   onSuggestionSelected,
   onPublish,
+  onSellSeveral,
 }: SellFlowProps) {
   const [photosOpen, setPhotosOpen] = useState(false);
   const photos = listingPhotos(draft);
@@ -160,6 +164,17 @@ export default function SellFlow({
               <p className="form-error" role="alert">
                 {uploadError}
               </p>
+            )}
+            {onSellSeveral && !editing && (
+              <button
+                type="button"
+                className="text-button multi-item-switch"
+                disabled={unavailable}
+                onClick={onSellSeveral}
+              >
+                <Images size={15} />
+                Selling several items? Upload them all at once
+              </button>
             )}
           </div>
           <form

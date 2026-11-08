@@ -3,6 +3,7 @@ import type {
   AssistResponse,
   AgentMetadata,
   HealthResponse,
+  PhotoGroupResponse,
 } from "../../shared/agent";
 
 type RequestOptions = { signal?: AbortSignal };
@@ -140,4 +141,43 @@ export async function requestAgentAssist(
     );
   }
   return data as AssistResponse;
+}
+
+/** Ask the agent which uploaded photos show the same item. Indices refer to `images`. */
+export async function requestPhotoGroups(
+  images: string[],
+  { signal }: RequestOptions = {},
+  itemCount?: number,
+): Promise<PhotoGroupResponse> {
+  const data = await requestJson("/api/agent/group-photos", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(itemCount ? { images, itemCount } : { images }),
+    signal,
+  });
+  if (
+    !isRecord(data) ||
+    data.mode !== "live" ||
+    typeof data.model !== "string" ||
+    !Array.isArray(data.groups) ||
+    !data.groups.every(
+      (group) =>
+        isRecord(group) &&
+        typeof group.label === "string" &&
+        Array.isArray(group.photos) &&
+        group.photos.length > 0 &&
+        group.photos.every(
+          (photo) =>
+            Number.isInteger(photo) &&
+            (photo as number) >= 0 &&
+            (photo as number) < images.length,
+        ),
+    )
+  ) {
+    throw new AgentApiError(
+      "The assistant returned an unreadable response. Try again.",
+      "INVALID_RESPONSE",
+    );
+  }
+  return data as PhotoGroupResponse;
 }

@@ -36,6 +36,16 @@ export type AssistResponse = {
   metadata: AgentMetadata;
 };
 
+/** Photos are referenced by their position in the submitted list. */
+/** `itemCount` is the seller's own count when the first sorting was wrong. */
+export type PhotoGroupRequest = { images: string[]; itemCount?: number };
+export type PhotoGroup = { photos: number[]; label: string };
+export type PhotoGroupResponse = {
+  mode: "live";
+  model: string;
+  groups: PhotoGroup[];
+};
+
 export type HealthResponse = {
   mode: "live" | "unconfigured";
   webSearchConfigured?: boolean;

@@ -3,7 +3,8 @@ import ListingDetailPage from "./components/ListingDetailPage";
 import ComparePage from "./components/ComparePage";
 import SavedSearchesPage from "./components/SavedSearchesPage";
 import { listingPhotos, MAX_LISTING_PHOTOS } from "../shared/listingPhotos";
-import { readListingPhoto } from "./listingPhotos";
+import { readListingPhoto, sortListingPhotos } from "./listingPhotos";
+import type { PhotoGroup } from "../shared/agent";
 import { animateUiChange, scrollToPageStart } from "./uiMotion";
 import MessagesPage from "./components/MessagesPage";
 import { useNegotiations } from "./hooks/useNegotiations";
@@ -18,7 +19,11 @@ import {
 } from "../shared/negotiation";
 import AgentConversation from "./components/AgentConversation";
 import AgentComposer from "./components/AgentComposer";
-import { prepareListingDraft } from "./listingPreparation";
+import {
+  listingDraftReady,
+  listingFromDraft,
+  prepareListingDraft,
+} from "./listingPreparation";
 import { HeroHeadline } from "./components/HeroHeadline";
 import {
   useEffect,
@@ -46,6 +51,8 @@ import Modal from "./components/Modal";
 import ProductCard from "./components/ProductCard";
 import SearchPreferencesFields from "./components/SearchPreferencesFields";
 import SellFlow, { type ListingDraft } from "./components/SellFlow";
+import BatchSellFlow, { type BatchStart } from "./components/BatchSellFlow";
+import PhotoSplitQuestion from "./components/PhotoSplitQuestion";
 import AgentSuggestions from "./components/AgentSuggestions";
 import AgentRunPanel from "./components/AgentRunPanel";
 import { useAgentRun } from "./hooks/useAgentRun";
@@ -64,7 +71,7 @@ import {
   type SearchSnapshot,
 } from "./searchRequest";
 import { requestAgentAssist } from "./api/agent";
-import { listingPickupMinimum, validListingPickup } from "./listingValidation";
+import { listingPickupMinimum } from "./listingValidation";
 import {
   agentDraft,
   applyListingAction,
@@ -228,6 +235,13 @@ export default function App() {
     setDraftState(next);
   }
   const [sellStep, setSellStep] = useState(1);
+  const [sellMode, setSellMode] = useState<"single" | "batch">("single");
+  // Set when several photos turn out to show different items.
+  const [photoSplit, setPhotoSplit] = useState<{
+    photos: string[];
+    groups: PhotoGroup[];
+  } | null>(null);
+  const [batchStart, setBatchStart] = useState<BatchStart | undefined>();
   const [editingListing, setEditingListing] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState("");
   const [photoReading, setPhotoReading] = useState(false);
@@ -317,7 +331,11 @@ export default function App() {
       : null,
   );
   const listingAssist = useAgentAssist(
-    configured && view === "sell" && sellStep === 1 && !busy
+    configured &&
+      view === "sell" &&
+      sellMode === "single" &&
+      sellStep === 1 &&
+      !busy
       ? {
           intent: "listing",
           text: draft.raw,
@@ -408,6 +426,9 @@ export default function App() {
     listingRevisions.current = {};
     setDraft({ ...emptyDraft, location });
     setSellStep(1);
+    setSellMode("single");
+    setPhotoSplit(null);
+    setBatchStart(undefined);
     setEditingListing(null);
     setUploadError("");
   }
@@ -889,7 +910,8 @@ export default function App() {
       }
     }
   }
-  async function generateDraft() {
+  /** `together` skips the different-items check after the seller chose one listing. */
+  async function generateDraft({ together = false } = {}) {
     if (photoReading) {
       setUploadError("Your photo is still loading.");
       return;
@@ -904,6 +926,18 @@ export default function App() {
     setBusy(true);
     setUploadError("");
     try {
+      const photos = listingPhotos(draft);
+      if (!together && photos.length > 1) {
+        // Sorting is a hint: if it fails, draft one listing as before.
+        const groups = await sortListingPhotos(photos, controller.signal).catch(
+          () => null,
+        );
+        if (controller.signal.aborted) return;
+        if (groups && groups.length > 1) {
+          setPhotoSplit({ photos, groups });
+          return;
+        }
+      }
       const response = await requestAgentAssist(
         {
           intent: "listing",
@@ -950,57 +984,15 @@ export default function App() {
   function publish(event: FormEvent) {
     event.preventDefault();
     if (listingRun.state.status === "running") return;
-    const price = Number(draft.price);
-    const pickupValid = validListingPickup(draft.pickup, editingItem);
-    if (
-      !draft.image ||
-      !draft.title.trim() ||
-      !draft.description.trim() ||
-      !draft.price.trim() ||
-      !Number.isFinite(price) ||
-      price < 0 ||
-      price > 10000 ||
-      !draft.location.trim() ||
-      !pickupValid
-    ) {
+    if (!listingDraftReady(draft, editingItem)) {
       setToast("Check the listing details before saving.");
       return;
     }
-    const item: Product = {
-      id: editingListing || crypto.randomUUID(),
-      title: draft.title.trim(),
-      description: draft.description.trim(),
-      tags: draft.tags,
-      price,
-      image: draft.image,
-      images: listingPhotos(draft),
-      category: "All",
-      location: draft.location.trim(),
-      distance: 0,
-      condition: draft.condition,
-      dimensions: draft.dimensions.trim() || "Not specified",
-      source: "takeover",
-      seller: "You",
-      initials: "Y",
-      own: true,
-      demo: editingItem?.demo,
-      pickupPoint:
-        draft.location.trim() === editingItem?.location
-          ? editingItem?.pickupPoint
-          : undefined,
-      photoSourceUrl:
-        draft.image === editingItem?.image
-          ? editingItem?.photoSourceUrl
-          : undefined,
-      pickupBy: draft.pickup,
-      available: draft.pickup
-        ? "Pickup by " + shortDate(draft.pickup)
-        : "Flexible pickup",
-      status: editingListing
-        ? own.find((current) => current.id === editingListing)?.status ||
-          "active"
-        : "active",
-    };
+    const item = listingFromDraft(
+      draft,
+      editingListing || crypto.randomUUID(),
+      editingItem,
+    );
     const saved = setOwn((current) =>
       editingListing
         ? current.map((existing) =>
@@ -1017,6 +1009,23 @@ export default function App() {
     setAccountTab("listings");
     navigate("account");
     setToast("Listing saved in this browser.");
+  }
+  function saveBatch(drafts: ListingDraft[]) {
+    const items = drafts.map((current) =>
+      listingFromDraft(current, crypto.randomUUID()),
+    );
+    if (!setOwn((current) => [...items, ...current])) {
+      setToast(
+        "Could not save the listings. Your drafts are still here; check browser storage and try again.",
+      );
+      return false;
+    }
+    setToast(
+      items.length === 1
+        ? "Listing saved in this browser."
+        : `${items.length} listings saved in this browser.`,
+    );
+    return true;
   }
   function editListing(item: Product) {
     if (item.status === "withdrawn") return;
@@ -1039,6 +1048,7 @@ export default function App() {
       category: "All",
     });
     setSellStep(2);
+    setSellMode("single");
     setUploadError("");
   }
   function setStatus(id: string, status: Product["status"]) {
@@ -1260,9 +1270,11 @@ export default function App() {
           (view === "discover" && !isHome ? " chat-layout" : "") +
           (view === "messages" ? " messages-layout" : "") +
           (view === "sell"
-            ? sellStep === 2
-              ? " selling-chat-layout"
-              : " selling-photo-layout"
+            ? sellMode === "batch"
+              ? " selling-batch-layout"
+              : sellStep === 2
+                ? " selling-chat-layout"
+                : " selling-photo-layout"
             : "")
         }
       >
@@ -1711,7 +1723,26 @@ export default function App() {
             />
           )}
 
-          {view === "sell" && (
+          {view === "sell" && sellMode === "batch" && (
+            <>
+              <BatchSellFlow
+                location={location}
+                liveAgent={configured}
+                start={batchStart}
+                onBack={() => {
+                  setBatchStart(undefined);
+                  setSellMode("single");
+                }}
+                onSave={saveBatch}
+                onDone={() => {
+                  setAccountTab("listings");
+                  navigate("account");
+                }}
+              />
+              {connectionStatus}
+            </>
+          )}
+          {view === "sell" && sellMode === "single" && (
             <>
               <SellFlow
                 draft={draft}
@@ -1734,10 +1765,37 @@ export default function App() {
                 agentWorking={listingRun.state.status === "running"}
                 agentConversation={listingConversation}
                 onPhotoSelected={upload}
-                onCreateDraft={generateDraft}
+                onCreateDraft={() => void generateDraft()}
                 onSuggestionSelected={addListingSuggestion}
                 onPublish={publish}
+                onSellSeveral={() => {
+                  cancelPhotoRead();
+                  setUploadError("");
+                  setBatchStart(undefined);
+                  setSellMode("batch");
+                }}
               />
+              {photoSplit && (
+                <PhotoSplitQuestion
+                  photos={photoSplit.photos}
+                  groups={photoSplit.groups}
+                  onClose={() => setPhotoSplit(null)}
+                  onTogether={() => {
+                    setPhotoSplit(null);
+                    void generateDraft({ together: true });
+                  }}
+                  onSeparate={(groups, review) => {
+                    setBatchStart({
+                      photos: photoSplit.photos,
+                      groups,
+                      notes: draft.raw,
+                      review,
+                    });
+                    setPhotoSplit(null);
+                    setSellMode("batch");
+                  }}
+                />
+              )}
               {connectionStatus}
             </>
           )}

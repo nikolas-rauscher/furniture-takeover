@@ -1,4 +1,6 @@
 export const MAX_LISTING_PHOTOS = 6;
+/** Photos a seller can sort into several listings in one go. */
+export const MAX_BATCH_PHOTOS = 12;
 export const MAX_UPLOAD_PHOTO_BYTES = 2 * 1024 * 1024;
 export const MAX_STORED_PHOTO_BYTES = 256 * 1024;
 
