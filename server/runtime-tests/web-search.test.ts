@@ -61,6 +61,54 @@ test("one reply reuses identical searches and bounds distinct provider queries",
   assert.equal(new Set(complete.sources.map((source) => source.url)).size, 3);
 });
 
+test("an external discovery scope requires an actual web attempt after local curation", async () => {
+  for (const source of ["All", "takeover"]) {
+    let searches = 0;
+    const steps = [
+      toolCall("inventory_search", { query: "white desk" }, "local-search"),
+      toolCall(
+        "show_takeover_listings",
+        { ids: [ownDesk.id] },
+        "local-curation",
+      ),
+    ];
+    if (source === "All")
+      steps.push(
+        toolCall(
+          "web_search",
+          { query: "bureau blanc Lausanne" },
+          "required-web",
+        ),
+      );
+    steps.push(answer("The local desk is a match."));
+    const model = new MockLanguageModelV4({ doStream: steps });
+    const events = await eventsFor(
+      createAgentRuntime({
+        apiKey: "required-web-model-key",
+        braveApiKey: `required-web-search-${source}`,
+        modelImpl: model,
+        fetchImpl: async () => {
+          searches++;
+          return new Response("unavailable", { status: 503 });
+        },
+      }),
+      {
+        text: "Find a white desk under CHF 100",
+        inventory: [ownDesk],
+        context: { source, budgetSpecified: true, maxPrice: 100 },
+      },
+    );
+    assert.equal(searches, source === "All" ? 2 : 0);
+    const available = model.doStreamCalls[2].tools?.map((tool) => tool.name);
+    if (source === "All") {
+      assert.deepEqual(available, ["web_search"]);
+      assert.deepEqual(model.doStreamCalls[2].toolChoice, { type: "required" });
+      assert.equal(model.doStreamCalls[3].toolChoice?.type, "auto");
+    } else assert.equal(model.doStreamCalls[2].toolChoice?.type, "auto");
+    assert.ok(events.some((event) => event.type === "complete"));
+  }
+});
+
 test("a grounded source change refreshes tool instructions before external search", async () => {
   const text = "Please include the web too for this desk";
   const model = new MockLanguageModelV4({

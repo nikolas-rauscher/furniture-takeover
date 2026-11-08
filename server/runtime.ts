@@ -25,6 +25,7 @@ import type {
   AgentToolFailure,
 } from "../shared/runs.ts";
 import { WebSearchError } from "./web-search.ts";
+import { marketplaceDomains } from "./marketplace-policy.ts";
 import { MAX_REASONING_CHARS, MAX_REASONING_PARTS } from "../shared/runs.ts";
 import { dateSchema, listingDraftSchema } from "./actions.ts";
 
@@ -293,6 +294,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
           observedInventory: new Map(),
           inventorySearched: false,
           inventoryCurated: false,
+          webSearched: false,
           displayedInventoryIds: [],
         };
 
@@ -434,7 +436,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
               request.context?.budgetSpecified === false &&
               !request.context?.previousQuestion &&
               !request.context?.previousAnswer;
-            const requiredTool =
+            let requiredTool =
               needsBudget || (state.listingNeedsInput && !state.pendingQuestion)
                 ? "ask_user"
                 : !listingMode &&
@@ -455,6 +457,21 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
                       stepNumber > 0
                     ? "show_takeover_listings"
                     : undefined;
+            // A selected external scope promises a real lookup during discovery.
+            // Once a proposal is active, ordinary handover replies stay focused.
+            if (
+              !requiredTool &&
+              !listingMode &&
+              !negotiationMode &&
+              !negotiations.getCurrent() &&
+              !state.pendingQuestion &&
+              state.inventoryCurated &&
+              state.allowWebSearch &&
+              !state.webSearched &&
+              request.context?.source &&
+              marketplaceDomains(request.context.source)?.length
+            )
+              requiredTool = "web_search";
             const requiresTool = Boolean(
               requiredTool ||
               (negotiations.getCurrent()?.status === "draft" &&

@@ -30,6 +30,7 @@ export type AgentToolState = {
   observedInventory: Map<string, AgentRunInventoryItem>;
   inventorySearched: boolean;
   inventoryCurated: boolean;
+  webSearched: boolean;
   displayedInventoryIds: string[];
   responseLanguage?: string;
 };
@@ -260,6 +261,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                   state.observedInventory.clear();
                   state.inventorySearched = false;
                   state.inventoryCurated = false;
+                  state.webSearched = false;
                   state.displayedInventoryIds = [];
                   await send({ type: "inventory_matches", ids: [] });
                 }
@@ -403,6 +405,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                   "Product specifications are only available when reviewing or preparing a listing.",
                 );
               state.responseLanguage ??= selectedLanguage;
+              state.webSearched = true;
               const requestedSource = request.context?.source;
               const searchKey = JSON.stringify([
                 purpose ?? "offers",
