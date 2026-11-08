@@ -2,10 +2,12 @@ import { SelectField } from "./ui/select-field";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { Input } from "./ui/input";
+import { Field, FieldLabel } from "./ui/field";
 import { listingMeasurementField } from "../listingPreparation";
 import { PickupLocationInput } from "./PickupLocationInput";
 import {
   useEffect,
+  useId,
   useRef,
   useState,
   type FormEvent,
@@ -14,7 +16,6 @@ import {
 import {
   Armchair,
   Image as ImageIcon,
-  ArrowLeft,
   CalendarDays,
   Check,
   LoaderCircle,
@@ -133,6 +134,10 @@ export default function SellFlow({
   const missing = checks.filter((check) => !check.ready);
   const measurementField = listingMeasurementField(draft);
   const unavailable = busy || photoReading;
+  const formId = useId();
+  const notesId = useId();
+  const canCreateDraft =
+    liveAgent && !unavailable && photos.length > 0 && quota?.remaining !== 0;
   const photoEditor = (
     <PhotoGallery
       images={photos}
@@ -166,145 +171,138 @@ export default function SellFlow({
           )}
         </Modal>
       )}
-      {!isPhotoStep ? (
-        <WorkspaceHeader
-          title="Your listing"
-          titleRef={headingRef}
-          backLabel={editing ? "Back to my listings" : "Back to photos"}
-          onBack={onBack}
-          onAccount={onAccount}
-          quota={quota}
-          actions={agentTools}
-        />
-      ) : (
-        <>
-          <Button className="back-link" type="button" onClick={onBack}>
-            <ArrowLeft size={16} />
-            {editing ? "Back to my listings" : "Back to search"}
-          </Button>
-          <div className="page-title">
-            <h1 ref={headingRef} tabIndex={-1}>
-              What are you selling?
-            </h1>
-            <p>Add photos and a few details to create a draft.</p>
-          </div>
-          <div className="steps">
-            <span className="active" aria-current="step">
-              <i>1</i>Photos & details
-            </span>
-            <div />
-            <span>
-              <i>2</i>
-              {cloud ? "Review & publish" : "Draft & save"}
-            </span>
-          </div>
-        </>
-      )}
+      <WorkspaceHeader
+        title={isPhotoStep ? "New listing" : "Your listing"}
+        subtitle={isPhotoStep ? "1 of 2 · Photos & details" : undefined}
+        titleRef={headingRef}
+        backLabel={
+          editing
+            ? "Back to my listings"
+            : isPhotoStep
+              ? "Back to search"
+              : "Back to photos"
+        }
+        onBack={onBack}
+        onAccount={onAccount}
+        quota={quota}
+        actions={isPhotoStep ? undefined : agentTools}
+      />
 
       {isPhotoStep ? (
         <div className="sell-layout" aria-busy={unavailable}>
-          <div className="photo-upload-panel">
-            {photoEditor}
-            {uploadError && (
-              <p className="form-error" role="alert">
-                {uploadError}
-              </p>
-            )}
-          </div>
-          <form
-            className="sell-inputs"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!unavailable) onCreateDraft();
-            }}
-          >
-            <label>
-              A few details<span className="optional">Optional</span>
-              <Textarea
-                rows={6}
-                maxLength={4000}
-                disabled={unavailable}
-                value={draft.raw}
-                onChange={(event) => onDraftChange({ raw: event.target.value })}
-                placeholder="Price, condition or pickup details…"
-              />
-            </label>
-            {(photos.length > 0 || draft.raw.trim()) && (
-              <Button
-                type="button"
-                className="text-button photo-suggestions-button"
-                disabled={
-                  unavailable ||
-                  listingAssist.status === "idle" ||
-                  listingAssist.status === "loading"
-                }
-                onClick={() => setSuggestionsOpen(true)}
-              >
-                {listingAssist.status === "loading"
-                  ? "Combining photos & notes…"
-                  : "Improve description"}
-              </Button>
-            )}
-            {suggestionsOpen && (
-              <Modal
-                title="Improve description"
-                onClose={() => setSuggestionsOpen(false)}
-              >
-                {listingAssist.status === "success" &&
-                listingAssist.response?.metadata.description ? (
-                  <>
-                    <p className="quiet-caption">
-                      Based on your photos and everything you wrote. Using this
-                      replaces the notes below.
-                    </p>
-                    <p className="proposal-message-preview">
-                      {listingAssist.response.metadata.description}
-                    </p>
-                    <Button
-                      animateIcon
-                      className="button primary"
-                      type="button"
-                      onClick={() => {
-                        onSuggestionSelected(
-                          listingAssist.response!.metadata.description!,
-                        );
-                        setSuggestionsOpen(false);
-                      }}
-                    >
-                      Use this description
-                    </Button>
-                  </>
-                ) : (
-                  <div role="status">
-                    <p>
-                      {listingAssist.status === "loading"
-                        ? "Combining your photos and notes…"
-                        : (listingAssist.error ??
-                          "No description available yet.")}
-                    </p>
-                    {listingAssist.status !== "loading" && (
+          <div className="sell-photo-content">
+            <div className="photo-upload-panel">
+              {photoEditor}
+              {uploadError && (
+                <p className="form-error" role="alert">
+                  {uploadError}
+                </p>
+              )}
+            </div>
+            <form
+              id={formId}
+              className="sell-inputs"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (canCreateDraft) onCreateDraft();
+              }}
+            >
+              <Field data-disabled={unavailable || undefined}>
+                <FieldLabel htmlFor={notesId}>
+                  Details<span className="sell-field-optional">Optional</span>
+                </FieldLabel>
+                <Textarea
+                  id={notesId}
+                  rows={3}
+                  maxLength={4000}
+                  disabled={unavailable}
+                  value={draft.raw}
+                  onChange={(event) =>
+                    onDraftChange({ raw: event.target.value })
+                  }
+                  placeholder="Price, condition or pickup details…"
+                />
+              </Field>
+              {(photos.length > 0 || draft.raw.trim()) && (
+                <Button
+                  type="button"
+                  className="text-button photo-suggestions-button"
+                  disabled={
+                    unavailable ||
+                    listingAssist.status === "idle" ||
+                    listingAssist.status === "loading"
+                  }
+                  onClick={() => setSuggestionsOpen(true)}
+                >
+                  {listingAssist.status === "loading"
+                    ? "Combining photos & notes…"
+                    : "Improve description"}
+                </Button>
+              )}
+              {suggestionsOpen && (
+                <Modal
+                  title="Improve description"
+                  onClose={() => setSuggestionsOpen(false)}
+                >
+                  {listingAssist.status === "success" &&
+                  listingAssist.response?.metadata.description ? (
+                    <>
+                      <p className="quiet-caption">
+                        Based on your photos and everything you wrote. Using
+                        this replaces the notes below.
+                      </p>
+                      <p className="proposal-message-preview">
+                        {listingAssist.response.metadata.description}
+                      </p>
                       <Button
+                        animateIcon
+                        className="button primary"
                         type="button"
-                        className="button secondary"
-                        onClick={listingAssist.retry}
+                        onClick={() => {
+                          onSuggestionSelected(
+                            listingAssist.response!.metadata.description!,
+                          );
+                          setSuggestionsOpen(false);
+                        }}
                       >
-                        Try again
+                        Use this description
                       </Button>
-                    )}
-                  </div>
-                )}
-              </Modal>
-            )}
-            <PickupLocationInput
-              value={draft.location}
-              disabled={unavailable}
-              onChange={(location) => onDraftChange({ location })}
-            />
+                    </>
+                  ) : (
+                    <div role="status">
+                      <p>
+                        {listingAssist.status === "loading"
+                          ? "Combining your photos and notes…"
+                          : (listingAssist.error ??
+                            "No description available yet.")}
+                      </p>
+                      {listingAssist.status !== "loading" && (
+                        <Button
+                          type="button"
+                          className="button secondary"
+                          onClick={listingAssist.retry}
+                        >
+                          Try again
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </Modal>
+              )}
+              <PickupLocationInput
+                value={draft.location}
+                disabled={unavailable}
+                onChange={(location) => onDraftChange({ location })}
+              />
+            </form>
+          </div>
+          <div className="sell-photo-footer">
             <Button
               animateIcon
               className="button primary full"
               type="submit"
-              disabled={unavailable || !liveAgent}
+              form={formId}
+              disabled={!canCreateDraft}
             >
               {unavailable && <LoaderCircle animate size={17} />}
               {photoReading
@@ -314,11 +312,11 @@ export default function SellFlow({
                   : "Create draft"}
             </Button>
             <span className="quiet-caption">
-              {liveAgent
-                ? "Your photos and notes are combined into one listing description."
-                : "Connect the AI service to create a draft."}
+              {photos.length > 0
+                ? "Review and edit before publishing."
+                : "Add at least one photo to create your draft."}
             </span>
-          </form>
+          </div>
         </div>
       ) : (
         <div className="review-layout agent-review-layout">

@@ -27,6 +27,7 @@ import "./workspace-header.css";
 
 type WorkspaceHeaderProps = {
   title: string;
+  subtitle?: string;
   backLabel: string;
   onBack: () => void;
   backIcon?: ReactNode;
@@ -64,6 +65,7 @@ function QuotaDetails({ quota }: { quota: AgentQuota }) {
 
 export default function WorkspaceHeader({
   title,
+  subtitle,
   backLabel,
   onBack,
   backIcon,
@@ -99,6 +101,7 @@ export default function WorkspaceHeader({
           <h1 ref={titleRef} tabIndex={titleRef ? -1 : undefined}>
             {title}
           </h1>
+          {subtitle && <p className="workspace-subtitle">{subtitle}</p>}
           {preferences && (
             <p className="workspace-criteria" title={preferences.summary}>
               {preferences.compactSummary}

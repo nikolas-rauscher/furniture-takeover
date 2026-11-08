@@ -15,10 +15,19 @@
 .workspace-criteria {
   display: none;
 }
+.workspace-subtitle {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
 .workspace-toolbar h1 {
   margin: 0;
   font-size: 20px;
   font-weight: 550;
+}
+.workspace-toolbar h1:focus {
+  outline: none;
 }
 .workspace-toolbar .workspace-back {
   flex: 0 0 auto;
@@ -130,11 +139,13 @@
   color: var(--muted);
 }
 .chat-layout .agent-footnote.quota-available,
-.selling-chat-layout .agent-footnote.quota-available {
+.selling-chat-layout .agent-footnote.quota-available,
+.selling-photo-layout .agent-footnote.quota-available {
   display: none;
 }
 @media (max-width: 760px) {
-  #root:has(.chat-layout, .selling-chat-layout) > .app-header {
+  #root:has(.chat-layout, .selling-chat-layout, .selling-photo-layout)
+    > .app-header {
     display: none;
   }
   .app-layout.chat-layout .main-content.view-discover {
@@ -150,6 +161,9 @@
   .workspace-toolbar h1 {
     font-size: 16px;
     line-height: 1.3;
+  }
+  .workspace-subtitle {
+    font-size: 12px;
   }
   .workspace-criteria {
     display: block;

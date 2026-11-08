@@ -40,6 +40,7 @@
 }
 .photo-gallery-thumbnails {
   display: flex;
+  flex-wrap: nowrap;
   min-width: 0;
   max-width: 100%;
   gap: 6px;
@@ -91,29 +92,27 @@
   max-width: 100%;
   align-items: center;
   gap: 12px;
-  min-height: 30px;
+  min-height: 44px;
   font-size: 12px;
 }
 .photo-gallery-actions > span {
   margin-left: auto;
   color: #777;
 }
-.photo-gallery-actions .button {
-  min-height: 30px;
-  padding: 4px 8px;
+.photo-gallery-actions button {
+  min-height: 44px;
+  padding: 8px 12px;
   margin: 0;
-  font-size: 12px;
-}
-.photo-gallery-actions .file-label:has(input:disabled) {
-  opacity: 0.5;
-  cursor: default;
+  font-size: 13px;
 }
 .photo-gallery-remove {
   position: absolute;
   top: 8px;
   right: 8px;
+  width: 44px;
+  height: 44px;
 }
-.selling-photo-layout .sell-layout > .photo-upload-panel {
+.selling-photo-layout .photo-upload-panel {
   display: flex;
   min-height: 0;
 }
@@ -247,7 +246,7 @@
   flex-wrap: wrap;
   gap: 8px;
 }
-.photo-gallery-actions label.file-label {
+.photo-add-button {
   display: inline-flex;
   flex-direction: row;
   align-items: center;
@@ -256,9 +255,38 @@
   width: auto;
   max-width: 100%;
   height: auto;
-  min-height: 36px;
+  min-height: 44px;
   white-space: normal;
   cursor: pointer;
+}
+.photo-gallery > input[hidden] {
+  display: none;
+}
+.photo-upload-empty {
+  flex: 1 1 auto;
+  padding: 0;
+  gap: 12px;
+}
+.photo-upload-empty [data-slot="empty-header"] {
+  gap: 4px;
+}
+.photo-upload-empty [data-slot="empty-title"] {
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 550;
+}
+.photo-upload-empty [data-slot="empty-description"] {
+  color: var(--muted);
+  font-size: 13px;
+}
+.photo-upload-empty [data-slot="empty-content"] {
+  gap: 8px;
+}
+.photo-upload-empty .file-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
 }
 .photo-gallery-actions > span {
   margin-left: 0;

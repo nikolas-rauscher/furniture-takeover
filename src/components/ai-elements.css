@@ -247,8 +247,9 @@
   flex-wrap: wrap;
 }
 .photo-gallery .photo-gallery-thumbnails {
-  flex-wrap: wrap;
-  overflow: visible;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 .photo-gallery .photo-attachment {
   flex: 0 0 52px;

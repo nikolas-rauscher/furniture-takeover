@@ -8,8 +8,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 .pickup-location-heading label {
+  margin: 0;
+  flex-direction: row;
   font-size: 14px;
   font-weight: 500;
 }
@@ -18,7 +21,7 @@
   align-items: center;
   gap: 6px;
   min-height: 44px;
-  padding: 6px 0;
+  padding: 8px;
   border: 0;
   background: transparent;
   color: var(--blue);
@@ -40,7 +43,7 @@
 .pickup-location-help,
 .pickup-location-status {
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
   color: var(--muted);
 }
@@ -50,9 +53,6 @@
 @media (max-width: 400px) {
   .pickup-location-heading {
     gap: 8px;
-  }
-  .pickup-location-heading button {
-    font-size: 11px;
   }
 }
 @media (max-width: 760px) {

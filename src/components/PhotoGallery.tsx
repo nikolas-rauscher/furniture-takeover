@@ -1,12 +1,19 @@
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "./ui/empty";
+import {
   Attachment,
   AttachmentGroup,
   AttachmentMedia,
   AttachmentTrigger,
 } from "./ui/attachment";
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Plus, X, Image as ImageIcon } from "@/components/icons";
 import { MAX_LISTING_PHOTOS } from "../../shared/listingPhotos";
 import "./photo-gallery.css";
@@ -27,30 +34,42 @@ export default function PhotoGallery({
   onImagesChange,
 }: Props) {
   const [selected, setSelected] = useState("");
+  const fileInput = useRef<HTMLInputElement>(null);
+  const hintId = useId();
   const active = images.includes(selected) ? selected : images[0];
   const index = images.indexOf(active);
   const editable = Boolean(onFilesSelected && onImagesChange);
   const addControl = (label: string) => (
-    <label
-      className={`button ${images.length ? "secondary" : "primary"} file-label`}
+    <Button
+      type="button"
+      variant={images.length ? "outline" : "default"}
+      className="photo-add-button"
+      disabled={disabled || images.length >= MAX_LISTING_PHOTOS}
+      aria-describedby={images.length ? undefined : hintId}
+      onClick={() => fileInput.current?.click()}
     >
-      {images.length > 0 && <Plus size={15} />}
+      <Plus size={16} aria-hidden="true" />
       {label}
-      <Input
-        type="file"
-        aria-label={label}
-        accept="image/jpeg,image/png,image/webp"
-        multiple
-        disabled={disabled || images.length >= MAX_LISTING_PHOTOS}
-        onChange={(event) => {
-          onFilesSelected?.(Array.from(event.target.files ?? []));
-          event.target.value = "";
-        }}
-      />
-    </label>
+    </Button>
   );
   return (
     <div className={`photo-gallery ${editable ? "is-editable" : ""}`}>
+      {editable && (
+        <Input
+          ref={fileInput}
+          type="file"
+          hidden
+          tabIndex={-1}
+          aria-hidden="true"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+          disabled={disabled || images.length >= MAX_LISTING_PHOTOS}
+          onChange={(event) => {
+            onFilesSelected?.(Array.from(event.target.files ?? []));
+            event.target.value = "";
+          }}
+        />
+      )}
       <div
         className={`photo-gallery-stage ${editable ? "upload-zone" : ""} ${active ? "has-image" : ""}`}
         onDragOver={editable ? (event) => event.preventDefault() : undefined}
@@ -96,14 +115,18 @@ export default function PhotoGallery({
             <span>No photos added</span>
           </div>
         ) : (
-          <>
-            <h2>Add item photos</h2>
-            <p>Drag photos here or choose files.</p>
-            {addControl("Choose photos")}
-            <span className="file-hint">
-              Up to {MAX_LISTING_PHOTOS} photos · JPG, PNG or WebP · 2 MB each
-            </span>
-          </>
+          <Empty className="photo-upload-empty">
+            <EmptyHeader>
+              <EmptyTitle>Add item photos</EmptyTitle>
+              <EmptyDescription>Show the item and any wear.</EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              {addControl("Add photos")}
+              <span id={hintId} className="file-hint">
+                Up to {MAX_LISTING_PHOTOS} photos · JPG, PNG or WebP · 2 MB each
+              </span>
+            </EmptyContent>
+          </Empty>
         )}
       </div>
       {images.length > 0 && (editable || images.length > 1) && (
