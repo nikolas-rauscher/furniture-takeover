@@ -20,6 +20,8 @@ export type WebSearchConfig = {
   apiKey: string;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
+  /** Queue admission has its own budget; it must not consume fetch time. */
+  queueTimeoutMs?: number;
   /** General product research is distinct from discovering actual offers. */
   scope?: "offers" | "research";
   source?: string;
@@ -39,7 +41,10 @@ const minimumStartInterval = 1_100;
 function waitForTurn(previous: Promise<void>, signal: AbortSignal) {
   signal.throwIfAborted();
   return new Promise<void>((resolve, reject) => {
-    const abort = () => reject(signal.reason);
+    const abort = () => {
+      signal.removeEventListener("abort", abort);
+      reject(signal.reason);
+    };
     signal.addEventListener("abort", abort, { once: true });
     void previous.then(() => {
       signal.removeEventListener("abort", abort);
@@ -52,13 +57,19 @@ function waitForTurn(previous: Promise<void>, signal: AbortSignal) {
 async function queuedSearch<T>(
   apiKey: string,
   signal: AbortSignal,
-  execute: () => Promise<T>,
+  queueTimeoutMs: number,
+  execute: (queue: SearchQueue) => Promise<T>,
 ): Promise<T> {
   let queue = searchQueues.get(apiKey);
   if (!queue) {
     queue = { tail: Promise.resolve(), pending: 0, nextStart: 0 };
     searchQueues.set(apiKey, queue);
   }
+  if (queue.pending >= 16)
+    throw new WebSearchError(
+      "WEB_SEARCH_BUSY",
+      "Web search is busy. Try again shortly.",
+    );
   clearTimeout(queue.cleanup);
   const previous = queue.tail;
   let release!: () => void;
@@ -68,13 +79,29 @@ async function queuedSearch<T>(
   // A cancelled waiter must not let later requests bypass its predecessor.
   queue.tail = previous.then(() => current);
   queue.pending++;
+  const timeout = AbortSignal.timeout(queueTimeoutMs);
+  const waiting = AbortSignal.any([signal, timeout]);
+  let admitted = false;
   try {
-    await waitForTurn(previous, signal);
-    const waitMs = queue.nextStart - performance.now();
-    if (waitMs > 0) await delay(Math.ceil(waitMs), undefined, { signal });
-    signal.throwIfAborted();
+    await waitForTurn(previous, waiting);
+    while (queue.nextStart > performance.now())
+      await delay(Math.ceil(queue.nextStart - performance.now()), undefined, {
+        signal: waiting,
+      });
+    waiting.throwIfAborted();
+    admitted = true;
     queue.nextStart = performance.now() + minimumStartInterval;
-    return await execute();
+    // Brave limits request starts, not their duration. Slow responses must not
+    // serialize every tester behind one network request.
+    release();
+    return await execute(queue);
+  } catch (error) {
+    if (!admitted && !signal.aborted && timeout.aborted)
+      throw new WebSearchError(
+        "WEB_SEARCH_BUSY",
+        "Web search is busy. Try again shortly.",
+      );
+    throw error;
   } finally {
     release();
     queue.pending--;
@@ -90,6 +117,37 @@ async function queuedSearch<T>(
       queue.cleanup.unref();
     }
   }
+}
+
+/** Brave exposes separate burst/monthly resets; retry only short-lived limits. */
+function retryDelay(response: Response): number {
+  const remaining = response.headers
+    .get("X-RateLimit-Remaining")
+    ?.split(",")
+    .map(Number);
+  const resets =
+    response.headers.get("X-RateLimit-Reset")?.split(",").map(Number) ?? [];
+  const resetMs = resets.reduce(
+    (longest, seconds, index) =>
+      Number.isFinite(seconds) &&
+      seconds >= 0 &&
+      (remaining ? remaining[index] === 0 : index === 0)
+        ? Math.max(longest, seconds * 1000)
+        : longest,
+    0,
+  );
+  const retryAfter = response.headers.get("Retry-After");
+  const seconds = retryAfter === null ? NaN : Number(retryAfter);
+  const retryMs = Number.isFinite(seconds)
+    ? seconds * 1000
+    : retryAfter
+      ? Date.parse(retryAfter) - Date.now()
+      : 0;
+  return Math.max(
+    minimumStartInterval,
+    resetMs,
+    Number.isFinite(retryMs) ? retryMs : 0,
+  );
 }
 
 export function validSourceUrl(value: unknown): string | null {
@@ -231,7 +289,7 @@ export async function searchWeb(
       "WEB_SEARCH_NOT_CONFIGURED",
       "Web search is not configured.",
     );
-  const timeout = AbortSignal.timeout(config.timeoutMs ?? 12_000);
+  const timeout = AbortSignal.timeout(35_000);
   const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
   const url = new URL("https://api.search.brave.com/res/v1/web/search");
   const offersOnly = config.scope !== "research";
@@ -250,84 +308,143 @@ export async function searchWeb(
   );
   url.searchParams.set("count", "20");
   url.searchParams.set("text_decorations", "false");
+  url.searchParams.set("result_filter", "web");
   try {
     combined.throwIfAborted();
-    return await queuedSearch(config.apiKey.trim(), combined, async () => {
-      const response = await (config.fetchImpl ?? fetch)(url, {
-        headers: {
-          Accept: "application/json",
-          "X-Subscription-Token": config.apiKey,
-        },
-        signal: combined,
-        redirect: "error",
-      });
-      if (!response.ok) {
-        await response.body?.cancel();
-        throw new WebSearchError(
-          response.status === 429
-            ? "WEB_SEARCH_BUSY"
-            : "WEB_SEARCH_UNAVAILABLE",
-          response.status === 429
-            ? "Web search is busy. Try again shortly."
-            : "Web search is unavailable. Check the server search configuration and try again.",
-        );
-      }
-      const body = (await boundedJson(response)) as {
-        web?: { results?: unknown };
-      };
-      if (
-        !body ||
-        typeof body !== "object" ||
-        (body.web !== undefined &&
-          (typeof body.web !== "object" ||
-            body.web === null ||
-            !Array.isArray(body.web.results)))
-      )
-        throw new WebSearchError(
-          "WEB_SEARCH_INVALID_RESPONSE",
-          "Web search returned an incomplete response.",
-        );
-      const results = body.web?.results ?? [];
-      if (!Array.isArray(results))
-        throw new WebSearchError(
-          "WEB_SEARCH_INVALID_RESPONSE",
-          "Web search returned an incomplete response.",
-        );
-      const seen = new Set<string>();
-      return results
-        .slice(0, 20)
-        .flatMap((item) => {
-          if (!item || typeof item !== "object") return [];
-          const entry = item as Record<string, unknown>;
-          const sourceUrl = validSourceUrl(entry.url);
-          const title = plain(entry.title, 180);
-          const snippet = plain(entry.description, 700);
-          if (!sourceUrl || !title || seen.has(sourceUrl)) return [];
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const result = await queuedSearch(
+        config.apiKey.trim(),
+        combined,
+        config.queueTimeoutMs ?? 15_000,
+        async (queue) => {
+          const fetchTimeout = AbortSignal.timeout(config.timeoutMs ?? 12_000);
+          const fetchSignal = AbortSignal.any([combined, fetchTimeout]);
+          let response: Response;
+          try {
+            response = await (config.fetchImpl ?? fetch)(url, {
+              headers: {
+                Accept: "application/json",
+                "X-Subscription-Token": config.apiKey,
+              },
+              signal: fetchSignal,
+              redirect: "error",
+            });
+          } catch (error) {
+            combined.throwIfAborted();
+            if (fetchTimeout.aborted)
+              throw new WebSearchError(
+                "WEB_SEARCH_TIMEOUT",
+                "Web search took too long. Try again.",
+              );
+            // A single retry for a transient connection failure, never an aborted request.
+            if (attempt === 0 && error instanceof TypeError) return null;
+            throw error;
+          }
+          if (!response.ok) {
+            const waitMs = retryDelay(response);
+            await response.body?.cancel();
+            if (response.status === 401 || response.status === 403)
+              throw new WebSearchError(
+                "WEB_SEARCH_AUTH",
+                "Web search is not available with the configured search key.",
+              );
+            if (response.status === 429 && waitMs > 5_000)
+              throw new WebSearchError(
+                "WEB_SEARCH_QUOTA",
+                "The web search allowance is used up. Try again after it resets.",
+              );
+            if (
+              response.status === 429 ||
+              [502, 503, 504].includes(response.status)
+            ) {
+              // All testers share the provider cooldown, including a retry already queued.
+              queue.nextStart = Math.max(
+                queue.nextStart,
+                performance.now() + Math.min(waitMs, 5_000),
+              );
+              if (attempt === 0 && waitMs <= 5_000) return null;
+            }
+            throw new WebSearchError(
+              response.status === 429
+                ? "WEB_SEARCH_BUSY"
+                : "WEB_SEARCH_UNAVAILABLE",
+              response.status === 429
+                ? "Web search is busy. Try again shortly."
+                : "Web search is temporarily unavailable. Try again shortly.",
+            );
+          }
+          let body: { web?: { results?: unknown } };
+          try {
+            body = (await boundedJson(response)) as typeof body;
+          } catch (error) {
+            combined.throwIfAborted();
+            if (fetchTimeout.aborted)
+              throw new WebSearchError(
+                "WEB_SEARCH_TIMEOUT",
+                "Web search took too long. Try again.",
+              );
+            throw error;
+          }
           if (
-            offersOnly &&
-            (!isMarketplaceOffer(sourceUrl, title, snippet) ||
-              !matchesMarketplaceSource(sourceUrl, config.source))
+            !body ||
+            typeof body !== "object" ||
+            (body.web !== undefined &&
+              (typeof body.web !== "object" ||
+                body.web === null ||
+                !Array.isArray(body.web.results)))
           )
-            return [];
-          seen.add(sourceUrl);
-          const thumbnail = entry.thumbnail;
-          const imageUrl =
-            thumbnail &&
-            typeof thumbnail === "object" &&
-            !Array.isArray(thumbnail)
-              ? validSourceUrl((thumbnail as Record<string, unknown>).src)
-              : null;
-          return [
-            {
-              title,
-              url: sourceUrl,
-              snippet,
-              ...(imageUrl ? { imageUrl } : {}),
-            },
-          ];
-        })
-        .slice(0, 5);
-    });
+            throw new WebSearchError(
+              "WEB_SEARCH_INVALID_RESPONSE",
+              "Web search returned an incomplete response.",
+            );
+          const results = body.web?.results ?? [];
+          if (!Array.isArray(results))
+            throw new WebSearchError(
+              "WEB_SEARCH_INVALID_RESPONSE",
+              "Web search returned an incomplete response.",
+            );
+          const seen = new Set<string>();
+          return results
+            .slice(0, 20)
+            .flatMap((item) => {
+              if (!item || typeof item !== "object") return [];
+              const entry = item as Record<string, unknown>;
+              const sourceUrl = validSourceUrl(entry.url);
+              const title = plain(entry.title, 180);
+              const snippet = plain(entry.description, 700);
+              if (!sourceUrl || !title || seen.has(sourceUrl)) return [];
+              if (
+                offersOnly &&
+                (!isMarketplaceOffer(sourceUrl, title, snippet) ||
+                  !matchesMarketplaceSource(sourceUrl, config.source))
+              )
+                return [];
+              seen.add(sourceUrl);
+              const thumbnail = entry.thumbnail;
+              const imageUrl =
+                thumbnail &&
+                typeof thumbnail === "object" &&
+                !Array.isArray(thumbnail)
+                  ? validSourceUrl((thumbnail as Record<string, unknown>).src)
+                  : null;
+              return [
+                {
+                  title,
+                  url: sourceUrl,
+                  snippet,
+                  ...(imageUrl ? { imageUrl } : {}),
+                },
+              ];
+            })
+            .slice(0, 5);
+        },
+      );
+      if (result !== null) return result;
+    }
+    throw new WebSearchError(
+      "WEB_SEARCH_UNAVAILABLE",
+      "Web search is temporarily unavailable. Try again shortly.",
+    );
   } catch (error) {
     if (signal?.aborted)
       throw new WebSearchError(

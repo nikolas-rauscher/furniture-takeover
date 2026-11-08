@@ -205,7 +205,7 @@ test("no results stay empty and cancellation aborts the actual search fetch", as
   assert.equal(upstreamSignal?.aborted, true);
 });
 
-test("concurrent Brave requests share a per-key queue and start at least 1.1 seconds apart", async () => {
+test("concurrent Brave requests pace their starts without serializing slow responses", async () => {
   const starts: number[] = [];
   let active = 0;
   let maximumActive = 0;
@@ -213,7 +213,7 @@ test("concurrent Brave requests share a per-key queue and start at least 1.1 sec
     starts.push(performance.now());
     active++;
     maximumActive = Math.max(active, maximumActive);
-    // A slow request must finish before another request on this key starts.
+    // Brave's limit applies to arrivals, not the duration of a response.
     if (starts.length === 1) await delay(1_150);
     active--;
     return Response.json({ web: { results: [] } });
@@ -223,10 +223,168 @@ test("concurrent Brave requests share a per-key queue and start at least 1.1 sec
       searchWeb(query, { apiKey: "shared-throttle-key", fetchImpl }),
     ),
   );
-  assert.equal(maximumActive, 1);
+  assert.equal(maximumActive, 2);
   assert.equal(starts.length, 3);
   assert.ok(starts[1] - starts[0] >= 1_100);
   assert.ok(starts[2] - starts[1] >= 1_100);
+});
+
+test("waiting for another tester does not consume the fetch timeout", async () => {
+  let calls = 0;
+  const config = {
+    apiKey: "separate-queue-budget-key",
+    timeoutMs: 100,
+    fetchImpl: (async () => {
+      calls++;
+      return Response.json({ web: { results: [] } });
+    }) as typeof fetch,
+  };
+  await searchWeb("desk", config);
+  assert.deepEqual(await searchWeb("chair", config), []);
+  assert.equal(calls, 2);
+});
+
+test("transient limits retry once after the provider reset and share the cooldown", async () => {
+  const starts: number[] = [];
+  const config = {
+    apiKey: "provider-reset-key",
+    fetchImpl: (async () => {
+      starts.push(performance.now());
+      return starts.length === 1
+        ? new Response("private upstream details", {
+            status: 429,
+            headers: {
+              "X-RateLimit-Remaining": "0, 100",
+              "X-RateLimit-Reset": "2, 2592000",
+            },
+          })
+        : Response.json({ web: { results: [] } });
+    }) as typeof fetch,
+  };
+  await Promise.all([searchWeb("desk", config), searchWeb("chair", config)]);
+  assert.equal(starts.length, 3);
+  assert.ok(starts[1] - starts[0] >= 2_000);
+  assert.ok(starts[2] - starts[1] >= 1_100);
+});
+
+test("search retries a connection or temporary service failure but never loops", async () => {
+  for (const failure of ["network", "service"]) {
+    let calls = 0;
+    await assert.rejects(
+      searchWeb("desk", {
+        apiKey: `bounded-retry-${failure}`,
+        fetchImpl: async () => {
+          calls++;
+          if (failure === "network")
+            throw new TypeError("private upstream details");
+          return new Response("private upstream details", { status: 503 });
+        },
+      }),
+      (error) =>
+        error instanceof WebSearchError &&
+        error.code === "WEB_SEARCH_UNAVAILABLE" &&
+        !error.message.includes("private"),
+    );
+    assert.equal(calls, 2);
+  }
+});
+
+test("authentication and exhausted monthly quotas do not retry", async () => {
+  for (const status of [401, 403, 429]) {
+    let calls = 0;
+    await assert.rejects(
+      searchWeb("desk", {
+        apiKey: `permanent-search-error-${status}`,
+        fetchImpl: async () => {
+          calls++;
+          return new Response("secret", {
+            status,
+            headers: {
+              "X-RateLimit-Remaining": "0, 0",
+              "X-RateLimit-Reset": "1, 2592000",
+            },
+          });
+        },
+      }),
+      (error) =>
+        error instanceof WebSearchError &&
+        error.code ===
+          (status === 429 ? "WEB_SEARCH_QUOTA" : "WEB_SEARCH_AUTH"),
+    );
+    assert.equal(calls, 1);
+  }
+});
+
+test("cancelling during retry cooldown prevents another provider request", async () => {
+  const controller = new AbortController();
+  let calls = 0;
+  const searching = searchWeb(
+    "desk",
+    {
+      apiKey: "cancel-retry-key",
+      fetchImpl: async () => {
+        calls++;
+        return new Response("busy", { status: 429 });
+      },
+    },
+    controller.signal,
+  );
+  await delay(20);
+  controller.abort();
+  await assert.rejects(
+    searching,
+    (error) =>
+      error instanceof WebSearchError && error.code === "REQUEST_CANCELLED",
+  );
+  assert.equal(calls, 1);
+});
+
+test("fetch deadlines abort the upstream request and do not retry timeouts", async () => {
+  let calls = 0;
+  let upstreamSignal: AbortSignal | null | undefined;
+  await assert.rejects(
+    searchWeb("desk", {
+      apiKey: "fetch-timeout-key",
+      timeoutMs: 20,
+      fetchImpl: async (_input, init) => {
+        calls++;
+        upstreamSignal = init?.signal;
+        await delay(1_000, undefined, { signal: init?.signal ?? undefined });
+        return Response.json({ web: { results: [] } });
+      },
+    }),
+    (error) =>
+      error instanceof WebSearchError && error.code === "WEB_SEARCH_TIMEOUT",
+  );
+  assert.equal(calls, 1);
+  assert.equal(upstreamSignal?.aborted, true);
+});
+
+test("queue admission times out without fetching and releases the next waiter", async () => {
+  const config = {
+    apiKey: "bounded-admission-key",
+    queueTimeoutMs: 30,
+    fetchImpl: (async () =>
+      Response.json({ web: { results: [] } })) as typeof fetch,
+  };
+  await searchWeb("desk", config);
+  let calls = 0;
+  await assert.rejects(
+    searchWeb("chair", {
+      ...config,
+      fetchImpl: async () => {
+        calls++;
+        return Response.json({ web: { results: [] } });
+      },
+    }),
+    (error) =>
+      error instanceof WebSearchError && error.code === "WEB_SEARCH_BUSY",
+  );
+  assert.equal(calls, 0);
+  assert.deepEqual(
+    await searchWeb("lamp", { ...config, queueTimeoutMs: 2_000 }),
+    [],
+  );
 });
 
 test("queued and cooldown waits cancel without fetching or blocking independent keys", async () => {
