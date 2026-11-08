@@ -2080,6 +2080,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                   : archivedListings
               }
               onSell={startSell}
+              onBrowse={openBrowse}
               onOpen={openProduct}
               onEdit={editListing}
               onStatusChange={setStatus}
