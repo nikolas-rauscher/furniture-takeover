@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { isAbsolute } from "node:path";
 import { once } from "node:events";
 import type { AddressInfo } from "node:net";
-import { readServerConfig, readPort } from "./config.ts";
+import { readServerConfig, readPort, isLoopbackHost } from "./config.ts";
 import { createAgentServer } from "./http.ts";
 import { createAgentService } from "./service.ts";
 
@@ -85,4 +85,27 @@ test("HTTP accepts the configured teammate origin and rejects another origin", a
     server.closeAllConnections();
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
+});
+
+test("the API listens on loopback unless another address is configured", () => {
+  assert.equal(readServerConfig({}).host, "127.0.0.1");
+  assert.equal(readServerConfig({ API_HOST: " 0.0.0.0 " }).host, "0.0.0.0");
+  assert.equal(
+    readServerConfig({ API_HOST: "192.168.1.30" }).host,
+    "192.168.1.30",
+  );
+  assert.equal(
+    readServerConfig({ API_HOST: "app-lxc.lan" }).host,
+    "app-lxc.lan",
+  );
+  for (const value of ["http://x", "a b", "-bad", "host/path", "a;b"])
+    assert.throws(
+      () => readServerConfig({ API_HOST: value }),
+      /API_HOST/,
+      value,
+    );
+  for (const host of ["127.0.0.1", "127.1.2.3", "localhost", "::1"])
+    assert.equal(isLoopbackHost(host), true, host);
+  for (const host of ["0.0.0.0", "192.168.1.30", "::", "app-lxc.lan"])
+    assert.equal(isLoopbackHost(host), false, host);
 });

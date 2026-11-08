@@ -1,11 +1,19 @@
 import {
+  BottomNavigation,
+  BottomNavigationHighlight,
+  BottomNavigationHighlightItem,
+  BottomNavigationItem,
+  BottomNavigationLabel,
+} from "@animate-ui/react/primitives/bottom-navigation";
+import { Button } from "./components/ui/button";
+import {
   MessageCircle,
   Heart,
   House,
   Search,
   SquarePlus,
-  UserRound,
-} from "lucide-react";
+  Package,
+} from "@/components/icons";
 import "./mobile-nav.css";
 
 export type MobileDestination =
@@ -22,30 +30,46 @@ const destinations = [
   { id: "sell", label: "Sell", Icon: SquarePlus },
   { id: "favorites", label: "Saved", Icon: Heart },
   { id: "messages", label: "Messages", Icon: MessageCircle },
-  { id: "account", label: "My space", Icon: UserRound },
+  { id: "account", label: "My listings", Icon: Package },
 ] as const;
 
 export default function MobileNav({ active, onNavigate }: MobileNavProps) {
   return (
-    <nav className="mobile-nav" aria-label="Mobile navigation">
-      <div className="mobile-nav-items">
-        {destinations.map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            className={`mobile-nav-item${id === "sell" ? " mobile-nav-sell" : ""}`}
-            type="button"
-            aria-current={active === id ? "page" : undefined}
-            onClick={() => onNavigate(id)}
-          >
-            <Icon
-              size={id === "sell" ? 28 : 23}
-              strokeWidth={active === id ? 2 : 1.65}
-              aria-hidden="true"
-            />
-            <span>{label}</span>
-          </button>
-        ))}
-      </div>
-    </nav>
+    <BottomNavigation
+      className="mobile-nav"
+      aria-label="Mobile navigation"
+      value={active ?? ""}
+      scrollBehavior="none"
+      onValueChange={(value) => {
+        if (value !== active) onNavigate(value as MobileDestination);
+      }}
+    >
+      <BottomNavigationHighlight className="mobile-nav-highlight">
+        <ul className="mobile-nav-items">
+          {destinations.map(({ id, label, Icon }) => (
+            <li key={id}>
+              <BottomNavigationHighlightItem value={id}>
+                <BottomNavigationItem value={id} asChild>
+                  <Button
+                    className={`mobile-nav-item${id === "sell" ? " mobile-nav-sell" : ""}`}
+                    type="button"
+                    aria-label={id === "account" ? "My listings" : label}
+                  >
+                    <Icon
+                      size={id === "sell" ? 26 : 22}
+                      strokeWidth={active === id ? 2 : 1.65}
+                      aria-hidden="true"
+                    />
+                    <BottomNavigationLabel>
+                      {id === "account" ? "Listings" : label}
+                    </BottomNavigationLabel>
+                  </Button>
+                </BottomNavigationItem>
+              </BottomNavigationHighlightItem>
+            </li>
+          ))}
+        </ul>
+      </BottomNavigationHighlight>
+    </BottomNavigation>
   );
 }

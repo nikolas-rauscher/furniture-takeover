@@ -1,83 +1,94 @@
 # Takeover
 
-A local marketplace MVP for finding and selling second-hand items around Lausanne. Buyers describe what they need in chat and compare listings. Sellers upload photos, add details and review an editable listing draft. The assistant can research comparable offers and prepare a message, while the user chooses what to save or send.
+A second-hand marketplace MVP for Lausanne. Buyers describe what they need and compare listings. Sellers turn photos and details into an editable listing draft. The assistant researches items and prepares messages; users decide what to publish or send.
 
-Built with React, TypeScript and Vite, a Node.js API, SQLite, DeepSeek and Brave Search.
+React · TypeScript · Vite · Node.js · Supabase · DeepSeek · Brave Search
 
-## Quick start
+## Run locally
 
-Use **Node.js 22.18 or newer** and npm. The tested Node 22 version is pinned in `.nvmrc`. If you use nvm, run `nvm install` and `nvm use` in this folder.
+Use **Node.js 22.18+** and npm. With nvm, run `nvm install && nvm use` to use the version in `.nvmrc`. Run all commands from this repository's root.
 
 ```sh
 npm ci
 npm run setup
+```
+
+Add your [DeepSeek API key](https://platform.deepseek.com/api_keys) and [Brave Search API key](https://api-dashboard.search.brave.com/app/keys) to `.env`, then start the app:
+
+```sh
 npm run dev
 ```
 
-Open **http://localhost:5173**. Run every command from the folder containing this `package.json`. The launcher starts the frontend on port 5173 and the API on port 8787. Stop both with Ctrl+C.
+Open **http://localhost:5173**. The API runs on port **8787**. Ctrl+C stops both servers. `setup` preserves an existing `.env`; restart the server after changing it. Keep credentials local and server-side. Available settings are in [`.env.example`](.env.example).
 
-`npm run setup` creates `.env` only if it does not exist. It never overwrites your keys. SQLite creates and seeds `data/marketplace.sqlite` on first startup. No separate database installation or database download is needed.
+Without Supabase configuration, the app uses local demo mode. SQLite creates `data/marketplace.sqlite` automatically; no database installation is needed. Demo listings and messages stay local, and browser storage is specific to each browser. Demo sellers cannot receive external messages.
 
-### API keys
+## Supabase accounts
 
-Create keys at [DeepSeek](https://platform.deepseek.com/api_keys) and [Brave](https://api-dashboard.search.brave.com/app/keys), then add them to `.env`:
+1. Create a [Supabase project](https://supabase.com/dashboard) and apply the files in [`supabase/migrations/`](supabase/migrations/) in filename order.
+2. Set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` in `.env`. Use the public publishable/anon key, never a service-role key.
+3. In Supabase Auth, disable public signups, configure the app's URL and allowed redirect URLs, and invite testers through **Users → Add user → Send invitation**. Configure [custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp) for invitations and password resets outside your Supabase team.
 
-```dotenv
-DEEPSEEK_API_KEY=your-own-key
-BRAVE_SEARCH_API_KEY=your-own-key
+Restart the app. Supabase mode enables accounts, shared listings, photo uploads, private messages, favourites and profile settings. AI access requires sign-in. Local demo data is not imported automatically.
+
+Users can store personal provider keys under **Account settings → API keys**. Set `ACCOUNT_KEYS_ENCRYPTION_KEY` as described in `.env.example`; back it up and keep it unchanged across deployments. Personal keys override server defaults for that user.
+
+AI usage is limited to **50 requests per user and 500 across the app per UTC day**, including typing suggestions. One request can make several model/tool calls, so this is a request limit rather than a spending cap. Minute, concurrency and timeout limits also apply.
+
+## Development
+
+| Command          | Purpose                                      |
+| ---------------- | -------------------------------------------- |
+| `npm run dev`    | Start frontend and API                       |
+| `npm run check`  | TypeScript and all tests; no API keys needed |
+| `npm run build`  | Type-check and build into `dist/`            |
+| `npm start`      | Serve the built app and API on port 8787     |
+| `npm run format` | Format application source                    |
+
+Additional scripts are in [`package.json`](package.json). GitHub Actions runs checks and builds on Node 22 and 24.
+
+### Code layout
+
+| Location                 | Responsibility                                                |
+| ------------------------ | ------------------------------------------------------------- |
+| `src/components/`        | Screens and shared UI controls                                |
+| `src/components/ui/`     | Reusable shadcn/Base UI components                            |
+| `src/cloud/`             | Supabase accounts and data access                             |
+| `src/hooks/`, `src/api/` | Client state, API calls and streaming                         |
+| `src/App.tsx`            | Navigation and workflow coordination                          |
+| `server/`                | API, agent runtime, tools, providers and local SQLite storage |
+| `shared/`                | Domain types, validation and shared contracts                 |
+| `supabase/migrations/`   | Database schema and access rules                              |
+
+### UI components
+
+AI interfaces follow [shadcn AI Elements](https://ui.shadcn.com/docs/ai-elements): Message Scroller and Bubble for chat, Input Group for prompts, Trace for activity, sources and the listing checklist, Hover Card for citations, Item for confirmations, and Attachment for photos. Compositions live in `src/components/`; shared primitives live in `src/components/ui/`. Activity steps and expandable provider reasoning are shown separately from the answer.
+
+Use the shared **shadcn/ui components with Base UI**, styled for Takeover. Tailwind Preflight is omitted to preserve existing page styles. Design values live in `src/styles.css`, Tailwind mappings in `src/tailwind.css`, and shared control styles in `src/components/ui/ui.css`.
+
+```sh
+npm run ui:add -- tooltip
+npm run ui:animate -- tabs
+npm run ui:check
 ```
 
-Restart `npm run dev`. Keep `.env` local. Tests run without API keys.
+Add `--dry-run` to `ui:add` or `ui:animate` to preview changes before replacing customized components. `ui:check` inventories animations; validate changes with `npm run check`, `npm run build`, and desktop/mobile interaction checks.
 
-## Commands
+Import icons through `src/components/icons.ts`. Add individual animated Lucide icons with `npm run ui:add -- @animate-ui/icons-lucide-bell`, then export them from that file. The existing Lucide symbols remain as fallbacks where Animate UI has no equivalent. Set `animateIcon` on a shared `Button` to animate its icons on hover and tap; keep passive icons still. Animate UI respects reduced-motion preferences.
 
-| Command                 | Purpose                                                     |
-| ----------------------- | ----------------------------------------------------------- |
-| `npm run setup`         | Create a local `.env`, preserving any existing file         |
-| `npm run dev`           | Start frontend and API together                             |
-| `npm run dev:frontend`  | Start only Vite                                             |
-| `npm run dev:backend`   | Start only the API with automatic reload                    |
-| `npm run check`         | Check TypeScript and run all tests                          |
-| `npm test`              | Discover and run tests, including tests in new subfolders   |
-| `npm run build`         | Check types and build the frontend into `dist/`             |
-| `npm run start:backend` | Run the API without a file watcher                          |
-| `npm run preview`       | Preview the built frontend, with an API proxy, on port 4173 |
-| `npm run format`        | Format application source with Prettier                     |
+[`components.json`](components.json) configures shadcn and the Animate UI registry. Both are available through the shadcn MCP server. In VS Code, start it from [`.vscode/mcp.json`](.vscode/mcp.json). For Codex, run once from the repository root, then restart Codex:
 
-For a local build preview, run `npm run build`, then keep `npm run start:backend` in one terminal and `npm run preview` in another. This is a local verification workflow, not a production deployment.
-
-## Where to make changes
-
-```text
-src/components/    Screens, chat controls, listing forms and galleries
-src/hooks/         Agent state, cancellation, local storage and listing sync
-src/api/           Browser clients and streamed-event validation
-src/App.tsx        Top-level navigation and workflow coordination
-shared/            Domain types, validated action/event contracts and demo catalog
-server/config.ts   Ports, credentials, database path and allowed origins
-server/http.ts     HTTP routing, request limits and stream delivery
-server/runtime.ts  Agent loop and streaming
-server/agent-tools.ts Tool registration and execution
-server/service.ts  Structured assistance and seller-fact grounding
-server/deepseek.ts DeepSeek transport for suggestions and photo drafts
-server/web-search.ts Brave adapter and result validation
-server/database.ts SQLite demo catalog
-server/messages.ts SQLite local conversation demo
-scripts/           Development, setup and test discovery
+```sh
+codex mcp add takeover-ui -- npx --yes shadcn@4.23.0 mcp --cwd "$PWD"
 ```
 
-Start with [the development guide](docs/DEVELOPMENT.md) for feature changes, test locations and smoke checks. The repository-level `.github/workflows/ci.yml` checks the app on Node 22 and 24.
+## Hosting
 
-## Configuration and phone access
+```sh
+npm run build
+npm start
+```
 
-Optional settings are documented in [`.env.example`](.env.example). `APP_PORT`, `API_PORT` and `PREVIEW_PORT` let you avoid port conflicts. Relative `DATABASE_PATH` values resolve from the project folder.
+Forward your HTTPS tunnel to `http://127.0.0.1:8787`. To host on a private network behind your own nginx with a self-hosted Supabase, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): `SUPABASE_URL` is the address browsers use, `SUPABASE_INTERNAL_URL` is the LAN address the server uses, and `API_HOST` lets a proxy on another machine reach the API. Set its exact public origin in `API_ALLOWED_ORIGINS` and configure the same URL in Supabase Auth. Keep `.env` and `ACCOUNT_KEYS_ENCRYPTION_KEY` on the server. For LAN development, see `APP_HOST`, `APP_ALLOWED_HOSTS` and port settings in `.env.example`.
 
-For LAN or Tailscale access, see [phone testing](docs/DEVELOPMENT.md#phone-testing). The API validates exact origins, so a working homepage alone does not prove that agent requests from a phone work.
-
-## Data and demo boundaries
-
-- Demo listings and local message threads live in SQLite. Personal listings, saved searches, favourites and offer drafts use browser storage. Browser data does not automatically move between computers or browsers.
-- Sending a message writes to the local demo inbox. Seller preview mode is not a real seller account. No external seller receives a message.
-- There is no authentication, payment processing, marketplace posting or background alert service. The API is a local prototype, not a public multi-user backend.
-- Web results are search snippets. Prices, availability and pickup distances may be unverified. Demo catalog prices and details are fictional.
-- [Image sources](public/images/CATALOG_SOURCES.md) records the external catalog photo references. External marketplace photographs are not licensed as part of this source code.
+Payments and background alerts are not implemented. Web results are search snippets; prices, availability and pickup distances may be unverified. Demo catalogue details are fictional.

@@ -23,6 +23,60 @@ const rejectsCode = (code: string) => (error: unknown) =>
 const png =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==";
 
+test("reply assistance receives the actual conversation and never uses canned search suggestions", async () => {
+  const conversation = {
+    role: "buyer" as const,
+    listing: {
+      title: "Desk",
+      price: 40,
+      location: "Lausanne",
+      pickup: "Saturday afternoon",
+    },
+    messages: [
+      { role: "other" as const, text: "Could you bring a second person?" },
+    ],
+  };
+  const suggestions = ["How heavy is the desk, and can the legs be removed?"];
+  const service = createAgentService({
+    ...fakeConfig,
+    fetchImpl: fakeFetch(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      assert.deepEqual(
+        JSON.parse(body.messages[1].content).conversation,
+        conversation,
+      );
+      assert.match(body.messages[0].content, /not a fixed list/);
+      return completion({
+        suggestions,
+        missingDetails: [],
+        metadata: { keywords: [] },
+      });
+    }),
+  });
+  const result = await service.assist({
+    intent: "reply",
+    text: "Suggest replies",
+    conversation,
+  });
+  assert.deepEqual(result.suggestions, suggestions);
+  for (const invalid of [
+    undefined,
+    { ...conversation, role: "admin" },
+    { ...conversation, messages: Array(13).fill(conversation.messages[0]) },
+    { ...conversation, messages: [{ role: "self", text: "x".repeat(4001) }] },
+  ]) {
+    assert.throws(
+      () =>
+        validateRequest({
+          intent: "reply",
+          text: "Suggest replies",
+          conversation: invalid,
+        }),
+      rejectsCode("INVALID_REQUEST"),
+    );
+  }
+});
+
 test("unconfigured provider returns a setup error without fabricated output", async () => {
   let called = false;
   const service = createAgentService({

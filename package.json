@@ -8,6 +8,7 @@
   },
   "scripts": {
     "setup": "node scripts/setup.mjs",
+    "start": "node --env-file-if-exists=.env --experimental-strip-types server/index.ts --serve",
     "dev": "node scripts/dev.mjs",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && vite build",
@@ -17,21 +18,37 @@
     "dev:frontend": "vite",
     "dev:backend": "node --watch --env-file-if-exists=.env --experimental-strip-types server/index.ts",
     "start:backend": "node --env-file-if-exists=.env --experimental-strip-types server/index.ts",
-    "format": "prettier --write src shared server scripts vite.config.ts"
+    "format": "prettier --write src shared server scripts vite.config.ts",
+    "ui:add": "shadcn add",
+    "ui:animate": "animate-ui animate",
+    "ui:check": "animate-ui audit"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^3.0.64",
+    "@animate-ui/react": "^2.4.2",
+    "@base-ui/react": "^1.9.0",
+    "@shadcn/react": "^0.3.1",
+    "@supabase/supabase-js": "^2.118.0",
     "ai": "^7.0.138",
+    "class-variance-authority": "^0.7.1",
+    "cn": "^0.5.2",
     "lucide-react": "^0.468.0",
+    "motion": "^14.10.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "tw-animate-css": "^1.4.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@animate-ui/cli": "^2.4.0",
+    "@electric-sql/pglite": "^0.5.13",
+    "@tailwindcss/vite": "^4.3.5",
     "@types/node": "^22.20.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "prettier": "^3.9.10",
+    "shadcn": "^4.23.0",
+    "tailwindcss": "^4.3.5",
     "typescript": "^5.9.0",
     "vite": "^7.1.0"
   }

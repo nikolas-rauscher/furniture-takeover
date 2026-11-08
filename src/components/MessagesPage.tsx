@@ -1,4 +1,9 @@
-import { Image as ImageIcon, Trash2 } from "lucide-react";
+import { SelectField } from "./ui/select-field";
+import { Button } from "./ui/button";
+import { Textarea } from "./ui/textarea";
+import type { AccountConnection } from "../cloud/AccountSession";
+import AccountMessages from "../cloud/AccountMessages";
+import { ArrowLeft, Image as ImageIcon, Trash2 } from "@/components/icons";
 import { motionBehavior } from "../uiMotion";
 import { useEffect, useRef, useState } from "react";
 import type { SellerConversation } from "../../shared/messages";
@@ -10,16 +15,8 @@ import {
 import { PendingMessage } from "../pendingMessage";
 import type { Product } from "../../shared/marketplace";
 import "./messages.css";
-export default function MessagesPage({
-  listingId,
-  listing,
-  listings,
-  onOpenListing,
-  initialMessage,
-  onBeforeSend,
-  onSent,
-  onDeleted,
-}: {
+export type MessagesPageProps = {
+  account?: AccountConnection;
   onDeleted?: (id: string) => void;
   listingId?: string;
   listing?: Product;
@@ -32,15 +29,58 @@ export default function MessagesPage({
     role: "buyer" | "seller",
     message: string,
   ) => void;
-}) {
+};
+export default function MessagesPage(props: MessagesPageProps) {
+  if (props.account?.session)
+    return (
+      <AccountMessages
+        {...props}
+        account={{
+          client: props.account.client,
+          session: props.account.session,
+        }}
+      />
+    );
+  if (props.account) return <p>Sign in to open your messages.</p>;
+  return <DemoMessagesPage {...props} />;
+}
+function DemoMessagesPage({
+  listingId,
+  listing,
+  listings,
+  onOpenListing,
+  initialMessage,
+  onBeforeSend,
+  onSent,
+  onDeleted,
+}: MessagesPageProps) {
   const [conversations, setConversations] = useState<SellerConversation[]>([]);
   const [selected, setSelected] = useState(listingId ?? "");
+  const [showConversation, setShowConversation] = useState(Boolean(listingId));
   const [role, setRole] = useState<"buyer" | "seller">("buyer");
   const [drafts, setDrafts] = useState<Record<string, string>>(
     listingId && initialMessage
       ? { [`${listingId}:buyer`]: initialMessage }
       : {},
   );
+  const requestedSelection = useRef({ listingId, initialMessage });
+  useEffect(() => {
+    const previous = requestedSelection.current;
+    if (
+      previous.listingId === listingId &&
+      previous.initialMessage === initialMessage
+    )
+      return;
+    requestedSelection.current = { listingId, initialMessage };
+    if (!listingId) return;
+    setSelected(listingId);
+    setShowConversation(true);
+    if (initialMessage)
+      setDrafts((current) => ({
+        ...current,
+        [`${listingId}:buyer`]: initialMessage,
+      }));
+  }, [listingId, initialMessage]);
   const draftKey = `${selected}:${role}`;
   const text = drafts[draftKey] ?? "";
   const setText = (value: string) =>
@@ -159,7 +199,10 @@ export default function MessagesPage({
     };
   }, []);
   return (
-    <section className="messages-page" aria-label="Messages page">
+    <section
+      className={`messages-page demo-messages${showConversation && current ? " has-conversation" : ""}`}
+      aria-label="Messages page"
+    >
       <div className="page-title">
         <h1>Messages</h1>
         <p>Talk to sellers and arrange your pickup.</p>
@@ -171,7 +214,7 @@ export default function MessagesPage({
       <div className="seller-chat-layout">
         <nav aria-label="Conversations">
           {conversations.map((item) => (
-            <button
+            <Button
               className={
                 selected === item.listingId
                   ? "chat-thread active"
@@ -182,6 +225,7 @@ export default function MessagesPage({
               onClick={() => {
                 stickToBottom.current = true;
                 setSelected(item.listingId);
+                setShowConversation(true);
                 setRole("buyer");
               }}
             >
@@ -190,16 +234,17 @@ export default function MessagesPage({
                 <strong>{item.seller}</strong>
                 <span>{item.title}</span>
               </span>
-            </button>
+            </Button>
           ))}
           {listing &&
             dismissedListing !== listing.id &&
             !conversations.some((item) => item.listingId === listing.id) && (
-              <button
+              <Button
                 className="chat-thread active"
                 disabled={busy}
                 onClick={() => {
                   setSelected(listing.id);
+                  setShowConversation(true);
                   setRole("buyer");
                 }}
               >
@@ -211,7 +256,7 @@ export default function MessagesPage({
                   <span>{listing.title}</span>
                   <small>New conversation</small>
                 </span>
-              </button>
+              </Button>
             )}
           {!conversations.length &&
             (!listing || dismissedListing === listing.id) &&
@@ -226,18 +271,26 @@ export default function MessagesPage({
             <>
               <header>
                 <div className="chat-header-item">
+                  <Button
+                    type="button"
+                    className="icon-button inbox-back"
+                    aria-label="Back to conversations"
+                    onClick={() => setShowConversation(false)}
+                  >
+                    <ArrowLeft size={20} />
+                  </Button>
                   {thumbnail(current)}
                   <div className="chat-header-copy">
                     <strong>{current.seller}</strong>
-                    <button
+                    <Button
                       className="chat-listing-link"
                       onClick={() => onOpenListing(current.listingId)}
                     >
                       {current.title} ↗
-                    </button>
+                    </Button>
                   </div>
                   {conversations.some((item) => item.id === current.id) && (
-                    <button
+                    <Button
                       className="chat-delete-button"
                       aria-label="Delete conversation"
                       title="Delete conversation"
@@ -245,21 +298,23 @@ export default function MessagesPage({
                       onClick={() => void changeDeleted(current, true)}
                     >
                       <Trash2 size={18} />
-                    </button>
+                    </Button>
                   )}
                 </div>
                 <label>
                   Demo view{" "}
-                  <select
+                  <SelectField
+                    aria-label="Demo view"
                     value={role}
                     disabled={busy}
-                    onChange={(event) =>
-                      setRole(event.target.value as "buyer" | "seller")
+                    onValueChange={(value) =>
+                      setRole(value as "buyer" | "seller")
                     }
-                  >
-                    <option value="buyer">Buyer</option>
-                    <option value="seller">Seller</option>
-                  </select>
+                    options={[
+                      { value: "buyer", label: "Buyer" },
+                      { value: "seller", label: "Seller" },
+                    ]}
+                  />
                 </label>
               </header>
               <div
@@ -302,6 +357,7 @@ export default function MessagesPage({
                 ))}
               </div>
               <form
+                className="conversation-composer"
                 onSubmit={async (event) => {
                   event.preventDefault();
                   if (busy || !text.trim()) return;
@@ -344,21 +400,23 @@ export default function MessagesPage({
                   }
                 }}
               >
-                <textarea
+                <Textarea
                   aria-label="Message"
                   placeholder="Write a message…"
                   maxLength={4000}
-                  rows={3}
+                  rows={2}
                   value={text}
                   disabled={busy}
                   onChange={(event) => setText(event.target.value)}
                 />
-                <button
+                <Button
+                  animateIcon
+                  type="submit"
                   className="button primary"
                   disabled={busy || !text.trim()}
                 >
                   {busy ? "Sending…" : "Send message"}
-                </button>
+                </Button>
               </form>
             </>
           ) : (
@@ -369,20 +427,20 @@ export default function MessagesPage({
       {deleted && (
         <div className="chat-delete-notice" role="status">
           <span>Conversation deleted.</span>
-          <button
+          <Button
             className="chat-listing-link"
             disabled={busy}
             onClick={() => void changeDeleted(deleted, false)}
           >
             Undo
-          </button>
-          <button
+          </Button>
+          <Button
             className="chat-listing-link"
             aria-label="Dismiss deletion notice"
             onClick={() => setDeleted(undefined)}
           >
             ×
-          </button>
+          </Button>
         </div>
       )}
       {error && <p role="alert">{error}</p>}

@@ -1,5 +1,7 @@
+import { Button } from "./ui/button";
 import { listingPhotos } from "../../shared/listingPhotos";
-import { GitCompareArrows, Heart } from "lucide-react";
+import { GitCompareArrows, Image as ImageIcon } from "@/components/icons";
+import SaveToggle from "./SaveToggle";
 import { TODAY, money, type Product } from "../../shared/marketplace";
 
 type ProductCardProps = {
@@ -21,10 +23,11 @@ export default function ProductCard({
   onToggleFavorite,
   onToggleCompare,
 }: ProductCardProps) {
+  const itemTags = product.tags?.filter((tag) => tag !== "Demo") ?? [];
   const tags = [
     ...new Set(
-      product.tags?.length
-        ? product.tags
+      itemTags.length
+        ? itemTags
         : [
             product.condition,
             product.price === 0 ? "Free" : "",
@@ -37,31 +40,34 @@ export default function ProductCard({
   return (
     <article className="product-card">
       <div className="product-photo">
-        <button
+        <Button
           className="photo-link"
           type="button"
           onClick={onOpen}
           aria-label={`${product.title} view`}
         >
-          <img src={product.image} alt={product.title} loading="lazy" />
-        </button>
+          {product.image ? (
+            <img src={product.image} alt={product.title} loading="lazy" />
+          ) : (
+            <span className="listing-no-photo">
+              <ImageIcon size={32} />
+              <span>No photo</span>
+            </span>
+          )}
+        </Button>
         {showFavorite && (
-          <button
-            className={`favorite-button ${favorite ? "favorited" : ""}`}
-            type="button"
-            aria-label={`${favorite ? "Remove from" : "Save to"} favourites: ${product.title}`}
-            aria-pressed={favorite}
-            onClick={onToggleFavorite}
-          >
-            <Heart size={18} fill={favorite ? "currentColor" : "none"} />
-          </button>
+          <SaveToggle
+            title={product.title}
+            saved={favorite}
+            onToggle={onToggleFavorite}
+            iconOnly
+          />
         )}
         {listingPhotos(product).length > 1 && (
           <span className="product-photo-count">
             {listingPhotos(product).length} photos
           </span>
         )}
-        {product.demo && <span className="product-demo-mark">Demo</span>}
         {product.status === "sold" && <span className="sold-label">Sold</span>}
       </div>
       <div className="product-info">
@@ -71,13 +77,13 @@ export default function ProductCard({
           ))}
         </div>
         <div className="product-title-row">
-          <button
+          <Button
             className="text-button product-title"
             type="button"
             onClick={onOpen}
           >
             {product.title}
-          </button>
+          </Button>
           <strong>{money(product.price)}</strong>
         </div>
         <p className="product-location">
@@ -95,7 +101,7 @@ export default function ProductCard({
           >
             {product.available}
           </span>
-          <button
+          <Button
             className={`compare-button ${compared ? "selected" : ""}`}
             type="button"
             aria-label={`${product.title} ${compared ? "remove from comparison" : "compare"}`}
@@ -103,7 +109,7 @@ export default function ProductCard({
             onClick={onToggleCompare}
           >
             <GitCompareArrows size={16} />
-          </button>
+          </Button>
         </div>
       </div>
     </article>

@@ -10,6 +10,10 @@ import {
   fakeConfig,
   fakeFetch,
 } from "./testing/provider.ts";
+import { unavailableKeyStatus } from "./account-keys.ts";
+import { mkdtemp, mkdir, writeFile, symlink, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 // Each test gets a loopback port and automatic cleanup, including failed assertions.
 async function startServer(
@@ -29,6 +33,311 @@ async function startServer(
     url: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
   };
 }
+
+test("production hosting serves built assets but never source, secrets or escaped paths", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "takeover-hosting-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const dist = join(directory, "dist");
+  await mkdir(join(dist, "assets"), { recursive: true });
+  await writeFile(join(dist, "index.html"), "<html>Takeover</html>");
+  await writeFile(join(dist, "assets/app-123.js"), "console.log('app')");
+  await writeFile(join(directory, "private.html"), "private");
+  await writeFile(join(dist, ".env"), "secret");
+  await writeFile(join(dist, "assets/app-123.js.map"), "source");
+  await symlink(join(directory, "private.html"), join(dist, "escape.html"));
+  const { url } = await startServer(t, undefined, { staticDirectory: dist });
+  const page = await fetch(url);
+  assert.equal(page.status, 200);
+  assert.match(page.headers.get("content-type") ?? "", /text\/html/);
+  assert.equal(page.headers.get("cache-control"), "no-cache");
+  assert.equal(page.headers.get("referrer-policy"), "no-referrer");
+  assert.match(
+    page.headers.get("content-security-policy") ?? "",
+    /script-src 'self'/,
+  );
+  assert.match(
+    page.headers.get("content-security-policy") ?? "",
+    /frame-ancestors 'none'/,
+  );
+  assert.equal(await page.text(), "<html>Takeover</html>");
+  const asset = await fetch(`${url}/assets/app-123.js`);
+  assert.equal(asset.status, 200);
+  assert.match(asset.headers.get("cache-control") ?? "", /immutable/);
+  assert.match(asset.headers.get("content-type") ?? "", /javascript/);
+  const head = await fetch(url, { method: "HEAD" });
+  assert.equal(head.status, 200);
+  assert.equal(await head.text(), "");
+  for (const path of [
+    "/.env",
+    "/%2eenv",
+    "/assets/app-123.js.map",
+    "/server/index.ts",
+    "/assets/..%2f..%2fprivate.html",
+    "/escape.html",
+    "/missing.js",
+    "/assets%5c..%5cprivate.html",
+    "/null%00.html",
+    "/api/missing",
+  ])
+    assert.equal((await fetch(url + path)).status, 404, path);
+  assert.equal((await fetch(url + "/invalid%zz.html")).status, 400);
+  assert.equal((await fetch(url, { method: "POST" })).status, 405);
+  const health = await fetch(url + "/api/health");
+  assert.equal(health.status, 200);
+  assert.match(health.headers.get("content-type") ?? "", /application\/json/);
+  assert.equal(
+    (await fetch(url, { headers: { Origin: "https://untrusted.example" } }))
+      .status,
+    403,
+  );
+});
+
+test("daily allowance blocks both agent routes before provider work and health checks do not spend it", async (t) => {
+  let allowed = false,
+    providerCalls = 0;
+  const reservations: boolean[] = [];
+  const resetAt = new Date(Date.now() + 3600_000).toISOString();
+  const { url } = await startServer(
+    t,
+    createAgentService({
+      ...fakeConfig,
+      fetchImpl: fakeFetch(async () => {
+        providerCalls++;
+        return completion(output);
+      }),
+    }),
+    {
+      cloud: {
+        config: {
+          supabaseUrl: "https://example.supabase.co",
+          supabaseKey: "public-test-key",
+        },
+        authorize: async () => "alice",
+        quota: async (_authorization, spend = false) => {
+          reservations.push(spend);
+          return { allowed, limit: 50, remaining: allowed ? 49 : 0, resetAt };
+        },
+      },
+      runtime: {
+        health: () => ({
+          configured: true,
+          model: "test",
+          webSearchConfigured: false,
+        }),
+        run: async () => {
+          providerCalls++;
+        },
+      },
+    },
+  );
+  const headers = {
+    Authorization: "Bearer alice",
+    "Content-Type": "application/json",
+  };
+  const health = await (await fetch(url + "/api/health", { headers })).json();
+  assert.equal(health.quota.remaining, 0);
+  for (const path of ["/api/agent/assist", "/api/agent/run"]) {
+    const result = await fetch(url + path, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ intent: "search", text: "white desk" }),
+    });
+    assert.equal(result.status, 429);
+    assert.equal((await result.json()).error.code, "AI_QUOTA_EXCEEDED");
+    assert.equal(result.headers.get("X-AI-Quota-Remaining"), "0");
+    assert.ok(Number(result.headers.get("Retry-After")) > 0);
+  }
+  assert.equal(providerCalls, 0);
+  assert.deepEqual(reservations, [false, true, true]);
+  allowed = true;
+  assert.equal(
+    (
+      await fetch(url + "/api/agent/assist", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ intent: "search", text: "white desk" }),
+      })
+    ).status,
+    200,
+  );
+  assert.equal(providerCalls, 1);
+});
+
+test("too many pending token validations are rejected before another Supabase auth request", async (t) => {
+  const { AgentError } = await import("./errors.ts");
+  let checks = 0,
+    ready!: () => void,
+    release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const saturated = new Promise<void>((resolve) => {
+    ready = resolve;
+  });
+  const { url } = await startServer(t, undefined, {
+    cloud: {
+      config: {
+        supabaseUrl: "https://example.supabase.co",
+        supabaseKey: "public",
+      },
+      authorize: async () => {
+        checks++;
+        if (checks === 8) ready();
+        await pending;
+        throw new AgentError(401, "AUTH_REQUIRED", "Sign in.");
+      },
+      quota: async () => {
+        throw new Error("Must not reach quotas without auth");
+      },
+    },
+  });
+  t.after(release);
+  const requests = Array.from({ length: 8 }, () =>
+    fetch(url + "/api/agent/assist", {
+      method: "POST",
+      headers: { Authorization: "Bearer invalid" },
+      body: "{}",
+    }),
+  );
+  await saturated;
+  const denied = await fetch(url + "/api/agent/assist", {
+    method: "POST",
+    headers: { Authorization: "Bearer invalid" },
+    body: "{}",
+  });
+  assert.equal(denied.status, 429);
+  assert.equal((await denied.json()).error.code, "AUTH_BUSY");
+  assert.equal(checks, 8);
+  release();
+  for (const result of await Promise.all(requests))
+    assert.equal(result.status, 401);
+});
+
+test("account keys and AI requests use only the authenticated owner's credentials", async (t) => {
+  const status = (owner: string) => ({
+    ...unavailableKeyStatus(),
+    enabled: true,
+    providers: {
+      deepseek: {
+        saved: owner === "alice",
+        lastFour: owner === "alice" ? "1234" : undefined,
+      },
+      brave: { saved: false },
+    },
+  });
+  const seen: string[] = [];
+  const instance = await startServer(
+    t,
+    createAgentService({ ...fakeConfig, apiKey: "" }),
+    {
+      cloud: {
+        config: {
+          supabaseUrl: "https://example.supabase.co",
+          supabaseKey: "public-only",
+        },
+        authorize: async (header) => {
+          const owner = header?.replace("Bearer ", "");
+          if (owner !== "alice" && owner !== "bob") {
+            const { AgentError } = await import("./errors.ts");
+            throw new AgentError(401, "AUTH_REQUIRED", "Sign in.");
+          }
+          return owner;
+        },
+        quota: async () => ({
+          allowed: true,
+          limit: 50,
+          remaining: 49,
+          resetAt: "2026-12-01T00:00:00Z",
+        }),
+      },
+      accountKeys: {
+        status: async (owner) => status(owner),
+        change: async (owner, authorization, input) => {
+          assert.equal(authorization, `Bearer ${owner}`);
+          assert.equal((input as { user_id: string }).user_id, "eve");
+          return status(owner);
+        },
+        credentials: async () => ({}),
+      },
+      forAccount: async (owner, authorization) => {
+        assert.equal(authorization, `Bearer ${owner}`);
+        const apiKey = `${owner}-private-provider-key`;
+        return {
+          service: createAgentService({
+            ...fakeConfig,
+            apiKey,
+            fetchImpl: fakeFetch(async (_url, init) => {
+              assert.equal(
+                (init?.headers as Record<string, string>).Authorization,
+                `Bearer ${apiKey}`,
+              );
+              seen.push(owner);
+              return completion(output);
+            }),
+          }),
+          runtime: {
+            health: () => ({
+              configured: true,
+              model: "test",
+              webSearchConfigured: false,
+            }),
+            run: async (_input, emit) => {
+              seen.push(owner);
+              await emit({
+                type: "complete",
+                runId: "test",
+                text: "Draft ready.",
+                sources: [],
+              });
+            },
+          },
+        };
+      },
+    },
+  );
+  assert.equal((await fetch(instance.url + "/api/account/keys")).status, 401);
+  for (const owner of ["alice", "bob"]) {
+    const headers = {
+      Authorization: `Bearer ${owner}`,
+      "Content-Type": "application/json",
+    };
+    const changed = await fetch(instance.url + "/api/account/keys", {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({
+        provider: "deepseek",
+        key: "not-real-secret",
+        user_id: "eve",
+      }),
+    });
+    assert.deepEqual(
+      await changed.json(),
+      JSON.parse(JSON.stringify(status(owner))),
+    );
+    const result = await fetch(instance.url + "/api/agent/assist", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ intent: "search", text: "white desk" }),
+    });
+    assert.equal(result.status, 200);
+    assert.ok(!(await result.text()).includes("private-provider-key"));
+    const run = await fetch(instance.url + "/api/agent/run", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ text: "desk" }),
+    });
+    assert.equal(run.status, 200);
+    assert.ok((await run.text()).includes("Draft ready"));
+    const health = await (
+      await fetch(instance.url + "/api/health", { headers })
+    ).json();
+    assert.equal(health.configured, true);
+    assert.ok(!JSON.stringify(health).includes("private-provider-key"));
+  }
+  assert.deepEqual(seen, ["alice", "alice", "bob", "bob"]);
+  const config = await (await fetch(instance.url + "/api/config")).json();
+  assert.deepEqual(Object.keys(config).sort(), ["supabaseKey", "supabaseUrl"]);
+});
 
 test(
   "HTTP reports setup status and keeps local origin restrictions",
@@ -269,3 +578,58 @@ test(
     assert.equal(invalid.status, 400);
   },
 );
+test("cloud mode exposes only public config and guards all AI and old demo routes", async (t) => {
+  const { AgentError } = await import("./errors.ts");
+  let calls = 0;
+  const instance = await startServer(
+    t,
+    createAgentService({ ...fakeConfig, apiKey: "" }),
+    {
+      cloud: {
+        config: {
+          supabaseUrl: "https://example.supabase.co",
+          supabaseKey: "public-test-key",
+        },
+        authorize: async (header) => {
+          calls++;
+          if (header !== "Bearer valid")
+            throw new AgentError(401, "AUTH_REQUIRED", "Sign in.");
+          return "alice";
+        },
+        quota: async () => ({
+          allowed: true,
+          limit: 50,
+          remaining: 49,
+          resetAt: "2026-12-01T00:00:00Z",
+        }),
+      },
+    },
+  );
+  const config = await (await fetch(`${instance.url}/api/config`)).json();
+  assert.deepEqual(config, {
+    supabaseUrl: "https://example.supabase.co",
+    supabaseKey: "public-test-key",
+  });
+  for (const route of ["/api/agent/assist", "/api/agent/run"])
+    assert.equal(
+      (await fetch(instance.url + route, { method: "POST", body: "{}" }))
+        .status,
+      401,
+    );
+  assert.equal(calls, 2);
+  for (const route of [
+    "/api/listings",
+    "/api/listings/demo/update",
+    "/api/messages",
+  ])
+    assert.equal((await fetch(instance.url + route)).status, 410);
+  const allowed = await fetch(`${instance.url}/api/agent/assist`, {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer valid",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ intent: "search", text: "desk" }),
+  });
+  assert.equal(allowed.status, 503); // Passed auth; deliberately unconfigured provider.
+});

@@ -30,6 +30,7 @@ export type AgentToolState = {
   observedInventory: Map<string, AgentRunInventoryItem>;
   inventorySearched: boolean;
   inventoryCurated: boolean;
+  webSearched: boolean;
   displayedInventoryIds: string[];
   responseLanguage?: string;
 };
@@ -119,6 +120,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
   const listingAssist = request.context?.intent === "listing_assist";
   const listingMode = listingReview || listingAssist;
   const offerSourceIds = new Set<string>();
+  const webSearches = new Map<string, ReturnType<typeof searchWeb>>();
   let sourceSequence = 0;
   return {
     ...(!listingMode ? negotiations.tools : {}),
@@ -259,6 +261,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                   state.observedInventory.clear();
                   state.inventorySearched = false;
                   state.inventoryCurated = false;
+                  state.webSearched = false;
                   state.displayedInventoryIds = [];
                   await send({ type: "inventory_matches", ids: [] });
                 }
@@ -368,7 +371,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
       ? {
           web_search: tool({
             description:
-              "Search Brave for individual second-hand offers on supported marketplaces (default purpose offers). Category, profile, property and non-marketplace pages are excluded. Use furniture/item-specific search phrases, not category URLs. In listing modes only, purpose product_info can research manufacturer/product specifications and purpose similar_items can find comparable furniture examples; neither can supply asking-price evidence. Returns real titles, HTTPS URLs and snippets, not opened pages or verified availability. Never an arbitrary URL-fetch tool.",
+              "Search Brave for individual second-hand offers on supported marketplaces (default purpose offers). Category, profile, wanted, property and non-marketplace pages are excluded. Use short item-specific phrases with the requested location, using local-language terms when helpful. At most three distinct searches per reply: refine a poor query rather than repeating it. In listing modes only, purpose product_info can research manufacturer/product specifications and purpose similar_items can find comparable furniture examples; neither can supply asking-price evidence. Returns real titles, HTTPS URLs and snippets, not opened pages or verified availability. Never an arbitrary URL-fetch tool.",
             inputSchema: z.object({
               query: z.string().trim().min(1).max(400),
               responseLanguage: z
@@ -409,22 +412,40 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                   "Similar-item research is only available when preparing a listing.",
                 );
               state.responseLanguage ??= selectedLanguage;
+              state.webSearched = true;
               const requestedSource = request.context?.source;
-              const found = await searchWeb(
-                query,
-                {
-                  apiKey: braveApiKey,
-                  fetchImpl,
-                  scope:
+              const searchKey = JSON.stringify([
+                purpose ?? "offers",
+                requestedSource ?? "All",
+                query.replace(/\s+/g, " ").trim().toLowerCase(),
+              ]);
+              let searching = webSearches.get(searchKey);
+              if (!searching) {
+                if (webSearches.size >= 3)
+                  throw new RunError(
+                    "WEB_SEARCH_LIMIT",
+                    "The search limit for this reply was reached. Summarize the results already found.",
+                  );
+                searching = searchWeb(
+                  query,
+                  {
+                    apiKey: braveApiKey,
+                    fetchImpl,
+                    scope:
                     purpose === "product_info" || purpose === "similar_items"
                       ? "research"
                       : "offers",
-                  ...(purpose !== "product_info" && purpose !== "similar_items"
-                    ? { source: requestedSource }
-                    : {}),
-                },
-                workSignal,
-              );
+                    ...(purpose !== "product_info" && purpose !== "similar_items"
+                      ? { source: requestedSource }
+                      : {}),
+                  },
+                  workSignal,
+                );
+                // Cache failures too: the adapter has already retried transient
+                // errors. Repeating the same tool call cannot improve the result.
+                webSearches.set(searchKey, searching);
+              }
+              const found = await searching;
               if (
                 purpose !== "product_info" &&
                 purpose !== "similar_items" &&

@@ -1,7 +1,7 @@
 :root {
-  font-family: "DM Sans", sans-serif;
-  color: #292929;
-  background: #fbfbf9;
+  font-family: var(--font-family);
+  color: var(--ink);
+  background: var(--background);
   font-synthesis: none;
   font-weight: 400;
   --blue: #344eb5;
@@ -13,12 +13,40 @@
   --canvas: #f4f4f1;
   --yellow: #f4f2e8;
   --radius: 4px;
+  --font-family: "DM Sans", sans-serif;
+  --background: #fbfbf9;
+  --surface: #fff;
+  --on-primary: #fff;
+  --focus-ring: #8297f5;
+  --danger: #a42c36;
+  --mobile-nav-height: 0px;
+  --app-header-height: 64px;
+  /* Shared roles keep type zoomable and spacing fluid between phone and desktop. */
+  --type-caption: 0.75rem;
+  --type-support: 0.8125rem;
+  --type-label: 0.875rem;
+  --type-body: 1rem;
+  --type-item: clamp(0.9375rem, 0.9rem + 0.2vw, 1.0625rem);
+  --type-section: clamp(1.125rem, 1.05rem + 0.3vw, 1.375rem);
+  --type-title: clamp(1.5rem, 1.25rem + 0.75vw, 1.875rem);
+  --type-display: clamp(1.5rem, 1.1rem + 1.2vw, 2rem);
+  --type-price: clamp(1.5rem, 1.3rem + 0.6vw, 1.875rem);
+  --space-page: clamp(1rem, 0.5rem + 2vw, 3rem);
+  --space-section: clamp(1.5rem, 1rem + 1.25vw, 2.5rem);
+  --space-group: clamp(1rem, 0.75rem + 0.6vw, 1.5rem);
+  --space-panel: clamp(0.875rem, 0.75rem + 0.4vw, 1.25rem);
+  --space-field: 0.75rem;
+  --space-label: 0.5rem;
+  --control-size: 2.75rem;
+  --measure-prose: 68ch;
 }
 * {
   box-sizing: border-box;
 }
 body {
   margin: 0;
+  font-size: var(--type-body);
+  line-height: 1.5;
 }
 button,
 input,
@@ -56,22 +84,22 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid #8297f5;
+  outline: 3px solid var(--focus-ring);
   outline-offset: 3px;
 }
 input,
 textarea,
 select {
-  border: 1px solid #dce0e9;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   color: var(--ink);
   padding: 11px 12px;
   min-width: 0;
 }
 input::placeholder,
 textarea::placeholder {
-  color: #9499a5;
+  color: var(--muted);
 }
 textarea {
   resize: vertical;
@@ -95,16 +123,17 @@ h1,
 h2,
 h3 {
   font-family: "DM Sans", sans-serif;
+  text-wrap: balance;
 }
 h1 {
-  font-size: 36px;
+  font-size: var(--type-title);
   line-height: 1.24;
-  letter-spacing: -1.3px;
+  letter-spacing: -0.025em;
   font-weight: 750;
 }
 h2 {
-  font-size: 20px;
-  letter-spacing: -0.55px;
+  font-size: var(--type-section);
+  letter-spacing: -0.02em;
   font-weight: 750;
 }
 h3 {
@@ -112,7 +141,8 @@ h3 {
   letter-spacing: -0.3px;
 }
 p {
-  line-height: 1.7;
+  line-height: 1.6;
+  text-wrap: pretty;
 }
 svg {
   flex-shrink: 0;
@@ -340,40 +370,10 @@ form > label {
 }
 .main-content {
   min-width: 0;
-  padding: 32px 36px 48px;
+  padding: var(--space-section) var(--space-page) calc(2 * var(--space-section));
   max-width: 1400px;
   width: 100%;
   margin: 0 auto;
-}
-.main-search {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  padding: 7px 8px 7px 17px;
-  border: 1px solid #d9deea;
-  border-radius: 11px;
-  box-shadow: 0 2px 6px #25324e04;
-}
-.main-search > svg {
-  color: #9298a7;
-}
-.main-search > input {
-  flex: 1;
-  width: 100%;
-  border: 0;
-  background: none;
-  padding: 9px 0;
-  font-size: 13px;
-  outline: none;
-}
-.main-search:focus-within {
-  border-color: var(--blue);
-  box-shadow: 0 0 0 2px #435bc810;
-}
-.main-search .button {
-  font-size: 12px;
-  min-height: 39px;
-  padding: 9px 14px;
 }
 .search-hint {
   display: flex;
@@ -437,7 +437,7 @@ form > label {
   margin-bottom: 17px;
 }
 .section-heading h2 {
-  font-size: 20px;
+  font-size: var(--type-section);
   letter-spacing: -0.7px;
   margin-bottom: 5px;
 }
@@ -597,7 +597,7 @@ form > label {
   gap: 7px;
 }
 .product-title {
-  font-size: 12px;
+  font-size: clamp(0.9375rem, 0.875rem + 0.6cqi, 1.0625rem);
   line-height: 1.5;
   font-weight: 550;
   text-align: left;
@@ -608,7 +608,7 @@ form > label {
   width: 100%;
 }
 .product-title-row > strong {
-  font-size: 15px;
+  font-size: clamp(1rem, 0.95rem + 0.5cqi, 1.125rem);
   letter-spacing: -0.3px;
   font-weight: 650;
 }
@@ -1018,7 +1018,7 @@ form > label {
   margin: 10px 0 27px;
 }
 .page-title h1 {
-  font-size: 33px;
+  font-size: var(--type-title);
   margin-bottom: 11px;
 }
 .page-title p {
@@ -1472,17 +1472,6 @@ form > label {
   font-size: 12px;
   cursor: pointer;
 }
-.file-label input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  overflow: hidden;
-}
-.file-label:focus-within {
-  outline: 3px solid #8297f5;
-  outline-offset: 3px;
-}
 .file-hint {
   font-size: 10px;
   color: #a1a8b6;
@@ -1898,22 +1887,18 @@ form > label {
 .toast > .icon-button:hover {
   background: #ffffff20;
 }
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
+.modal-overlay {
   background: #26314c45;
   backdrop-filter: blur(4px);
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
 }
 .modal {
   width: 510px;
   max-width: 100%;
   max-height: 90dvh;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
   border: 1px solid #ffffff80;
   background: white;
   border-radius: 16px;
@@ -2077,18 +2062,7 @@ form > label {
   color: var(--ink);
   margin-bottom: 4px;
 }
-.spin {
-  animation: spin 1s linear infinite;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 @media (min-width: 1500px) {
-  .main-content {
-    padding: 36px 50px 50px;
-  }
   .app-layout {
     grid-template-columns: minmax(0, 1fr) 340px;
   }
@@ -2103,7 +2077,7 @@ form > label {
     height: 235px;
   }
   .product-title {
-    font-size: 13px;
+    font-size: clamp(0.9375rem, 0.875rem + 0.6cqi, 1.0625rem);
   }
   .assistant-greeting h3 {
     font-size: 18px;
@@ -2129,7 +2103,7 @@ form > label {
     font-size: 13px;
   }
   .product-title {
-    font-size: 14px;
+    font-size: clamp(0.9375rem, 0.875rem + 0.6cqi, 1.0625rem);
   }
   .product-location,
   .pickup {
@@ -2147,9 +2121,6 @@ form > label {
   }
   .header-actions {
     gap: 13px;
-  }
-  .main-content {
-    padding: 26px 25px 40px;
   }
   .app-layout {
     grid-template-columns: minmax(0, 1fr) 290px;
@@ -2176,13 +2147,10 @@ form > label {
     gap: 5px;
   }
   .product-grid {
-    gap: 24px 15px;
+    gap: var(--space-section) var(--space-group);
   }
   .product-photo {
     height: 175px;
-  }
-  .section-heading h2 {
-    font-size: 18px;
   }
   .filter-buttons {
     gap: 5px;
@@ -2218,9 +2186,6 @@ form > label {
   }
   .title-with-action {
     align-items: flex-start;
-  }
-  .page-title h1 {
-    font-size: 29px;
   }
   .inbox {
     grid-template-columns: 165px 1fr;
@@ -2342,7 +2307,6 @@ form > label {
   }
   .main-content {
     max-width: 980px;
-    padding: 28px 35px 70px;
   }
   .product-photo {
     height: 220px;
@@ -2354,14 +2318,11 @@ form > label {
     font-size: 12px;
   }
   .product-title {
-    font-size: 13px;
+    font-size: clamp(0.9375rem, 0.875rem + 0.6cqi, 1.0625rem);
   }
   .product-location,
   .pickup {
     font-size: 10px;
-  }
-  .section-heading h2 {
-    font-size: 21px;
   }
   .filter-buttons button {
     font-size: 11px;
@@ -2373,9 +2334,6 @@ form > label {
   .source-row,
   .source-row button {
     font-size: 10px;
-  }
-  .main-search input {
-    font-size: 14px;
   }
   .search-hint,
   .search-hint button {
@@ -2442,9 +2400,6 @@ form > label {
     top: 70px;
     height: calc(100dvh - 70px);
   }
-  .main-content {
-    padding: 23px 24px 80px;
-  }
   .categories {
     gap: 23px;
   }
@@ -2455,7 +2410,7 @@ form > label {
     height: 180px;
   }
   .product-title {
-    font-size: 11px;
+    font-size: clamp(0.9375rem, 0.875rem + 0.6cqi, 1.0625rem);
   }
   .product-location,
   .pickup {
@@ -2463,9 +2418,6 @@ form > label {
   }
   .product-grid {
     column-gap: 14px;
-  }
-  .section-heading h2 {
-    font-size: 19px;
   }
   .filter-buttons button {
     font-size: 10px;
@@ -2498,9 +2450,6 @@ form > label {
   }
   .detail-summary > .button {
     font-size: 11px;
-  }
-  .page-title h1 {
-    font-size: 29px;
   }
   .job-controls {
     flex-direction: column;
@@ -2606,32 +2555,6 @@ form > label {
   .app-header nav > button {
     font-size: 12px;
   }
-  .main-content {
-    padding: 18px 17px 82px;
-  }
-  .main-search {
-    padding: 6px 6px 6px 12px;
-    gap: 8px;
-  }
-  .main-search > svg {
-    width: 18px;
-  }
-  .main-search input {
-    font-size: 11px;
-  }
-  .main-search > .button {
-    padding: 9px;
-    min-height: 34px;
-    font-size: 0;
-    gap: 0;
-    width: 35px;
-  }
-  .main-search > .button > span {
-    display: none;
-  }
-  .main-search > .button > svg {
-    width: 17px;
-  }
   .search-hint {
     font-size: 9px;
     margin-bottom: 20px;
@@ -2667,7 +2590,6 @@ form > label {
     margin-bottom: 15px;
   }
   .section-heading h2 {
-    font-size: 16px;
     letter-spacing: -0.45px;
   }
   .section-heading > div > span {
@@ -2711,7 +2633,7 @@ form > label {
   }
   .product-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 25px 12px;
+    gap: var(--space-section) var(--space-group);
   }
   .product-photo {
     height: 170px;
@@ -2739,7 +2661,7 @@ form > label {
     padding-top: 9px;
   }
   .product-title {
-    font-size: 11px;
+    font-size: clamp(0.9375rem, 0.875rem + 0.6cqi, 1.0625rem);
     white-space: normal;
     display: -webkit-box;
     -webkit-box-orient: vertical;
@@ -2750,7 +2672,7 @@ form > label {
     gap: 6px;
   }
   .product-title-row > strong {
-    font-size: 15px;
+    font-size: clamp(1rem, 0.95rem + 0.5cqi, 1.125rem);
   }
   .product-location {
     font-size: 8px;
@@ -2836,7 +2758,6 @@ form > label {
     padding: 12px;
   }
   .page-title h1 {
-    font-size: 28px;
     line-height: 1.3;
   }
   .page-title p {
@@ -3177,7 +3098,7 @@ form > label {
 }
 .quiet-caption,
 .modal-intro {
-  color: #737f95;
+  color: var(--muted);
 }
 @media (min-width: 1021px) {
   .categories button {
