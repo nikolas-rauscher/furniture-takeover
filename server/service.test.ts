@@ -95,10 +95,44 @@ test("only explicitly submitted listing photos become provider image content", a
   });
   await service.assist({ intent: "search", text: "Stool" });
   assert.equal(typeof content, "string");
-  await assert.rejects(
-    service.assist({ intent: "search", text: "Stool", image: png }),
-    rejectsCode("INVALID_IMAGE"),
-  );
+});
+
+test("a visual search sends one inspiration photo and rejects a photo set", async () => {
+  let content: unknown;
+  const service = createAgentService({
+    ...fakeConfig,
+    fetchImpl: fakeFetch(async (_url, init) => {
+      content = JSON.parse(String(init?.body)).messages[1].content;
+      return completion({
+        suggestions: [],
+        missingDetails: [],
+        metadata: {
+          query: "white boucle armchair",
+          keywords: ["boucle", "armchair"],
+        },
+      });
+    }),
+  });
+  const result = await service.assist({
+    intent: "search",
+    text: "under CHF 150",
+    images: [png],
+  });
+  assert.equal(result.metadata.query, "white boucle armchair");
+  assert.equal(result.metadata.maxPrice, 150);
+  assert.deepEqual((content as unknown[])[1], {
+    type: "image_url",
+    image_url: { url: png, detail: "auto" },
+  });
+  const otherPng = "data:image/png;base64,iVBORw0KGgo=";
+  for (const request of [
+    { intent: "search", text: "", images: [png, otherPng] },
+    { intent: "search", text: "", image: png, images: [otherPng] },
+  ])
+    await assert.rejects(
+      service.assist(request),
+      rejectsCode("INVALID_IMAGE"),
+    );
 });
 
 test("live search metadata cannot erase explicit constraints and suggestions cannot relax them", async () => {
@@ -644,7 +678,7 @@ test("all listing photos reach the model in order, with a single cover copy", as
     [jpeg, png],
   );
   for (const request of [
-    { intent: "search", text: "desk", images: [png] },
+    { intent: "search", text: "desk", images: [png, png, png] },
     { intent: "listing", text: "", images: Array(7).fill(png) },
     {
       intent: "listing",

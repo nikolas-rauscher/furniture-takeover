@@ -40,6 +40,7 @@ import {
   Check,
   ChevronDown,
   GitCompareArrows,
+  Images,
   Plus,
   Search,
   UserRound,
@@ -51,6 +52,7 @@ import Modal from "./components/Modal";
 import ProductCard from "./components/ProductCard";
 import SearchPreferencesFields from "./components/SearchPreferencesFields";
 import SellFlow, { type ListingDraft } from "./components/SellFlow";
+import PhotoSearchButton, { imageFrom } from "./components/PhotoSearchButton";
 import BatchSellFlow, { type BatchStart } from "./components/BatchSellFlow";
 import PhotoSplitQuestion from "./components/PhotoSplitQuestion";
 import AgentSuggestions from "./components/AgentSuggestions";
@@ -307,6 +309,19 @@ export default function App() {
         ].join(" · ")
       : "";
   const running = agentRun.state.status === "running";
+  // The inspiration photo stays attached to the search it started.
+  const [photoSearch, setPhotoSearch] = useState<{
+    image: string;
+    item: string;
+    request: string;
+  } | null>(null);
+  const [photoSearchBusy, setPhotoSearchBusy] = useState(false);
+  const [photoSearchError, setPhotoSearchError] = useState("");
+  const photoSearchRequest = useRef<AbortController | null>(null);
+  const activePhotoSearch =
+    photoSearch && committedSearch?.originalRequest === photoSearch.request
+      ? photoSearch
+      : null;
   const hasSearchDraft = query.trim().length > 0;
   const searchHeading = "Your search";
   const configured = agentHealth?.configured === true;
@@ -380,6 +395,9 @@ export default function App() {
     agentRun.cancel();
     listingRun.cancel();
     listingRequest.current?.abort();
+    photoSearchRequest.current?.abort();
+    photoSearchRequest.current = null;
+    setPhotoSearchBusy(false);
     cancelPhotoRead();
     setBusy(false);
     animateUiChange(() => setView(next));
@@ -608,6 +626,50 @@ export default function App() {
           ),
       question,
     );
+  }
+  /** Describe the furniture in an inspiration photo, then search for that description. */
+  async function searchByPhoto(file: File) {
+    if (running || photoSearchBusy) return;
+    photoSearchRequest.current?.abort();
+    const controller = new AbortController();
+    photoSearchRequest.current = controller;
+    setPhotoSearchBusy(true);
+    setPhotoSearchError("");
+    try {
+      const image = await readListingPhoto(file, controller.signal);
+      const notes = query.trim();
+      const response = await requestAgentAssist(
+        {
+          intent: "search",
+          text: notes,
+          images: [image],
+          context: { location, radius: criteria.radius },
+        },
+        { signal: controller.signal },
+      );
+      const item = response.metadata.query?.trim();
+      if (!item)
+        throw new Error(
+          response.missingDetails[0] ??
+            "No furniture recognised in this photo. Try another photo.",
+        );
+      const request = (notes ? `${item}. ${notes}` : item).slice(0, 4000);
+      setPhotoSearch({ image, item, request });
+      setPhotoSearchBusy(false);
+      await runSearch(request);
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      setPhotoSearchError(
+        error instanceof Error
+          ? error.message
+          : "Could not read this photo. Try another one.",
+      );
+    } finally {
+      if (photoSearchRequest.current === controller) {
+        photoSearchRequest.current = null;
+        setPhotoSearchBusy(false);
+      }
+    }
   }
   function continueOffer(item: Product, existing?: Negotiation) {
     const proposal = existing ?? negotiations.open(item.id);
@@ -1356,7 +1418,7 @@ export default function App() {
                   <p>
                     {hasSearchDraft
                       ? `Add a budget, condition or pickup time. Your agent will search around ${location}.`
-                      : `Describe what you need. Your agent searches around ${location}.`}
+                      : `Describe what you need or search with a photo. Your agent searches around ${location}.`}
                   </p>
                   <form
                     className="agent-search"
@@ -1364,8 +1426,30 @@ export default function App() {
                       event.preventDefault();
                       void runSearch(query);
                     }}
+                    onDragOver={(event) => {
+                      if (event.dataTransfer.types.includes("Files")) {
+                        event.preventDefault();
+                        event.currentTarget.classList.add("drag-over");
+                      }
+                    }}
+                    onDragLeave={(event) =>
+                      event.currentTarget.classList.remove("drag-over")
+                    }
+                    onDrop={(event) => {
+                      event.currentTarget.classList.remove("drag-over");
+                      const file = imageFrom(event.dataTransfer);
+                      if (!file) return;
+                      event.preventDefault();
+                      void searchByPhoto(file);
+                    }}
                   >
                     <textarea
+                      onPaste={(event) => {
+                        const file = imageFrom(event.clipboardData);
+                        if (!file) return;
+                        event.preventDefault();
+                        void searchByPhoto(file);
+                      }}
                       aria-label="Search furniture"
                       maxLength={4000}
                       value={query}
@@ -1398,15 +1482,27 @@ export default function App() {
                         </button>
                         {connectionStatus}
                       </div>
-                      <button
-                        className="button primary"
-                        type="submit"
-                        disabled={!query.trim() || running}
-                      >
-                        Find it
-                      </button>
+                      <div className="search-submit-group">
+                        <PhotoSearchButton
+                          busy={photoSearchBusy}
+                          disabled={running || !configured}
+                          onFile={(file) => void searchByPhoto(file)}
+                        />
+                        <button
+                          className="button primary"
+                          type="submit"
+                          disabled={!query.trim() || running}
+                        >
+                          Find it
+                        </button>
+                      </div>
                     </div>
                   </form>
+                  {photoSearchError && (
+                    <p className="form-error photo-search-error" role="alert">
+                      {photoSearchError}
+                    </p>
+                  )}
                   <AgentSuggestions state={searchAssist} onSelect={setQuery} />
                 </section>
               ) : (
@@ -1440,7 +1536,19 @@ export default function App() {
                           maxLength={4000}
                           value={query}
                           onChange={(event) => setQuery(event.target.value)}
+                          onPaste={(event) => {
+                            const file = imageFrom(event.clipboardData);
+                            if (!file) return;
+                            event.preventDefault();
+                            void searchByPhoto(file);
+                          }}
                           placeholder="Describe what you need…"
+                        />
+                        <PhotoSearchButton
+                          compact
+                          busy={photoSearchBusy}
+                          disabled={running || !configured}
+                          onFile={(file) => void searchByPhoto(file)}
                         />
                         <button
                           className="button primary"
@@ -1450,6 +1558,26 @@ export default function App() {
                           Search
                         </button>
                       </form>
+                      {photoSearchError && (
+                        <p
+                          className="form-error photo-search-error"
+                          role="alert"
+                        >
+                          {photoSearchError}
+                        </p>
+                      )}
+                      {activePhotoSearch && (
+                        <div className="photo-search-source">
+                          <img src={activePhotoSearch.image} alt="" />
+                          <p>
+                            Similar to your photo
+                            <span>
+                              Recognised as “{activePhotoSearch.item}”. Edit the
+                              search above to adjust it.
+                            </span>
+                          </p>
+                        </div>
+                      )}
                       <div className="results-controls">
                         <button
                           className="search-settings"
@@ -2122,6 +2250,15 @@ export default function App() {
                 <strong>Find</strong>The agent searches real web sources and
                 your active local listings. Open a source to check its current
                 availability.
+              </p>
+            </div>
+            <div>
+              <Images size={20} />
+              <p>
+                <strong>Search by photo</strong>An inspiration photo, such as a
+                Pinterest image, is sent to the AI service to describe the
+                furniture. The search then uses that description, which you
+                can edit.
               </p>
             </div>
             <div>

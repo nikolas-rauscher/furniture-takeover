@@ -109,35 +109,26 @@ export function validateRequest(value: unknown): AssistRequest {
       result.context.pickupBy = date;
     }
   }
-  if (value.image !== undefined) {
-    if (value.intent !== "listing")
-      throw new AgentError(
-        400,
-        "INVALID_IMAGE",
-        "Photos can only be submitted when creating a listing draft.",
-      );
-    result.image = validateImage(value.image);
-  }
+  // A listing may show several views; a visual search uses one inspiration photo.
+  const maxPhotos = value.intent === "listing" ? MAX_LISTING_PHOTOS : 1;
+  const tooMany = () =>
+    new AgentError(
+      400,
+      "INVALID_IMAGE",
+      value.intent === "listing"
+        ? `Use up to ${MAX_LISTING_PHOTOS} listing photos.`
+        : "Search with one photo at a time.",
+    );
+  if (value.image !== undefined) result.image = validateImage(value.image);
   if (value.images !== undefined) {
-    if (
-      value.intent !== "listing" ||
-      !Array.isArray(value.images) ||
-      value.images.length > MAX_LISTING_PHOTOS
-    )
-      throw new AgentError(
-        400,
-        "INVALID_IMAGE",
-        `Use up to ${MAX_LISTING_PHOTOS} listing photos.`,
-      );
+    if (!Array.isArray(value.images) || value.images.length > maxPhotos)
+      throw tooMany();
     result.images = [...new Set(value.images.map(validateImage))];
     const allImages = [
       ...new Set([...(result.image ? [result.image] : []), ...result.images]),
     ];
-    if (
-      allImages.length > MAX_LISTING_PHOTOS ||
-      photoBytes(allImages) > MAX_UPLOAD_PHOTO_BYTES
-    )
-      throw tooLarge();
+    if (allImages.length > maxPhotos) throw tooMany();
+    if (photoBytes(allImages) > MAX_UPLOAD_PHOTO_BYTES) throw tooLarge();
   }
   if (!result.text && !result.image && !result.images?.length)
     throw new AgentError(
