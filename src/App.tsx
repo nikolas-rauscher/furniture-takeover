@@ -633,6 +633,7 @@ export default function App({ account }: { account?: AccountConnection }) {
     proposal?: Negotiation,
     preserveConversation = false,
   ) {
+    if (quotaExhausted) return;
     if (!signedIn) {
       navigate("settings");
       return;
@@ -722,7 +723,7 @@ export default function App({ account }: { account?: AccountConnection }) {
     isFollowUp = false,
     question?: string,
   ) {
-    if (!text.trim() || running) return;
+    if (!text.trim() || running || quotaExhausted) return;
     const unanswered =
       isFollowUp && !question
         ? agentRun.state.questions.find(
@@ -1691,7 +1692,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                         animateIcon
                         className="button primary"
                         type="submit"
-                        disabled={!query.trim() || running}
+                        disabled={!query.trim() || running || quotaExhausted}
                       >
                         Find it
                       </Button>
@@ -1810,7 +1811,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                               : "Ask a follow-up…"
                           }
                           sendLabel="Send to the agent"
-                          disabled={running}
+                          disabled={running || quotaExhausted}
                           onStop={running ? agentRun.cancel : undefined}
                         />
                       </>
