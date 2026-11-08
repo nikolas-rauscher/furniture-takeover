@@ -1,5 +1,7 @@
+import { Button } from "./ui/button";
 import { listingPhotos } from "../../shared/listingPhotos";
-import { GitCompareArrows, Heart, Image as ImageIcon } from "lucide-react";
+import { GitCompareArrows, Image as ImageIcon } from "@/components/icons";
+import SaveToggle from "./SaveToggle";
 import { TODAY, money, type Product } from "../../shared/marketplace";
 
 type ProductCardProps = {
@@ -38,7 +40,7 @@ export default function ProductCard({
   return (
     <article className="product-card">
       <div className="product-photo">
-        <button
+        <Button
           className="photo-link"
           type="button"
           onClick={onOpen}
@@ -52,17 +54,14 @@ export default function ProductCard({
               <span>No photo</span>
             </span>
           )}
-        </button>
+        </Button>
         {showFavorite && (
-          <button
-            className={`favorite-button ${favorite ? "favorited" : ""}`}
-            type="button"
-            aria-label={`${favorite ? "Remove from" : "Save to"} favourites: ${product.title}`}
-            aria-pressed={favorite}
-            onClick={onToggleFavorite}
-          >
-            <Heart size={18} fill={favorite ? "currentColor" : "none"} />
-          </button>
+          <SaveToggle
+            title={product.title}
+            saved={favorite}
+            onToggle={onToggleFavorite}
+            iconOnly
+          />
         )}
         {listingPhotos(product).length > 1 && (
           <span className="product-photo-count">
@@ -78,13 +77,13 @@ export default function ProductCard({
           ))}
         </div>
         <div className="product-title-row">
-          <button
+          <Button
             className="text-button product-title"
             type="button"
             onClick={onOpen}
           >
             {product.title}
-          </button>
+          </Button>
           <strong>{money(product.price)}</strong>
         </div>
         <p className="product-location">
@@ -102,7 +101,7 @@ export default function ProductCard({
           >
             {product.available}
           </span>
-          <button
+          <Button
             className={`compare-button ${compared ? "selected" : ""}`}
             type="button"
             aria-label={`${product.title} ${compared ? "remove from comparison" : "compare"}`}
@@ -110,7 +109,7 @@ export default function ProductCard({
             onClick={onToggleCompare}
           >
             <GitCompareArrows size={16} />
-          </button>
+          </Button>
         </div>
       </div>
     </article>

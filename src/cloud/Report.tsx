@@ -1,3 +1,5 @@
+import { Button } from "../components/ui/button";
+import { Textarea } from "../components/ui/textarea";
 import { useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fail } from "./client";
@@ -16,9 +18,9 @@ export default function Report({
     [notice, setNotice] = useState("");
   return (
     <div className="account-report">
-      <button onClick={() => setOpen((v) => !v)}>
+      <Button onClick={() => setOpen((v) => !v)}>
         {open ? "Cancel report" : "Report"}
-      </button>
+      </Button>
       {open && (
         <form
           onSubmit={async (e) => {
@@ -51,14 +53,16 @@ export default function Report({
         >
           <label>
             What is wrong?
-            <textarea
+            <Textarea
               required
               maxLength={1000}
               value={text}
               onChange={(e) => setText(e.target.value)}
             />
           </label>
-          <button disabled={busy || !text.trim()}>Submit report</button>
+          <Button type="submit" disabled={busy || !text.trim()}>
+            Submit report
+          </Button>
         </form>
       )}
       {notice && <p role="status">{notice}</p>}

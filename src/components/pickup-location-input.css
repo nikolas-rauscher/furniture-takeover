@@ -8,9 +8,12 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 .pickup-location-heading label {
-  font-size: 14px;
+  margin: 0;
+  flex-direction: row;
+  font-size: var(--type-label);
   font-weight: 500;
 }
 .pickup-location-heading button {
@@ -18,12 +21,12 @@
   align-items: center;
   gap: 6px;
   min-height: 44px;
-  padding: 6px 0;
+  padding: 8px;
   border: 0;
   background: transparent;
   color: var(--blue);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--type-label);
   cursor: pointer;
 }
 .pickup-location-heading button:disabled {
@@ -40,7 +43,7 @@
 .pickup-location-help,
 .pickup-location-status {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--type-support);
   line-height: 1.5;
   color: var(--muted);
 }
@@ -51,12 +54,9 @@
   .pickup-location-heading {
     gap: 8px;
   }
-  .pickup-location-heading button {
-    font-size: 11px;
-  }
 }
 @media (max-width: 760px) {
   .pickup-location-field input {
-    font-size: 16px;
+    font-size: var(--type-body);
   }
 }

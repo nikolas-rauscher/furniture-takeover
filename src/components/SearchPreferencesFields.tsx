@@ -1,3 +1,5 @@
+import { SelectField } from "./ui/select-field";
+import { Input } from "./ui/input";
 import { TODAY, type Criteria } from "../../shared/marketplace";
 
 type SearchPreferencesFieldsProps = {
@@ -13,7 +15,7 @@ export default function SearchPreferencesFields({
     <div className="form-grid">
       <label className="query-field">
         Looking for
-        <input
+        <Input
           value={
             value.query || (value.category === "All" ? "" : value.category)
           }
@@ -25,7 +27,7 @@ export default function SearchPreferencesFields({
       </label>
       <label>
         Max. price (CHF)
-        <input
+        <Input
           type="number"
           required
           inputMode="decimal"
@@ -40,7 +42,7 @@ export default function SearchPreferencesFields({
       </label>
       <label>
         Distance (km)
-        <input
+        <Input
           type="number"
           required
           inputMode="decimal"
@@ -55,7 +57,7 @@ export default function SearchPreferencesFields({
       </label>
       <label>
         Pickup by
-        <input
+        <Input
           type="date"
           min={TODAY}
           value={value.pickup}
@@ -66,51 +68,40 @@ export default function SearchPreferencesFields({
       </label>
       <label>
         Condition
-        <select
+        <SelectField
+          aria-label="Condition"
           value={value.condition}
-          onChange={(event) =>
-            onChange({ ...value, condition: event.target.value })
-          }
-        >
-          <option>All</option>
-          <option>Very good</option>
-          <option>Good</option>
-          <option>Used</option>
-          {!["All", "Very good", "Good", "Used"].includes(value.condition) && (
-            <option>{value.condition}</option>
-          )}
-        </select>
+          onValueChange={(condition) => onChange({ ...value, condition })}
+          options={[
+            ...new Set(["All", "Very good", "Good", "Used", value.condition]),
+          ].map((option) => ({ value: option, label: option }))}
+        />
       </label>
       <label>
         Source
-        <select
+        <SelectField
+          aria-label="Source"
           value={value.source}
-          onChange={(event) =>
-            onChange({
-              ...value,
-              source: event.target.value as Criteria["source"],
-            })
+          onValueChange={(source) =>
+            onChange({ ...value, source: source as Criteria["source"] })
           }
-        >
-          <option>All</option>
-          <option>takeover</option>
-          <option>Ricardo</option>
-          <option>Anibis</option>
-          <option>Tutti</option>
-          <option>Petitesannonces</option>
-          <option>Kleinanzeigen</option>
-          <option>eBay</option>
-          {![
-            "All",
-            "takeover",
-            "Ricardo",
-            "Anibis",
-            "Tutti",
-            "Petitesannonces",
-            "Kleinanzeigen",
-            "eBay",
-          ].includes(value.source) && <option>{value.source}</option>}
-        </select>
+          options={[
+            ...new Set([
+              "All",
+              "takeover",
+              "Ricardo",
+              "Anibis",
+              "Tutti",
+              "Petitesannonces",
+              "Kleinanzeigen",
+              "eBay",
+              value.source,
+            ]),
+          ].map((option) => ({
+            value: option,
+            label: option === "takeover" ? "Takeover" : option,
+          }))}
+        />
       </label>
     </div>
   );

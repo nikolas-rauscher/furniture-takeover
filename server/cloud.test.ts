@@ -119,3 +119,76 @@ test("cloud AI authorization verifies user and applies a per-user budget", async
   for (let i = 0; i < 20; i++) await cloud.authorize("Bearer valid");
   await assert.rejects(cloud.authorize("Bearer valid"), /wait a minute/);
 });
+
+test("temporary local test allowance is scoped to a confirmed account and disabled by default", async (t) => {
+  const original = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = original;
+  });
+  let email = "tester@example.com";
+  globalThis.fetch = async (url) =>
+    new Response(
+      JSON.stringify(
+        String(url).endsWith("/auth/v1/user")
+          ? {
+              id: "tester",
+              email,
+              email_confirmed_at: "2026-01-01",
+              aud: "authenticated",
+            }
+          : {
+              allowed: false,
+              limit: 50,
+              remaining: 0,
+              resetAt: new Date(Date.now() + 3600000).toISOString(),
+            },
+      ),
+    );
+  const env = {
+    SUPABASE_URL: "https://example.supabase.co",
+    SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
+    LOCAL_AI_TEST_EMAIL: email,
+    LOCAL_AI_TEST_UNTIL: new Date(Date.now() + 3600000).toISOString(),
+  };
+  assert.equal((await createCloud(env)!.quota("Bearer tester")).remaining, 0);
+  assert.equal(
+    (
+      await createCloud(
+        { ...env, NODE_ENV: "production" },
+        { localTesting: true },
+      )!.quota("Bearer tester")
+    ).remaining,
+    0,
+  );
+  assert.equal(
+    (
+      await createCloud(
+        {
+          ...env,
+          LOCAL_AI_TEST_UNTIL: new Date(Date.now() - 1000).toISOString(),
+        },
+        { localTesting: true },
+      )!.quota("Bearer tester")
+    ).remaining,
+    0,
+  );
+  assert.equal(
+    (
+      await createCloud(
+        {
+          ...env,
+          LOCAL_AI_TEST_UNTIL: new Date(Date.now() + 172800000).toISOString(),
+        },
+        { localTesting: true },
+      )!.quota("Bearer tester")
+    ).remaining,
+    0,
+  );
+  const local = createCloud(env, { localTesting: true })!;
+  assert.equal((await local.quota("Bearer tester")).remaining, 250);
+  for (let i = 0; i < 250; i++)
+    assert.equal((await local.quota("Bearer tester", true)).allowed, true);
+  assert.equal((await local.quota("Bearer tester", true)).allowed, false);
+  email = "other@example.com";
+  assert.equal((await local.quota("Bearer other")).limit, 50);
+});

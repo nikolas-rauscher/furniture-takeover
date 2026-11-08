@@ -1,12 +1,29 @@
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "../components/ui/dropdown-menu";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Skeleton } from "../components/ui/skeleton";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupTextarea,
+} from "../components/ui/input-group";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Image as ImageIcon,
   Archive,
   ArchiveRestore,
+  Ellipsis,
   ArrowLeft,
   Send,
+  LoaderCircle,
   MessageCircle,
-} from "lucide-react";
+} from "@/components/icons";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import type { MessagesPageProps } from "../components/MessagesPage";
 import type { Conversation, Message } from "./client";
@@ -54,6 +71,7 @@ export default function AccountMessages({
     initialSelection = useRef(false),
     generation = useRef(0),
     pending = useRef(new PendingMessage());
+  const requestedSelection = useRef({ listingId, initialMessage });
   const refresh = useCallback(async () => {
     if (inFlight.current) return;
     inFlight.current = true;
@@ -105,6 +123,7 @@ export default function AccountMessages({
         setLoadError("");
         if (!initialSelection.current) {
           initialSelection.current = true;
+          const { listingId, initialMessage } = requestedSelection.current;
           const target = listingId
             ? rows.find(
                 (c) => c.listing_id === listingId && c.buyer_id === userId,
@@ -112,9 +131,16 @@ export default function AccountMessages({
             : rows.find(
                 (c) => !as.data!.some((a) => a.conversation_id === c.id),
               );
-          setSelected(target?.id ?? (listingId ? `new:${listingId}` : ""));
+          setSelected(
+            !listingId && window.matchMedia("(max-width: 760px)").matches
+              ? ""
+              : (target?.id ?? (listingId ? `new:${listingId}` : "")),
+          );
           if (initialMessage)
-            setDrafts({ [target?.id ?? `new:${listingId}`]: initialMessage });
+            setDrafts((current) => ({
+              ...current,
+              [target?.id ?? `new:${listingId}`]: initialMessage,
+            }));
         }
       }
     } catch (err) {
@@ -125,7 +151,18 @@ export default function AccountMessages({
     } finally {
       inFlight.current = false;
     }
-  }, [client, userId, listingId, initialMessage]);
+  }, [client, userId]);
+  useEffect(() => {
+    const previous = requestedSelection.current;
+    if (
+      previous.listingId === listingId &&
+      previous.initialMessage === initialMessage
+    )
+      return;
+    requestedSelection.current = { listingId, initialMessage };
+    initialSelection.current = false;
+    void refresh();
+  }, [listingId, initialMessage, refresh]);
   useEffect(() => {
     mounted.current = true;
     void refresh();
@@ -187,6 +224,24 @@ export default function AccountMessages({
   });
   const role = current?.seller_id === userId ? "seller" : "buyer";
   const text = drafts[selected] ?? "";
+  const messageInput = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const input = messageInput.current;
+    if (!input) return;
+    const fit = () => {
+      input.style.height = "auto";
+      input.style.height = `${input.scrollHeight}px`;
+    };
+    fit();
+    let width = input.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (input.clientWidth === width) return;
+      width = input.clientWidth;
+      fit();
+    });
+    observer.observe(input);
+    return () => observer.disconnect();
+  }, [text, selected, current?.id]);
   const thumbnail = (image?: string, title = "") =>
     image ? (
       <img className="chat-item-thumbnail" src={image} alt={title} />
@@ -229,29 +284,23 @@ export default function AccountMessages({
       className={`messages-page account-messages${selected ? " has-conversation" : ""}`}
       aria-label="Messages page"
     >
-      <div className="page-title">
+      <div className="page-title title-with-action">
         <h1>Messages</h1>
-        <p>Talk to sellers and arrange your pickup.</p>
-      </div>
-      <div className="account-inbox-notice">
-        <p className="quiet-caption">
-          Your conversations with buyers and sellers.
-        </p>
-        <button
+        <Button
           className="text-button"
           onClick={() => {
-            setShowArchived((v) => !v);
+            setShowArchived((value) => !value);
             setSelected("");
             setError("");
           }}
         >
           {showArchived ? "Back to inbox" : "Archived"}
-        </button>
+        </Button>
       </div>
       <div className="seller-chat-layout">
         <nav aria-label="Conversations">
           <div className="inbox-controls">
-            <input
+            <Input
               type="search"
               placeholder="Search conversations"
               aria-label="Search conversations"
@@ -266,13 +315,13 @@ export default function AccountMessages({
                   ["selling", "Selling"],
                 ] as const
               ).map(([id, label]) => (
-                <button
+                <Button
                   key={id}
                   aria-pressed={filter === id}
                   onClick={() => setFilter(id)}
                 >
                   {label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -280,7 +329,7 @@ export default function AccountMessages({
             const item = listings.find((l) => l.id === c.listing_id),
               other = c.buyer_id === userId ? c.seller_id : c.buyer_id;
             return (
-              <button
+              <Button
                 className={`chat-thread ${selected === c.id ? "active" : ""}`}
                 key={c.id}
                 disabled={busy}
@@ -305,20 +354,29 @@ export default function AccountMessages({
                     </small>
                   )}
                 </span>
-              </button>
+              </Button>
             );
           })}
           {selected.startsWith("new:") && product && (
-            <button className="chat-thread active">
+            <Button className="chat-thread active">
               {thumbnail(product.image, product.title)}
               <span className="chat-thread-copy">
                 <strong>{otherName}</strong>
                 <span>{product.title}</span>
                 <small>New conversation</small>
               </span>
-            </button>
+            </Button>
           )}
-          {!loaded && !loadError && <p>Loading conversations…</p>}
+          {!loaded && !loadError && (
+            <div className="inbox-loading" role="status">
+              <span className="sr-only">Loading conversations…</span>
+              <div aria-hidden="true">
+                <Skeleton />
+                <Skeleton />
+                <Skeleton />
+              </div>
+            </div>
+          )}
           {loaded && !visibleThreads.length && !selected.startsWith("new:") && (
             <p>
               {query || filter !== "all"
@@ -334,7 +392,7 @@ export default function AccountMessages({
             <>
               <header>
                 <div className="chat-header-item">
-                  <button
+                  <Button
                     className="icon-button inbox-back"
                     aria-label="Back to conversations"
                     onClick={() => {
@@ -343,18 +401,18 @@ export default function AccountMessages({
                     }}
                   >
                     <ArrowLeft size={20} />
-                  </button>
+                  </Button>
                   {thumbnail(product?.image, product?.title)}
                   <div className="chat-header-copy">
                     <strong>{otherName}</strong>
-                    <button
+                    <Button
                       className="chat-listing-link"
                       onClick={() =>
                         onOpenListing(current?.listing_id ?? product!.id)
                       }
                     >
                       {product?.title ?? "Listing unavailable"} ↗
-                    </button>
+                    </Button>
                     {product && (
                       <small>
                         {money(product.price)} ·{" "}
@@ -368,76 +426,82 @@ export default function AccountMessages({
                       </small>
                     )}
                   </div>
-                  {current && (
-                    <button
-                      className="chat-delete-button"
-                      aria-label={
-                        archived.includes(current.id)
-                          ? "Restore conversation"
-                          : "Archive conversation"
-                      }
-                      disabled={busy}
-                      onClick={() =>
-                        void changeArchive(
-                          current.id,
-                          !archived.includes(current.id),
-                        )
-                      }
-                    >
-                      {archived.includes(current.id) ? (
-                        <ArchiveRestore size={18} />
-                      ) : (
-                        <Archive size={18} />
-                      )}
-                    </button>
+                  {(current || otherId) && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={<Button variant="ghost" size="icon" />}
+                        aria-label="Conversation options"
+                        disabled={busy}
+                      >
+                        <Ellipsis size={20} />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {current && (
+                          <DropdownMenuItem
+                            onClick={() =>
+                              void changeArchive(
+                                current.id,
+                                !archived.includes(current.id),
+                              )
+                            }
+                          >
+                            {archived.includes(current.id) ? (
+                              <ArchiveRestore size={16} />
+                            ) : (
+                              <Archive size={16} />
+                            )}
+                            {archived.includes(current.id)
+                              ? "Restore conversation"
+                              : "Archive conversation"}
+                          </DropdownMenuItem>
+                        )}
+                        {current && otherId && <DropdownMenuSeparator />}
+                        {otherId && (
+                          <DropdownMenuItem
+                            disabled={busy}
+                            onClick={async () => {
+                              setBusy(true);
+                              setError("");
+                              generation.current++;
+                              try {
+                                const isBlocked = blocked.includes(otherId);
+                                const r = isBlocked
+                                  ? await client
+                                      .from("blocked_users")
+                                      .delete()
+                                      .eq("user_id", userId)
+                                      .eq("blocked_id", otherId)
+                                  : await client.from("blocked_users").insert({
+                                      user_id: userId,
+                                      blocked_id: otherId,
+                                    });
+                                if (r.error?.code !== "23505") fail(r.error);
+                                setBlocked((xs) =>
+                                  isBlocked
+                                    ? xs.filter((x) => x !== otherId)
+                                    : [...xs, otherId],
+                                );
+                              } catch (err) {
+                                setError(
+                                  err instanceof Error
+                                    ? err.message
+                                    : "Could not update block.",
+                                );
+                              } finally {
+                                generation.current++;
+                                setBusy(false);
+                              }
+                            }}
+                          >
+                            {blocked.includes(otherId)
+                              ? "Unblock user"
+                              : "Block user"}
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
                 </div>
-                {otherId && (
-                  <details className="account-message-tools">
-                    <summary>Conversation options</summary>
-                    <button
-                      className="text-button"
-                      disabled={busy}
-                      onClick={async () => {
-                        setBusy(true);
-                        setError("");
-                        generation.current++;
-                        try {
-                          const isBlocked = blocked.includes(otherId);
-                          const r = isBlocked
-                            ? await client
-                                .from("blocked_users")
-                                .delete()
-                                .eq("user_id", userId)
-                                .eq("blocked_id", otherId)
-                            : await client.from("blocked_users").insert({
-                                user_id: userId,
-                                blocked_id: otherId,
-                              });
-                          if (r.error?.code !== "23505") fail(r.error);
-                          setBlocked((xs) =>
-                            isBlocked
-                              ? xs.filter((x) => x !== otherId)
-                              : [...xs, otherId],
-                          );
-                        } catch (err) {
-                          setError(
-                            err instanceof Error
-                              ? err.message
-                              : "Could not update block.",
-                          );
-                        } finally {
-                          generation.current++;
-                          setBusy(false);
-                        }
-                      }}
-                    >
-                      {blocked.includes(otherId)
-                        ? "Unblock user"
-                        : "Block user"}
-                    </button>
-                  </details>
-                )}
               </header>
               <ConversationMessages
                 key={current?.id ?? selected}
@@ -534,45 +598,57 @@ export default function AccountMessages({
                     setDrafts((xs) => ({ ...xs, [selected]: reply }));
                   }}
                 />
-                <textarea
-                  aria-label="Message"
-                  placeholder="Write a message…"
-                  maxLength={4000}
-                  rows={2}
-                  value={text}
-                  disabled={busy || (!!otherId && blocked.includes(otherId))}
-                  onKeyDown={(e) => {
-                    if (
-                      e.key === "Enter" &&
-                      (e.ctrlKey || e.metaKey) &&
-                      !e.nativeEvent.isComposing
-                    ) {
-                      e.preventDefault();
-                      e.currentTarget.form?.requestSubmit();
+                <InputGroup className="seller-message-input">
+                  <InputGroupTextarea
+                    ref={messageInput}
+                    aria-label="Message"
+                    placeholder="Write a message…"
+                    maxLength={4000}
+                    rows={1}
+                    value={text}
+                    disabled={busy || (!!otherId && blocked.includes(otherId))}
+                    onKeyDown={(e) => {
+                      if (
+                        e.key === "Enter" &&
+                        (e.ctrlKey || e.metaKey) &&
+                        !e.nativeEvent.isComposing
+                      ) {
+                        e.preventDefault();
+                        e.currentTarget.form?.requestSubmit();
+                      }
+                    }}
+                    onChange={(e) =>
+                      setDrafts((xs) => ({ ...xs, [selected]: e.target.value }))
                     }
-                  }}
-                  onChange={(e) =>
-                    setDrafts((xs) => ({ ...xs, [selected]: e.target.value }))
-                  }
-                />
-                <div className="composer-actions">
-                  <small>
-                    {text.length}/4,000
-                    <span className="composer-keyboard-hint">
-                      {" "}
-                      · Ctrl / ⌘ + Enter to send
-                    </span>
+                  />
+                  <InputGroupAddon align="inline-end">
+                    <Button
+                      animateIcon
+                      type="submit"
+                      className="button primary seller-message-send"
+                      aria-label={busy ? "Sending message" : "Send message"}
+                      disabled={
+                        busy ||
+                        !text.trim() ||
+                        (!!otherId && blocked.includes(otherId))
+                      }
+                    >
+                      {busy ? (
+                        <LoaderCircle animate size={18} aria-hidden="true" />
+                      ) : (
+                        <Send size={18} aria-hidden="true" />
+                      )}
+                      <span>{busy ? "Sending…" : "Send"}</span>
+                    </Button>
+                  </InputGroupAddon>
+                </InputGroup>
+                <div className="seller-message-meta">
+                  <small className="composer-keyboard-hint">
+                    Ctrl / ⌘ + Enter to send
                   </small>
-                  <button
-                    className="button primary"
-                    disabled={
-                      busy ||
-                      !text.trim() ||
-                      (!!otherId && blocked.includes(otherId))
-                    }
-                  >
-                    <Send size={15} /> {busy ? "Sending…" : "Send"}
-                  </button>
+                  {text.length >= 3500 && (
+                    <small>{text.length.toLocaleString()}/4,000</small>
+                  )}
                 </div>
                 {error && (
                   <p className="account-chat-error" role="alert">
@@ -593,9 +669,9 @@ export default function AccountMessages({
       {loadError && (
         <p role="alert">
           {loadError}{" "}
-          <button className="text-button" onClick={() => void refresh()}>
+          <Button className="text-button" onClick={() => void refresh()}>
             Retry
-          </button>
+          </Button>
         </p>
       )}
       {error && !selected && <p role="alert">{error}</p>}

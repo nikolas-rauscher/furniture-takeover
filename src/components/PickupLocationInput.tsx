@@ -1,5 +1,8 @@
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Field, FieldDescription, FieldLabel } from "./ui/field";
 import { useEffect, useId, useRef, useState } from "react";
-import { LocateFixed } from "lucide-react";
+import { LocateFixed } from "@/components/icons";
 import "./pickup-location-input.css";
 
 export type PickupLocationInputProps = {
@@ -91,20 +94,24 @@ export function PickupLocationInput({
   }
 
   return (
-    <div className="pickup-location-field">
+    <Field
+      className="pickup-location-field"
+      data-disabled={disabled || undefined}
+    >
       <div className="pickup-location-heading">
-        <label htmlFor={id}>Pickup location</label>
-        <button
+        <FieldLabel htmlFor={id}>Pickup location</FieldLabel>
+        <Button
           type="button"
+          variant="ghost"
           onClick={locate}
           disabled={disabled || busy}
           aria-describedby={`${id}-help`}
         >
           <LocateFixed size={15} aria-hidden="true" />
           {busy ? "Locating…" : "Use my location"}
-        </button>
+        </Button>
       </div>
-      <input
+      <Input
         id={id}
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -113,13 +120,13 @@ export function PickupLocationInput({
         placeholder="Area or public pickup spot"
         aria-describedby={`${id}-help ${id}-status`}
       />
-      <p id={`${id}-help`} className="pickup-location-help">
+      <FieldDescription id={`${id}-help`} className="pickup-location-help">
         Use my location shares your area with OpenStreetMap. No house number is
         added.
-      </p>
+      </FieldDescription>
       <p id={`${id}-status`} className="pickup-location-status" role="status">
         {message}
       </p>
-    </div>
+    </Field>
   );
 }

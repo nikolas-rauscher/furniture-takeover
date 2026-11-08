@@ -1,5 +1,9 @@
+import { SelectField } from "../components/ui/select-field";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Textarea } from "../components/ui/textarea";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { LogOut } from "lucide-react";
+import { LogOut } from "@/components/icons";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { fail } from "./client";
 import AccountApiKeys from "./AccountApiKeys";
@@ -183,7 +187,7 @@ export default function Account({
           <h1>Account settings</h1>
           <p>Your profile, preferences and connected services.</p>
         </div>
-        <button
+        <Button
           className="button secondary account-signout"
           aria-label="Sign out"
           disabled={busy}
@@ -195,7 +199,7 @@ export default function Account({
         >
           <LogOut size={18} aria-hidden="true" />
           <span>Sign out</span>
-        </button>
+        </Button>
       </div>
       <div className="settings-layout">
         <aside className="settings-sidebar">
@@ -208,7 +212,7 @@ export default function Account({
           </div>
           <nav aria-label="Account settings" className="settings-desktop-nav">
             {accountSections.map(([id, label]) => (
-              <button
+              <Button
                 key={id}
                 aria-current={section === id ? "page" : undefined}
                 className={section === id ? "active" : ""}
@@ -218,25 +222,24 @@ export default function Account({
                 }}
               >
                 {label}
-              </button>
+              </Button>
             ))}
           </nav>
           <label className="settings-mobile-nav">
             Settings section
-            <select
+            <SelectField
+              aria-label="Settings section"
               value={section}
               aria-controls="account-settings-content"
-              onChange={(event) => {
-                setSection(event.target.value as AccountSection);
+              onValueChange={(value) => {
+                setSection(value as AccountSection);
                 setNotice("");
               }}
-            >
-              {accountSections.map(([id, label]) => (
-                <option key={id} value={id}>
-                  {label}
-                </option>
-              ))}
-            </select>
+              options={accountSections.map(([value, label]) => ({
+                value,
+                label,
+              }))}
+            />
           </label>
         </aside>
         <div
@@ -247,19 +250,21 @@ export default function Account({
           {loadError && (
             <div role="alert" className="account-notice">
               <p>{loadError}</p>
-              <button
+              <Button
                 className="text-button"
                 onClick={() => setLoadAttempt((n) => n + 1)}
               >
                 Retry loading account
-              </button>
+              </Button>
             </div>
           )}
-          <p className="settings-verification">
-            {session.user.email_confirmed_at
-              ? "Email confirmed"
-              : "Email confirmation pending"}
-          </p>
+          {(section === "security" || !session.user.email_confirmed_at) && (
+            <p className="settings-verification">
+              {session.user.email_confirmed_at
+                ? "Email confirmed"
+                : "Email confirmation pending"}
+            </p>
+          )}
           {notice && (
             <p role="status" className="account-notice">
               {notice}
@@ -318,7 +323,7 @@ export default function Account({
               </p>
               <label>
                 Display name
-                <input
+                <Input
                   required
                   autoComplete="nickname"
                   maxLength={80}
@@ -330,7 +335,7 @@ export default function Account({
                 <span>
                   About you <span className="account-optional">Optional</span>
                 </span>
-                <textarea
+                <Textarea
                   ref={bioInput}
                   maxLength={500}
                   rows={3}
@@ -356,7 +361,7 @@ export default function Account({
               </p>
               <label>
                 Town / area of residence
-                <input
+                <Input
                   autoComplete="address-level2"
                   maxLength={180}
                   value={region}
@@ -367,7 +372,7 @@ export default function Account({
               <div className="account-field-row">
                 <label>
                   Postal code
-                  <input
+                  <Input
                     autoComplete="postal-code"
                     maxLength={20}
                     value={postalCode}
@@ -376,7 +381,7 @@ export default function Account({
                 </label>
                 <label>
                   Country
-                  <input
+                  <Input
                     autoComplete="country-name"
                     maxLength={80}
                     value={country}
@@ -386,24 +391,31 @@ export default function Account({
               </div>
               <label>
                 Preferred handover
-                <select
+                <SelectField
+                  aria-label="Preferred handover"
                   value={handover}
-                  onChange={(e) => setHandover(e.target.value as Handover)}
-                >
-                  <option value="">No preference</option>
-                  <option value="pickup">Pickup</option>
-                  <option value="shipping">Shipping</option>
-                  <option value="both">Pickup or shipping</option>
-                </select>
+                  onValueChange={(value) => setHandover(value as Handover)}
+                  options={[
+                    { value: "", label: "No preference" },
+                    { value: "pickup", label: "Pickup" },
+                    { value: "shipping", label: "Shipping" },
+                    { value: "both", label: "Pickup or shipping" },
+                  ]}
+                />
               </label>
               <small>
                 Arrange exact addresses and handover details privately with the
                 other person when needed.
               </small>
             </fieldset>
-            <button className="button primary" disabled={!loaded || busy}>
+            <Button
+              animateIcon
+              type="submit"
+              className="button primary"
+              disabled={!loaded || busy}
+            >
               Save profile
-            </button>
+            </Button>
           </form>
           {section === "keys" && <AccountApiKeys key={session.user.id} />}
           <section hidden={section !== "payments"} className="account-payments">
@@ -441,16 +453,19 @@ export default function Account({
             <h2>Email</h2>
             <label>
               New email address
-              <input
+              <Input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </label>
-            <button disabled={busy || email === session.user.email}>
+            <Button
+              type="submit"
+              disabled={busy || email === session.user.email}
+            >
               Change email
-            </button>
+            </Button>
           </form>
           <form
             hidden={section !== "security"}
@@ -465,7 +480,7 @@ export default function Account({
             <h2>Password</h2>
             <label>
               New password
-              <input
+              <Input
                 type="password"
                 autoComplete="new-password"
                 minLength={8}
@@ -474,10 +489,10 @@ export default function Account({
                 onChange={(e) => setPassword(e.target.value)}
               />
             </label>
-            <button disabled={busy || password.length < 8}>
+            <Button type="submit" disabled={busy || password.length < 8}>
               Update password
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               disabled={busy}
               onClick={() =>
@@ -487,7 +502,7 @@ export default function Account({
               }
             >
               Sign out other devices
-            </button>
+            </Button>
           </form>
           <section hidden={section !== "privacy"}>
             <h2>Blocked users</h2>
@@ -499,7 +514,7 @@ export default function Account({
               blocked.map((b) => (
                 <div className="account-blocked" key={b.blocked_id}>
                   <span>{b.name}</span>
-                  <button
+                  <Button
                     disabled={busy}
                     onClick={() =>
                       void act(async () => {
@@ -519,7 +534,7 @@ export default function Account({
                     }
                   >
                     Unblock
-                  </button>
+                  </Button>
                 </div>
               ))
             ) : (
@@ -533,12 +548,12 @@ export default function Account({
               conversations as JSON. Photo files remain available at their
               listing URLs.
             </p>
-            <button
+            <Button
               disabled={busy}
               onClick={() => void act(exportData, "Account export downloaded.")}
             >
               Export my data
-            </button>
+            </Button>
           </section>
           <form
             hidden={section !== "privacy"}
@@ -558,15 +573,15 @@ export default function Account({
             </p>
             <label>
               Type DELETE to confirm
-              <input
+              <Input
                 value={confirmation}
                 onChange={(e) => setConfirmation(e.target.value)}
                 autoComplete="off"
               />
             </label>
-            <button disabled={busy || confirmation !== "DELETE"}>
+            <Button type="submit" disabled={busy || confirmation !== "DELETE"}>
               Delete my account permanently
-            </button>
+            </Button>
           </form>
         </div>
       </div>

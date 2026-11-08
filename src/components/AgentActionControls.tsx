@@ -1,3 +1,15 @@
+import { Input } from "./ui/input";
+import { Button } from "./ui/button";
+import { Textarea } from "./ui/textarea";
+import { Suggestion, Suggestions } from "./ui/suggestion";
+import { Badge } from "./ui/badge";
+import { Item, ItemActions, ItemContent } from "./ui/item";
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from "./ui/collapsible";
+import { ChevronDown } from "./icons";
 import {
   useId,
   useState,
@@ -12,8 +24,8 @@ import { motionBehavior } from "../uiMotion";
 import { answerParts } from "./AgentAnswerContent";
 
 export type AgentActionHandlers = {
-  onAnswer?: (questionId: string, answer: string) => void;
-  onSkipQuestion?: (questionId: string) => void;
+  onAnswer?: (questionId: string, answer: string) => void | boolean;
+  onSkipQuestion?: (questionId: string) => void | boolean;
   onApplyAction?: (actionId: string) => void;
   onUndoAction?: (actionId: string) => void;
   onEditFields?: () => void;
@@ -27,6 +39,8 @@ export function AgentQuestion({
   compact = false,
   suggestion,
   externalComposer = false,
+  disabled = false,
+  readOnly = false,
 }: {
   question: AgentQuestionEvent;
   answer?: string;
@@ -35,6 +49,8 @@ export function AgentQuestion({
   compact?: boolean;
   suggestion?: ReactNode;
   externalComposer?: boolean;
+  disabled?: boolean;
+  readOnly?: boolean;
 }) {
   const [text, setText] = useState("");
   const [sent, setSent] = useState("");
@@ -47,6 +63,7 @@ export function AgentQuestion({
   const measuredHeight = useRef(0);
   const resizeAnimation = useRef<Animation | null>(null);
   useLayoutEffect(() => {
+    if (externalComposer) return;
     const element = questionElement.current;
     if (!element) return;
     measuredHeight.current = element.getBoundingClientRect().height;
@@ -59,10 +76,10 @@ export function AgentQuestion({
       observer.disconnect();
       resizeAnimation.current?.cancel();
     };
-  }, []);
+  }, [externalComposer]);
   useLayoutEffect(() => {
     const element = questionElement.current;
-    if (!element || !response) return;
+    if (!element || !response || externalComposer) return;
     const from = measuredHeight.current;
     resizeAnimation.current?.cancel();
     const to = element.getBoundingClientRect().height;
@@ -83,29 +100,44 @@ export function AgentQuestion({
         }
       })
       .catch(() => {});
-  }, [response]);
+  }, [response, externalComposer]);
   const skip = () => {
-    if (response || !onSkip) return;
-    setSent("Skipped");
-    onSkip(question.id);
+    if (disabled || readOnly || response || !onSkip) return;
+    if (onSkip(question.id) !== false) setSent("Skipped");
   };
   const submit = (value: string) => {
-    if (!value.trim() || response || !onAnswer) return;
-    setSent(value.trim());
-    onAnswer(question.id, value.trim());
+    if (disabled || readOnly || !value.trim() || response || !onAnswer) return;
+    if (onAnswer(question.id, value.trim()) !== false) setSent(value.trim());
   };
   return (
-    <section
-      ref={questionElement}
-      className="agent-run-question"
+    <Item
+      render={<section ref={questionElement} />}
+      variant="outline"
+      className={`agent-run-question${response && externalComposer ? " is-answered" : ""}`}
       style={{ boxSizing: "border-box" }}
     >
-      <h3>{question.question}</h3>
+      <div className="agent-question-heading">
+        <h3>{question.question}</h3>
+        {!response && !readOnly && externalComposer && onSkip && (
+          <Button
+            type="button"
+            className="text-button question-skip"
+            disabled={disabled}
+            onClick={skip}
+          >
+            Skip for now
+          </Button>
+        )}
+      </div>
       {response ? (
-        <p className="agent-run-user-answer">
-          <span>Your answer</span>
-          {response}
-        </p>
+        !externalComposer && (
+          <p className="agent-run-user-answer">
+            <span>Your answer</span>
+            {response}
+          </p>
+        )
+      ) : readOnly ? (
+        suggestion
       ) : (
         <>
           {question.input?.type === "price" && onAnswer && (
@@ -113,50 +145,57 @@ export function AgentQuestion({
               <label htmlFor={`${inputId}-price`}>
                 Your price <strong>CHF {price}</strong>
               </label>
-              <input
+              <Input
                 id={`${inputId}-price`}
                 type="range"
                 min={question.input.min}
                 max={question.input.max}
                 step={question.input.step}
                 value={price}
+                disabled={disabled}
                 onChange={(event) => setPrice(Number(event.target.value))}
               />
               <div>
                 <span>CHF {question.input.min}</span>
                 <span>CHF {question.input.max}</span>
               </div>
-              <button
+              <Button
+                animateIcon
                 type="button"
                 className="button primary"
+                disabled={disabled}
                 onClick={() => submit(`CHF ${price}`)}
               >
                 {price === 0 ? "Give it away for free" : `Use CHF ${price}`}
-              </button>
+              </Button>
             </div>
           )}
           {suggestion}
           {question.input?.type !== "price" && !!question.choices?.length && (
-            <div className="agent-run-choices">
+            <Suggestions
+              className="agent-run-choices"
+              aria-label="Suggested answers"
+            >
               {question.choices.map((choice) => (
-                <button
+                <Suggestion
                   type="button"
                   key={choice}
-                  disabled={!onAnswer}
+                  disabled={disabled || !onAnswer}
                   onClick={() => submit(choice)}
                 >
                   {choice}
-                </button>
+                </Suggestion>
               ))}
-            </div>
+            </Suggestions>
           )}
           {onAnswer && !externalComposer && (
             <div className="agent-run-question-input">
               <label htmlFor={inputId}>Your answer</label>
-              <textarea
+              <Textarea
                 id={inputId}
                 rows={compact ? 1 : 2}
                 value={text}
+                disabled={disabled}
                 maxLength={4000}
                 placeholder="Or answer in your own words…"
                 onChange={(event) => setText(event.target.value)}
@@ -172,34 +211,31 @@ export function AgentQuestion({
                 }}
               />
               <div>
-                <button
+                <Button
+                  animateIcon
                   className="button primary"
                   type="button"
-                  disabled={!text.trim()}
+                  disabled={disabled || !text.trim()}
                   onClick={() => submit(text)}
                 >
                   {compact ? "Send" : "Send answer"}
-                </button>
+                </Button>
                 {onSkip && (
-                  <button className="text-button" type="button" onClick={skip}>
+                  <Button
+                    className="text-button"
+                    type="button"
+                    disabled={disabled}
+                    onClick={skip}
+                  >
                     Skip for now
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
           )}
-          {externalComposer && onSkip && (
-            <button
-              type="button"
-              className="text-button question-skip"
-              onClick={skip}
-            >
-              Skip for now
-            </button>
-          )}
         </>
       )}
-    </section>
+    </Item>
   );
 }
 
@@ -247,87 +283,96 @@ export function AgentChanges({
       ? "Listing changes"
       : "Search preferences";
   return (
-    <details
+    <Collapsible
       className={`agent-run-change ${applied ? "is-applied" : ""}`}
-      open={action.type !== "listing_patch" || action.requiresAcceptance}
+      defaultOpen={action.type !== "listing_patch" || action.requiresAcceptance}
     >
-      <summary className="agent-run-change-heading">
-        <h3>{title}</h3>
-        {undone ? (
-          <span>Undone</span>
-        ) : applied ? (
-          <span>Applied</span>
-        ) : (
-          <span>Proposed</span>
-        )}
-      </summary>
-      <div className="agent-run-change-content">
-        <p>{action.reason}</p>
-        <dl>
-          {Object.entries(action.patch).map(([field, value]) => (
-            <div key={field}>
-              <dt>{fieldLabels[field] || field}</dt>
-              <dd>
-                {value === null
-                  ? "Not set"
-                  : value === ""
-                    ? "Clear this field"
-                    : field === "price" || field === "maxPrice"
-                      ? `CHF ${Number(value).toLocaleString("en-GB")}`
-                      : field === "radius"
-                        ? `${value} km`
-                        : value}
-              </dd>
-            </div>
-          ))}
-        </dl>
-        <details className="agent-run-evidence">
-          <summary>Why these changes</summary>
-          {action.evidence.map((item, index) => (
-            <p key={index}>
-              <span>
-                {item.kind === "seller"
-                  ? "From your details"
-                  : "From a search result"}
-              </span>
-              <q>{item.quote}</q>
-              {item.kind === "source" && (
-                <> {answerParts(`[${item.sourceId}]`, sources)}</>
-              )}
+      <Item className="agent-run-change-heading" size="sm">
+        <ItemContent>
+          <h3>{title}</h3>
+        </ItemContent>
+        <ItemActions>
+          <Badge variant={applied ? "secondary" : "outline"}>
+            {undone ? "Undone" : applied ? "Applied" : "Proposed"}
+          </Badge>
+          <CollapsibleTrigger
+            className="agent-change-toggle"
+            aria-label={`Details: ${title}`}
+          >
+            Details <ChevronDown size={14} />
+          </CollapsibleTrigger>
+        </ItemActions>
+      </Item>
+      <CollapsibleContent className="agent-change-panel">
+        <div className="agent-run-change-content">
+          <p>{action.reason}</p>
+          <dl>
+            {Object.entries(action.patch).map(([field, value]) => (
+              <div key={field}>
+                <dt>{fieldLabels[field] || field}</dt>
+                <dd>
+                  {value === null
+                    ? "Not set"
+                    : value === ""
+                      ? "Clear this field"
+                      : field === "price" || field === "maxPrice"
+                        ? `CHF ${Number(value).toLocaleString("en-GB")}`
+                        : field === "radius"
+                          ? `${value} km`
+                          : value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <details className="agent-run-evidence">
+            <summary>Why these changes</summary>
+            {action.evidence.map((item, index) => (
+              <p key={index}>
+                <span>
+                  {item.kind === "seller"
+                    ? "From your details"
+                    : "From a search result"}
+                </span>
+                <q>{item.quote}</q>
+                {item.kind === "source" && (
+                  <> {answerParts(`[${item.sourceId}]`, sources)}</>
+                )}
+              </p>
+            ))}
+          </details>
+          {notice && (
+            <p className="agent-run-action-notice" role="status">
+              {notice}
             </p>
-          ))}
-        </details>
-        {notice && (
-          <p className="agent-run-action-notice" role="status">
-            {notice}
-          </p>
-        )}
-        <div className="agent-run-change-actions">
-          {!applied && !undone && !notice && onApply && (
-            <button
-              type="button"
-              className="button primary"
-              onClick={() => onApply(action.id)}
-            >
-              {priceProposal ? "Apply this price" : "Apply changes"}
-            </button>
           )}
-          {applied && !undone && onUndo && (
-            <button
-              type="button"
-              className="text-button"
-              onClick={() => onUndo(action.id)}
-            >
-              Undo changes
-            </button>
-          )}
-          {onEdit && (
-            <button type="button" className="text-button" onClick={onEdit}>
-              Edit fields
-            </button>
-          )}
+          <div className="agent-run-change-actions">
+            {!applied && !undone && !notice && onApply && (
+              <Button
+                animateIcon
+                type="button"
+                className="button primary"
+                onClick={() => onApply(action.id)}
+              >
+                {priceProposal ? "Apply this price" : "Apply changes"}
+              </Button>
+            )}
+            {applied && !undone && onUndo && (
+              <Button
+                type="button"
+                className="text-button"
+                onClick={() => onUndo(action.id)}
+              >
+                Undo changes
+              </Button>
+            )}
+            {onEdit && (
+              <Button type="button" className="text-button" onClick={onEdit}>
+                Edit fields
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
-    </details>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

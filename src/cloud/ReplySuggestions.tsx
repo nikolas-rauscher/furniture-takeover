@@ -1,5 +1,9 @@
+import { Button } from "../components/ui/button";
+import { Skeleton } from "../components/ui/skeleton";
+import { Spinner } from "../components/ui/spinner";
+import { Suggestion, Suggestions } from "../components/ui/suggestion";
 import { useId, useLayoutEffect, useRef, useState } from "react";
-import { ChevronDown, Sparkles, X } from "lucide-react";
+import { ChevronDown, Sparkles } from "@/components/icons";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Product } from "../../shared/marketplace";
 import { requestAgentAssist } from "../api/agent";
@@ -60,7 +64,6 @@ export default function ReplySuggestions({
   const trayId = useId();
   const [expanded, setExpanded] = useState(true);
   const trayToggle = useRef<HTMLButtonElement>(null);
-  const assistance = useRef<HTMLDivElement>(null);
   const request = useRef<AbortController | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const current = result?.context === context ? result : null;
@@ -77,39 +80,6 @@ export default function ReplySuggestions({
       request.current = null;
     };
   }, [context, client]);
-
-  // A short phone has less space than a viewport percentage suggests. Measure
-  // the actual clipping container so the tray stays entirely above the input.
-  useLayoutEffect(() => {
-    const anchor = assistance.current;
-    const bounds = anchor?.closest(".seller-chat-layout");
-    if (!anchor || !bounds || !expanded || !current?.suggestions?.length)
-      return;
-    const measure = () => {
-      const available = Math.max(
-        0,
-        anchor.getBoundingClientRect().top -
-          bounds.getBoundingClientRect().top -
-          16,
-      );
-      anchor.style.setProperty(
-        "--reply-tray-space",
-        `${Math.floor(available)}px`,
-      );
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(anchor);
-    observer.observe(bounds);
-    if (anchor.parentElement) observer.observe(anchor.parentElement);
-    window.addEventListener("resize", measure);
-    window.visualViewport?.addEventListener("resize", measure);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", measure);
-      window.visualViewport?.removeEventListener("resize", measure);
-    };
-  }, [expanded, current?.suggestions]);
 
   async function suggest() {
     if (disabled || request.current) return;
@@ -161,7 +131,6 @@ export default function ReplySuggestions({
   return (
     <div
       className="reply-assistance"
-      ref={assistance}
       aria-label="Reply suggestions"
       onKeyDown={(event) => {
         if (event.key === "Escape" && expanded) {
@@ -171,21 +140,25 @@ export default function ReplySuggestions({
       }}
     >
       <div className="reply-assistance-action">
-        <button
+        <Button
           type="button"
           className="reply-suggest-button"
           disabled={disabled || current?.status === "loading"}
           onClick={() => void suggest()}
         >
-          <Sparkles size={14} aria-hidden="true" />
+          {current?.status === "loading" ? (
+            <Spinner aria-hidden="true" role="presentation" />
+          ) : (
+            <Sparkles size={14} aria-hidden="true" />
+          )}
           {current?.status === "loading"
-            ? "Thinking…"
+            ? "Preparing replies…"
             : current?.status === "error"
               ? "Try again"
               : "Suggest replies"}
-        </button>
+        </Button>
         {!!current?.suggestions?.length && (
-          <button
+          <Button
             type="button"
             ref={trayToggle}
             className="reply-tray-toggle"
@@ -195,21 +168,30 @@ export default function ReplySuggestions({
           >
             {current.suggestions.length} replies{" "}
             <ChevronDown size={14} aria-hidden="true" />
-          </button>
+          </Button>
         )}
-        <small>
-          {current?.status === "ready" && current.suggestions?.length
-            ? draft.trim()
-              ? "Choose a reply to replace your draft."
-              : "Choose a reply, then make it yours."
-            : "AI uses this listing and recent messages."}
-        </small>
+        {current?.status !== "loading" && (
+          <small>
+            {current?.status === "ready" && current.suggestions?.length
+              ? draft.trim()
+                ? "Choose a reply to replace your draft."
+                : "Choose a reply, then make it yours."
+              : "AI uses this listing and recent messages."}
+          </small>
+        )}
       </div>
       <div role="status" aria-live="polite">
         {current?.status === "loading" && (
-          <p className="reply-assistance-note">
-            Finding replies for this conversation…
-          </p>
+          <div className="reply-loading">
+            <span className="sr-only">
+              Preparing reply suggestions for this conversation.
+            </span>
+            <div className="reply-loading-placeholders" aria-hidden="true">
+              <Skeleton />
+              <Skeleton />
+              <Skeleton />
+            </div>
+          </div>
         )}
         {current?.status === "error" && (
           <p className="reply-assistance-note reply-assistance-error">
@@ -223,38 +205,23 @@ export default function ReplySuggestions({
         )}
       </div>
       {!!current?.suggestions?.length && expanded && (
-        <div
+        <Suggestions
           id={trayId}
           className="reply-suggestions"
           aria-label="Suggested replies"
         >
-          <div className="reply-tray-heading">
-            <strong>Choose a reply</strong>
-            <button
+          {current.suggestions.map((suggestion) => (
+            <Suggestion
+              key={suggestion}
+              className="reply-choice"
               type="button"
-              aria-label="Close reply suggestions"
-              onClick={() => {
-                setExpanded(false);
-                trayToggle.current?.focus();
-              }}
+              disabled={disabled}
+              onClick={() => onSelect(suggestion)}
             >
-              <X size={16} aria-hidden="true" />
-            </button>
-          </div>
-          <div className="reply-tray-choices">
-            {current.suggestions.map((suggestion) => (
-              <button
-                key={suggestion}
-                className="reply-choice"
-                type="button"
-                disabled={disabled}
-                onClick={() => onSelect(suggestion)}
-              >
-                {suggestion}
-              </button>
-            ))}
-          </div>
-        </div>
+              {suggestion}
+            </Suggestion>
+          ))}
+        </Suggestions>
       )}
     </div>
   );

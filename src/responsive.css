@@ -8,9 +8,39 @@
   min-width: 0;
 }
 
+/* Keep desktop search, replies and composer on one readable conversation column. */
+@media (min-width: 761px) {
+  .app-layout.chat-layout .main-content.view-discover {
+    width: 100%;
+    max-width: 63rem;
+    margin-inline: auto;
+    padding-inline: 1.5rem;
+  }
+  .chat-layout .agent-message-scroller .chat-scroll-viewport {
+    padding-inline: 0;
+  }
+  .chat-layout .agent-response-message .agent-response-bubble {
+    max-width: 100%;
+  }
+  .chat-layout
+    .agent-response-content
+    .agent-run-panel.conversation-agent
+    .agent-search-result-message:only-child {
+    max-width: none;
+  }
+  .chat-layout .agent-run-panel .agent-run-answer {
+    max-width: 72ch;
+  }
+  .chat-layout .agent-footnote > span {
+    font-size: 12px;
+  }
+}
+
 @media (max-width: 760px) {
   :root {
-    --mobile-nav-height: calc(69px + env(safe-area-inset-bottom, 0px));
+    --mobile-nav-height: calc(60px + env(safe-area-inset-bottom, 0px));
+    --app-header-height: calc(56px + env(safe-area-inset-top, 0px));
+    --space-page: 1rem;
   }
   html {
     scrollbar-gutter: auto;
@@ -24,12 +54,6 @@
     border-radius: 4px;
     background: #c7cbd3;
   }
-  ::view-transition-old(workspace) {
-    animation-duration: 100ms;
-  }
-  ::view-transition-new(workspace) {
-    animation-duration: 240ms;
-  }
   .app-header .icon-button {
     width: 44px;
     height: 44px;
@@ -40,24 +64,11 @@
   :root[data-keyboard-open] .mobile-nav {
     display: none;
   }
-  .mobile-nav {
-    min-height: var(--mobile-nav-height);
-  }
   .mobile-nav-item {
     min-width: 0;
   }
   .app-header {
     padding-top: env(safe-area-inset-top, 0px);
-  }
-  #root:has(
-      .chat-layout,
-      .messages-layout,
-      .selling-chat-layout,
-      .selling-photo-layout
-    )
-    > .app-header {
-    height: calc(56px + env(safe-area-inset-top, 0px));
-    flex-basis: calc(56px + env(safe-area-inset-top, 0px));
   }
   .app-layout:not(
       .chat-layout,
@@ -77,12 +88,10 @@
     white-space: normal;
   }
   :is(input, textarea, select) {
-    font-size: 16px;
+    font-size: var(--type-body);
     scroll-margin-block: 80px;
   }
   .search-hero textarea,
-  .main-search > input,
-  .chat-layout .main-search > input,
   .assistant-composer.conversation-composer textarea,
   .main-content input,
   .main-content textarea,
@@ -92,7 +101,7 @@
   label > input,
   label > select,
   label > textarea {
-    font-size: 16px;
+    font-size: var(--type-body);
   }
   .title-with-action,
   .section-heading,
@@ -124,7 +133,10 @@
     align-self: flex-start;
   }
   .own-listing h2 {
-    font-size: 15px;
+    font-size: var(--type-item);
+  }
+  .product-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
   }
   .listing-actions :is(.text-button, .button),
   .job-actions > button {
@@ -172,10 +184,18 @@
     background: white;
     padding: 10px 0;
     margin-top: -10px;
+    margin-bottom: 12px;
   }
   .modal-heading h2 {
     min-width: 0;
     flex: 1;
+  }
+  .modal-intro {
+    margin: 0 0 20px;
+  }
+  .modal-actions {
+    margin-top: 24px;
+    padding-top: 16px;
   }
   .modal .form-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -198,16 +218,6 @@
     > .main-content {
     padding-bottom: 8px;
   }
-  .selling-chat-layout .listing-research-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 2px 8px;
-  }
-  .selling-chat-layout .listing-research-actions button {
-    min-width: 0;
-    white-space: normal;
-    text-align: left;
-  }
   .selling-chat-layout .listing-save-form {
     flex-wrap: wrap;
     gap: 4px 12px;
@@ -218,7 +228,7 @@
     #root:has(
       .chat-layout,
       .selling-chat-layout,
-      .messages-page.has-conversation
+      .messages-layout .messages-page.has-conversation
     )
     > .app-header {
     display: none;
@@ -228,12 +238,8 @@
     > :is(.page-title, .account-inbox-notice),
   :root[data-compact-viewport] .chat-layout .search-title,
   :root[data-compact-viewport] .chat-layout .results-controls,
-  :root[data-compact-viewport] .chat-layout .search-conversation-heading,
   :root[data-compact-viewport] .selling-chat-layout .listing-preview,
-  :root[data-compact-viewport] .selling-chat-layout .page-title,
-  :root[data-compact-viewport]
-    .selling-chat-layout
-    .search-conversation-heading {
+  :root[data-compact-viewport] .selling-chat-layout .page-title {
     display: none;
   }
   :root[data-compact-viewport] .messages-page .conversation-composer {
@@ -260,38 +266,21 @@
   }
 }
 
-/* Very short portrait displays still expose the complete photo form. */
-@media (max-width: 599px) and (max-height: 620px) {
-  .selling-photo-layout .page-title,
-  .selling-photo-layout .steps {
-    display: none;
+/* Reduce display emphasis on narrow phones, keeping reading and input sizes intact. */
+@media (max-width: 360px) {
+  :root {
+    --type-title: 1.375rem;
+    --type-display: 1.375rem;
+    --space-section: 1.25rem;
+    --space-group: 0.875rem;
   }
-  .selling-photo-layout .sell-layout {
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    scrollbar-width: thin;
-    padding: 0 2px 4px;
-  }
-  .selling-photo-layout .sell-layout > .photo-upload-panel {
-    flex: 0 0 auto;
-    min-height: 80px;
-    max-height: none;
-  }
-  .selling-photo-layout .upload-zone {
-    min-height: 80px;
-  }
-  .selling-photo-layout .upload-zone.has-image {
-    height: 120px;
-  }
-  .selling-photo-layout .upload-zone :is(h2, p, .file-hint) {
-    display: none;
-  }
-  .selling-photo-layout .sell-inputs textarea {
-    min-height: 80px;
-    height: 80px;
-    scrollbar-width: thin;
-  }
-  .selling-photo-layout .sell-inputs {
-    flex-shrink: 0;
+}
+
+/* In landscape, the follow-up composer takes over from the initial search field. */
+@media (min-width: 761px) and (max-width: 1100px) and (max-height: 460px) {
+  #root:has(.chat-layout) > .app-header {
+    height: 44px;
+    flex-basis: 44px;
+    min-height: 44px;
   }
 }

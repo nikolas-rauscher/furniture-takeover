@@ -1,6 +1,9 @@
+import { SelectField } from "./ui/select-field";
+import { Button } from "./ui/button";
+import { Textarea } from "./ui/textarea";
 import type { AccountConnection } from "../cloud/AccountSession";
 import AccountMessages from "../cloud/AccountMessages";
-import { ArrowLeft, Image as ImageIcon, Trash2 } from "lucide-react";
+import { ArrowLeft, Image as ImageIcon, Trash2 } from "@/components/icons";
 import { motionBehavior } from "../uiMotion";
 import { useEffect, useRef, useState } from "react";
 import type { SellerConversation } from "../../shared/messages";
@@ -60,6 +63,24 @@ function DemoMessagesPage({
       ? { [`${listingId}:buyer`]: initialMessage }
       : {},
   );
+  const requestedSelection = useRef({ listingId, initialMessage });
+  useEffect(() => {
+    const previous = requestedSelection.current;
+    if (
+      previous.listingId === listingId &&
+      previous.initialMessage === initialMessage
+    )
+      return;
+    requestedSelection.current = { listingId, initialMessage };
+    if (!listingId) return;
+    setSelected(listingId);
+    setShowConversation(true);
+    if (initialMessage)
+      setDrafts((current) => ({
+        ...current,
+        [`${listingId}:buyer`]: initialMessage,
+      }));
+  }, [listingId, initialMessage]);
   const draftKey = `${selected}:${role}`;
   const text = drafts[draftKey] ?? "";
   const setText = (value: string) =>
@@ -193,7 +214,7 @@ function DemoMessagesPage({
       <div className="seller-chat-layout">
         <nav aria-label="Conversations">
           {conversations.map((item) => (
-            <button
+            <Button
               className={
                 selected === item.listingId
                   ? "chat-thread active"
@@ -213,12 +234,12 @@ function DemoMessagesPage({
                 <strong>{item.seller}</strong>
                 <span>{item.title}</span>
               </span>
-            </button>
+            </Button>
           ))}
           {listing &&
             dismissedListing !== listing.id &&
             !conversations.some((item) => item.listingId === listing.id) && (
-              <button
+              <Button
                 className="chat-thread active"
                 disabled={busy}
                 onClick={() => {
@@ -235,7 +256,7 @@ function DemoMessagesPage({
                   <span>{listing.title}</span>
                   <small>New conversation</small>
                 </span>
-              </button>
+              </Button>
             )}
           {!conversations.length &&
             (!listing || dismissedListing === listing.id) &&
@@ -250,26 +271,26 @@ function DemoMessagesPage({
             <>
               <header>
                 <div className="chat-header-item">
-                  <button
+                  <Button
                     type="button"
                     className="icon-button inbox-back"
                     aria-label="Back to conversations"
                     onClick={() => setShowConversation(false)}
                   >
                     <ArrowLeft size={20} />
-                  </button>
+                  </Button>
                   {thumbnail(current)}
                   <div className="chat-header-copy">
                     <strong>{current.seller}</strong>
-                    <button
+                    <Button
                       className="chat-listing-link"
                       onClick={() => onOpenListing(current.listingId)}
                     >
                       {current.title} ↗
-                    </button>
+                    </Button>
                   </div>
                   {conversations.some((item) => item.id === current.id) && (
-                    <button
+                    <Button
                       className="chat-delete-button"
                       aria-label="Delete conversation"
                       title="Delete conversation"
@@ -277,21 +298,23 @@ function DemoMessagesPage({
                       onClick={() => void changeDeleted(current, true)}
                     >
                       <Trash2 size={18} />
-                    </button>
+                    </Button>
                   )}
                 </div>
                 <label>
                   Demo view{" "}
-                  <select
+                  <SelectField
+                    aria-label="Demo view"
                     value={role}
                     disabled={busy}
-                    onChange={(event) =>
-                      setRole(event.target.value as "buyer" | "seller")
+                    onValueChange={(value) =>
+                      setRole(value as "buyer" | "seller")
                     }
-                  >
-                    <option value="buyer">Buyer</option>
-                    <option value="seller">Seller</option>
-                  </select>
+                    options={[
+                      { value: "buyer", label: "Buyer" },
+                      { value: "seller", label: "Seller" },
+                    ]}
+                  />
                 </label>
               </header>
               <div
@@ -377,7 +400,7 @@ function DemoMessagesPage({
                   }
                 }}
               >
-                <textarea
+                <Textarea
                   aria-label="Message"
                   placeholder="Write a message…"
                   maxLength={4000}
@@ -386,12 +409,14 @@ function DemoMessagesPage({
                   disabled={busy}
                   onChange={(event) => setText(event.target.value)}
                 />
-                <button
+                <Button
+                  animateIcon
+                  type="submit"
                   className="button primary"
                   disabled={busy || !text.trim()}
                 >
                   {busy ? "Sending…" : "Send message"}
-                </button>
+                </Button>
               </form>
             </>
           ) : (
@@ -402,20 +427,20 @@ function DemoMessagesPage({
       {deleted && (
         <div className="chat-delete-notice" role="status">
           <span>Conversation deleted.</span>
-          <button
+          <Button
             className="chat-listing-link"
             disabled={busy}
             onClick={() => void changeDeleted(deleted, false)}
           >
             Undo
-          </button>
-          <button
+          </Button>
+          <Button
             className="chat-listing-link"
             aria-label="Dismiss deletion notice"
             onClick={() => setDeleted(undefined)}
           >
             ×
-          </button>
+          </Button>
         </div>
       )}
       {error && <p role="alert">{error}</p>}

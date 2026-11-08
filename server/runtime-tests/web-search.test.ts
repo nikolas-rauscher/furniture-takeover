@@ -11,6 +11,159 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { MockLanguageModelV4 } from "ai/test";
 
+test("one reply reuses identical searches and bounds distinct provider queries", async () => {
+  const model = new MockLanguageModelV4({
+    doStream: [
+      toolCall("web_search", { query: "desk Lausanne" }, "first-search"),
+      toolCall("web_search", { query: "  desk   Lausanne " }, "same-search"),
+      toolCall("web_search", { query: "chair Lausanne" }, "second-search"),
+      toolCall("web_search", { query: "lamp Lausanne" }, "third-search"),
+      toolCall("web_search", { query: "sofa Lausanne" }, "search-limit"),
+      answer("Compare the returned offers [web-1] [web-2] [web-3]."),
+    ],
+  });
+  let searches = 0;
+  const events = await eventsFor(
+    createAgentRuntime({
+      apiKey: "bounded-web-model-key",
+      braveApiKey: "bounded-web-search-key",
+      modelImpl: model,
+      fetchImpl: async () =>
+        Response.json({
+          web: {
+            results: [
+              {
+                title: `Offer ${++searches}`,
+                url: `https://www.petitesannonces.ch/a/${1234567 + searches}`,
+                description: "Collection in Lausanne",
+              },
+            ],
+          },
+        }),
+    }),
+    {
+      text: "Find some external alternatives",
+      context: { intent: "listing_review" },
+    },
+  );
+  assert.equal(searches, 3);
+  assert.ok(
+    events.some(
+      (event) =>
+        event.type === "status" &&
+        event.id === "search-limit" &&
+        event.state === "error",
+    ),
+  );
+  const complete = events.find((event) => event.type === "complete");
+  assert.ok(complete?.type === "complete");
+  assert.equal(complete.sources.length, 3);
+  assert.equal(new Set(complete.sources.map((source) => source.url)).size, 3);
+});
+
+test("an external discovery scope requires an actual web attempt after local curation", async () => {
+  for (const source of ["All", "takeover"]) {
+    let searches = 0;
+    const steps = [
+      toolCall("inventory_search", { query: "white desk" }, "local-search"),
+      toolCall(
+        "show_takeover_listings",
+        { ids: [ownDesk.id] },
+        "local-curation",
+      ),
+    ];
+    if (source === "All")
+      steps.push(
+        toolCall(
+          "web_search",
+          { query: "bureau blanc Lausanne" },
+          "required-web",
+        ),
+      );
+    steps.push(answer("The local desk is a match."));
+    const model = new MockLanguageModelV4({ doStream: steps });
+    const events = await eventsFor(
+      createAgentRuntime({
+        apiKey: "required-web-model-key",
+        braveApiKey: `required-web-search-${source}`,
+        modelImpl: model,
+        fetchImpl: async () => {
+          searches++;
+          return new Response("unavailable", { status: 503 });
+        },
+      }),
+      {
+        text: "Find a white desk under CHF 100",
+        inventory: [ownDesk],
+        context: { source, budgetSpecified: true, maxPrice: 100 },
+      },
+    );
+    assert.equal(searches, source === "All" ? 2 : 0);
+    const available = model.doStreamCalls[2].tools?.map((tool) => tool.name);
+    if (source === "All") {
+      assert.deepEqual(available, ["web_search"]);
+      assert.deepEqual(model.doStreamCalls[2].toolChoice, { type: "required" });
+      assert.equal(model.doStreamCalls[3].toolChoice?.type, "auto");
+    } else assert.equal(model.doStreamCalls[2].toolChoice?.type, "auto");
+    assert.ok(events.some((event) => event.type === "complete"));
+  }
+});
+
+test("a grounded source change refreshes tool instructions before external search", async () => {
+  const text = "Please include the web too for this desk";
+  const model = new MockLanguageModelV4({
+    doStream: [
+      toolCall(
+        "update_search_preferences",
+        {
+          patch: { source: "All" },
+          reason: "Include external offers as requested.",
+          evidence: [{ kind: "seller", quote: "include the web" }],
+        },
+        "enable-web",
+      ),
+      toolCall(
+        "web_search",
+        { query: "bureau Lausanne" },
+        "after-scope-change",
+      ),
+      answer("No matching external offers were returned."),
+    ],
+  });
+  let searched = false;
+  const events = await eventsFor(
+    createAgentRuntime({
+      apiKey: "scope-refresh-model-key",
+      braveApiKey: "scope-refresh-search-key",
+      modelImpl: model,
+      fetchImpl: async () => {
+        searched = true;
+        return Response.json({ web: { results: [] } });
+      },
+    }),
+    { text, context: { source: "takeover" } },
+  );
+  assert.ok(
+    events.some(
+      (event) =>
+        event.type === "preferences_patch" && event.patch.source === "All",
+    ),
+  );
+  assert.equal(searched, true);
+  assert.match(
+    JSON.stringify(model.doStreamCalls[0].prompt),
+    /excluded by the current takeover-only source preference/,
+  );
+  assert.match(
+    JSON.stringify(model.doStreamCalls[1].prompt),
+    /web_search tool is configured and available/,
+  );
+  assert.doesNotMatch(
+    JSON.stringify(model.doStreamCalls[1].prompt),
+    /excluded by the current takeover-only source preference/,
+  );
+});
+
 test("actual SDK tool loop searches Brave, reads supplied inventory, and streams grounded sources", async () => {
   const model = new MockLanguageModelV4({
     doStream: [
@@ -34,7 +187,7 @@ test("actual SDK tool loop searches Brave, reads supplied inventory, and streams
         {
           type: "reasoning-delta",
           id: "private",
-          delta: "private reasoning never shown",
+          delta: "Compare the local desk with the returned offers.",
         },
         { type: "reasoning-end", id: "private" },
         { type: "text-start", id: "answer" },
@@ -93,6 +246,25 @@ test("actual SDK tool loop searches Brave, reads supplied inventory, and streams
   assert.ok(catalogChecked >= 0 && catalogChecked < webStarted);
   assert.match(JSON.stringify(model.doStreamCalls[0].prompt), /own-desk/);
   assert.equal(searches, 1);
+  for (const [id, task] of [
+    ["web-call", "web"],
+    ["inventory-call", "listings"],
+    ["curate-inventory", "listings"],
+  ]) {
+    const steps = events.filter(
+      (event) => event.type === "status" && event.id === id,
+    );
+    assert.equal(steps.length, 2);
+    assert.ok(
+      steps.every((step) => step.type === "status" && step.task === task),
+    );
+    if (id === "web-call" || id === "inventory-call")
+      assert.ok(
+        steps.every(
+          (step) => step.type === "status" && step.label.includes("white desk"),
+        ),
+      );
+  }
   assert.deepEqual(
     events.filter((event) => event.type === "inventory_matches"),
     [
@@ -103,7 +275,10 @@ test("actual SDK tool loop searches Brave, reads supplied inventory, and streams
   assert.equal(model.doStreamCalls.length, 4);
   assert.deepEqual(model.doStreamCalls[0].toolChoice, { type: "required" });
   assert.deepEqual(model.doStreamCalls[0].providerOptions, {
-    deepseek: { thinking: { type: "disabled" } },
+    deepseek: { thinking: { type: "disabled" }, reasoningEffort: "low" },
+  });
+  assert.deepEqual(model.doStreamCalls[3].providerOptions, {
+    deepseek: { thinking: { type: "enabled" }, reasoningEffort: "low" },
   });
   assert.match(
     JSON.stringify(model.doStreamCalls[3].prompt),
@@ -141,7 +316,14 @@ test("actual SDK tool loop searches Brave, reads supplied inventory, and streams
   );
   assert.equal("price" in complete.sources[0], false);
   assert.ok(events.filter((event) => event.type === "text_delta").length >= 2);
-  assert.equal(JSON.stringify(events).includes("private reasoning"), false);
+  assert.ok(events.some((event) => event.type === "reasoning_delta"));
+  assert.equal(complete.text.includes("Compare the local desk"), false);
+  assert.equal(
+    events
+      .filter((event) => event.type === "text_delta")
+      .some((event) => event.text.includes("Compare the local desk")),
+    false,
+  );
   assert.equal(JSON.stringify(events).includes("model-test-key"), false);
 });
 test("source IDs deduplicate real URLs and unknown references are not emitted", async () => {
@@ -222,6 +404,18 @@ test("search tool failures produce actual error status without fictional source 
       new Response("secret upstream detail", { status: 503 }),
   });
   const events = await eventsFor(runtime, { text: "desk" });
+  const failed = events.find(
+    (event) =>
+      event.type === "status" &&
+      event.id === "failed-search" &&
+      event.state === "error",
+  );
+  assert.ok(failed?.type === "status");
+  assert.deepEqual(failed.failure, {
+    code: "WEB_SEARCH_UNAVAILABLE",
+    message: "Web search is temporarily unavailable. Try again shortly.",
+    retryable: true,
+  });
   assert.ok(
     events.some(
       (event) =>
@@ -238,6 +432,66 @@ test("search tool failures produce actual error status without fictional source 
     false,
   );
 });
+test("a later failed web query retains earlier sources and curated Takeover listings", async () => {
+  let searches = 0;
+  const model = new MockLanguageModelV4({
+    doStream: [
+      toolCall("show_takeover_listings", { ids: [ownDesk.id] }, "curate-local"),
+      toolCall("web_search", { query: "bureau Lausanne" }, "successful-web"),
+      toolCall(
+        "web_search",
+        { query: "white desk Lausanne" },
+        "later-web-failure",
+      ),
+      answer(
+        "## Takeover\nThe local desk is still available in the catalog.\n## Web search\nA returned offer [web-1].",
+      ),
+    ],
+  });
+  const events = await eventsFor(
+    createAgentRuntime({
+      apiKey: "partial-web-model-key",
+      braveApiKey: "partial-web-search-key",
+      modelImpl: model,
+      fetchImpl: async () => {
+        searches++;
+        return searches === 1
+          ? Response.json({
+              web: {
+                results: [
+                  {
+                    title: "Desk",
+                    url: "https://www.petitesannonces.ch/a/1234567",
+                    description: "Collection in Lausanne",
+                  },
+                ],
+              },
+            })
+          : new Response("private service detail", { status: 503 });
+      },
+    }),
+    { text: "Find local and web desks", inventory: [ownDesk] },
+  );
+  const complete = events.find((event) => event.type === "complete");
+  assert.ok(complete?.type === "complete");
+  assert.equal(complete.sources.length, 1);
+  const failed = events.find(
+    (event) =>
+      event.type === "status" &&
+      event.id === "later-web-failure" &&
+      event.state === "error",
+  );
+  assert.ok(failed?.type === "status" && failed.failure?.retryable);
+  assert.deepEqual(
+    events.filter((event) => event.type === "inventory_matches").at(-1),
+    { type: "inventory_matches", ids: [ownDesk.id] },
+  );
+  assert.equal(
+    JSON.stringify(events).includes("private service detail"),
+    false,
+  );
+});
+
 test("ordinary discovery cannot bypass offer filtering with product_info scope", async () => {
   let fetched = false;
   const model = new MockLanguageModelV4({

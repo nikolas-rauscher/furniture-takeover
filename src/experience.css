@@ -1,8 +1,9 @@
 /* Quiet paper surfaces with room for the task, rather than decorative panels. */
 .app-header {
-  height: 88px;
-  padding: 0 max(40px, calc((100vw - 1240px) / 2));
-  gap: 56px;
+  height: var(--app-header-height);
+  flex: 0 0 var(--app-header-height);
+  padding: 0 max(var(--space-page), calc((100vw - 1240px) / 2));
+  gap: var(--space-section);
   background: #fbfbf9;
 }
 .brand {
@@ -12,7 +13,7 @@
 }
 .app-header nav {
   margin-left: 0;
-  gap: 32px;
+  gap: var(--space-group);
 }
 .app-header nav > button {
   font-size: 14px;
@@ -55,9 +56,9 @@
 .button {
   border-radius: 4px;
   font-weight: 500;
-  min-height: 46px;
-  padding: 13px 20px;
-  font-size: 14px;
+  min-height: var(--control-size);
+  padding: 0.625rem 0.875rem;
+  font-size: var(--type-label);
 }
 input,
 textarea,
@@ -65,21 +66,22 @@ select {
   border-radius: 4px;
 }
 label {
-  font-size: 14px;
-  gap: 12px;
+  font-size: var(--type-label);
+  gap: var(--space-label);
 }
 label > input,
 label > select,
 label > textarea {
-  font-size: 15px;
-  padding: 14px;
+  font-size: var(--type-body);
+  padding: 0.625rem 0.75rem;
+  min-height: var(--control-size);
 }
 .app-layout {
   max-width: 1640px;
   grid-template-columns: minmax(0, 1fr) 352px;
 }
 .main-content {
-  padding: 56px 52px 88px;
+  padding: var(--space-section) var(--space-page) calc(2 * var(--space-section));
 }
 .home-layout,
 .focused-layout {
@@ -88,25 +90,25 @@ label > textarea {
 }
 .home-layout .main-content {
   max-width: none;
-  padding: 0 40px 80px;
+  padding: 0 var(--space-page) calc(2 * var(--space-section));
 }
 .focused-layout .main-content {
-  max-width: 1160px;
-  padding: 56px 48px 96px;
+  max-width: none;
+  padding: var(--space-section) var(--space-page) calc(2 * var(--space-section));
 }
 .page-title {
   margin: 0 0 40px;
 }
 .page-title h1 {
-  font-size: 40px;
-  font-weight: 450;
-  letter-spacing: -1.1px;
+  font-size: var(--type-title);
+  font-weight: 550;
+  letter-spacing: -0.025em;
   margin-bottom: 18px;
 }
 .page-title p {
-  font-size: 16px;
-  line-height: 1.75;
-  max-width: 580px;
+  font-size: var(--type-label);
+  line-height: 1.6;
+  max-width: var(--measure-prose);
 }
 .back-link {
   font-size: 13px;
@@ -122,8 +124,8 @@ label > textarea {
 .agent-modes {
   display: flex;
   align-items: center;
-  gap: 32px;
-  font-size: 15px;
+  gap: var(--space-group);
+  font-size: var(--type-label);
   margin-bottom: 32px;
   line-height: 1.5;
 }
@@ -142,16 +144,16 @@ label > textarea {
   text-underline-offset: 5px;
 }
 .agent-hero h1 {
-  font-size: 52px;
+  font-size: var(--type-display);
   font-weight: 450;
   line-height: 1.17;
-  letter-spacing: -1.7px;
+  letter-spacing: -0.025em;
   margin-bottom: 20px;
 }
 .agent-hero > p {
-  font-size: 17px;
+  font-size: var(--type-body);
   color: var(--muted);
-  line-height: 1.75;
+  line-height: 1.6;
 }
 .agent-search {
   margin-top: 36px;
@@ -209,6 +211,8 @@ label > textarea {
   color: var(--ink);
 }
 .agent-footnote {
+  font-size: 12px;
+  color: var(--muted);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -238,13 +242,14 @@ label > textarea {
   margin-bottom: 28px;
 }
 .section-heading h2 {
-  font-size: 25px;
+  font-size: var(--type-section);
   font-weight: 500;
-  letter-spacing: -0.6px;
+  letter-spacing: -0.02em;
 }
 .section-heading > div > span {
   display: block;
-  font-size: 13px;
+  font-size: var(--type-support);
+  color: var(--muted);
   margin-top: 10px;
 }
 .sort-label select {
@@ -289,12 +294,12 @@ label > textarea {
 }
 .product-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 48px 32px;
+  gap: var(--space-section) var(--space-group);
 }
 .home-layout .product-grid,
 .focused-layout .product-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 48px 32px;
+  gap: var(--space-section) var(--space-group);
 }
 .product-photo {
   height: auto;
@@ -315,16 +320,17 @@ label > textarea {
   right: 12px;
 }
 .product-info {
-  padding: 18px 0 0;
+  padding: var(--space-field) 0 0;
+  container-type: inline-size;
 }
 .product-source {
   display: block;
-  font-size: 12px;
+  font-size: var(--type-caption);
   color: var(--muted);
   margin-bottom: 10px;
 }
 .product-title {
-  font-size: 16px;
+  font-size: clamp(0.9375rem, 0.875rem + 0.6cqi, 1.0625rem);
   font-weight: 450;
   line-height: 1.5;
   white-space: normal;
@@ -334,7 +340,7 @@ label > textarea {
   gap: 8px;
 }
 .product-title-row > strong {
-  font-size: 18px;
+  font-size: clamp(1rem, 0.95rem + 0.5cqi, 1.125rem);
   font-weight: 500;
   flex-shrink: 0;
   white-space: nowrap;
@@ -342,12 +348,12 @@ label > textarea {
 .product-location,
 .product-location > span,
 .pickup {
-  font-size: 12px;
+  font-size: var(--type-support);
   color: var(--muted);
-  line-height: 1.65;
+  line-height: 1.5;
 }
 .product-location {
-  margin-top: 16px;
+  margin-top: var(--space-label);
 }
 .product-bottom {
   margin-top: 7px;
@@ -367,20 +373,6 @@ label > textarea {
 .market-footer .text-button {
   font-size: 12px;
 }
-.main-search {
-  background: #fff;
-  border-radius: 4px;
-  box-shadow: none;
-  margin-bottom: 24px;
-  padding: 10px 12px 10px 20px;
-}
-.main-search > input {
-  font-size: 15px;
-}
-.main-search .button {
-  font-size: 14px;
-  padding: 12px 18px;
-}
 .results-controls {
   display: flex;
   justify-content: space-between;
@@ -398,11 +390,6 @@ label > textarea {
   color: var(--muted);
   text-align: left;
   line-height: 1.7;
-}
-.edit-settings {
-  color: var(--blue);
-  text-decoration: underline;
-  text-underline-offset: 4px;
 }
 .save-search {
   font-size: 13px;
@@ -754,7 +741,7 @@ label > textarea {
   font-size: 12px;
 }
 .quiet-caption {
-  font-size: 12px;
+  font-size: var(--type-caption);
 }
 
 .review-layout.agent-review-layout {
@@ -782,23 +769,6 @@ label > textarea {
 }
 .listing-conversation .agent-run-changes h3 { font-size: 15px; }
 .listing-conversation .agent-run-changes p { font-size: 14px; line-height: 1.5; }
-
-
-.listing-research-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 28px;
-  margin: 24px 0 8px;
-}
-.listing-research-actions button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-}
-.listing-conversation .agent-run-source-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
 .listing-save-form {
   margin-top: 40px;
   padding-top: 28px;
@@ -869,15 +839,6 @@ label > textarea {
   .agent-review-layout .listing-preview .listing-preview-description { display: none; }
   .review-layout.agent-review-layout { gap: 12px; }
   .view-sell .page-title + .steps { margin-bottom: 12px; }
-  .listing-conversation .agent-run-source-grid {
-    grid-template-columns: 1fr;
-  }
-  .listing-research-actions {
-    gap: 8px 20px;
-  }
-  .listing-conversation .agent-run-source-grid {
-    grid-template-columns: 1fr;
-  }
 
 }
 .review-layout {
@@ -991,7 +952,8 @@ label > textarea {
   margin-bottom: 28px;
 }
 .modal-heading h2 {
-  font-size: 24px;
+  font-size: var(--type-section);
+  line-height: 1.35;
   font-weight: 500;
 }
 .modal-intro {
@@ -1008,25 +970,12 @@ label > textarea {
 }
 
 @media (max-width: 1200px) {
-  .app-header {
-    padding: 0 32px;
-    gap: 36px;
-  }
   .app-layout {
     grid-template-columns: minmax(0, 1fr) 320px;
-  }
-  .main-content {
-    padding: 40px 32px 72px;
-  }
-  .focused-layout .main-content {
-    padding: 48px 40px 80px;
   }
   .agent-hero {
     padding: 72px 0;
     max-width: 800px;
-  }
-  .agent-hero h1 {
-    font-size: 48px;
   }
   .market-toolbar .categories {
     gap: 24px;
@@ -1034,7 +983,7 @@ label > textarea {
   .product-grid,
   .home-layout .product-grid,
   .focused-layout .product-grid {
-    gap: 40px 24px;
+    gap: var(--space-section) var(--space-group);
   }
   .assistant-heading,
   .assistant-body {
@@ -1067,7 +1016,7 @@ label > textarea {
     box-shadow: none;
   }
   .product-title {
-    font-size: 15px;
+    font-size: clamp(0.9375rem, 0.875rem + 0.6cqi, 1.0625rem);
   }
   .detail-summary h1 {
     font-size: 32px;
@@ -1079,8 +1028,8 @@ label > textarea {
 @media (max-width: 760px) {
   .app-header {
     height: 76px;
-    padding: 0 24px;
-    gap: 28px;
+    padding: 0 var(--space-page);
+    gap: var(--space-group);
   }
   .brand {
     font-size: 26px;
@@ -1100,22 +1049,15 @@ label > textarea {
     min-height: 36px !important;
     padding: 8px 0 !important;
   }
-  .home-layout .main-content {
-    padding: 0 28px 64px;
-  }
   .focused-layout .main-content,
   .main-content {
-    padding: 40px 28px 72px;
+    padding: var(--space-section) var(--space-page) calc(2 * var(--space-section));
   }
   .agent-hero {
     padding: 56px 0 64px;
   }
   .agent-hero h1 {
-    font-size: 40px;
-    letter-spacing: -1.2px;
-  }
-  .agent-hero > p {
-    font-size: 16px;
+    letter-spacing: -0.025em;
   }
   .agent-search {
     padding: 24px;
@@ -1125,7 +1067,6 @@ label > textarea {
     font-size: 18px;
   }
   .agent-modes {
-    gap: 28px;
     margin-bottom: 28px;
   }
   .agent-footnote {
@@ -1146,15 +1087,7 @@ label > textarea {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .product-title {
-    font-size: 14px;
-  }
-  .main-search > .button {
-    font-size: 13px;
-    width: auto;
-    padding: 12px;
-  }
-  .page-title h1 {
-    font-size: 34px;
+    font-size: clamp(0.9375rem, 0.875rem + 0.6cqi, 1.0625rem);
   }
   .detail-layout {
     gap: 28px;
@@ -1223,32 +1156,23 @@ label > textarea {
     height: 44px;
     gap: 28px;
   }
-  .home-layout .main-content {
-    padding: 0 24px 48px;
-  }
   .focused-layout .main-content,
   .main-content {
-    padding: 32px 24px 72px;
+    padding: var(--space-section) var(--space-page) calc(2 * var(--space-section));
   }
   .agent-hero {
     padding: 44px 0 56px;
   }
   .agent-modes {
-    font-size: 13px;
-    gap: 28px;
     margin-bottom: 28px;
   }
   .agent-modes > button {
     font-size: 13px;
   }
   .agent-hero h1 {
-    font-size: 36px;
     line-height: 1.2;
-    letter-spacing: -1.1px;
+    letter-spacing: -0.025em;
     margin-bottom: 20px;
-  }
-  .agent-hero > p {
-    font-size: 15px;
   }
   .agent-search {
     padding: 20px;
@@ -1286,9 +1210,6 @@ label > textarea {
   .section-heading {
     margin-bottom: 24px;
   }
-  .section-heading h2 {
-    font-size: 23px;
-  }
   .market-toolbar {
     gap: 16px;
     margin-bottom: 28px;
@@ -1311,7 +1232,7 @@ label > textarea {
   .home-layout .product-grid,
   .focused-layout .product-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 32px 16px;
+    gap: var(--space-section) var(--space-group);
   }
   .product-photo {
     height: auto;
@@ -1327,16 +1248,16 @@ label > textarea {
     padding-top: 14px;
   }
   .product-title {
-    font-size: 13px;
+    font-size: clamp(0.9375rem, 0.875rem + 0.6cqi, 1.0625rem);
     line-height: 1.6;
     min-height: 42px;
   }
   .product-source {
-    font-size: 11px;
+    font-size: var(--type-caption);
     margin-bottom: 8px;
   }
   .product-title-row > strong {
-    font-size: 16px;
+    font-size: clamp(1rem, 0.95rem + 0.5cqi, 1.125rem);
   }
   .product-location {
     margin-top: 12px;
@@ -1347,7 +1268,7 @@ label > textarea {
   .product-location,
   .product-location > span,
   .pickup {
-    font-size: 11px;
+    font-size: var(--type-support);
   }
   .market-footer {
     margin-top: 48px;
@@ -1357,18 +1278,6 @@ label > textarea {
   .market-footer > span,
   .market-footer .text-button {
     font-size: 11px;
-  }
-  .main-search {
-    padding: 8px 8px 8px 12px;
-    margin-bottom: 36px;
-    gap: 8px;
-  }
-  .main-search > input {
-    font-size: 14px;
-  }
-  .main-search > .button {
-    font-size: 11px;
-    padding: 11px;
   }
   .results-controls {
     margin-bottom: 32px;
@@ -1385,7 +1294,6 @@ label > textarea {
     margin-bottom: 32px;
   }
   .page-title h1 {
-    font-size: 32px;
     margin-bottom: 16px;
   }
   .page-title p {
@@ -1571,8 +1479,8 @@ label > textarea {
 /* Phone navigation stays within thumb reach; desktop navigation remains above. */
 @media (max-width: 760px) {
   .app-header {
-    height: 72px;
-    padding: 0 24px;
+    height: var(--app-header-height);
+    padding: 0 var(--space-page);
     align-items: center;
     flex-wrap: nowrap;
   }
@@ -1651,51 +1559,46 @@ label > textarea {
   overflow-wrap: anywhere;
 }
 
-/* A compact invitation becomes a working search as the brief is written. */
+/* Keep the search compact while allowing a longer brief to grow naturally. */
 .agent-hero.search-entry {
-  padding: 56px 0 64px;
-  transition: padding 220ms ease;
+  padding: var(--space-section) 0;
 }
 .agent-hero.search-entry .agent-modes {
-  margin-bottom: 22px;
+  gap: var(--space-group);
+  margin-bottom: var(--space-group);
 }
 .agent-hero.search-entry h1 {
-  font-size: 34px;
+  font-size: var(--type-display);
   line-height: 1.25;
-  letter-spacing: -0.8px;
-  margin-bottom: 12px;
-  transition:
-    font-size 220ms ease,
-    margin 220ms ease;
+  letter-spacing: -0.025em;
+  margin-bottom: var(--space-field);
 }
 .agent-hero.search-entry > p {
-  font-size: 15px;
+  font-size: var(--type-body);
+  line-height: 1.6;
+  max-width: var(--measure-prose);
 }
 .agent-hero.search-entry .agent-search {
-  margin-top: 24px;
+  margin-top: var(--space-group);
+  padding: var(--space-panel);
+  border-radius: 10px;
 }
-.agent-hero.search-entry.has-query {
-  padding-top: 36px;
-  padding-bottom: 44px;
+.agent-hero.search-entry .agent-search textarea {
+  field-sizing: content;
+  min-height: 2.75rem;
+  max-height: 9rem;
+  overflow-y: auto;
+  font-size: var(--type-body);
+  line-height: 1.6;
 }
-.agent-hero.search-entry.has-query h1 {
-  font-size: 24px;
-  letter-spacing: -0.4px;
+.agent-hero.search-entry .agent-search-actions {
+  margin-top: var(--space-label);
 }
-@media (max-width: 640px) {
-  .agent-hero.search-entry {
-    padding: 32px 0 40px;
-  }
-  .agent-hero.search-entry h1 {
-    font-size: 28px;
-  }
-  .agent-hero.search-entry.has-query {
-    padding-top: 24px;
-    padding-bottom: 32px;
-  }
-  .agent-hero.search-entry.has-query h1 {
-    font-size: 22px;
-  }
+.agent-hero.search-entry > .agent-footnote {
+  margin: var(--space-label) 0 0;
+  padding: 0;
+  font-size: var(--type-caption);
+  line-height: 1.5;
 }
 @media (prefers-reduced-motion: reduce) {
   .agent-hero.search-entry,
@@ -1708,9 +1611,6 @@ label > textarea {
 .detail-photo { align-self:start; aspect-ratio:4 / 3; min-height:0; background:#f1f1ed; }
 .detail-photo > img { object-fit:contain; }
 .detail-description a { color:var(--blue); text-decoration:underline; text-underline-offset:3px; }
-@media (max-width:560px) {
-  .main-search > .button { width:auto; min-width:82px; min-height:44px; flex-shrink:0; }
-}
 
 /* The mobile listing workspace puts the next question within reach. */
 @media (max-width: 760px) {
@@ -1719,36 +1619,20 @@ label > textarea {
   .view-sell > .page-title h1 { font-size: 26px; line-height: 1.2; margin-bottom: 10px; }
   .view-sell > .page-title p { font-size: 13px; line-height: 1.5; }
   .view-sell > .steps { margin-bottom: 20px; font-size: 12px; gap: 12px; }
-
-
-  .listing-research-actions { margin: 12px 0 0; gap: 4px 16px; font-size: 12px; }
   .listing-save-form { margin-top: 24px; padding-top: 20px; }
 }
 
-/* A quick written greeting, with its full layout reserved from the first frame. */
-.hero-headline-word { white-space:nowrap; }
-.hero-headline-word > span { white-space:pre; opacity:0; animation:hero-write-letter 90ms ease-out forwards; }
-@keyframes hero-write-letter { to { opacity:1; } }
-@media (prefers-reduced-motion:reduce) {
-  .hero-headline-word > span { opacity:1; animation:none; }
-}
-
-.search-area-status { display:flex; align-items:center; flex-wrap:wrap; gap:4px 16px; min-width:0; }
-.search-area-status .agent-footnote { margin:0; padding:0; display:flex; flex-wrap:wrap; gap:6px; font-size:11px; line-height:1.5; max-width:300px; }
-.search-area-status .agent-footnote > span[role="status"]::before { content:""; display:inline-block; width:5px; height:5px; border-radius:50%; background:currentColor; margin-right:6px; vertical-align:middle; }
 .product-tags { display:flex; flex-wrap:wrap; gap:4px 8px; min-height:20px; margin-bottom:8px; }
-.product-tags > span { font-size:11px; line-height:1.5; color:var(--muted); background:#f0f0ed; padding:2px 6px; border-radius:2px; overflow-wrap:anywhere; }
-@media (max-width:640px) { .search-area-status { gap:2px 10px; flex:1; } .search-area-status .agent-footnote { font-size:10px; } }
+.product-tags > span { font-size:var(--type-caption); line-height:1.5; color:var(--muted); background:#f0f0ed; padding:2px 6px; border-radius:2px; overflow-wrap:anywhere; }
 
 /* Keep related copy together while preserving generous control targets. */
-.page-title { margin-bottom: 24px; }
-.page-title h1 { margin-bottom: 10px; }
-.section-heading { margin-bottom: 20px; gap: 16px; }
-.main-search, .results-controls { margin-bottom: 16px; }
+.page-title { margin-bottom: var(--space-group); }
+.page-title h1 { margin-bottom: var(--space-label); min-height: var(--control-size); display: flex; align-items: center; }
+.page-title > .button { margin: 0; }
+.section-heading { margin-bottom: var(--space-group); gap: var(--space-field); }
+.results-controls { margin-bottom: 16px; }
 .search-title .back-link { margin-bottom: 8px; }
 .assistant-composer { margin-top: 20px; padding: 16px; }
-
-.listing-research-actions { margin: 12px 0 4px; gap: 4px 20px; }
 
 .listing-save-form { margin-top: 24px; padding-top: 20px; }
 .listing-manual-fields[open] > summary { margin-bottom: 16px; }
@@ -1772,24 +1656,7 @@ label > textarea {
   gap: 4px 12px;
 }
 .database-status button { min-height: 44px; }
-.search-area-status .agent-footnote {
-  max-width: none;
-  min-width: 0;
-  align-items: center;
-  gap: 4px 10px;
-}
-.search-area-status .agent-footnote > span {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.search-area-status .agent-footnote > button { min-height: 44px; }
 @media (max-width: 560px) {
-  .main-search > .button {
-    width: auto;
-    min-width: 76px;
-    min-height: 44px;
-    flex-shrink: 0;
-  }
   .section-heading { gap: 12px; }
   .review-layout.agent-review-layout { gap: 12px; }
   .form-grid, .modal .form-grid { gap: 16px; }
@@ -1799,51 +1666,24 @@ label > textarea {
 
 /* Keep modal scrollbar changes from shifting the whole workspace sideways. */
 html { scrollbar-gutter: stable; }
-.main-content { view-transition-name: workspace; }
-::view-transition-old(workspace) { animation: workspace-leave 220ms ease-out both; }
-::view-transition-new(workspace) { animation: workspace-arrive 580ms cubic-bezier(.22,1,.36,1) both; }
-@keyframes workspace-leave { to { opacity:0; } }
-@keyframes workspace-arrive { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
-.modal-backdrop { animation: workspace-arrive 260ms ease-out both; }
-.modal { animation: workspace-arrive 420ms cubic-bezier(.22,1,.36,1) both; }
+.main-content:focus { outline: none; }
 @supports (interpolate-size: allow-keywords) {
-  .listing-manual-fields, .agent-run-activity { interpolate-size:allow-keywords; }
-  .listing-manual-fields::details-content, .agent-run-activity::details-content {
+  .listing-manual-fields { interpolate-size:allow-keywords; }
+  .listing-manual-fields::details-content {
     height:0; overflow:clip; opacity:0;
     transition:height 460ms cubic-bezier(.22,1,.36,1), opacity 320ms ease, content-visibility 460ms allow-discrete;
   }
-  .listing-manual-fields[open]::details-content, .agent-run-activity[open]::details-content { height:auto; opacity:1; }
+  .listing-manual-fields[open]::details-content { height:auto; opacity:1; }
 }
 @media(prefers-reduced-motion:reduce) {
-  ::view-transition-old(workspace), ::view-transition-new(workspace), .modal-backdrop, .modal { animation:none; }
-  .listing-manual-fields::details-content, .agent-run-activity::details-content { transition:none; }
+  .listing-manual-fields::details-content { transition:none; }
 }
 
 /* Keep routine draft updates small so the conversation stays in place. */
-.agent-run-change > summary {
-  cursor: pointer;
-  list-style: none;
-  min-height: 28px;
-}
-.agent-run-change > summary::-webkit-details-marker { display: none; }
-.agent-run-change > summary::after {
-  content: "Details +";
-  color: var(--muted);
-  font-size: 12px;
-  flex-shrink: 0;
-}
-.agent-run-change[open] > summary::after { content: "Details −"; }
 .agent-run-change-content { padding-top: 8px; }
 .listing-conversation .agent-run-changes { padding: 8px 12px; }
 @supports (interpolate-size: allow-keywords) {
   .agent-run-change { interpolate-size: allow-keywords; }
-  .agent-run-change::details-content {
-    height: 0;
-    overflow: clip;
-    opacity: 0;
-    transition: height 460ms ease, opacity 320ms ease, content-visibility 460ms allow-discrete;
-  }
-  .agent-run-change[open]::details-content { height: auto; opacity: 1; }
 }
 @media (max-width: 760px) {
   .agent-review-layout .listing-preview {
@@ -1858,22 +1698,17 @@ html { scrollbar-gutter: stable; }
     overflow: hidden;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .agent-run-change::details-content { transition: none; }
-}
 .listing-conversation .agent-run-change {
   padding: 0;
   border-top: 0;
   max-width: none;
 }
-.agent-run-change > summary { margin-bottom: 0; }
 .agent-run-change-content > p { font-size: 14px; }
 
 /* In a conversation, the viewport belongs to the app; only messages scroll. */
 html:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-layout),
 body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-layout) {
   overflow: hidden;
-  scrollbar-gutter: auto;
   overscroll-behavior: none;
 }
 #root:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-layout) {
@@ -1884,8 +1719,6 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
 }
 #root:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-layout) > .app-header {
   position: static;
-  height: 64px;
-  flex: 0 0 64px;
 }
 .app-layout.chat-layout,
 .app-layout.messages-layout {
@@ -1899,7 +1732,7 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 12px 32px 16px;
+  padding: var(--space-group) var(--space-page);
   margin: 0 auto;
   overflow: hidden;
 }
@@ -1912,9 +1745,6 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
 }
 .chat-layout .search-title h1 { font-size: 20px; margin: 0; }
 .chat-layout .search-title .back-link { margin: 0; min-height: 36px; font-size: 12px; }
-.chat-layout .main-search { margin: 0 0 6px; padding: 4px; min-height: 48px; }
-.chat-layout .main-search > input { padding: 8px 12px; font-size: 15px; }
-.chat-layout .main-search > .button { min-height: 40px; padding: 8px 16px; }
 .chat-layout .results-controls { margin: 0; min-height: 36px; gap: 12px; }
 .chat-layout .results-controls button { font-size: 12px; }
 .chat-layout .view-discover > .quiet-caption {
@@ -1931,21 +1761,15 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
   max-width: none;
   margin: 8px 0 0;
 }
-.chat-layout .search-conversation-heading { margin-bottom: 6px; }
 .chat-layout .chat-composer-dock { min-height: 0; padding-top: 8px; }
 .chat-layout .chat-composer-dock textarea { max-height: 100px; overflow-y: auto; }
 .chat-layout .agent-footnote { margin: 4px 0 0; }
 @media (max-width: 760px) {
-  #root:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-layout) > .app-header {
-    height: 56px;
-    flex-basis: 56px;
-    padding: 0 16px;
-  }
   #root:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-layout) > .mobile-nav {
     position: static;
     flex: 0 0 auto;
   }
-  .chat-layout .main-content.view-discover { padding: 6px 12px 8px; }
+  .chat-layout .main-content.view-discover { padding: var(--space-label) var(--space-page); }
   .chat-layout .search-title { gap: 12px; margin-bottom: 4px; }
   .chat-layout .search-title h1 { font-size: 18px; }
   .chat-layout .view-discover > .quiet-caption { display: none; }
@@ -1954,15 +1778,14 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
 }
 @media (max-height: 600px) {
   .chat-layout .search-title,
-  .chat-layout .view-discover > .quiet-caption,
-  .chat-layout .search-conversation-heading { display: none; }
+  .chat-layout .view-discover > .quiet-caption { display: none; }
 }
 
 /* Seller conversations use the same fixed shell as the agent chat. */
 .messages-layout .main-content.view-messages {
   height: 100%;
   min-height: 0;
-  padding: 12px 24px;
+  padding: var(--space-section) var(--space-page) var(--space-label);
   margin: 0 auto;
 }
 .messages-layout .messages-page {
@@ -1972,7 +1795,7 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
   flex-direction: column;
 }
 .messages-layout .messages-page .page-title { margin: 0 0 4px; }
-.messages-layout .messages-page .page-title h1 { font-size: 22px; margin: 0; }
+.messages-layout .messages-page .page-title h1 { font-size: var(--type-title); margin: 0; }
 .messages-layout .messages-page .page-title p { display: none; }
 .messages-layout .messages-page > .quiet-caption { font-size: 11px; margin: 0; }
 .messages-layout .seller-chat-layout { flex: 1; min-height: 0; margin-top: 8px; }
@@ -1984,7 +1807,7 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
 .messages-layout .seller-chat header label { flex-direction: row; align-items: center; margin: 0; }
 .messages-layout .seller-chat header select { width: auto; padding: 4px 8px; font-size: 12px; }
 @media (max-width: 760px) {
-  .messages-layout .main-content.view-messages { padding: 8px 12px; }
+  .messages-layout:has(.messages-page.has-conversation) .main-content.view-messages { padding-top: var(--space-label); }
   .messages-layout .seller-chat-layout { grid-template-rows: auto minmax(0, 1fr); }
   .messages-layout .seller-chat-layout nav { padding: 6px; max-height: 70px; }
   .messages-layout .chat-thread { padding: 6px 10px; }
@@ -1999,15 +1822,13 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
 
 /* The listing editor shares the stationary chat shell. Details open on demand. */
 .app-layout.selling-chat-layout { flex: 1 1 0; min-height: 0; width: 100%; overflow: hidden; }
-.selling-chat-layout .view-sell { height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 10px 24px; margin: 0 auto; }
+.selling-chat-layout .view-sell { height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: var(--space-group) var(--space-page); margin: 0 auto; }
 .selling-chat-layout .view-sell > .back-link { margin: 0; min-height: 28px; align-self: flex-start; font-size: 12px; flex-shrink: 0; }
 .selling-chat-layout .page-title { margin: 0 0 6px; flex-shrink: 0; }
 .selling-chat-layout .page-title h1 { font-size: 22px; margin: 0; }
 .selling-chat-layout .page-title p, .selling-chat-layout .steps { display: none; }
 .selling-chat-layout .agent-review-layout { flex: 1 1 0; min-height: 0; margin: 0; align-items: stretch; gap: 20px; }
 .selling-chat-layout .listing-workspace, .selling-chat-layout .listing-conversation { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }
-.selling-chat-layout .listing-research-actions { margin: 0; gap: 8px 20px; flex-shrink: 0; }
-.selling-chat-layout .listing-research-actions button { min-height: 32px; font-size: 12px; }
 .selling-chat-layout .chat-workspace { flex: 1 1 0; min-height: 0; height: auto; max-width: none; margin: 6px 0; }
 .selling-chat-layout .chat-composer-dock { min-height: 0; padding-top: 8px; }
 .selling-chat-layout .chat-composer-dock textarea { max-height: 100px; overflow-y: auto; }
@@ -2022,7 +1843,7 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
 .selling-chat-layout .listing-preview .preview-label { margin: 0; padding: 12px 16px; }
 .selling-chat-layout .listing-edit-button { font-size: 12px; min-height: 42px; }
 @media (max-width: 760px) {
-  .selling-chat-layout .view-sell { padding: 4px 12px 8px; }
+  .selling-chat-layout .view-sell { padding: 8px var(--space-page); }
   .selling-chat-layout .page-title h1 { font-size: 18px; }
   .selling-chat-layout .agent-review-layout { gap: 6px; }
   .selling-chat-layout .listing-preview { height: 58px; min-height: 58px; flex-shrink: 0; grid-template-columns: 40px minmax(0, 1fr); padding: 6px 10px; gap: 10px; }
@@ -2034,51 +1855,46 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
   .selling-chat-layout .listing-save-form > .button { padding: 8px 12px; font-size: 12px; }
 }
 @media (max-height: 600px) {
-  .selling-chat-layout .page-title, .selling-chat-layout .listing-preview, .selling-chat-layout .search-conversation-heading { display: none; }
+  .selling-chat-layout .page-title { display: none; }
 }
 
-/* Photo preparation also fits the app viewport; optional suggestions use a dialog. */
+/* Listing preparation keeps the action visible while the form can scroll. */
 .app-layout.selling-photo-layout { flex: 1 1 0; min-height: 0; width: 100%; overflow: hidden; }
-.selling-photo-layout .view-sell { height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 12px 24px; margin: 0 auto; }
-.selling-photo-layout .view-sell > .back-link { margin: 0 0 4px; min-height: 28px; font-size: 12px; align-self: flex-start; flex-shrink: 0; }
-.selling-photo-layout .page-title { margin: 0 0 8px; flex-shrink: 0; }
-.selling-photo-layout .page-title h1 { margin: 0; font-size: 24px; }
-.selling-photo-layout .page-title p { display: none; }
-.selling-photo-layout .steps { margin: 0 0 12px; font-size: 12px; gap: 12px; flex-shrink: 0; }
-.selling-photo-layout .steps i { width: 24px; height: 24px; }
-.selling-photo-layout .sell-layout { flex: 1 1 0; min-height: 0; gap: 24px; align-items: stretch; }
-.selling-photo-layout .sell-layout > div { min-height: 0; display: flex; flex-direction: column; }
-.selling-photo-layout .upload-zone { height: auto; flex: 1 1 0; min-height: 0; padding: 16px; }
-.selling-photo-layout .upload-zone.has-image { padding: 0; }
+.selling-photo-layout .view-sell { height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: var(--space-section) var(--space-page); margin: 0 auto; }
+.selling-photo-layout .workspace-header { margin-bottom: 16px; }
+.selling-photo-layout .sell-layout { flex: 1 1 0; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "photos fields" "photos actions"; gap: 16px 24px; align-items: stretch; }
+.sell-photo-content { display: contents; }
+.selling-photo-layout .photo-upload-panel { grid-area: photos; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+.selling-photo-layout .upload-zone { height: auto; flex: 1 1 0; min-height: 0; padding: 16px; border: 1px dashed var(--line); background: var(--surface); }
+.selling-photo-layout .upload-zone.has-image { padding: 0; border-style: solid; }
 .selling-photo-layout .upload-zone img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
-.selling-photo-layout .upload-zone h2 { font-size: 18px; margin-bottom: 6px; }
-.selling-photo-layout .upload-zone p { margin: 0 0 10px; }
-.selling-photo-layout .file-hint { margin-top: 10px; font-size: 11px; }
-.selling-photo-layout .sell-inputs { min-height: 0; gap: 10px; justify-content: center; }
-.selling-photo-layout .sell-inputs > label { margin: 0; font-size: 13px; }
-.selling-photo-layout .sell-inputs textarea { min-height: 72px; height: 100px; max-height: 18dvh; resize: none; padding: 10px 12px; overflow-y: auto; }
-.selling-photo-layout .photo-suggestions-button { min-height: 32px; font-size: 12px; text-align: left; align-self: flex-start; }
-.selling-photo-layout .pickup-location-heading button { min-height: 32px; }
-.selling-photo-layout .pickup-location-field { gap: 4px; }
-.selling-photo-layout .pickup-location-field input { padding: 10px 12px; }
-.selling-photo-layout .pickup-location-help { display: none; }
-.selling-photo-layout .sell-inputs > .button { min-height: 44px; margin: 0; padding: 10px 16px; }
-.selling-photo-layout .sell-inputs > .quiet-caption { margin: 0; font-size: 11px; line-height: 1.35; }
+.selling-photo-layout .sell-inputs { grid-area: fields; min-height: 0; min-width: 0; align-self: center; gap: 16px; }
+.selling-photo-layout .sell-inputs [data-slot="field"] { gap: 6px; }
+.selling-photo-layout .sell-inputs [data-slot="field-label"] { margin: 0; width: 100%; flex-direction: row; color: var(--ink); font-size: var(--type-label); font-weight: 500; line-height: 1.4; }
+.sell-field-optional { margin-left: auto; color: var(--muted); font-size: var(--type-caption); font-weight: 400; }
+.selling-photo-layout .sell-inputs textarea { min-height: 80px; height: 6.25rem; resize: none; padding: 10px 12px; overflow-y: auto; }
+.selling-photo-layout .sell-inputs :is(input, textarea):focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+.selling-photo-layout .photo-suggestions-button { min-height: 44px; padding: 8px 12px; margin-top: -8px; font-size: var(--type-label); text-align: left; align-self: flex-start; }
+.selling-photo-layout .pickup-location-heading { gap: 4px 8px; }
+.selling-photo-layout .pickup-location-heading [data-slot="field-label"] { width: auto; }
+.selling-photo-layout .pickup-location-heading button { min-height: 44px; }
+.selling-photo-layout .pickup-location-field input { min-height: 44px; padding: 10px 12px; }
+.selling-photo-layout .pickup-location-help { display: block; }
+.sell-photo-footer { grid-area: actions; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.sell-photo-footer > .button { font-size: var(--type-label); min-height: 44px; margin: 0; padding: 10px 16px; }
+.sell-photo-help { margin: 8px 0 0; color: var(--muted); font-size: var(--type-caption); line-height: 1.4; }
 .selling-photo-layout .form-error { margin: 4px 0; font-size: 12px; }
+.selling-photo-layout .agent-footnote { margin-top: 8px; }
 @media (max-width: 760px) {
-  .selling-photo-layout .view-sell { padding: 6px 12px 8px; }
-  .selling-photo-layout .page-title h1 { font-size: 20px; }
-  .selling-photo-layout .sell-layout { display: flex; flex-direction: column; gap: 12px; }
-  .selling-photo-layout .sell-layout > div { flex: 1 1 0; min-height: 100px; max-height: 32dvh; }
-  .selling-photo-layout .sell-inputs { flex: 0 0 auto; gap: 8px; }
-  .selling-photo-layout .sell-inputs textarea { height: 80px; min-height: 60px; }
-  .selling-photo-layout .sell-inputs > .quiet-caption { display: none; }
-}
-@media (max-height: 620px) and (min-width: 600px) {
-  .selling-photo-layout .steps, .selling-photo-layout .page-title { display: none; }
-  .selling-photo-layout .sell-layout { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 12px; }
-  .selling-photo-layout .sell-layout > div { max-height: none; }
-  .selling-photo-layout .sell-inputs { gap: 4px; }
-  .selling-photo-layout .sell-inputs textarea { height: 64px; }
-  .selling-photo-layout .sell-inputs > .quiet-caption { display: none; }
+  .selling-photo-layout .view-sell { padding: env(safe-area-inset-top, 0px) 12px 4px; }
+  .selling-photo-layout .workspace-header { margin-bottom: 4px; }
+  .selling-photo-layout .sell-layout { display: flex; flex-direction: column; gap: 0; }
+  .selling-photo-layout .sell-photo-content { flex: 1 1 0; min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 4px 0 12px; }
+  .selling-photo-layout .photo-upload-panel { flex: 0 0 auto; }
+  .selling-photo-layout .photo-upload-panel > .photo-gallery { flex: 0 0 auto; }
+  .selling-photo-layout .photo-gallery.is-editable .upload-zone { flex: 0 0 auto; min-height: 160px; padding: 12px; }
+  .selling-photo-layout .photo-gallery.is-editable .upload-zone.has-image { height: 160px; min-height: 160px; padding: 0; }
+  .selling-photo-layout .sell-inputs { flex: 0 0 auto; width: 100%; align-self: stretch; }
+  .selling-photo-layout .sell-inputs textarea { height: 5rem; }
+  .selling-photo-layout .sell-photo-footer { flex: 0 0 auto; padding: 8px 0 4px; border-top: 1px solid var(--line); }
 }
