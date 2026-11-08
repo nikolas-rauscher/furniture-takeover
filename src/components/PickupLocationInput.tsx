@@ -1,5 +1,7 @@
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 import { useEffect, useId, useRef, useState } from "react";
-import { LocateFixed } from "lucide-react";
+import { LocateFixed } from "@/components/icons";
 import "./pickup-location-input.css";
 
 export type PickupLocationInputProps = {
@@ -94,7 +96,7 @@ export function PickupLocationInput({
     <div className="pickup-location-field">
       <div className="pickup-location-heading">
         <label htmlFor={id}>Pickup location</label>
-        <button
+        <Button
           type="button"
           onClick={locate}
           disabled={disabled || busy}
@@ -102,9 +104,9 @@ export function PickupLocationInput({
         >
           <LocateFixed size={15} aria-hidden="true" />
           {busy ? "Locating…" : "Use my location"}
-        </button>
+        </Button>
       </div>
-      <input
+      <Input
         id={id}
         value={value}
         onChange={(event) => onChange(event.target.value)}

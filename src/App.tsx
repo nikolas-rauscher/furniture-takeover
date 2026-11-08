@@ -1,3 +1,12 @@
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "./components/ui/dropdown-menu";
+import { Button } from "./components/ui/button";
+import { Textarea } from "./components/ui/textarea";
+import { Input } from "./components/ui/input";
 import { readRoute, type View } from "./navigation";
 import type { AccountConnection } from "./cloud/AccountSession";
 import Auth from "./cloud/Auth";
@@ -45,11 +54,10 @@ import {
   ChevronDown,
   GitCompareArrows,
   Plus,
-  Pencil,
   Search,
   UserRound,
   X,
-} from "lucide-react";
+} from "@/components/icons";
 import MobileNav from "./MobileNav";
 import Modal from "./components/Modal";
 import ProductCard from "./components/ProductCard";
@@ -350,7 +358,7 @@ export default function App({ account }: { account?: AccountConnection }) {
           committedSearch.criteria.source === "All"
             ? "All sources"
             : committedSearch.criteria.source === "takeover"
-              ? "Your listings only"
+              ? "Takeover listings only"
               : committedSearch.criteria.source,
         ].join(" · ")
       : "";
@@ -1214,62 +1222,42 @@ export default function App({ account }: { account?: AccountConnection }) {
   const listingConversation = (
     <section className="listing-conversation" aria-label="Listing agent">
       <div className="listing-research-actions">
-        <button
-          type="button"
-          className="text-button"
-          disabled={!configured || listingRun.state.status === "running"}
-          onClick={() =>
-            void runListing(
-              "Research comparable individual secondhand offers for this item.",
-              undefined,
-              true,
-            )
-          }
-        >
-          Research this item <ArrowRight size={14} />
-        </button>
-        <button
-          type="button"
-          className="text-button"
-          disabled={!configured || listingRun.state.status === "running"}
-          onClick={() =>
-            void runListing(
-              "Research comparable asking prices and suggest a price for this listing.",
-              undefined,
-              true,
-            )
-          }
-        >
-          Suggest a price <ArrowRight size={14} />
-        </button>
-        <button
-          type="button"
-          className="text-button"
-          disabled={!configured || listingRun.state.status === "running"}
-          onClick={() =>
-            void runListing(
-              "Check my listing for missing condition, dimensions and pickup details.",
-              undefined,
-              true,
-            )
-          }
-        >
-          Check listing <Check size={14} />
-        </button>
-        <button
-          type="button"
-          className="text-button"
-          disabled={!configured || listingRun.state.status === "running"}
-          onClick={() =>
-            void runListing(
-              "Improve my description using the photos and details I provided. Keep it concise and natural.",
-              undefined,
-              true,
-            )
-          }
-        >
-          Improve description <Pencil size={14} />
-        </button>
+        <h2 className="listing-assistant-title">Listing assistant</h2>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={<Button variant="outline" size="sm" />}
+            disabled={!configured || listingRun.state.status === "running"}
+          >
+            Agent tools <ChevronDown size={14} />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="agent-tools-menu">
+            {[
+              [
+                "Research this item",
+                "Research comparable individual secondhand offers for this item.",
+              ],
+              [
+                "Suggest a price",
+                "Research comparable asking prices and suggest a price for this listing.",
+              ],
+              [
+                "Check listing",
+                "Check my listing for missing condition, dimensions and pickup details.",
+              ],
+              [
+                "Improve description",
+                "Improve my description using the photos and details I provided. Keep it concise and natural.",
+              ],
+            ].map(([label, request]) => (
+              <DropdownMenuItem
+                key={label}
+                onClick={() => void runListing(request, undefined, true)}
+              >
+                {label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       <AgentConversation
         state={listingRun.state}
@@ -1339,9 +1327,9 @@ export default function App({ account }: { account?: AccountConnection }) {
   const connectionStatus =
     account && !signedIn ? (
       <div className="agent-footnote">
-        <button type="button" onClick={() => navigate("settings")}>
+        <Button type="button" onClick={() => navigate("settings")}>
           Sign in to use your agent
-        </button>
+        </Button>
       </div>
     ) : quotaExhausted ? (
       <div className="agent-footnote" role="status">
@@ -1366,13 +1354,13 @@ export default function App({ account }: { account?: AccountConnection }) {
               : "Connecting…"}
         </span>
         {(!configured || healthError) && (
-          <button
+          <Button
             type="button"
             onClick={refreshHealth}
             disabled={healthChecking}
           >
             {healthChecking ? "Reconnecting…" : "Retry"}
-          </button>
+          </Button>
         )}
         {configured && agentHealth?.webSearchConfigured === false && (
           <span>
@@ -1400,9 +1388,9 @@ export default function App({ account }: { account?: AccountConnection }) {
               ? "Saving listing changes…"
               : "Loading listings…")}
           {database.error && (
-            <button className="text-button" onClick={database.retry}>
+            <Button className="text-button" onClick={database.retry}>
               Retry
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -1419,7 +1407,7 @@ export default function App({ account }: { account?: AccountConnection }) {
           takeover
         </a>
         <nav aria-label="Main navigation">
-          <button
+          <Button
             className={
               view === "discover" || view === "detail" || view === "compare"
                 ? "active"
@@ -1428,21 +1416,21 @@ export default function App({ account }: { account?: AccountConnection }) {
             onClick={openBrowse}
           >
             Find
-          </button>
-          <button
+          </Button>
+          <Button
             className={view === "searches" ? "active" : ""}
             onClick={() => navigate("searches")}
           >
             Saved searches
             <span className="nav-count">{savedSearches.length}</span>
-          </button>
-          <button
+          </Button>
+          <Button
             className={view === "messages" ? "active" : ""}
             onClick={() => openMessages()}
           >
             Messages
-          </button>
-          <button
+          </Button>
+          <Button
             className={view === "account" ? "active" : ""}
             onClick={() => {
               setAccountTab("listings");
@@ -1450,14 +1438,18 @@ export default function App({ account }: { account?: AccountConnection }) {
             }}
           >
             My listings
-          </button>
+          </Button>
         </nav>
         <div className="header-actions">
-          <button className="button primary sell-nav" onClick={startSell}>
+          <Button
+            animateIcon
+            className="button primary sell-nav"
+            onClick={openSell}
+          >
             <Plus size={17} />
             Sell furniture
-          </button>
-          <button
+          </Button>
+          <Button
             className={`icon-button${view === "settings" ? " active" : ""}`}
             aria-current={view === "settings" ? "page" : undefined}
             aria-label={
@@ -1470,7 +1462,7 @@ export default function App({ account }: { account?: AccountConnection }) {
             onClick={() => navigate("settings")}
           >
             <UserRound size={20} />
-          </button>
+          </Button>
         </div>
       </header>
       <div
@@ -1514,24 +1506,24 @@ export default function App({ account }: { account?: AccountConnection }) {
                   </p>
                 </div>
                 {connectionStatus}
-                <button
+                <Button
                   className="button secondary"
                   onClick={() => void database.addDemo()}
                 >
                   Add sample listings
-                </button>
-                <button
+                </Button>
+                <Button
                   className="text-button"
                   onClick={() => setModal("help")}
                 >
                   How the agent works
-                </button>
-                <button
+                </Button>
+                <Button
                   className="text-button"
                   onClick={() => setModal("clear")}
                 >
                   Clear local workspace
-                </button>
+                </Button>
               </section>
             ))}
           <WorkspacePage active={view === "messages"}>
@@ -1605,7 +1597,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                 >
                   <div className="agent-modes">
                     <span>Find something</span>
-                    <button onClick={startSell}>Sell from a photo</button>
+                    <Button onClick={startSell}>Sell from a photo</Button>
                   </div>
                   <HeroHeadline compact={hasSearchDraft} />
                   <p>
@@ -1620,12 +1612,12 @@ export default function App({ account }: { account?: AccountConnection }) {
                       void runSearch(query);
                     }}
                   >
-                    <textarea
+                    <Textarea
                       aria-label="Search furniture"
                       maxLength={4000}
                       value={query}
                       onChange={(event) => setQuery(event.target.value)}
-                      rows={3}
+                      rows={1}
                       placeholder="A desk under CHF 80, nearby, ready to collect by Friday…"
                       onKeyDown={(event) => {
                         if (
@@ -1639,38 +1631,43 @@ export default function App({ account }: { account?: AccountConnection }) {
                       }}
                     />
                     <div className="agent-search-actions">
-                      <div className="search-area-status">
-                        <button
-                          type="button"
-                          className="search-area"
-                          onClick={() => {
-                            setAreaDraft({ location, radius: criteria.radius });
-                            setModal("location");
-                          }}
-                        >
-                          {location}
-                          <ChevronDown size={13} />
-                        </button>
-                        {connectionStatus}
-                      </div>
-                      <button
+                      <Button
+                        type="button"
+                        className="search-area"
+                        onClick={() => {
+                          setAreaDraft({ location, radius: criteria.radius });
+                          setModal("location");
+                        }}
+                      >
+                        {location}
+                        <ChevronDown size={13} />
+                      </Button>
+                      <Button
+                        animateIcon
                         className="button primary"
                         type="submit"
                         disabled={!query.trim() || running}
                       >
                         Find it
-                      </button>
+                      </Button>
                     </div>
                   </form>
-                  <AgentSuggestions state={searchAssist} onSelect={setQuery} />
+                  {connectionStatus}
+                  <AgentSuggestions
+                    state={searchAssist}
+                    onSelect={(suggestion) => {
+                      setQuery(suggestion);
+                      void runSearch(suggestion);
+                    }}
+                  />
                 </section>
               ) : (
                 <>
                   <div className="page-title search-title">
-                    <button className="back-link" onClick={goHome}>
+                    <Button className="back-link" onClick={goHome}>
                       <ArrowLeft size={15} />
                       New search
-                    </button>
+                    </Button>
                     <h1>
                       {reviewingListing ? "Listing review" : searchHeading}
                     </h1>
@@ -1706,7 +1703,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                         </button>
                       </form>
                       <div className="results-controls">
-                        <button
+                        <Button
                           className="search-settings"
                           title={activePreferences || undefined}
                           onClick={() => {
@@ -1716,8 +1713,8 @@ export default function App({ account }: { account?: AccountConnection }) {
                         >
                           <span>Search preferences</span>
                           <span className="edit-settings">Edit</span>
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           className="save-search"
                           disabled={running || !committedSearch}
                           onClick={() => {
@@ -1732,7 +1729,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                           }}
                         >
                           Save this search
-                        </button>
+                        </Button>
                       </div>
                       {activePreferences && (
                         <p
@@ -1916,7 +1913,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                           : "Personal browser listings & demo database"}
                       </span>
                     </div>
-                    <button
+                    <Button
                       className="browse-filter"
                       onClick={() => {
                         setAccountTab("listings");
@@ -1924,7 +1921,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                       }}
                     >
                       Manage listings
-                    </button>
+                    </Button>
                   </div>
                   <div className="product-grid">
                     {visibleListings.map((item) => productCard(item))}
@@ -1939,10 +1936,10 @@ export default function App({ account }: { account?: AccountConnection }) {
                       Upload a photo. Your agent prepares the listing.
                     </span>
                   </div>
-                  <button className="button secondary" onClick={startSell}>
+                  <Button className="button secondary" onClick={startSell}>
                     Create a listing
                     <ArrowRight size={16} />
-                  </button>
+                  </Button>
                 </div>
               )}
             </>
@@ -2131,20 +2128,21 @@ export default function App({ account }: { account?: AccountConnection }) {
               <GitCompareArrows size={18} />
               <strong>{comparison.length}</strong> selected
             </span>
-            <button
+            <Button
+              animateIcon
               className="button primary small"
               onClick={() => navigate("compare")}
             >
               Compare
               <ArrowRight size={14} />
-            </button>
-            <button
+            </Button>
+            <Button
               className="icon-button"
               aria-label="Clear comparison"
               onClick={() => setCompared([])}
             >
               <X size={16} />
-            </button>
+            </Button>
           </div>
         )}
       {toast && (
@@ -2152,7 +2150,7 @@ export default function App({ account }: { account?: AccountConnection }) {
           <Check size={18} />
           {toast}
           {toastNotice?.deletedSearch && (
-            <button
+            <Button
               className="text-button"
               style={{
                 pointerEvents: "auto",
@@ -2181,15 +2179,15 @@ export default function App({ account }: { account?: AccountConnection }) {
               }}
             >
               Undo
-            </button>
+            </Button>
           )}
-          <button
+          <Button
             className="icon-button"
             aria-label="Dismiss notification"
             onClick={() => setToast("")}
           >
             <X size={14} />
-          </button>
+          </Button>
         </div>
       )}
 
@@ -2215,16 +2213,16 @@ export default function App({ account }: { account?: AccountConnection }) {
               onChange={setFilterDraft}
             />
             <div className="modal-actions">
-              <button
+              <Button
                 type="button"
                 className="text-button"
                 onClick={() => setFilterDraft({ ...defaults })}
               >
                 Reset
-              </button>
-              <button className="button primary" type="submit">
+              </Button>
+              <Button animateIcon className="button primary" type="submit">
                 Search with these preferences
-              </button>
+              </Button>
             </div>
           </form>
         </Modal>
@@ -2245,7 +2243,7 @@ export default function App({ account }: { account?: AccountConnection }) {
           >
             <label>
               Search name
-              <input
+              <Input
                 required
                 maxLength={90}
                 pattern=".*\S.*"
@@ -2264,10 +2262,10 @@ export default function App({ account }: { account?: AccountConnection }) {
             <p className="quiet-caption">
               Saved in this browser. Run it again from Saved searches.
             </p>
-            <button className="button primary full" type="submit">
+            <Button animateIcon className="button primary full" type="submit">
               <Bookmark size={16} />
               Save search
-            </button>
+            </Button>
           </form>
         </Modal>
       )}
@@ -2289,7 +2287,7 @@ export default function App({ account }: { account?: AccountConnection }) {
           >
             <label>
               Location
-              <input
+              <Input
                 required
                 maxLength={120}
                 pattern=".*\S.*"
@@ -2304,7 +2302,7 @@ export default function App({ account }: { account?: AccountConnection }) {
             </label>
             <label>
               Distance (km)
-              <input
+              <Input
                 required
                 type="number"
                 min="0"
@@ -2319,9 +2317,9 @@ export default function App({ account }: { account?: AccountConnection }) {
                 }
               />
             </label>
-            <button className="button primary full" type="submit">
+            <Button animateIcon className="button primary full" type="submit">
               Use this area
-            </button>
+            </Button>
           </form>
         </Modal>
       )}
@@ -2362,10 +2360,11 @@ export default function App({ account }: { account?: AccountConnection }) {
             browser.
           </p>
           <div className="modal-actions">
-            <button className="button secondary" onClick={() => setModal(null)}>
+            <Button className="button secondary" onClick={() => setModal(null)}>
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
+              animateIcon
               className="button primary"
               onClick={() => {
                 setOwn([]);
@@ -2382,7 +2381,7 @@ export default function App({ account }: { account?: AccountConnection }) {
               }}
             >
               Clear workspace
-            </button>
+            </Button>
           </div>
         </Modal>
       )}

@@ -1923,22 +1923,18 @@ form > label {
 .toast > .icon-button:hover {
   background: #ffffff20;
 }
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
+.modal-overlay {
   background: #26314c45;
   backdrop-filter: blur(4px);
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
 }
 .modal {
   width: 510px;
   max-width: 100%;
   max-height: 90dvh;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
   border: 1px solid #ffffff80;
   background: white;
   border-radius: 16px;
