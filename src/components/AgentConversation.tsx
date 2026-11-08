@@ -117,11 +117,13 @@ export default function AgentConversation({
           </MessageScrollerViewport>
           <MessageScrollerButton
             className="chat-jump-latest"
-            size="sm"
+            size="icon-sm"
             variant="outline"
+            aria-label="Latest messages"
+            title="Latest messages"
             behavior={motionBehavior()}
           >
-            Latest messages <ChevronDown size={14} />
+            <ChevronDown size={18} aria-hidden="true" />
           </MessageScrollerButton>
         </MessageScroller>
       </MessageScrollerProvider>

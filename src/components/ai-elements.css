@@ -12,8 +12,16 @@
   content-visibility: visible;
 }
 .agent-message-scroller .chat-jump-latest.button {
-  bottom: 12px;
-  min-height: 44px;
+  inset-inline-start: auto;
+  inset-inline-end: var(--space-field);
+  bottom: var(--space-label);
+  translate: none;
+  transform: none;
+  width: var(--control-size);
+  height: var(--control-size);
+  min-height: var(--control-size);
+  padding: 0;
+  border-radius: 50%;
 }
 .agent-message-scroller .agent-user-bubble {
   max-width: min(80%, 64ch);
@@ -40,7 +48,9 @@
 .agent-response-content .agent-run-details {
   max-width: none;
 }
-.agent-response-content .agent-run-panel.conversation-agent .agent-search-result-messages {
+.agent-response-content
+  .agent-run-panel.conversation-agent
+  .agent-search-result-messages {
   grid-template-columns: minmax(0, 1fr);
   margin: var(--space-label) 0 0;
   gap: var(--space-group);
