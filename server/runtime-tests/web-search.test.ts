@@ -11,6 +11,56 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { MockLanguageModelV4 } from "ai/test";
 
+test("one reply reuses identical searches and bounds distinct provider queries", async () => {
+  const model = new MockLanguageModelV4({
+    doStream: [
+      toolCall("web_search", { query: "desk Lausanne" }, "first-search"),
+      toolCall("web_search", { query: "  desk   Lausanne " }, "same-search"),
+      toolCall("web_search", { query: "chair Lausanne" }, "second-search"),
+      toolCall("web_search", { query: "lamp Lausanne" }, "third-search"),
+      toolCall("web_search", { query: "sofa Lausanne" }, "search-limit"),
+      answer("Compare the returned offers [web-1] [web-2] [web-3]."),
+    ],
+  });
+  let searches = 0;
+  const events = await eventsFor(
+    createAgentRuntime({
+      apiKey: "bounded-web-model-key",
+      braveApiKey: "bounded-web-search-key",
+      modelImpl: model,
+      fetchImpl: async () =>
+        Response.json({
+          web: {
+            results: [
+              {
+                title: `Offer ${++searches}`,
+                url: `https://www.petitesannonces.ch/a/${1234567 + searches}`,
+                description: "Collection in Lausanne",
+              },
+            ],
+          },
+        }),
+    }),
+    {
+      text: "Find some external alternatives",
+      context: { intent: "listing_review" },
+    },
+  );
+  assert.equal(searches, 3);
+  assert.ok(
+    events.some(
+      (event) =>
+        event.type === "status" &&
+        event.id === "search-limit" &&
+        event.state === "error",
+    ),
+  );
+  const complete = events.find((event) => event.type === "complete");
+  assert.ok(complete?.type === "complete");
+  assert.equal(complete.sources.length, 3);
+  assert.equal(new Set(complete.sources.map((source) => source.url)).size, 3);
+});
+
 test("actual SDK tool loop searches Brave, reads supplied inventory, and streams grounded sources", async () => {
   const model = new MockLanguageModelV4({
     doStream: [

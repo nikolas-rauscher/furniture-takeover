@@ -302,13 +302,20 @@ export async function searchWeb(
       );
     if (domains.length === 0) return [];
   }
-  url.searchParams.set(
-    "q",
-    offersOnly ? marketplaceQuery(query.trim(), config.source) : query.trim(),
-  );
+  const scopedQuery = offersOnly
+    ? marketplaceQuery(query.trim(), config.source)
+    : query.trim();
+  if (scopedQuery.length > 600 || scopedQuery.split(/\s+/).length > 75)
+    throw new WebSearchError(
+      "INVALID_SEARCH_QUERY",
+      "Use a shorter web search query.",
+    );
+  url.searchParams.set("q", scopedQuery);
   url.searchParams.set("count", "20");
   url.searchParams.set("text_decorations", "false");
   url.searchParams.set("result_filter", "web");
+  url.searchParams.set("country", "CH");
+  url.searchParams.set("units", "metric");
   try {
     combined.throwIfAborted();
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -409,7 +416,14 @@ export async function searchWeb(
             .flatMap((item) => {
               if (!item || typeof item !== "object") return [];
               const entry = item as Record<string, unknown>;
-              const sourceUrl = validSourceUrl(entry.url);
+              let sourceUrl = validSourceUrl(entry.url);
+              if (sourceUrl && offersOnly) {
+                const offerUrl = new URL(sourceUrl);
+                // Supported marketplaces identify the ad in its path. Tracking
+                // and variant parameters must not turn one ad into several leads.
+                offerUrl.search = "";
+                sourceUrl = offerUrl.href;
+              }
               const title = plain(entry.title, 180);
               const snippet = plain(entry.description, 700);
               if (!sourceUrl || !title || seen.has(sourceUrl)) return [];

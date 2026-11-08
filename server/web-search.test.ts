@@ -18,6 +18,8 @@ test("Brave search uses only its fixed endpoint and returns actual safe snippets
       "search-test-key",
     );
     assert.equal(init?.redirect, "error");
+    assert.equal(new URL(requestUrl).searchParams.get("country"), "CH");
+    assert.equal(new URL(requestUrl).searchParams.get("units"), "metric");
     return Response.json({
       web: {
         results: [
@@ -71,6 +73,38 @@ test("Brave search uses only its fixed endpoint and returns actual safe snippets
   ]);
   assert.equal(JSON.stringify(results).includes("search-test-key"), false);
   assert.equal("price" in results[0], false);
+});
+
+test("offer tracking parameters do not duplicate an ad and wanted ads stay excluded", async () => {
+  const results = await searchWeb("desk Lausanne", {
+    apiKey: "clean-offer-leads-key",
+    fetchImpl: async () =>
+      Response.json({
+        web: {
+          results: [
+            {
+              title: "Desk",
+              url: "https://www.ricardo.ch/fr/a/desk-123456789/?utm_source=test",
+            },
+            {
+              title: "Same desk",
+              url: "https://www.ricardo.ch/fr/a/desk-123456789/?utm_source=other",
+            },
+            {
+              title: "Desk wanted",
+              url: "https://www.petitesannonces.ch/a/1234567",
+            },
+          ],
+        },
+      }),
+  });
+  assert.deepEqual(results, [
+    {
+      title: "Desk",
+      url: "https://www.ricardo.ch/fr/a/desk-123456789/",
+      snippet: "",
+    },
+  ]);
 });
 
 test("search previews stay attached to their exact result and unsafe or absent images stay absent", async () => {
