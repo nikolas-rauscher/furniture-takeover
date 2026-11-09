@@ -45,7 +45,7 @@ type Props = {
   /** Return to the single-listing flow. */
   onBack: () => void;
   /** Store the listings; returns false when browser storage failed. */
-  onSave: (drafts: ListingDraft[]) => boolean;
+  onSave: (drafts: ListingDraft[]) => Promise<boolean>;
   /** Every item has been saved. */
   onDone: () => void;
   /** Photos from the single-item flow that the seller chose to split. */
@@ -87,6 +87,7 @@ export default function BatchSellFlow({
   const [sorting, setSorting] = useState(false);
   const [error, setError] = useState("");
   const [sortFailed, setSortFailed] = useState(false);
+  const [saving, setSaving] = useState(false);
   const requests = useRef(new AbortController());
   const headingRef = useRef<HTMLHeadingElement>(null);
 
@@ -234,11 +235,15 @@ export default function BatchSellFlow({
     );
   }
 
-  function save() {
-    if (!ready.length || drafting) return;
-    if (!onSave(ready.map((item) => item.draft))) return;
-    const saved = new Set(ready.map((item) => item.id));
-    setItems((current) => current.filter((item) => !saved.has(item.id)));
+  async function save() {
+    if (!ready.length || drafting || saving) return;
+    setSaving(true);
+    const saved = await onSave(ready.map((item) => item.draft)).finally(() =>
+      setSaving(false),
+    );
+    if (!saved) return;
+    const savedIds = new Set(ready.map((item) => item.id));
+    setItems((current) => current.filter((item) => !savedIds.has(item.id)));
     if (!itemsRef.current.length) onDone();
   }
 
@@ -644,8 +649,8 @@ export default function BatchSellFlow({
             <button
               type="button"
               className="button primary"
-              disabled={!ready.length || drafting}
-              onClick={save}
+              disabled={!ready.length || drafting || saving}
+              onClick={() => void save()}
             >
               <Check size={17} />
               Save {ready.length} listing{ready.length === 1 ? "" : "s"}

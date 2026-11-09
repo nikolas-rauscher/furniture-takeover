@@ -574,9 +574,8 @@ export function createAgentServer(
         }
         const result =
           pathname === "/api/agent/group-photos"
-            ? await service.groupPhotos(body, controller.signal)
-            : await service.assist(body, controller.signal);
-        const result = await agents.service.assist(body, controller.signal);
+            ? await agents.service.groupPhotos(body, controller.signal)
+            : await agents.service.assist(body, controller.signal);
         send(response, 200, result);
       } finally {
         active--;

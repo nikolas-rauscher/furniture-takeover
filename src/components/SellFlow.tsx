@@ -207,48 +207,17 @@ export default function SellFlow({
                   ? "Review and edit before publishing."
                   : "Add at least one photo to create your draft."}
               </p>
-<<<<<<< HEAD
-            )}
-            {onSellSeveral && !editing && (
-              <button
-                type="button"
-                className="text-button multi-item-switch"
-                disabled={unavailable}
-                onClick={onSellSeveral}
-              >
-                <Images size={15} />
-                Selling several items? Upload them all at once
-              </button>
-            )}
-          </div>
-          <form
-            className="sell-inputs"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!unavailable) onCreateDraft();
-            }}
-          >
-            <label>
-              A few details<span className="optional">Optional</span>
-              <textarea
-                rows={6}
-                maxLength={4000}
-                disabled={unavailable}
-                value={draft.raw}
-                onChange={(event) => onDraftChange({ raw: event.target.value })}
-                placeholder="For example: Two books, CHF 10, pickup this weekend. Minor wear on the covers."
-              />
-            </label>
-            <button
-              type="button"
-              className="text-button photo-suggestions-button"
-              disabled={
-                unavailable ||
-                listingAssist.status === "idle" ||
-                listingAssist.status === "loading"
-              }
-              onClick={() => setSuggestionsOpen(true)}
-=======
+              {onSellSeveral && !editing && (
+                <button
+                  type="button"
+                  className="text-button multi-item-switch"
+                  disabled={unavailable}
+                  onClick={onSellSeveral}
+                >
+                  <Images size={15} />
+                  Selling several items? Upload them all at once
+                </button>
+              )}
             </div>
             <form
               id={formId}
@@ -257,7 +226,6 @@ export default function SellFlow({
                 event.preventDefault();
                 if (canCreateDraft) onCreateDraft();
               }}
->>>>>>> origin/main
             >
               <Field data-disabled={unavailable || undefined}>
                 <FieldLabel htmlFor={notesId}>

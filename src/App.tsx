@@ -21,15 +21,10 @@ import ListingDetailPage from "./components/ListingDetailPage";
 import ComparePage from "./components/ComparePage";
 import SavedSearchesPage from "./components/SavedSearchesPage";
 import { listingPhotos, MAX_LISTING_PHOTOS } from "../shared/listingPhotos";
-<<<<<<< HEAD
 import { readListingPhoto, sortListingPhotos } from "./listingPhotos";
 import type { PhotoGroup } from "../shared/agent";
-import { animateUiChange, scrollToPageStart } from "./uiMotion";
-=======
-import { readListingPhoto } from "./listingPhotos";
 import WorkspacePage from "./components/WorkspacePage";
 import WorkspaceHeader from "./components/WorkspaceHeader";
->>>>>>> origin/main
 import MessagesPage from "./components/MessagesPage";
 import { useNegotiations } from "./hooks/useNegotiations";
 import NegotiationSummary, {
@@ -482,27 +477,6 @@ export default function App({ account }: { account?: AccountConnection }) {
     imageReader.current = null;
     setPhotoReading(false);
   }
-<<<<<<< HEAD
-  function navigate(next: View) {
-    searchRunToken.current += 1;
-    listingRunToken.current += 1;
-    agentRun.cancel();
-    listingRun.cancel();
-    listingRequest.current?.abort();
-    photoSearchRequest.current?.abort();
-    photoSearchRequest.current = null;
-    setPhotoSearchBusy(false);
-    cancelPhotoRead();
-    setBusy(false);
-    animateUiChange(() => setView(next));
-    window.history.replaceState(
-      null,
-      "",
-      window.location.pathname +
-        window.location.search +
-        (next === "messages" ? "#messages" : ""),
-    );
-=======
   function navigate(next: View, fromHistory = false) {
     if (
       !signedIn &&
@@ -521,6 +495,9 @@ export default function App({ account }: { account?: AccountConnection }) {
       agentRun.cancel();
       listingRun.cancel();
       listingRequest.current?.abort();
+      photoSearchRequest.current?.abort();
+      photoSearchRequest.current = null;
+      setPhotoSearchBusy(false);
       cancelPhotoRead();
       setBusy(false);
     }
@@ -539,7 +516,6 @@ export default function App({ account }: { account?: AccountConnection }) {
           window.location.pathname + window.location.search + hash,
         );
     }
->>>>>>> origin/main
     setModal(null);
   }
   useEffect(() => {
@@ -1247,81 +1223,24 @@ export default function App({ account }: { account?: AccountConnection }) {
   }
   async function publish(event: FormEvent) {
     event.preventDefault();
-<<<<<<< HEAD
-    if (listingRun.state.status === "running") return;
-    if (!listingDraftReady(draft, editingItem)) {
-      setToast("Check the listing details before saving.");
-      return;
-    }
-    const item = listingFromDraft(
-      draft,
-      editingListing || crypto.randomUUID(),
-      editingItem,
-    );
-    const saved = setOwn((current) =>
-=======
     if (listingRun.state.status === "running" || database.pending || busy)
       return;
     if (!signedIn) {
       navigate("settings");
       return;
     }
-    const price = Number(draft.price);
-    const pickupValid = validListingPickup(draft.pickup, editingItem);
-    if (
-      !draft.image ||
-      !draft.title.trim() ||
-      !draft.description.trim() ||
-      !draft.price.trim() ||
-      !Number.isFinite(price) ||
-      price < 0 ||
-      price > 10000 ||
-      !draft.location.trim() ||
-      !pickupValid
-    ) {
+    if (!listingDraftReady(draft, editingItem)) {
       setToast("Check the listing details before saving.");
       return;
     }
-    const item: Product = {
-      id: editingListing || draftId.current,
-      title: draft.title.trim(),
-      description: draft.description.trim(),
-      tags: draft.tags,
-      price,
-      image: draft.image,
-      images: listingPhotos(draft),
-      category: "All",
-      location: draft.location.trim(),
-      distance: 0,
-      condition: draft.condition,
-      dimensions: draft.dimensions.trim() || "Not specified",
-      source: "takeover",
-      seller: "You",
-      initials: "Y",
-      own: true,
-      demo: editingItem?.demo,
-      pickupPoint:
-        draft.location.trim() === editingItem?.location
-          ? editingItem?.pickupPoint
-          : undefined,
-      photoSourceUrl:
-        draft.image === editingItem?.image
-          ? editingItem?.photoSourceUrl
-          : undefined,
-      pickupBy: draft.pickup,
-      available:
-        editingItem && draft.pickup === editingItem.pickupBy
-          ? editingItem.available
-          : draft.pickup
-            ? "Pickup by " + shortDate(draft.pickup)
-            : "Flexible pickup",
-      status: editingListing
-        ? own.find((current) => current.id === editingListing)?.status ||
-          "active"
-        : "active",
-    };
+    const item = listingFromDraft(
+      draft,
+      editingListing || draftId.current,
+      editingItem,
+    );
+    if (editingItem && draft.pickup === editingItem.pickupBy)
+      item.available = editingItem.available;
     const saved = await setOwn((current) =>
->>>>>>> origin/main
       editingListing
         ? current.map((existing) =>
             existing.id === editingListing ? item : existing,
@@ -1343,20 +1262,26 @@ export default function App({ account }: { account?: AccountConnection }) {
         : "Listing saved in this browser.",
     );
   }
-  function saveBatch(drafts: ListingDraft[]) {
+  async function saveBatch(drafts: ListingDraft[]) {
+    if (database.pending || busy) return false;
+    if (!signedIn) {
+      navigate("settings");
+      return false;
+    }
     const items = drafts.map((current) =>
       listingFromDraft(current, crypto.randomUUID()),
     );
-    if (!setOwn((current) => [...items, ...current])) {
+    if (!(await setOwn((current) => [...items, ...current]))) {
       setToast(
-        "Could not save the listings. Your drafts are still here; check browser storage and try again.",
+        "Could not save the listings. Your drafts are still here; check the error above and try again.",
       );
       return false;
     }
+    const where = account ? "published to Takeover" : "saved in this browser";
     setToast(
       items.length === 1
-        ? "Listing saved in this browser."
-        : `${items.length} listings saved in this browser.`,
+        ? `Listing ${where}.`
+        : `${items.length} listings ${where}.`,
     );
     return true;
   }
@@ -1802,14 +1727,8 @@ export default function App({ account }: { account?: AccountConnection }) {
                   </div>
                   <HeroHeadline compact={false} />
                   <p>
-<<<<<<< HEAD
-                    {hasSearchDraft
-                      ? `Add a budget, condition or pickup time. Your agent will search around ${location}.`
-                      : `Describe what you need or search with a photo. Your agent searches around ${location}.`}
-=======
-                    Describe what you need. Your agent searches around{" "}
-                    {location}.
->>>>>>> origin/main
+                    Describe what you need or search with a photo. Your agent
+                    searches around {location}.
                   </p>
                   <form
                     className="agent-search"
@@ -1834,17 +1753,13 @@ export default function App({ account }: { account?: AccountConnection }) {
                       void searchByPhoto(file);
                     }}
                   >
-<<<<<<< HEAD
-                    <textarea
+                    <Textarea
                       onPaste={(event) => {
                         const file = imageFrom(event.clipboardData);
                         if (!file) return;
                         event.preventDefault();
                         void searchByPhoto(file);
                       }}
-=======
-                    <Textarea
->>>>>>> origin/main
                       aria-label="Search furniture"
                       maxLength={4000}
                       value={query}
@@ -1863,157 +1778,6 @@ export default function App({ account }: { account?: AccountConnection }) {
                       }}
                     />
                     <div className="agent-search-actions">
-<<<<<<< HEAD
-                      <div className="search-area-status">
-                        <button
-                          type="button"
-                          className="search-area"
-                          onClick={() => {
-                            setAreaDraft({ location, radius: criteria.radius });
-                            setModal("location");
-                          }}
-                        >
-                          {location}
-                          <ChevronDown size={13} />
-                        </button>
-                        {connectionStatus}
-                      </div>
-                      <div className="search-submit-group">
-                        <PhotoSearchButton
-                          busy={photoSearchBusy}
-                          disabled={running || !configured}
-                          onFile={(file) => void searchByPhoto(file)}
-                        />
-                        <button
-                          className="button primary"
-                          type="submit"
-                          disabled={!query.trim() || running}
-                        >
-                          Find it
-                        </button>
-                      </div>
-                    </div>
-                  </form>
-                  {photoSearchError && (
-                    <p className="form-error photo-search-error" role="alert">
-                      {photoSearchError}
-                    </p>
-                  )}
-                  <AgentSuggestions state={searchAssist} onSelect={setQuery} />
-                </section>
-              ) : (
-                <>
-                  <div className="page-title search-title">
-                    <button className="back-link" onClick={goHome}>
-                      <ArrowLeft size={15} />
-                      New search
-                    </button>
-                    <h1>
-                      {reviewingListing ? "Listing review" : searchHeading}
-                    </h1>
-                    {reviewingListing && (
-                      <p>
-                        Review the details you supplied and ask what could help
-                        a buyer.
-                      </p>
-                    )}
-                  </div>
-                  {!reviewingListing && (
-                    <>
-                      <form
-                        className="main-search"
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          void runSearch(query);
-                        }}
-                      >
-                        <input
-                          aria-label="Search furniture"
-                          maxLength={4000}
-                          value={query}
-                          onChange={(event) => setQuery(event.target.value)}
-                          onPaste={(event) => {
-                            const file = imageFrom(event.clipboardData);
-                            if (!file) return;
-                            event.preventDefault();
-                            void searchByPhoto(file);
-                          }}
-                          placeholder="Describe what you need…"
-                        />
-                        <PhotoSearchButton
-                          compact
-                          busy={photoSearchBusy}
-                          disabled={running || !configured}
-                          onFile={(file) => void searchByPhoto(file)}
-                        />
-                        <button
-                          className="button primary"
-                          type="submit"
-                          disabled={!query.trim() || running}
-                        >
-                          Search
-                        </button>
-                      </form>
-                      {photoSearchError && (
-                        <p
-                          className="form-error photo-search-error"
-                          role="alert"
-                        >
-                          {photoSearchError}
-                        </p>
-                      )}
-                      {activePhotoSearch && (
-                        <div className="photo-search-source">
-                          <img src={activePhotoSearch.image} alt="" />
-                          <p>
-                            Similar to your photo
-                            <span>
-                              Recognised as “{activePhotoSearch.item}”. Edit the
-                              search above to adjust it.
-                            </span>
-                          </p>
-                        </div>
-                      )}
-                      <div className="results-controls">
-                        <button
-                          className="search-settings"
-                          title={activePreferences || undefined}
-                          onClick={() => {
-                            setFilterDraft(criteria);
-                            setModal("filters");
-                          }}
-                        >
-                          <span>Search preferences</span>
-                          <span className="edit-settings">Edit</span>
-                        </button>
-                        <button
-                          className="save-search"
-                          disabled={running || !committedSearch}
-                          onClick={() => {
-                            setEditingJob(null);
-                            setJobTitle(
-                              (committedSearch?.originalRequest || "").slice(
-                                0,
-                                90,
-                              ),
-                            );
-                            setModal("save");
-                          }}
-                        >
-                          Save this search
-                        </button>
-                      </div>
-                      {activePreferences && (
-                        <p
-                          className="quiet-caption"
-                          style={{ textAlign: "left" }}
-                        >
-                          Active preferences: {activePreferences}
-                        </p>
-                      )}
-                    </>
-                  )}
-=======
                       <Button
                         type="button"
                         className="search-area"
@@ -2025,16 +1789,28 @@ export default function App({ account }: { account?: AccountConnection }) {
                         {location}
                         <ChevronDown size={13} />
                       </Button>
-                      <Button
-                        animateIcon
-                        className="button primary"
-                        type="submit"
-                        disabled={!query.trim() || running || quotaExhausted}
-                      >
-                        Find it
-                      </Button>
+                      <div className="search-submit-group">
+                        <PhotoSearchButton
+                          busy={photoSearchBusy}
+                          disabled={running || !configured || quotaExhausted}
+                          onFile={(file) => void searchByPhoto(file)}
+                        />
+                        <Button
+                          animateIcon
+                          className="button primary"
+                          type="submit"
+                          disabled={!query.trim() || running || quotaExhausted}
+                        >
+                          Find it
+                        </Button>
+                      </div>
                     </div>
                   </form>
+                  {photoSearchError && (
+                    <p className="form-error photo-search-error" role="alert">
+                      {photoSearchError}
+                    </p>
+                  )}
                   {connectionStatus}
                   <AgentSuggestions
                     state={searchAssist}
@@ -2083,7 +1859,23 @@ export default function App({ account }: { account?: AccountConnection }) {
                         : undefined
                     }
                   />
->>>>>>> origin/main
+                  {!reviewingListing && photoSearchError && (
+                    <p className="form-error photo-search-error" role="alert">
+                      {photoSearchError}
+                    </p>
+                  )}
+                  {!reviewingListing && activePhotoSearch && (
+                    <div className="photo-search-source">
+                      <img src={activePhotoSearch.image} alt="" />
+                      <p>
+                        Similar to your photo
+                        <span>
+                          Recognised as “{activePhotoSearch.item}”. Start a new
+                          search to adjust it.
+                        </span>
+                      </p>
+                    </div>
+                  )}
                   {negotiations.error && (
                     <p role="alert">{negotiations.error}</p>
                   )}
@@ -2349,7 +2141,6 @@ export default function App({ account }: { account?: AccountConnection }) {
             />
           )}
 
-<<<<<<< HEAD
           {view === "sell" && sellMode === "batch" && (
             <>
               <BatchSellFlow
@@ -2369,10 +2160,7 @@ export default function App({ account }: { account?: AccountConnection }) {
               {connectionStatus}
             </>
           )}
-          {view === "sell" && sellMode === "single" && (
-=======
-          <WorkspacePage active={view === "sell"}>
->>>>>>> origin/main
+          <WorkspacePage active={view === "sell" && sellMode === "single"}>
             <>
               <SellFlow
                 draft={draft}
@@ -2767,8 +2555,8 @@ export default function App({ account }: { account?: AccountConnection }) {
               <p>
                 <strong>Search by photo</strong>An inspiration photo, such as a
                 Pinterest image, is sent to the AI service to describe the
-                furniture. The search then uses that description, which you
-                can edit.
+                furniture. The search then uses that description, which you can
+                edit.
               </p>
             </div>
             <div>

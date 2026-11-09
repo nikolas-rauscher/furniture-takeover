@@ -203,42 +203,11 @@ export async function assistWithDeepSeek(
       const message = await requestCompletion(
         config,
         combined,
-        instruction +
+        (request.intent === "reply" ? replyInstruction : instruction) +
           (attempt
             ? "\nThe previous response had an invalid JSON structure. Regenerate the answer from the original user request. Return one complete JSON object with suggestions and missingDetails arrays and metadata containing a string query and an array of keywords. Use valid numbers/dates and obey every length limit. A partial typing request can have query empty and a missingDetails question. Do not invent facts to fill missing data."
             : ""),
         content,
-      const response = await (config.fetchImpl ?? fetch)(
-        `${config.baseUrl.replace(/\/+$/, "")}/chat/completions`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${config.apiKey}`,
-          },
-          signal: combined,
-          body: JSON.stringify({
-            model: config.model,
-            thinking: { type: "disabled" },
-            response_format: { type: "json_object" },
-            temperature: 0.2,
-            max_tokens: 1600,
-            stream: false,
-            messages: [
-              {
-                role: "system",
-                content:
-                  (request.intent === "reply"
-                    ? replyInstruction
-                    : instruction) +
-                  (attempt
-                    ? "\nThe previous response had an invalid JSON structure. Regenerate the answer from the original user request. Return one complete JSON object with suggestions and missingDetails arrays and metadata containing a string query and an array of keywords. Use valid numbers/dates and obey every length limit. A partial typing request can have query empty and a missingDetails question. Do not invent facts to fill missing data."
-                    : ""),
-              },
-              { role: "user", content },
-            ],
-          }),
-        },
       );
       try {
         const output: unknown = JSON.parse(message);

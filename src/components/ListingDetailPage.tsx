@@ -9,11 +9,8 @@ import {
 } from "@/components/icons";
 import { listingPhotos } from "../../shared/listingPhotos";
 import { money, type Product } from "../../shared/marketplace";
-<<<<<<< HEAD
 import { transportGuidance } from "../transportGuidance";
-=======
 import { relatedListings } from "../../shared/relatedListings";
->>>>>>> origin/main
 import PhotoGallery from "./PhotoGallery";
 import SaveToggle from "./SaveToggle";
 import "./listing-detail.css";
@@ -49,19 +46,6 @@ export default function ListingDetailPage({
   onEdit,
   onAskAgent,
 }: ListingDetailPageProps) {
-<<<<<<< HEAD
-  const transport = selected
-    ? transportGuidance(selected.title, selected.dimensions)
-    : null;
-  return selected ? (
-    <>
-      <button className="back-link" onClick={() => onBack()}>
-        <ArrowLeft size={16} />
-        My listings
-      </button>
-      <div className="detail-layout">
-        <div className="detail-photo">
-=======
   if (!selected)
     return (
       <div className="empty-state">
@@ -79,6 +63,7 @@ export default function ListingDetailPage({
     : selected.description;
   const samplePhotoNote =
     selected.description.match(/Photo (?:illustrates|shows) [^\n]+/)?.[0] ?? "";
+  const transport = transportGuidance(selected.title, selected.dimensions);
   const mobileContact = !selected.own && selected.status === "active";
   return (
     <article
@@ -89,7 +74,6 @@ export default function ListingDetailPage({
       </Button>
       <div className="listing-detail-main">
         <div className="listing-detail-media">
->>>>>>> origin/main
           <PhotoGallery
             key={selected.id}
             images={listingPhotos(selected)}
@@ -181,7 +165,8 @@ export default function ListingDetailPage({
                   mobileContact ? "listing-detail-mobile-contact" : undefined
                 }
               >
-                <Button animateIcon
+                <Button
+                  animateIcon
                   className="button primary full"
                   type="button"
                   disabled={selected.status !== "active"}
@@ -231,54 +216,6 @@ export default function ListingDetailPage({
               </div>
             )}
           </div>
-<<<<<<< HEAD
-          <div className="facts">
-            <div>
-              <span>Condition</span>
-              <strong>{selected.condition || "Not specified"}</strong>
-            </div>
-            <div>
-              <span>Dimensions</span>
-              <strong>{selected.dimensions}</strong>
-            </div>
-            <div>
-              <span>Collection</span>
-              <strong>{selected.available}</strong>
-            </div>
-          </div>
-          {transport && (
-            <div className="detail-description transport-guidance">
-              <strong>{transport.label}</strong>
-              <p>{transport.message}</p>
-              <p className="quiet-caption">{transport.note}</p>
-            </div>
-          )}
-          <button
-            className="button primary full"
-            disabled={selected.status !== "active"}
-            onClick={() => onMessage()}
-          >
-            Message seller
-          </button>
-          <button className="button secondary full" onClick={() => onEdit()}>
-            <Pencil size={16} />
-            Edit listing
-          </button>
-          <button
-            className="button secondary full"
-            onClick={() => {
-              onAskAgent();
-            }}
-          >
-            Ask the agent
-          </button>
-          <p className="quiet-caption">
-            {selected.demo
-              ? "Demo listing stored in the local database."
-              : "Saved in this browser."}{" "}
-            Not published to an external marketplace.
-          </p>
-=======
           {reportAction && (
             <div className="listing-detail-report">{reportAction}</div>
           )}
@@ -286,6 +223,13 @@ export default function ListingDetailPage({
             <section className="listing-detail-description">
               <h2>About this item</h2>
               <p>{description}</p>
+            </section>
+          )}
+          {transport && (
+            <section className="listing-detail-description transport-guidance">
+              <h2>{transport.label}</h2>
+              <p>{transport.message}</p>
+              <p className="quiet-caption">{transport.note}</p>
             </section>
           )}
           {selected.pickupPoint && (
@@ -322,7 +266,6 @@ export default function ListingDetailPage({
               </div>
             </section>
           )}
->>>>>>> origin/main
         </div>
       </div>
       {similar.length > 0 && renderProduct && (
