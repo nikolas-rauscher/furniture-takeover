@@ -56,3 +56,21 @@ test("marketplace property/rental snippets do not become furniture resale offers
     true,
   );
 });
+
+test("explicit wanted ads are not presented as items for sale", () => {
+  const url = "https://www.petitesannonces.ch/a/7835082";
+  for (const [title, snippet] of [
+    ["Je cherche un chat à adopter", "Lausanne"],
+    ["Desk wanted", "Budget CHF 50"],
+    ["Schreibtisch gesucht", "Lausanne"],
+    ["Cerco una scrivania", "Usata"],
+    ["Petite annonce", "Bonjour, je recherche une étagère."],
+  ])
+    assert.equal(isMarketplaceOffer(url, title, snippet), false, title);
+  for (const [title, snippet] of [
+    ["Cat looking for a new home", "Contact for adoption"],
+    ["Bureau à donner", "Je vends aussi une chaise."],
+    ["White desk", "Ideal if you are looking for a desk."],
+  ])
+    assert.equal(isMarketplaceOffer(url, title, snippet), true, title);
+});

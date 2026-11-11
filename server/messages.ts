@@ -12,9 +12,21 @@ const inputSchema = z
     image: z
       .string()
       .max(750000)
-      .regex(
-        /^(?:data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+|\/images\/[A-Za-z0-9_.-]+)$/,
-      )
+      .refine((image) => {
+        if (
+          /^(?:data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+|\/images\/[A-Za-z0-9_.-]+)$/.test(
+            image,
+          )
+        )
+          return true;
+        if (image.length > 4096) return false;
+        try {
+          const url = new URL(image);
+          return url.protocol === "https:" && !url.username && !url.password;
+        } catch {
+          return false;
+        }
+      })
       .optional(),
     text: z.string().trim().min(1).max(4000),
     sender: z.enum(["buyer", "seller"]),
@@ -69,12 +81,23 @@ export function createMessagesStore(path: string) {
     },
     send(workspace: string, input: unknown): SellerConversation {
       const parsed = inputSchema.safeParse(input);
-      if (!parsed.success)
+      if (!parsed.success) {
+        const invalidText = parsed.error.issues.some(
+          (issue) => issue.path[0] === "text",
+        );
+        const invalidImage = parsed.error.issues.some(
+          (issue) => issue.path[0] === "image",
+        );
         throw new AgentError(
           400,
           "INVALID_MESSAGE",
-          "Enter a message of up to 4,000 characters.",
+          invalidText
+            ? "Enter a message of up to 4,000 characters."
+            : invalidImage
+              ? "The listing photo could not be attached. Please use another photo."
+              : "The listing details could not be sent. Please reopen the listing and try again.",
         );
+      }
       const value = parsed.data;
       db.exec("BEGIN IMMEDIATE");
       try {

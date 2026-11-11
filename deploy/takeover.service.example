@@ -1,0 +1,20 @@
+# Copy to /etc/systemd/system/takeover.service on the app machine, adjust the
+# paths, then: sudo systemctl daemon-reload && sudo systemctl enable --now takeover
+# Needs Node.js 22.18 or newer at the path in ExecStart (check: node --version).
+[Unit]
+Description=Takeover marketplace app
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=takeover
+WorkingDirectory=/opt/takeover
+# Same command as `npm start`: serves the built frontend and the API on API_PORT.
+ExecStart=/usr/bin/node --env-file=/opt/takeover/.env --experimental-strip-types server/index.ts --serve
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

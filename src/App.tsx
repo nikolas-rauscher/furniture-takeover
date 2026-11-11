@@ -1,10 +1,29 @@
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "./components/ui/dropdown-menu";
+import { Button } from "./components/ui/button";
+import { Badge } from "./components/ui/badge";
+import { Textarea } from "./components/ui/textarea";
+import { Input } from "./components/ui/input";
+import { readRoute, type View } from "./navigation";
+import type { AccountConnection } from "./cloud/AccountSession";
+import Auth from "./cloud/Auth";
+import AccountSettings from "./cloud/Account";
+import Report from "./cloud/Report";
+import { useMarketplaceListings } from "./cloud/useMarketplaceListings";
+import { useFavorites } from "./cloud/useFavorites";
+import { useAppViewport } from "./hooks/useAppViewport";
 import AccountPage, { type AccountTab } from "./components/AccountPage";
 import ListingDetailPage from "./components/ListingDetailPage";
 import ComparePage from "./components/ComparePage";
 import SavedSearchesPage from "./components/SavedSearchesPage";
 import { listingPhotos, MAX_LISTING_PHOTOS } from "../shared/listingPhotos";
 import { readListingPhoto } from "./listingPhotos";
-import { animateUiChange, scrollToPageStart } from "./uiMotion";
+import WorkspacePage from "./components/WorkspacePage";
+import WorkspaceHeader from "./components/WorkspaceHeader";
 import MessagesPage from "./components/MessagesPage";
 import { useNegotiations } from "./hooks/useNegotiations";
 import NegotiationSummary, {
@@ -17,18 +36,19 @@ import {
   type Negotiation,
 } from "../shared/negotiation";
 import AgentConversation from "./components/AgentConversation";
+import AgentListings from "./components/AgentListings";
 import AgentComposer from "./components/AgentComposer";
 import { prepareListingDraft } from "./listingPreparation";
 import { HeroHeadline } from "./components/HeroHeadline";
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type FormEvent,
   type SetStateAction,
 } from "react";
 import {
-  ArrowLeft,
   ArrowRight,
   Bookmark,
   Camera,
@@ -37,11 +57,11 @@ import {
   GitCompareArrows,
   Plus,
   Search,
+  SquarePen,
   UserRound,
   X,
-} from "lucide-react";
+} from "@/components/icons";
 import MobileNav from "./MobileNav";
-import { useListings } from "./hooks/useListings";
 import Modal from "./components/Modal";
 import ProductCard from "./components/ProductCard";
 import SearchPreferencesFields from "./components/SearchPreferencesFields";
@@ -51,7 +71,6 @@ import AgentRunPanel from "./components/AgentRunPanel";
 import { useAgentRun } from "./hooks/useAgentRun";
 import { useAgentAssist } from "./hooks/useAgentAssist";
 import { useSaved } from "./hooks/useSaved";
-import { isFavoriteIds } from "./hooks/savedState";
 import {
   agentSearchRequest,
   isSavedSearches,
@@ -91,23 +110,8 @@ import {
   type Product,
 } from "../shared/marketplace";
 
-type View =
-  | "discover"
-  | "searches"
-  | "account"
-  | "sell"
-  | "detail"
-  | "compare"
-  | "messages";
 type Dialog =
-  | "filters"
-  | "save"
-  | "edit-search"
-  | "location"
-  | "profile"
-  | "help"
-  | "clear"
-  | null;
+  "filters" | "save" | "edit-search" | "location" | "help" | "clear" | null;
 const emptyDraft: ListingDraft = {
   image: "",
   images: [],
@@ -122,7 +126,25 @@ const emptyDraft: ListingDraft = {
   category: "All",
 };
 
-export default function App() {
+export default function App({ account }: { account?: AccountConnection }) {
+  useAppViewport();
+  const signedIn = !account || !!account.session;
+  const [pickupRegion, setPickupRegion] = useState("");
+  useEffect(() => {
+    let alive = true;
+    if (account?.session)
+      void account.client
+        .from("account_preferences")
+        .select("pickup_region")
+        .eq("user_id", account.session.user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (alive && data) setPickupRegion(data.pickup_region);
+        });
+    return () => {
+      alive = false;
+    };
+  }, [account?.client, account?.session?.user.id]);
   const agentRun = useAgentRun();
   const negotiations = useNegotiations();
   const activeDraftInChat = Boolean(
@@ -169,9 +191,7 @@ export default function App() {
     checking: healthChecking,
     refresh: refreshHealth,
   } = useAgentHealth();
-  const [view, setView] = useState<View>(
-    window.location.hash.startsWith("#messages") ? "messages" : "discover",
-  );
+  const [view, setView] = useState<View>(readRoute(window.location.hash).view);
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState("");
   const [followUp, setFollowUp] = useState("");
@@ -195,27 +215,30 @@ export default function App() {
     radius: searchArea.radius,
   });
   const [messageListingId, setMessageListingId] = useState<string | undefined>(
-    window.location.hash.startsWith("#messages/")
-      ? decodeURIComponent(window.location.hash.slice(10))
+    readRoute(window.location.hash).view === "messages"
+      ? readRoute(window.location.hash).listingId
       : undefined,
   );
   const [modal, setModal] = useState<Dialog>(null);
-  const [accountTab, setAccountTab] = useState<AccountTab>("listings");
-  const [favorites, setFavorites] = useSaved<string[]>(
-    "takeover-favorites",
-    [],
-    isFavoriteIds,
+  const [accountTab, setAccountTab] = useState<AccountTab>(
+    readRoute(window.location.hash).accountTab,
   );
+  const {
+    favorites,
+    setFavorites,
+    error: favoriteError,
+  } = useFavorites(account);
   const [jobs, setJobs] = useSaved<SavedSearch[]>(
     "takeover-jobs",
     [],
     isSavedSearches,
   );
-  const database = useListings();
+  const database = useMarketplaceListings(account);
   const own = database.listings;
   const setOwn = database.setListings;
   // `?availability=reserve` prototype; null (main behaviour) when the flag is off.
   const availability = useAvailability({
+    localDemo: !account,
     listings: own,
     ready: database.ready,
     setStatus,
@@ -223,12 +246,18 @@ export default function App() {
     onFindSimilar: (title) => void runSearch(title),
   });
   const [compared, setCompared] = useState<string[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const comparisonOrigin = useRef<View>("discover");
+  const [selectedId, setSelectedId] = useState<string | null>(
+    readRoute(window.location.hash).view === "detail"
+      ? (readRoute(window.location.hash).listingId ?? null)
+      : null,
+  );
   const [messageProposal, setMessageProposal] = useState<
     Negotiation | undefined
   >();
   const [jobTitle, setJobTitle] = useState("");
   const [editingJob, setEditingJob] = useState<string | null>(null);
+  const draftId = useRef(crypto.randomUUID());
   const draftRef = useRef<ListingDraft>({ ...emptyDraft });
   const [draft, setDraftState] = useState<ListingDraft>(draftRef.current);
   function setDraft(value: SetStateAction<ListingDraft>) {
@@ -239,6 +268,7 @@ export default function App() {
   const [sellStep, setSellStep] = useState(1);
   const [editingListing, setEditingListing] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState("");
+  const hasSellingDraft = useRef(view === "sell");
   const [photoReading, setPhotoReading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toastNotice, setToastNotice] = useState<{
@@ -253,8 +283,10 @@ export default function App() {
   const imageReader = useRef<AbortController | null>(null);
 
   // Preserve old browser records, but never show seeded inventory as real offers.
-  const localListings = own.filter(
-    (item) => item.own && (item.demo || !item.image.startsWith("/images/")),
+  const localListings = own.filter((item) =>
+    account
+      ? true
+      : item.own && (item.demo || !item.image.startsWith("/images/")),
   );
   const activeListings = localListings.filter(
     (item) => item.status === "active",
@@ -270,21 +302,78 @@ export default function App() {
   const savedListings = visibleListings.filter((item) =>
     favorites.includes(item.id),
   );
-  const selected = visibleListings.find((item) => item.id === selectedId);
+  const selected = localListings.find((item) => item.id === selectedId);
   const comparison = visibleListings.filter((item) =>
     compared.includes(item.id),
   );
-  const isHome = view === "discover" && !searching;
+  const searchIsHome = !searching;
+  const isHome = view === "discover" && searchIsHome;
+  const mainContent = useRef<HTMLElement>(null);
+  const pageKey =
+    view === "discover"
+      ? isHome
+        ? "home"
+        : "search"
+      : view === "account"
+        ? `account-${accountTab}`
+        : view === "sell"
+          ? `sell-${sellStep}`
+          : view === "detail"
+            ? `listing-${selectedId}`
+            : view;
+  const previousPage = useRef(pageKey);
+  const scrollPositions = useRef(
+    new Map<string, { top: number; left: number }>(),
+  );
+  useEffect(() => {
+    const previous = window.history.scrollRestoration;
+    window.history.scrollRestoration = "manual";
+    return () => {
+      window.history.scrollRestoration = previous;
+    };
+  }, []);
+  useLayoutEffect(() => {
+    const changed = previousPage.current !== pageKey;
+    previousPage.current = pageKey;
+    const position = scrollPositions.current.get(pageKey) ?? {
+      top: 0,
+      left: 0,
+    };
+    if (changed) window.scrollTo({ ...position, behavior: "instant" });
+    if (changed && document.activeElement === document.body)
+      mainContent.current?.focus({ preventScroll: true });
+    const remember = () =>
+      scrollPositions.current.set(pageKey, {
+        top: window.scrollY,
+        left: window.scrollX,
+      });
+    window.addEventListener("scroll", remember, { passive: true });
+    return () => window.removeEventListener("scroll", remember);
+  }, [pageKey]);
   const reviewingListing =
     !isHome && committedSearch?.intent === "listing_review";
+  const resultCriteria = committedSearch?.criteria ?? criteria;
+  const budgetLabel =
+    resultCriteria.maxPrice >= 1_000_000
+      ? "Any budget"
+      : resultCriteria.maxPrice === 0
+        ? "Free only"
+        : "Up to " + money(resultCriteria.maxPrice);
+  const sourceLabel =
+    resultCriteria.source === "All"
+      ? "All sources"
+      : resultCriteria.source === "takeover"
+        ? "Takeover"
+        : resultCriteria.source;
+  const compactPreferences = [
+    budgetLabel,
+    `${resultCriteria.radius} km`,
+    sourceLabel,
+  ].join(" · ");
   const activePreferences =
     committedSearch && !reviewingListing
       ? [
-          committedSearch.criteria.maxPrice >= 1_000_000
-            ? "Any budget"
-            : committedSearch.criteria.maxPrice === 0
-              ? "Free only"
-              : "Up to " + money(committedSearch.criteria.maxPrice),
+          budgetLabel,
           committedSearch.criteria.radius +
             " km of " +
             committedSearch.location,
@@ -294,17 +383,17 @@ export default function App() {
           committedSearch.criteria.condition === "All"
             ? "Any condition"
             : committedSearch.criteria.condition + " condition",
-          committedSearch.criteria.source === "All"
-            ? "All sources"
-            : committedSearch.criteria.source === "takeover"
-              ? "Your listings only"
-              : committedSearch.criteria.source,
+          resultCriteria.source === "takeover"
+            ? "Takeover listings only"
+            : sourceLabel,
         ].join(" · ")
       : "";
   const running = agentRun.state.status === "running";
   const hasSearchDraft = query.trim().length > 0;
   const searchHeading = "Your search";
-  const configured = agentHealth?.configured === true;
+  const quotaExhausted = agentHealth?.quota?.remaining === 0;
+  const configured =
+    agentHealth?.configured === true && signedIn && !quotaExhausted;
   const normalizedFilterDraft = {
     ...filterDraft,
     category: "All",
@@ -365,28 +454,70 @@ export default function App() {
     imageReader.current = null;
     setPhotoReading(false);
   }
-  function navigate(next: View) {
-    searchRunToken.current += 1;
-    listingRunToken.current += 1;
-    agentRun.cancel();
-    listingRun.cancel();
-    listingRequest.current?.abort();
-    cancelPhotoRead();
-    setBusy(false);
-    animateUiChange(() => setView(next));
-    window.history.replaceState(
-      null,
-      "",
-      window.location.pathname +
-        window.location.search +
-        (next === "messages" ? "#messages" : ""),
-    );
+  function navigate(next: View, fromHistory = false) {
+    if (
+      !signedIn &&
+      ["sell", "messages", "account", "searches"].includes(next)
+    ) {
+      navigate("settings", fromHistory);
+      return;
+    }
+    if (next !== view) {
+      scrollPositions.current.set(pageKey, {
+        top: window.scrollY,
+        left: window.scrollX,
+      });
+      searchRunToken.current += 1;
+      listingRunToken.current += 1;
+      agentRun.cancel();
+      listingRun.cancel();
+      listingRequest.current?.abort();
+      cancelPhotoRead();
+      setBusy(false);
+    }
+    setView(next);
+    if (!fromHistory) {
+      const hash =
+        next === "discover"
+          ? ""
+          : next === "account"
+            ? "#listings"
+            : `#${next}`;
+      if (window.location.hash !== hash)
+        window.history.pushState(
+          null,
+          "",
+          window.location.pathname + window.location.search + hash,
+        );
+    }
     setModal(null);
-    scrollToPageStart();
   }
+  useEffect(() => {
+    const restore = () => {
+      const route = readRoute(window.location.hash);
+      setAccountTab(route.accountTab);
+      setMessageListingId(
+        route.view === "messages" ? route.listingId : undefined,
+      );
+      if (route.view === "detail") setSelectedId(route.listingId ?? null);
+      navigate(route.view, true);
+    };
+    window.addEventListener("popstate", restore);
+    return () => window.removeEventListener("popstate", restore);
+  });
+  useEffect(() => {
+    if (!signedIn && ["sell", "messages", "account", "searches"].includes(view))
+      navigate("settings");
+  }, [signedIn, view]);
   function openMessages(listingId?: string, proposal?: Negotiation) {
-    setMessageProposal(proposal);
-    setMessageListingId(listingId);
+    if (!signedIn) {
+      navigate("settings");
+      return;
+    }
+    if (listingId) {
+      setMessageProposal(proposal);
+      setMessageListingId(listingId);
+    }
     navigate("messages");
     if (listingId)
       window.history.replaceState(
@@ -396,6 +527,7 @@ export default function App() {
       );
   }
   function goHome() {
+    scrollPositions.current.delete("home");
     navigate("discover");
     agentRun.reset();
     setSearching(false);
@@ -411,26 +543,52 @@ export default function App() {
     setSearchUndone([]);
   }
   function startSell() {
+    draftId.current = crypto.randomUUID();
+    if (!signedIn) {
+      navigate("settings");
+      return;
+    }
     if (view === "sell") return;
+    hasSellingDraft.current = true;
     navigate("sell");
     resetListingConversation();
     listingRevisions.current = {};
-    setDraft({ ...emptyDraft, location });
+    setDraft({ ...emptyDraft, location: pickupRegion || location });
     setSellStep(1);
     setEditingListing(null);
     setUploadError("");
+  }
+  function openSell() {
+    if (hasSellingDraft.current) navigate("sell");
+    else startSell();
+  }
+  function openBrowse() {
+    navigate("discover");
   }
   function openProduct(item: Product) {
     if (item.status === "withdrawn") return;
     setSelectedId(item.id);
     navigate("detail");
+    window.history.replaceState(
+      null,
+      "",
+      `#listing/${encodeURIComponent(item.id)}`,
+    );
   }
   function toggleFavorite(id: string) {
-    setFavorites((current) =>
+    if (!signedIn) {
+      navigate("settings");
+      return;
+    }
+    void setFavorites((current) =>
       current.includes(id)
         ? current.filter((item) => item !== id)
         : [...current, id],
     );
+  }
+  function openComparison() {
+    comparisonOrigin.current = view;
+    navigate("compare");
   }
   function toggleCompare(id: string) {
     setCompared((current) => {
@@ -485,6 +643,11 @@ export default function App() {
     proposal?: Negotiation,
     preserveConversation = false,
   ) {
+    if (quotaExhausted) return;
+    if (!signedIn) {
+      navigate("settings");
+      return;
+    }
     const token = ++searchRunToken.current;
     const previousSearch = committedSearchRef.current;
     const preserveHistory =
@@ -501,10 +664,18 @@ export default function App() {
     listingRequest.current?.abort();
     cancelPhotoRead();
     setView("discover");
+    if (window.location.hash)
+      window.history.pushState(
+        null,
+        "",
+        window.location.pathname + window.location.search,
+      );
     setModal(null);
     setSearching(true);
     if (!preserveHistory) setQuery(search.originalRequest);
-    setFollowUp("");
+    setFollowUp((current) =>
+      !preserveHistory || current.trim() === search.text.trim() ? "" : current,
+    );
     storeSearch(search);
 
     const request = agentSearchRequest(search, activeListings);
@@ -562,7 +733,7 @@ export default function App() {
     isFollowUp = false,
     question?: string,
   ) {
-    if (!text.trim() || running) return;
+    if (!text.trim() || running || quotaExhausted) return;
     const unanswered =
       isFollowUp && !question
         ? agentRun.state.questions.find(
@@ -645,11 +816,12 @@ export default function App() {
     );
   }
   function answerSearchQuestion(id: string, answer: string) {
-    if (running) return;
+    if (running) return false;
     const question = agentRun.state.questions.find((item) => item.id === id);
-    if (!question) return;
+    if (!question || agentRun.state.answers[id]) return false;
     agentRun.markQuestionAnswered(id, answer);
     void runSearch(answer, criteria, true, question.question);
+    return true;
   }
   function resetListingConversation() {
     listingRunToken.current += 1;
@@ -735,13 +907,18 @@ export default function App() {
         : "Undone. Previous details restored.",
     }));
   }
-  async function runListing(text: string, question?: string) {
+  async function runListing(
+    text: string,
+    question?: string,
+    explicitRequest = false,
+  ) {
     if (!text.trim()) return;
-    const unanswered = !question
-      ? listingRun.state.questions.find(
-          (item) => !listingRun.state.answers[item.id],
-        )
-      : undefined;
+    const unanswered =
+      !question && !explicitRequest
+        ? listingRun.state.questions.find(
+            (item) => !listingRun.state.answers[item.id],
+          )
+        : undefined;
     if (unanswered) {
       question = unanswered.question;
       listingRun.markQuestionAnswered(unanswered.id, text);
@@ -750,7 +927,9 @@ export default function App() {
     const baseline = { ...listingRevisions.current };
     const current = draftRef.current;
     lastListingRequest.current = { text, question };
-    setListingInput("");
+    setListingInput((current) =>
+      current.trim() === text.trim() ? "" : current,
+    );
     await listingRun.run(
       {
         text: text.trim(),
@@ -813,11 +992,12 @@ export default function App() {
     );
   }
   function answerListingQuestion(id: string, answer: string) {
-    if (listingRun.state.status === "running") return;
+    if (listingRun.state.status === "running") return false;
     const question = listingRun.state.questions.find((item) => item.id === id);
-    if (!question) return;
+    if (!question || listingRun.state.answers[id]) return false;
     listingRun.markQuestionAnswered(id, answer);
     void runListing(answer, question.question);
+    return true;
   }
   function saveSearch() {
     const existing = editingJob
@@ -927,8 +1107,7 @@ export default function App() {
       const current = draftRef.current;
       const prepared = prepareListingDraft(current, metadata);
       setDraft(prepared);
-      animateUiChange(() => setSellStep(2));
-      scrollToPageStart();
+      setSellStep(2);
       void runListing(
         "Help me finish this listing using the recognised photo details already in the draft. If there is no asking price, research comparable second-hand offers and propose a source-backed starting price for my review, then let me choose a price with a slider or give it away. Ask only the next necessary missing detail using short clickable answers, including pickup times when relevant.",
       );
@@ -956,9 +1135,14 @@ export default function App() {
       field?.setSelectionRange(field.value.length, field.value.length);
     });
   }
-  function publish(event: FormEvent) {
+  async function publish(event: FormEvent) {
     event.preventDefault();
-    if (listingRun.state.status === "running") return;
+    if (listingRun.state.status === "running" || database.pending || busy)
+      return;
+    if (!signedIn) {
+      navigate("settings");
+      return;
+    }
     const price = Number(draft.price);
     const pickupValid = validListingPickup(draft.pickup, editingItem);
     if (
@@ -976,7 +1160,7 @@ export default function App() {
       return;
     }
     const item: Product = {
-      id: editingListing || crypto.randomUUID(),
+      id: editingListing || draftId.current,
       title: draft.title.trim(),
       description: draft.description.trim(),
       tags: draft.tags,
@@ -1002,15 +1186,18 @@ export default function App() {
           ? editingItem?.photoSourceUrl
           : undefined,
       pickupBy: draft.pickup,
-      available: draft.pickup
-        ? "Pickup by " + shortDate(draft.pickup)
-        : "Flexible pickup",
+      available:
+        editingItem && draft.pickup === editingItem.pickupBy
+          ? editingItem.available
+          : draft.pickup
+            ? "Pickup by " + shortDate(draft.pickup)
+            : "Flexible pickup",
       status: editingListing
         ? own.find((current) => current.id === editingListing)?.status ||
           "active"
         : "active",
     };
-    const saved = setOwn((current) =>
+    const saved = await setOwn((current) =>
       editingListing
         ? current.map((existing) =>
             existing.id === editingListing ? item : existing,
@@ -1019,16 +1206,23 @@ export default function App() {
     );
     if (!saved) {
       setToast(
-        "Could not save the listing. Your draft is still here; check browser storage and try again.",
+        "Could not save the listing. Your draft is still here; check the error above and try again.",
       );
       return;
     }
+    hasSellingDraft.current = false;
     setAccountTab("listings");
     navigate("account");
-    setToast("Listing saved in this browser.");
+    setToast(
+      account
+        ? "Listing published to Takeover."
+        : "Listing saved in this browser.",
+    );
   }
   function editListing(item: Product) {
+    if (account && !item.own) return;
     if (item.status === "withdrawn") return;
+    hasSellingDraft.current = true;
     navigate("sell");
     resetListingConversation();
     listingRevisions.current = {};
@@ -1050,14 +1244,12 @@ export default function App() {
     setSellStep(2);
     setUploadError("");
   }
-  function setStatus(id: string, status: Product["status"]) {
-    const saved = setOwn((current) =>
+  async function setStatus(id: string, status: Product["status"]) {
+    const saved = await setOwn((current) =>
       current.map((item) => (item.id === id ? { ...item, status } : item)),
     );
     if (!saved) {
-      setToast(
-        "Could not save this status change. Check browser storage and try again.",
-      );
+      setToast("Could not save this status change. Please try again.");
       return;
     }
     if (status === "withdrawn")
@@ -1068,34 +1260,45 @@ export default function App() {
         : "Listing status updated.",
     );
   }
+  const listingTools = (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={<Button variant="outline" size="sm" />}
+        disabled={!configured || listingRun.state.status === "running"}
+      >
+        Agent tools <ChevronDown size={14} />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="agent-tools-menu">
+        {[
+          [
+            "Research this item",
+            "Research comparable individual secondhand offers for this item.",
+          ],
+          [
+            "Suggest a price",
+            "Research comparable asking prices and suggest a price for this listing.",
+          ],
+          [
+            "Check listing",
+            "Check my listing for missing condition, dimensions and pickup details.",
+          ],
+          [
+            "Improve description",
+            "Improve my description using the photos and details I provided. Keep it concise and natural.",
+          ],
+        ].map(([label, request]) => (
+          <DropdownMenuItem
+            key={label}
+            onClick={() => void runListing(request, undefined, true)}
+          >
+            {label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
   const listingConversation = (
     <section className="listing-conversation" aria-label="Listing agent">
-      <div className="listing-research-actions">
-        <button
-          type="button"
-          className="text-button"
-          disabled={!configured || listingRun.state.status === "running"}
-          onClick={() =>
-            void runListing(
-              "Research comparable individual secondhand offers for this item.",
-            )
-          }
-        >
-          Research this item <ArrowRight size={14} />
-        </button>
-        <button
-          type="button"
-          className="text-button"
-          disabled={!configured || listingRun.state.status === "running"}
-          onClick={() =>
-            void runListing(
-              "Research comparable asking prices and suggest a price for this listing.",
-            )
-          }
-        >
-          Suggest a price <ArrowRight size={14} />
-        </button>
-      </div>
       <AgentConversation
         state={listingRun.state}
         footer={
@@ -1104,9 +1307,14 @@ export default function App() {
             onChange={setListingInput}
             onSend={() => void runListing(listingInput)}
             label="Tell the listing agent"
-            placeholder="Add a detail, change the price or plan pickup…"
+            placeholder="Add a detail…"
             sendLabel="Send to listing agent"
             disabled={!configured || listingRun.state.status === "running"}
+            onStop={
+              listingRun.state.status === "running"
+                ? listingRun.cancel
+                : undefined
+            }
           />
         }
         requestLabel={(request) =>
@@ -1120,6 +1328,7 @@ export default function App() {
             className={archived ? "archived-agent-response" : ""}
             conversational
             externalComposer
+            readOnly={archived}
             showHistory={false}
             state={turn}
             onCancel={() => {
@@ -1129,7 +1338,7 @@ export default function App() {
             onReset={resetListingConversation}
             onRetry={() => {
               const last = lastListingRequest.current;
-              if (last) void runListing(last.text, last.question);
+              if (last) void runListing(last.text, last.question, true);
             }}
             onAnswer={answerListingQuestion}
             onSkipQuestion={(id) =>
@@ -1163,7 +1372,24 @@ export default function App() {
   );
 
   const connectionStatus =
-    !configured || healthError ? (
+    account && !signedIn ? (
+      <div className="agent-footnote">
+        <Button type="button" onClick={() => navigate("settings")}>
+          Sign in to use your agent
+        </Button>
+      </div>
+    ) : quotaExhausted ? (
+      <div className="agent-footnote" role="status">
+        Daily AI allowance used. Resets{" "}
+        {new Date(agentHealth!.quota!.resetAt).toLocaleString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          day: "numeric",
+          month: "short",
+        })}
+        . Listings and messages remain available.
+      </div>
+    ) : !configured || healthError ? (
       <div className="agent-footnote">
         <span role="status" title={healthError || undefined}>
           {healthError
@@ -1175,13 +1401,13 @@ export default function App() {
               : "Connecting…"}
         </span>
         {(!configured || healthError) && (
-          <button
+          <Button
             type="button"
             onClick={refreshHealth}
             disabled={healthChecking}
           >
             {healthChecking ? "Reconnecting…" : "Retry"}
-          </button>
+          </Button>
         )}
         {configured && agentHealth?.webSearchConfigured === false && (
           <span>
@@ -1189,20 +1415,40 @@ export default function App() {
           </span>
         )}
       </div>
+    ) : agentHealth?.quota ? (
+      <div
+        className={`agent-footnote${agentHealth.quota.remaining > 5 ? " quota-available" : ""}`}
+        role="status"
+        aria-label={`${agentHealth.quota.remaining} of ${agentHealth.quota.limit} AI requests available today`}
+      >
+        <Badge
+          variant={
+            agentHealth.quota.remaining <= 5 ? "destructive" : "secondary"
+          }
+        >
+          {agentHealth.quota.remaining} AI{" "}
+          {agentHealth.quota.remaining === 1 ? "request" : "requests"} left
+          today
+        </Badge>
+      </div>
     ) : null;
 
   return (
     <>
-      {(!database.ready || database.pending > 0 || database.error) && (
+      {(!database.ready ||
+        database.pending > 0 ||
+        database.error ||
+        favoriteError) && (
         <div className="database-status" role="status">
           {database.error ||
+            favoriteError ||
             (database.pending
-              ? "Saving demo changes to the database…"
-              : "Loading demo listings from the database…")}
+              ? "Saving listing changes…"
+              : "Loading listings…")}
           {database.error && (
-            <button className="text-button" onClick={database.retry}>
+            <Button className="text-button" onClick={database.retry}>
               Retry
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -1219,48 +1465,62 @@ export default function App() {
           takeover
         </a>
         <nav aria-label="Main navigation">
-          <button
+          <Button
             className={
               view === "discover" || view === "detail" || view === "compare"
                 ? "active"
                 : ""
             }
-            onClick={goHome}
+            onClick={openBrowse}
           >
             Find
-          </button>
-          <button
+          </Button>
+          <Button
             className={view === "searches" ? "active" : ""}
             onClick={() => navigate("searches")}
           >
             Saved searches
             <span className="nav-count">{savedSearches.length}</span>
-          </button>
-          <button
+          </Button>
+          <Button
             className={view === "messages" ? "active" : ""}
             onClick={() => openMessages()}
           >
             Messages
-          </button>
-          <button
+          </Button>
+          <Button
             className={view === "account" ? "active" : ""}
-            onClick={() => navigate("account")}
+            onClick={() => {
+              setAccountTab("listings");
+              navigate("account");
+            }}
           >
-            My space
-          </button>
+            My listings
+          </Button>
         </nav>
         <div className="header-actions">
-          <button className="button primary sell-nav" onClick={startSell}>
+          <Button
+            animateIcon
+            className="button primary sell-nav"
+            onClick={openSell}
+          >
             <Plus size={17} />
             Sell furniture
-          </button>
-          <button
-            className="icon-button"
-            aria-label="Open workspace settings"
-            onClick={() => setModal("profile")}
+          </Button>
+          <Button
+            className={`icon-button${view === "settings" ? " active" : ""}`}
+            aria-current={view === "settings" ? "page" : undefined}
+            aria-label={
+              account
+                ? signedIn
+                  ? "Open account settings"
+                  : "Sign in"
+                : "Open workspace settings"
+            }
+            onClick={() => navigate("settings")}
           >
             <UserRound size={20} />
-          </button>
+          </Button>
         </div>
       </header>
       <div
@@ -1276,10 +1536,56 @@ export default function App() {
             : "")
         }
       >
-        <main className={"main-content view-" + view}>
-          {view === "messages" && (
+        <main
+          ref={mainContent}
+          tabIndex={-1}
+          className={"main-content view-" + view}
+        >
+          {view === "settings" &&
+            (account?.session ? (
+              <AccountSettings
+                client={account.client}
+                session={account.session}
+                onProfileSaved={setPickupRegion}
+              />
+            ) : account ? (
+              <div className="settings-auth-page">
+                <Auth
+                  client={account.client}
+                  onDone={() => navigate("settings")}
+                />
+              </div>
+            ) : (
+              <section className="local-settings-page">
+                <div className="page-title">
+                  <h1>Workspace settings</h1>
+                  <p>
+                    Your listings and preferences are saved in this browser.
+                  </p>
+                </div>
+                {connectionStatus}
+                <Button
+                  className="button secondary"
+                  onClick={() => void database.addDemo()}
+                >
+                  Add sample listings
+                </Button>
+                <Button
+                  className="text-button"
+                  onClick={() => setModal("help")}
+                >
+                  How the agent works
+                </Button>
+                <Button
+                  className="text-button"
+                  onClick={() => setModal("clear")}
+                >
+                  Clear local workspace
+                </Button>
+              </section>
+            ))}
+          <WorkspacePage active={view === "messages"}>
             <MessagesPage
-              key={messageListingId ?? "inbox"}
               listingId={messageListingId}
               initialMessage={
                 messageProposal
@@ -1333,29 +1639,29 @@ export default function App() {
               }
               threadBanner={availability?.threadBanner}
               listings={own}
+              account={account}
               listing={own.find((item) => item.id === messageListingId)}
               onOpenListing={(id) => {
                 const item = own.find((item) => item.id === id);
                 if (item) openProduct(item);
               }}
             />
-          )}
-          {view === "discover" && (
+          </WorkspacePage>
+          <WorkspacePage active={view === "discover"}>
             <>
-              {isHome ? (
+              {searchIsHome ? (
                 <section
                   className={`agent-hero search-entry${hasSearchDraft ? " has-query" : ""}`}
                   aria-labelledby="agent-title"
                 >
                   <div className="agent-modes">
                     <span>Find something</span>
-                    <button onClick={startSell}>Sell from a photo</button>
+                    <Button onClick={startSell}>Sell from a photo</Button>
                   </div>
-                  <HeroHeadline compact={hasSearchDraft} />
+                  <HeroHeadline compact={false} />
                   <p>
-                    {hasSearchDraft
-                      ? `Add a budget, condition or pickup time. Your agent will search around ${location}.`
-                      : `Describe what you need. Your agent searches around ${location}.`}
+                    Describe what you need. Your agent searches around{" "}
+                    {location}.
                   </p>
                   <form
                     className="agent-search"
@@ -1364,12 +1670,12 @@ export default function App() {
                       void runSearch(query);
                     }}
                   >
-                    <textarea
+                    <Textarea
                       aria-label="Search furniture"
                       maxLength={4000}
                       value={query}
                       onChange={(event) => setQuery(event.target.value)}
-                      rows={3}
+                      rows={1}
                       placeholder="A desk under CHF 80, nearby, ready to collect by Friday…"
                       onKeyDown={(event) => {
                         if (
@@ -1383,111 +1689,75 @@ export default function App() {
                       }}
                     />
                     <div className="agent-search-actions">
-                      <div className="search-area-status">
-                        <button
-                          type="button"
-                          className="search-area"
-                          onClick={() => {
-                            setAreaDraft({ location, radius: criteria.radius });
-                            setModal("location");
-                          }}
-                        >
-                          {location}
-                          <ChevronDown size={13} />
-                        </button>
-                        {connectionStatus}
-                      </div>
-                      <button
+                      <Button
+                        type="button"
+                        className="search-area"
+                        onClick={() => {
+                          setAreaDraft({ location, radius: criteria.radius });
+                          setModal("location");
+                        }}
+                      >
+                        {location}
+                        <ChevronDown size={13} />
+                      </Button>
+                      <Button
+                        animateIcon
                         className="button primary"
                         type="submit"
-                        disabled={!query.trim() || running}
+                        disabled={!query.trim() || running || quotaExhausted}
                       >
                         Find it
-                      </button>
+                      </Button>
                     </div>
                   </form>
-                  <AgentSuggestions state={searchAssist} onSelect={setQuery} />
+                  {connectionStatus}
+                  <AgentSuggestions
+                    state={searchAssist}
+                    onSelect={(suggestion) => {
+                      setQuery(suggestion);
+                      void runSearch(suggestion);
+                    }}
+                  />
                 </section>
               ) : (
                 <>
-                  <div className="page-title search-title">
-                    <button className="back-link" onClick={goHome}>
-                      <ArrowLeft size={15} />
-                      New search
-                    </button>
-                    <h1>
-                      {reviewingListing ? "Listing review" : searchHeading}
-                    </h1>
-                    {reviewingListing && (
-                      <p>
-                        Review the details you supplied and ask what could help
-                        a buyer.
-                      </p>
-                    )}
-                  </div>
-                  {!reviewingListing && (
-                    <>
-                      <form
-                        className="main-search"
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          void runSearch(query);
-                        }}
-                      >
-                        <input
-                          aria-label="Search furniture"
-                          maxLength={4000}
-                          value={query}
-                          onChange={(event) => setQuery(event.target.value)}
-                          placeholder="Describe what you need…"
-                        />
-                        <button
-                          className="button primary"
-                          type="submit"
-                          disabled={!query.trim() || running}
-                        >
-                          Search
-                        </button>
-                      </form>
-                      <div className="results-controls">
-                        <button
-                          className="search-settings"
-                          title={activePreferences || undefined}
-                          onClick={() => {
-                            setFilterDraft(criteria);
-                            setModal("filters");
-                          }}
-                        >
-                          <span>Search preferences</span>
-                          <span className="edit-settings">Edit</span>
-                        </button>
-                        <button
-                          className="save-search"
-                          disabled={running || !committedSearch}
-                          onClick={() => {
-                            setEditingJob(null);
-                            setJobTitle(
-                              (committedSearch?.originalRequest || "").slice(
-                                0,
-                                90,
-                              ),
-                            );
-                            setModal("save");
-                          }}
-                        >
-                          Save this search
-                        </button>
-                      </div>
-                      {activePreferences && (
-                        <p
-                          className="quiet-caption"
-                          style={{ textAlign: "left" }}
-                        >
-                          Active preferences: {activePreferences}
-                        </p>
-                      )}
-                    </>
-                  )}
+                  <WorkspaceHeader
+                    title={reviewingListing ? "Listing review" : searchHeading}
+                    backLabel="New search"
+                    backIcon={<SquarePen size={20} aria-hidden="true" />}
+                    onBack={goHome}
+                    onAccount={() => navigate("settings")}
+                    quota={agentHealth?.quota}
+                    preferences={
+                      !reviewingListing
+                        ? {
+                            summary: activePreferences,
+                            compactSummary: compactPreferences,
+                            onOpen: () => {
+                              setFilterDraft(criteria);
+                              setModal("filters");
+                            },
+                          }
+                        : undefined
+                    }
+                    save={
+                      !reviewingListing
+                        ? {
+                            disabled: running || !committedSearch,
+                            onSave: () => {
+                              setEditingJob(null);
+                              setJobTitle(
+                                (committedSearch?.originalRequest || "").slice(
+                                  0,
+                                  90,
+                                ),
+                              );
+                              setModal("save");
+                            },
+                          }
+                        : undefined
+                    }
+                  />
                   {negotiations.error && (
                     <p role="alert">{negotiations.error}</p>
                   )}
@@ -1499,19 +1769,67 @@ export default function App() {
                       proposalSummary(negotiations.active, true)
                     }
                     footer={
-                      <AgentComposer
-                        value={followUp}
-                        onChange={setFollowUp}
-                        onSend={() => void runSearch(followUp, criteria, true)}
-                        label="Ask the agent"
-                        placeholder={
-                          reviewingListing
-                            ? "Ask about your listing…"
-                            : "Ask a follow-up or refine the search…"
-                        }
-                        sendLabel="Send to the agent"
-                        disabled={running}
-                      />
+                      <>
+                        {comparison.length > 0 && (
+                          <div
+                            className="chat-comparison"
+                            role="group"
+                            aria-label="Listing comparison"
+                          >
+                            <span role="status">
+                              {comparison.length < 2
+                                ? "Choose one more"
+                                : `${comparison.length} selected`}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={comparison.length < 2}
+                              onClick={openComparison}
+                            >
+                              Compare
+                              {comparison.length > 1
+                                ? ` ${comparison.length}`
+                                : ""}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label="Clear comparison"
+                              onClick={(event) => {
+                                const messages = event.currentTarget
+                                  .closest(".chat-workspace")
+                                  ?.querySelector<HTMLElement>(
+                                    '[aria-label="Conversation messages"]',
+                                  );
+                                setCompared([]);
+                                messages?.focus({ preventScroll: true });
+                              }}
+                            >
+                              <X size={16} aria-hidden="true" />
+                            </Button>
+                          </div>
+                        )}
+                        <div className="composer-status">
+                          {connectionStatus}
+                        </div>
+                        <AgentComposer
+                          value={followUp}
+                          onChange={setFollowUp}
+                          onSend={() =>
+                            void runSearch(followUp, criteria, true)
+                          }
+                          label="Ask the agent"
+                          placeholder={
+                            reviewingListing
+                              ? "Ask about your listing…"
+                              : "Ask a follow-up…"
+                          }
+                          sendLabel="Send to the agent"
+                          disabled={running || quotaExhausted}
+                          onStop={running ? agentRun.cancel : undefined}
+                        />
+                      </>
                     }
                   >
                     {(turn, archived) => {
@@ -1527,6 +1845,7 @@ export default function App() {
                         <AgentRunPanel
                           state={turn}
                           externalComposer
+                          readOnly={archived}
                           outcome={
                             turn.proposal?.draft && (
                               <MessageDraftPreview
@@ -1579,32 +1898,11 @@ export default function App() {
                             !reviewingListing &&
                             turn.inventoryMatchIds !== null &&
                             localMatches.length > 0 ? (
-                              <>
-                                <div className="section-heading">
-                                  <div>
-                                    <h3>On takeover ({localMatches.length})</h3>
-                                    <span>
-                                      Check pickup distance before collecting.
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="product-grid">
-                                  {localMatches.map((item) => (
-                                    <div key={item.id}>
-                                      {productCard(item, false)}
-                                      <button
-                                        className="prepare-offer-button"
-                                        type="button"
-                                        onClick={() => continueOffer(item)}
-                                      >
-                                        {item.price === 0
-                                          ? "Arrange pickup"
-                                          : "Prepare an offer"}
-                                      </button>
-                                    </div>
-                                  ))}
-                                </div>
-                              </>
+                              <AgentListings
+                                listings={localMatches}
+                                onOpen={openProduct}
+                                onOffer={continueOffer}
+                              />
                             ) : undefined
                           }
                           onCancel={agentRun.cancel}
@@ -1635,29 +1933,32 @@ export default function App() {
                       );
                     }}
                   </AgentConversation>
-                  {connectionStatus}
                 </>
               )}
-              {isHome && negotiations.error && (
+              {searchIsHome && negotiations.error && (
                 <p role="alert">{negotiations.error}</p>
               )}
-              {isHome &&
+              {searchIsHome &&
                 negotiations.items
                   .filter((item) => item.status === "draft")
                   .map((proposal) => proposalSummary(proposal))}
-              {isHome && availability?.notices()}
-              {isHome && visibleListings.length > 0 && (
+              {searchIsHome && availability?.notices()}
+              {searchIsHome && visibleListings.length > 0 && (
                 <>
                   <div className="section-heading">
                     <div>
                       <h2>
-                        {isHome
+                        {searchIsHome
                           ? "Your local listings"
                           : "From your local listings"}
                       </h2>
-                      <span>Personal browser listings & demo database</span>
+                      <span>
+                        {account
+                          ? "Items shared on Takeover"
+                          : "Personal browser listings & demo database"}
+                      </span>
                     </div>
-                    <button
+                    <Button
                       className="browse-filter"
                       onClick={() => {
                         setAccountTab("listings");
@@ -1665,14 +1966,14 @@ export default function App() {
                       }}
                     >
                       Manage listings
-                    </button>
+                    </Button>
                   </div>
                   <div className="product-grid">
                     {visibleListings.map((item) => productCard(item))}
                   </div>
                 </>
               )}
-              {isHome && !visibleListings.length && (
+              {searchIsHome && !visibleListings.length && (
                 <div className="section-heading">
                   <div>
                     <h2>Something to sell?</h2>
@@ -1680,14 +1981,14 @@ export default function App() {
                       Upload a photo. Your agent prepares the listing.
                     </span>
                   </div>
-                  <button className="button secondary" onClick={startSell}>
+                  <Button className="button secondary" onClick={startSell}>
                     Create a listing
                     <ArrowRight size={16} />
-                  </button>
+                  </Button>
                 </div>
               )}
             </>
-          )}
+          </WorkspacePage>
 
           {view === "searches" && (
             <SavedSearchesPage
@@ -1723,14 +2024,15 @@ export default function App() {
             />
           )}
 
-          {view === "sell" && (
+          <WorkspacePage active={view === "sell"}>
             <>
               <SellFlow
                 draft={draft}
                 step={sellStep}
                 editing={!!editingListing}
                 pickupMin={listingPickupMinimum(draft.pickup, editingItem)}
-                busy={busy}
+                busy={busy || database.pending > 0}
+                cloud={!!account}
                 photoReading={photoReading}
                 uploadError={uploadError}
                 liveAgent={configured}
@@ -1740,11 +2042,14 @@ export default function App() {
                     resetListingConversation();
                     setSellStep(1);
                   } else if (editingListing) navigate("account");
-                  else goHome();
+                  else openBrowse();
                 }}
                 onDraftChange={changeDraft}
                 agentWorking={listingRun.state.status === "running"}
                 agentConversation={listingConversation}
+                agentTools={listingTools}
+                quota={agentHealth?.quota}
+                onAccount={() => navigate("settings")}
                 onPhotoSelected={upload}
                 onCreateDraft={generateDraft}
                 onSuggestionSelected={addListingSuggestion}
@@ -1752,7 +2057,7 @@ export default function App() {
               />
               {connectionStatus}
             </>
-          )}
+          </WorkspacePage>
 
           {view === "detail" &&
             !selected &&
@@ -1767,7 +2072,21 @@ export default function App() {
                   openMessages(selected.id),
                 )
               }
-              onBack={() => navigate("account")}
+              cloud={!!account}
+              catalog={localListings}
+              renderProduct={productCard}
+              favorite={favorites.includes(selected?.id ?? "")}
+              compared={compared.includes(selected?.id ?? "")}
+              onToggleFavorite={() => selected && toggleFavorite(selected.id)}
+              onToggleCompare={() => selected && toggleCompare(selected.id)}
+              reportAction={
+                account?.session && selected && !selected.own ? (
+                  <Report client={account.client} listingId={selected.id} />
+                ) : undefined
+              }
+              onBack={() =>
+                account && !selected?.own ? openBrowse() : navigate("account")
+              }
               onMessage={() => selected && openMessages(selected.id)}
               onEdit={() => selected && editListing(selected)}
               onAskAgent={() => {
@@ -1783,27 +2102,47 @@ export default function App() {
           {view === "compare" && (
             <ComparePage
               items={comparison}
-              onBack={() => navigate("account")}
+              onBack={() => navigate(comparisonOrigin.current)}
               onOpen={openProduct}
               onRemove={toggleCompare}
             />
           )}
 
-          {view === "account" && (
+          <WorkspacePage active={view === "account"}>
             <AccountPage
               accountTab={accountTab}
-              setAccountTab={setAccountTab}
-              visibleListings={visibleListings}
+              setAccountTab={(tab) => {
+                setAccountTab(tab);
+                window.history.pushState(
+                  null,
+                  "",
+                  tab === "favorites"
+                    ? "#saved"
+                    : tab === "archive"
+                      ? "#listings/archive"
+                      : "#listings",
+                );
+              }}
+              visibleListings={
+                account
+                  ? visibleListings.filter((item) => item.own)
+                  : visibleListings
+              }
+              cloud={!!account}
               savedListings={savedListings}
-              archivedListings={archivedListings}
+              archivedListings={
+                account
+                  ? archivedListings.filter((item) => item.own)
+                  : archivedListings
+              }
               onSell={startSell}
-              onMessages={() => openMessages()}
+              onBrowse={openBrowse}
               onOpen={openProduct}
               onEdit={editListing}
               onStatusChange={setStatus}
               renderProduct={productCard}
             />
-          )}
+          </WorkspacePage>
         </main>
       </div>
 
@@ -1815,15 +2154,17 @@ export default function App() {
               ? "messages"
               : view === "searches"
                 ? "searches"
-                : view === "account"
-                  ? accountTab === "favorites"
-                    ? "favorites"
-                    : "account"
-                  : "browse"
+                : view === "settings"
+                  ? null
+                  : view === "account"
+                    ? accountTab === "favorites"
+                      ? "favorites"
+                      : "account"
+                    : "browse"
         }
         onNavigate={(destination) => {
-          if (destination === "browse") goHome();
-          else if (destination === "sell") startSell();
+          if (destination === "browse") openBrowse();
+          else if (destination === "sell") openSell();
           else if (destination === "messages") openMessages();
           else if (destination === "searches") navigate("searches");
           else {
@@ -1831,6 +2172,8 @@ export default function App() {
               destination === "favorites" ? "favorites" : "listings",
             );
             navigate("account");
+            if (destination === "favorites" && signedIn)
+              window.history.replaceState(null, "", "#saved");
           }
         }}
       />
@@ -1842,20 +2185,27 @@ export default function App() {
               <GitCompareArrows size={18} />
               <strong>{comparison.length}</strong> selected
             </span>
-            <button
+            <Button
+              animateIcon
               className="button primary small"
-              onClick={() => navigate("compare")}
+              disabled={comparison.length < 2}
+              title={
+                comparison.length < 2
+                  ? "Select one more listing to compare"
+                  : undefined
+              }
+              onClick={openComparison}
             >
               Compare
               <ArrowRight size={14} />
-            </button>
-            <button
+            </Button>
+            <Button
               className="icon-button"
               aria-label="Clear comparison"
               onClick={() => setCompared([])}
             >
               <X size={16} />
-            </button>
+            </Button>
           </div>
         )}
       {availability?.overlay}
@@ -1864,7 +2214,7 @@ export default function App() {
           <Check size={18} />
           {toast}
           {toastNotice?.deletedSearch && (
-            <button
+            <Button
               className="text-button"
               style={{
                 pointerEvents: "auto",
@@ -1893,15 +2243,15 @@ export default function App() {
               }}
             >
               Undo
-            </button>
+            </Button>
           )}
-          <button
+          <Button
             className="icon-button"
             aria-label="Dismiss notification"
             onClick={() => setToast("")}
           >
             <X size={14} />
-          </button>
+          </Button>
         </div>
       )}
 
@@ -1927,16 +2277,16 @@ export default function App() {
               onChange={setFilterDraft}
             />
             <div className="modal-actions">
-              <button
+              <Button
                 type="button"
                 className="text-button"
                 onClick={() => setFilterDraft({ ...defaults })}
               >
                 Reset
-              </button>
-              <button className="button primary" type="submit">
+              </Button>
+              <Button animateIcon className="button primary" type="submit">
                 Search with these preferences
-              </button>
+              </Button>
             </div>
           </form>
         </Modal>
@@ -1957,7 +2307,7 @@ export default function App() {
           >
             <label>
               Search name
-              <input
+              <Input
                 required
                 maxLength={90}
                 pattern=".*\S.*"
@@ -1976,10 +2326,10 @@ export default function App() {
             <p className="quiet-caption">
               Saved in this browser. Run it again from Saved searches.
             </p>
-            <button className="button primary full" type="submit">
+            <Button animateIcon className="button primary full" type="submit">
               <Bookmark size={16} />
               Save search
-            </button>
+            </Button>
           </form>
         </Modal>
       )}
@@ -2001,7 +2351,7 @@ export default function App() {
           >
             <label>
               Location
-              <input
+              <Input
                 required
                 maxLength={120}
                 pattern=".*\S.*"
@@ -2016,7 +2366,7 @@ export default function App() {
             </label>
             <label>
               Distance (km)
-              <input
+              <Input
                 required
                 type="number"
                 min="0"
@@ -2031,51 +2381,10 @@ export default function App() {
                 }
               />
             </label>
-            <button className="button primary full" type="submit">
+            <Button animateIcon className="button primary full" type="submit">
               Use this area
-            </button>
+            </Button>
           </form>
-        </Modal>
-      )}
-      {modal === "profile" && (
-        <Modal title="Your local workspace" onClose={() => setModal(null)}>
-          <p className="modal-intro">
-            Your personal listings, favourites and saved searches stay in this
-            browser. Demo listings are stored in the local database. Public
-            accounts are not connected. Messages are saved in a local demo
-            inbox.
-          </p>
-          {connectionStatus}
-          <button
-            className="button secondary full"
-            onClick={() => {
-              setAccountTab("listings");
-              navigate("account");
-            }}
-          >
-            Open my space
-          </button>
-          <button
-            className="button secondary full"
-            onClick={() => {
-              void database.addDemo();
-              setModal(null);
-            }}
-          >
-            Add demo listings
-          </button>
-          <button
-            className="text-button reset-demo"
-            onClick={() => setModal("help")}
-          >
-            How the agent works
-          </button>
-          <button
-            className="text-button reset-demo"
-            onClick={() => setModal("clear")}
-          >
-            Clear local workspace
-          </button>
         </Modal>
       )}
       {modal === "help" && (
@@ -2115,10 +2424,11 @@ export default function App() {
             browser.
           </p>
           <div className="modal-actions">
-            <button className="button secondary" onClick={() => setModal(null)}>
+            <Button className="button secondary" onClick={() => setModal(null)}>
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
+              animateIcon
               className="button primary"
               onClick={() => {
                 setOwn([]);
@@ -2135,7 +2445,7 @@ export default function App() {
               }}
             >
               Clear workspace
-            </button>
+            </Button>
           </div>
         </Modal>
       )}

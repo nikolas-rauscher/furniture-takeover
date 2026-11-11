@@ -46,9 +46,11 @@ import { CancelModal, RequestModal } from "./ReservationModals";
 import "./availability.css";
 
 type Options = {
+  /** Local demo mode only: account mode has its own inbox and shared listings. */
+  localDemo: boolean;
   listings: Product[];
   ready: boolean;
-  setStatus(id: string, status: Product["status"]): void;
+  setStatus(id: string, status: Product["status"]): void | Promise<void>;
   setToast(message: string): void;
   onFindSimilar(title: string): void;
 };
@@ -97,11 +99,12 @@ export function useAvailability(options: Options) {
   const [flag] = useState(() =>
     resolveAvailabilityFlag(window.location.search, browserStorage()),
   );
+  const enabled = flag.enabled && options.localDemo;
   const [repository] = useState(() =>
     createAvailabilityRepository(browserStorage()),
   );
   const [state, setState] = useState<AvailabilityState>(() => {
-    if (!flag.enabled) return emptyAvailability();
+    if (!enabled) return emptyAvailability();
     try {
       return repository.load().state;
     } catch {
@@ -130,8 +133,13 @@ export function useAvailability(options: Options) {
         window.dispatchEvent(new CustomEvent("storage-failure")),
       );
     }
-    for (const change of changes)
-      optionsRef.current.setStatus(change.listingId, change.status);
+    // Start every status change now so listings and reservations render together;
+    // callers toast after they settle so the generic status toast cannot win.
+    return Promise.all(
+      changes.map((change) =>
+        optionsRef.current.setStatus(change.listingId, change.status),
+      ),
+    );
   }
   function toastFor(t: Transition, fallback?: string) {
     const notice =
@@ -144,9 +152,11 @@ export function useAvailability(options: Options) {
   /** Applies every deadline reached on the simulated clock. */
   function sweep(base = stateRef.current, fallback?: string) {
     const t = advance(base, optionsRef.current.listings, clock(base));
-    if (t.state !== stateRef.current || t.statusChanges.length)
-      commit(t.state, t.statusChanges);
-    toastFor(t, fallback);
+    const settled =
+      t.state !== stateRef.current || t.statusChanges.length
+        ? commit(t.state, t.statusChanges)
+        : Promise.resolve();
+    void settled.then(() => toastFor(t, fallback));
   }
 
   /** Sends a thread message first; the change is kept only if it was delivered. */
@@ -172,7 +182,7 @@ export function useAvailability(options: Options) {
         sender === "buyer" && conversation.messages.length === 1
           ? rememberThread(t.state, listingId)
           : t.state;
-      commit(next, t.statusChanges);
+      await commit(next, t.statusChanges);
       optionsRef.current.setToast(done);
     } finally {
       setBusy(false);
@@ -188,7 +198,7 @@ export function useAvailability(options: Options) {
   async function reset(source: AvailabilityState, forget: boolean) {
     const t = resetAvailability(source, optionsRef.current.listings);
     setDialog(null);
-    commit(t.state, t.statusChanges);
+    await commit(t.state, t.statusChanges);
     if (forget)
       try {
         repository.clear();
@@ -218,12 +228,13 @@ export function useAvailability(options: Options) {
 
   const { ready, listings } = options;
   useEffect(() => {
-    if (flag.enabled && ready) sweep();
+    if (enabled && ready) sweep();
     // Deadlines depend only on the clock and listing statuses.
-  }, [flag.enabled, ready, listings]);
+  }, [enabled, ready, listings]);
   useEffect(() => {
     // `?availability=off` undoes this prototype's listing changes once.
-    if (!flag.cleanup || !ready || cleaned.current) return;
+    if (!flag.cleanup || !options.localDemo || !ready || cleaned.current)
+      return;
     cleaned.current = true;
     try {
       const restored = repository.load();
@@ -233,7 +244,7 @@ export function useAvailability(options: Options) {
     }
   }, [flag.cleanup, ready]);
 
-  if (!flag.enabled) return null;
+  if (!enabled) return null;
   const now = clock(state);
   const viewOf = (item: Product) => listingAvailability(state, item, now);
   const dialogListing = dialog && listing(dialog.listingId);
@@ -298,7 +309,7 @@ export function useAvailability(options: Options) {
   };
 
   function findSimilar(title: string, noticeId?: string) {
-    if (noticeId) commit(dismissNotice(stateRef.current, noticeId));
+    if (noticeId) void commit(dismissNotice(stateRef.current, noticeId));
     optionsRef.current.onFindSimilar(title);
   }
   function openRequest(listingId: string) {
@@ -358,12 +369,14 @@ export function useAvailability(options: Options) {
           onRequest={() => openRequest(item.id)}
           onCancel={() => setDialog({ kind: "cancel", listingId: item.id })}
           onJoin={() => {
-            commit(joinWaitlist(stateRef.current, item, clock()).state);
+            void commit(joinWaitlist(stateRef.current, item, clock()).state);
             optionsRef.current.setToast(
               "You're on the waitlist. We'll tell you if it becomes available.",
             );
           }}
-          onLeave={() => commit(leaveWaitlist(stateRef.current, item.id).state)}
+          onLeave={() =>
+            void commit(leaveWaitlist(stateRef.current, item.id).state)
+          }
           onMessage={onMessage}
           onFindSimilar={() =>
             findSimilar(
@@ -388,7 +401,7 @@ export function useAvailability(options: Options) {
           onRequest={(notice) => openRequest(notice.listingId)}
           onFindSimilar={(notice) => findSimilar(notice.title, notice.id)}
           onDismiss={(notice) =>
-            commit(dismissNotice(stateRef.current, notice.id))
+            void commit(dismissNotice(stateRef.current, notice.id))
           }
         />
       );
@@ -434,10 +447,11 @@ export function useAvailability(options: Options) {
               );
               return;
             }
-            commit(t.state, t.statusChanges);
-            toastFor(
-              t,
-              "The other buyer cancelled. The item is available again.",
+            void commit(t.state, t.statusChanges).then(() =>
+              toastFor(
+                t,
+                "The other buyer cancelled. The item is available again.",
+              ),
             );
           }}
           onReset={() => void reset(stateRef.current, false)}

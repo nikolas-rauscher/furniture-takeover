@@ -302,7 +302,8 @@
     ) {
     padding-bottom: calc(224px + env(safe-area-inset-bottom, 0px));
   }
-  /* Chat and inbox screens keep a composer above the nav; stay clear of it. */
+  /* Chat and inbox screens keep a composer above the nav, so the pill sits in
+     the empty middle of the header instead. */
   #root:has(
       .chat-layout,
       .messages-layout,
@@ -310,12 +311,12 @@
       .selling-photo-layout
     )
     .demo-controls {
-    top: 62px;
-    right: 12px;
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
     bottom: auto;
-    left: auto;
+    left: 50%;
+    transform: translateX(-50%);
     flex-direction: column;
-    align-items: flex-end;
+    align-items: center;
   }
   .thread-reservation {
     margin-top: 8px;

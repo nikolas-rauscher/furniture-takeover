@@ -22,6 +22,22 @@ export function isMarketplaceOffer(
     const text = `${title} ${snippet}`
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "");
+    const normalizedTitle = title
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+    // Individual ad URLs can also be requests from buyers. Keep explicit wanted
+    // ads out of offer cards, without guessing an item's category or availability.
+    if (
+      /^(?:wanted\b|looking to buy\b|(?:je )?(?:cherche|recherche)\s+(?:un|une|des)\b|(?:ich )?suche\s+(?:ein|eine|einen|nach)\b|cerco\b|cercasi\b)/i.test(
+        normalizedTitle,
+      ) ||
+      /\b(?:wanted|gesucht)\s*[.!]?$/i.test(normalizedTitle) ||
+      /\b(?:(?:je|nous) (?:cherche|recherche|cherchons|recherchons) (?:un|une|des|du)|ich suche (?:ein|eine|einen|nach)|i(?: am|'m) looking to buy)\b/i.test(
+        text,
+      )
+    )
+      return false;
     if (
       /\b(?:for rent|office space|zu vermieten|à louer|a louer|surface commerciale|local commercial|par mois|per month|pro monat)\b/i.test(
         text,

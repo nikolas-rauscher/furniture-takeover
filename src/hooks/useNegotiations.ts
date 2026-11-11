@@ -1,3 +1,4 @@
+import { accountStorageKey, getCloudClient } from "../cloud/session.ts";
 import { useEffect, useRef, useState } from "react";
 import {
   newNegotiation,
@@ -12,7 +13,7 @@ import {
 import { listMessages } from "../api/messages";
 
 export function useNegotiations() {
-  const key = "takeover-negotiations";
+  const key = accountStorageKey("takeover-negotiations");
   const [repository] = useState(() =>
     createNegotiationRepository(
       {
@@ -59,7 +60,7 @@ export function useNegotiations() {
     let cancelled = false;
     async function reconcileLegacyDrafts() {
       try {
-        if (localStorage.getItem(migrationKey)) return;
+        if (getCloudClient() || localStorage.getItem(migrationKey)) return;
         const snapshot = repository.list();
         if (snapshot.some((item) => item.status === "draft" && item.draft)) {
           const conversations = await listMessages();

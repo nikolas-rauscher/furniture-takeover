@@ -1,3 +1,5 @@
+import { Button } from "./ui/button";
+import { Suggestion, Suggestions } from "./ui/suggestion";
 import { useId, type CSSProperties } from "react";
 import SmoothHeight from "./SmoothHeight";
 import type { AgentAssistState } from "../hooks/useAgentAssist";
@@ -32,9 +34,9 @@ function SuggestionContent({
     return (
       <div className="agent-suggestions agent-suggestions-error">
         <p role="status">{state.error}</p>
-        <button type="button" onClick={state.retry}>
+        <Button type="button" onClick={state.retry}>
           Try again
-        </button>
+        </Button>
       </div>
     );
   }
@@ -52,29 +54,29 @@ function SuggestionContent({
 
   return (
     <section className="agent-suggestions" aria-labelledby={labelId}>
-      <div className="agent-suggestions-heading">
-        <span id={labelId}>
+      {missingDetails.length > 0 ? (
+        <p className="agent-suggestions-detail" id={labelId}>
+          {missingDetails.join(" ")}
+        </p>
+      ) : (
+        <p className="agent-suggestions-heading" id={labelId}>
           {state.response?.metadata.title ? "Add a detail" : "Suggestions"}
-        </span>
-      </div>
+        </p>
+      )}
       {suggestions.length > 0 && (
-        <ul>
+        <Suggestions aria-labelledby={labelId}>
           {suggestions.map((suggestion, index) => (
-            <li
+            <Suggestion
               key={suggestion}
+              onClick={() => onSelect(suggestion)}
               style={
                 { "--suggestion-delay": `${index * 60}ms` } as CSSProperties
               }
             >
-              <button type="button" onClick={() => onSelect(suggestion)}>
-                {suggestion}
-              </button>
-            </li>
+              {suggestion}
+            </Suggestion>
           ))}
-        </ul>
-      )}
-      {missingDetails.length > 0 && (
-        <p className="agent-suggestions-detail">{missingDetails.join(" ")}</p>
+        </Suggestions>
       )}
     </section>
   );

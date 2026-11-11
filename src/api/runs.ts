@@ -1,8 +1,17 @@
+import { accountAccessToken } from "../cloud/session.ts";
+import { reportAgentQuota } from "./agent.ts";
 import { negotiationSchema } from "../../shared/negotiation.ts";
+import {
+  MAX_REASONING_CHARS,
+  MAX_REASONING_PARTS,
+  AGENT_TASK_KINDS,
+} from "../../shared/runs.ts";
 import type {
   AgentRunEvent,
   AgentRunRequest,
   AgentRunSource,
+  AgentTaskKind,
+  AgentToolFailure,
 } from "../../shared/runs";
 import type {
   AgentListingDraft,
@@ -67,6 +76,22 @@ function boundedNumber(value: unknown, max: number): value is number {
     value >= 0 &&
     value <= max
   );
+}
+
+function toolFailure(value: unknown): AgentToolFailure | undefined {
+  if (value === undefined) return undefined;
+  if (
+    !record(value) ||
+    !boundedString(value.code, 100) ||
+    !boundedString(value.message, 500) ||
+    typeof value.retryable !== "boolean"
+  )
+    throw invalidStream();
+  return {
+    code: value.code,
+    message: value.message,
+    retryable: value.retryable,
+  };
 }
 
 const listingStringLimits = {
@@ -292,7 +317,7 @@ function sources(value: unknown): AgentRunSource[] {
     if (
       !record(item) ||
       !boundedString(item.id, 160) ||
-      !boundedString(item.title, 1000) ||
+      (item.title !== undefined && !boundedString(item.title, 1000, true)) ||
       !boundedString(item.url, 4096) ||
       !safeSourceUrl(item.url) ||
       !boundedString(item.snippet, 6000, true)
@@ -304,7 +329,10 @@ function sources(value: unknown): AgentRunSource[] {
       : null;
     unique.set(item.id, {
       id: item.id,
-      title: item.title,
+      title:
+        typeof item.title === "string" && item.title.trim()
+          ? item.title.trim()
+          : new URL(item.url).hostname.replace(/^www\./, ""),
       url: item.url,
       snippet: item.snippet,
       ...(imageUrl ? { imageUrl } : {}),
@@ -322,6 +350,27 @@ function parseEvent(line: string): AgentRunEvent {
   }
   if (!record(value)) throw invalidStream();
   switch (value.type) {
+    case "reasoning_start":
+      if (!boundedString(value.id, 160)) throw invalidStream();
+      return { type: "reasoning_start", id: value.id };
+    case "reasoning_delta":
+      if (
+        !boundedString(value.id, 160) ||
+        !boundedString(value.text, MAX_REASONING_CHARS, true)
+      )
+        throw invalidStream();
+      return { type: "reasoning_delta", id: value.id, text: value.text };
+    case "reasoning_end":
+      if (
+        !boundedString(value.id, 160) ||
+        !boundedNumber(value.durationMs, 120_000)
+      )
+        throw invalidStream();
+      return {
+        type: "reasoning_end",
+        id: value.id,
+        durationMs: value.durationMs,
+      };
     case "negotiation_update": {
       const parsed = negotiationSchema.safeParse(value.negotiation);
       if (
@@ -424,6 +473,9 @@ function parseEvent(line: string): AgentRunEvent {
       if (
         !boundedString(value.id, 160) ||
         !boundedString(value.label, 1000) ||
+        (value.task !== undefined &&
+          !AGENT_TASK_KINDS.includes(value.task as AgentTaskKind)) ||
+        (value.failure !== undefined && value.state !== "error") ||
         (value.state !== "running" &&
           value.state !== "complete" &&
           value.state !== "error" &&
@@ -435,6 +487,12 @@ function parseEvent(line: string): AgentRunEvent {
         id: value.id,
         label: value.label,
         state: value.state,
+        ...(value.task !== undefined
+          ? { task: value.task as AgentTaskKind }
+          : {}),
+        ...(value.failure !== undefined
+          ? { failure: toolFailure(value.failure) }
+          : {}),
       };
     case "text_delta":
       if (!boundedString(value.text, MAX_TEXT_CHARS, true))
@@ -532,6 +590,8 @@ export async function readAgentRunStream(
   let bytes = 0;
   let events = 0;
   let textLength = 0;
+  let reasoningLength = 0;
+  const reasoningParts = new Map<string, boolean>();
   let completed = false;
   const stepIds = new Set<string>();
   const actionIds = new Set<string>();
@@ -545,6 +605,24 @@ export async function readAgentRunStream(
     if (line.length > MAX_LINE_CHARS || ++events > MAX_EVENTS)
       throw invalidStream();
     const event = parseEvent(line);
+    if (event.type === "reasoning_start") {
+      if (
+        reasoningParts.has(event.id) ||
+        reasoningParts.size >= MAX_REASONING_PARTS
+      )
+        throw invalidStream();
+      reasoningParts.set(event.id, true);
+    } else if (
+      event.type === "reasoning_delta" ||
+      event.type === "reasoning_end"
+    ) {
+      if (!reasoningParts.get(event.id)) throw invalidStream();
+      if (event.type === "reasoning_end") reasoningParts.set(event.id, false);
+      else {
+        reasoningLength += event.text.length;
+        if (reasoningLength > MAX_REASONING_CHARS) throw invalidStream();
+      }
+    }
     if (event.type === "text_delta") {
       textLength += event.text.length;
       if (textLength > MAX_TEXT_CHARS) throw invalidStream();
@@ -656,8 +734,14 @@ export async function streamAgentRun(
   {
     onEvent,
     signal,
-  }: { onEvent: (event: AgentRunEvent) => void; signal?: AbortSignal },
+    accessToken,
+  }: {
+    onEvent: (event: AgentRunEvent) => void;
+    signal?: AbortSignal;
+    accessToken?: string;
+  },
 ): Promise<void> {
+  accessToken ??= await accountAccessToken();
   // Inventory objects can originate from full listings. Pick only the agreed
   // fields, never attached photos, account data, or incidental client state.
   const payload: AgentRunRequest = {
@@ -700,6 +784,7 @@ export async function streamAgentRun(
       headers: {
         "Content-Type": "application/json",
         Accept: "application/x-ndjson",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
       body: JSON.stringify(payload),
       signal,
@@ -713,10 +798,15 @@ export async function streamAgentRun(
   }
   signal?.throwIfAborted();
   if (!response.ok) {
+    reportAgentQuota(response);
     const error = await failureMessage(response);
     signal?.throwIfAborted();
     throw error;
   }
   if (!response.body) throw invalidStream();
-  await readAgentRunStream(response.body, onEvent, signal);
+  try {
+    await readAgentRunStream(response.body, onEvent, signal);
+  } finally {
+    reportAgentQuota(response);
+  }
 }
