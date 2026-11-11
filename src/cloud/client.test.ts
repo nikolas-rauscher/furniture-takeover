@@ -5,6 +5,8 @@ import {
   configureCloud,
   getCloudClient,
   restoreAccountSession,
+  requiresPasswordSetup,
+  completePasswordSetup,
 } from "./session.ts";
 
 test("invitations remove token fragments while ordinary PKCE callbacks and app routes remain intact", () => {
@@ -122,6 +124,7 @@ test("invitation sessions are verified with Supabase once and invalid sessions d
   const accepted = await first;
   assert.equal(accepted.session?.user.id, "test-user");
   assert.equal(accepted.invited, true);
+  assert.equal(requiresPasswordSetup(accepted.session), true);
   assert.equal(accepted.error, "");
   assert.equal(checks, 1);
   getCloudClient()!.auth.stopAutoRefresh();
@@ -131,5 +134,165 @@ test("invitation sessions are verified with Supabase once and invalid sessions d
   const rejected = await restoreAccountSession();
   assert.equal(rejected.session, null);
   assert.equal(rejected.invited, false);
+  assert.equal(requiresPasswordSetup(rejected.session), false);
   assert.match(rejected.error, /Could not open/);
+});
+
+test("password recovery survives a late UI listener and only completes after saving", async (t) => {
+  const originalFetch = globalThis.fetch;
+  const originalLocation = Object.getOwnPropertyDescriptor(
+    globalThis,
+    "location",
+  );
+  t.after(() => {
+    getCloudClient()?.auth.stopAutoRefresh();
+    configureCloud(null);
+    globalThis.fetch = originalFetch;
+    if (originalLocation)
+      Object.defineProperty(globalThis, "location", originalLocation);
+    else Reflect.deleteProperty(globalThis, "location");
+  });
+  Object.defineProperty(globalThis, "location", {
+    configurable: true,
+    value: new URL("https://takeover.example/#settings"),
+  });
+  const user = {
+    id: "recovering-user",
+    aud: "authenticated",
+    email: "tester@example.com",
+  };
+  const config = {
+    supabaseUrl: "https://example.supabase.co",
+    supabaseKey: "sb_publishable_test",
+  };
+  let savedPassword = "";
+  let tokenExchanges = 0;
+  globalThis.fetch = async (input, init) => {
+    const url = new URL(String(input));
+    const body = JSON.parse(String(init?.body ?? "{}"));
+    if (url.pathname.endsWith("/recover")) {
+      assert.ok(body.code_challenge);
+      return Response.json({});
+    }
+    if (url.pathname.endsWith("/token")) {
+      tokenExchanges++;
+      assert.equal(url.searchParams.get("grant_type"), "pkce");
+      assert.ok(body.code_verifier);
+      return Response.json({
+        access_token: "test-access-token",
+        refresh_token: "test-refresh-token",
+        token_type: "bearer",
+        expires_in: 3600,
+        user,
+      });
+    }
+    if (url.pathname.endsWith("/user") && init?.method === "PUT") {
+      savedPassword = body.password;
+      return Response.json(user);
+    }
+    throw new Error(`Unexpected auth request: ${url.pathname}`);
+  };
+  configureCloud(config);
+  const client = getCloudClient()!;
+  assert.equal(
+    (await client.auth.resetPasswordForEmail(user.email)).error,
+    null,
+  );
+  assert.equal(
+    (await client.auth.exchangeCodeForSession("test-recovery-code")).error,
+    null,
+  );
+
+  // Bootstrap/React can subscribe after the SDK has already consumed the link.
+  const lateEvents: string[] = [];
+  const {
+    data: { subscription },
+  } = client.auth.onAuthStateChange((event) => {
+    lateEvents.push(event);
+  });
+  t.after(() => subscription.unsubscribe());
+  const restored = await restoreAccountSession();
+  assert.equal(restored.session?.user.id, user.id);
+  assert.equal(restored.invited, false);
+  assert.equal(lateEvents.includes("PASSWORD_RECOVERY"), false);
+  assert.equal(requiresPasswordSetup(restored.session), true);
+  assert.equal(
+    requiresPasswordSetup({
+      ...restored.session!,
+      user: { ...restored.session!.user, id: "another-user" },
+    }),
+    false,
+  );
+  assert.equal(savedPassword, "");
+  assert.equal(tokenExchanges, 1);
+
+  assert.equal(
+    (await client.auth.updateUser({ password: "test-new-password" })).error,
+    null,
+  );
+  assert.equal(savedPassword, "test-new-password");
+  completePasswordSetup();
+  assert.equal(
+    requiresPasswordSetup((await restoreAccountSession()).session),
+    false,
+  );
+});
+
+test("ordinary sign-ins and failed recovery links never request password setup", async (t) => {
+  const originalFetch = globalThis.fetch;
+  const originalLocation = Object.getOwnPropertyDescriptor(
+    globalThis,
+    "location",
+  );
+  t.after(() => {
+    getCloudClient()?.auth.stopAutoRefresh();
+    configureCloud(null);
+    globalThis.fetch = originalFetch;
+    if (originalLocation)
+      Object.defineProperty(globalThis, "location", originalLocation);
+    else Reflect.deleteProperty(globalThis, "location");
+  });
+  Object.defineProperty(globalThis, "location", {
+    configurable: true,
+    value: new URL("https://takeover.example/#settings"),
+  });
+  globalThis.fetch = async (input) => {
+    assert.equal(
+      new URL(String(input)).searchParams.get("grant_type"),
+      "password",
+    );
+    return Response.json({
+      access_token: "test-access-token",
+      refresh_token: "test-refresh-token",
+      token_type: "bearer",
+      expires_in: 3600,
+      user: { id: "ordinary-user", aud: "authenticated" },
+    });
+  };
+  configureCloud({
+    supabaseUrl: "https://example.supabase.co",
+    supabaseKey: "sb_publishable_test",
+  });
+  const client = getCloudClient()!;
+  assert.ok(
+    (await client.auth.exchangeCodeForSession("invalid-code-without-verifier"))
+      .error,
+  );
+  assert.equal(
+    requiresPasswordSetup((await restoreAccountSession()).session),
+    false,
+  );
+  assert.equal(
+    (
+      await client.auth.signInWithPassword({
+        email: "tester@example.com",
+        password: "test-password",
+      })
+    ).error,
+    null,
+  );
+  assert.equal(
+    requiresPasswordSetup((await client.auth.getSession()).data.session),
+    false,
+  );
 });
