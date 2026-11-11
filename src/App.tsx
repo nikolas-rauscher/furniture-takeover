@@ -74,6 +74,7 @@ import SearchPreferencesFields from "./components/SearchPreferencesFields";
 import SellFlow, { type ListingDraft } from "./components/SellFlow";
 import PhotoSearchButton, { imageFrom } from "./components/PhotoSearchButton";
 import BatchSellFlow, { type BatchStart } from "./components/BatchSellFlow";
+import { batchItem, itemsFromGroups } from "./batchListings";
 import PhotoSplitQuestion from "./components/PhotoSplitQuestion";
 import AgentSuggestions from "./components/AgentSuggestions";
 import AgentRunPanel from "./components/AgentRunPanel";
@@ -272,6 +273,12 @@ export default function App({ account }: { account?: AccountConnection }) {
     groups: PhotoGroup[];
   } | null>(null);
   const [batchStart, setBatchStart] = useState<BatchStart | undefined>();
+  // Several sorted items, created one after another with the listing agent.
+  const [batchQueue, setBatchQueue] = useState<{
+    drafts: ListingDraft[];
+    index: number;
+    results: ("saved" | "skipped")[];
+  } | null>(null);
   const [editingListing, setEditingListing] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState("");
   const hasSellingDraft = useRef(view === "sell");
@@ -584,6 +591,7 @@ export default function App({ account }: { account?: AccountConnection }) {
     setSellMode("single");
     setPhotoSplit(null);
     setBatchStart(undefined);
+    setBatchQueue(null);
     setEditingListing(null);
     setUploadError("");
   }
@@ -1151,13 +1159,18 @@ export default function App({ account }: { account?: AccountConnection }) {
       }
     }
   }
-  /** `together` skips the different-items check after the seller chose one listing. */
-  async function generateDraft({ together = false } = {}) {
-    if (photoReading) {
+  /**
+   * `together` skips the different-items check after the seller chose one listing;
+   * `keepTitle` keeps a title the seller already wrote instead of the agent's.
+   */
+  async function generateDraft({ together = false, keepTitle = false } = {}) {
+    // The ref, not state: a batch item may start right after a cancelled read.
+    if (imageReader.current) {
       setUploadError("Your photo is still loading.");
       return;
     }
-    if (!draft.image) {
+    const start = draftRef.current;
+    if (!start.image) {
       setUploadError("Add a photo first.");
       return;
     }
@@ -1167,7 +1180,7 @@ export default function App({ account }: { account?: AccountConnection }) {
     setBusy(true);
     setUploadError("");
     try {
-      const photos = listingPhotos(draft);
+      const photos = listingPhotos(start);
       if (!together && photos.length > 1) {
         // Sorting is a hint: if it fails, draft one listing as before.
         const groups = await sortListingPhotos(photos, controller.signal).catch(
@@ -1182,9 +1195,9 @@ export default function App({ account }: { account?: AccountConnection }) {
       const response = await requestAgentAssist(
         {
           intent: "listing",
-          text: draft.raw,
-          images: listingPhotos(draft),
-          context: { location: draft.location },
+          text: start.raw,
+          images: photos,
+          context: { location: start.location },
         },
         { signal: controller.signal },
       );
@@ -1192,10 +1205,11 @@ export default function App({ account }: { account?: AccountConnection }) {
       const metadata = response.metadata;
       const current = draftRef.current;
       const prepared = prepareListingDraft(current, metadata);
+      if (keepTitle && current.title.trim()) prepared.title = current.title;
       setDraft(prepared);
       setSellStep(2);
       void runListing(
-        "Help me finish this listing using the recognised photo details already in the draft. If there is no asking price, research comparable second-hand offers and propose a source-backed starting price for my review, then let me choose a price with a slider or give it away. Ask only the next necessary missing detail using short clickable answers, including pickup times when relevant.",
+        "Help me finish this listing using the recognised photo details already in the draft. If there is no asking price, research comparable second-hand offers and propose a source-backed starting price for my review, then let me choose a price with a slider or give it away. Ask only the next necessary missing detail using short clickable answers, such as the item's age or condition, the pickup location or pickup times when relevant.",
       );
     } catch (error) {
       if (!controller.signal.aborted)
@@ -1253,6 +1267,10 @@ export default function App({ account }: { account?: AccountConnection }) {
       );
       return;
     }
+    if (batchQueue && !editingListing) {
+      finishBatchItem("saved");
+      return;
+    }
     hasSellingDraft.current = false;
     setAccountTab("listings");
     navigate("account");
@@ -1262,28 +1280,77 @@ export default function App({ account }: { account?: AccountConnection }) {
         : "Listing saved in this browser.",
     );
   }
-  async function saveBatch(drafts: ListingDraft[]) {
-    if (database.pending || busy) return false;
+  /** Load one sorted item into the single-listing flow and let the agent draft it. */
+  function openBatchItem(next: ListingDraft) {
+    listingRequest.current?.abort();
+    cancelPhotoRead();
+    resetListingConversation();
+    listingRevisions.current = {};
+    draftId.current = crypto.randomUUID();
+    setEditingListing(null);
+    setUploadError("");
+    setPhotoSplit(null);
+    setDraft(next);
+    setSellStep(1);
+    void generateDraft({ together: true, keepTitle: true });
+  }
+  function startBatchListings(drafts: ListingDraft[]) {
+    if (!drafts.length) return;
     if (!signedIn) {
       navigate("settings");
-      return false;
+      return;
     }
-    const items = drafts.map((current) =>
-      listingFromDraft(current, crypto.randomUUID()),
-    );
-    if (!(await setOwn((current) => [...items, ...current]))) {
+    hasSellingDraft.current = true;
+    setBatchQueue({ drafts, index: 0, results: [] });
+    setBatchStart(undefined);
+    setSellMode("single");
+    openBatchItem(drafts[0]);
+  }
+  function finishBatchItem(result: "saved" | "skipped") {
+    if (!batchQueue) return;
+    const results = [...batchQueue.results, result];
+    const index = batchQueue.index + 1;
+    const total = batchQueue.drafts.length;
+    const saved = results.filter((item) => item === "saved").length;
+    const done = account ? "published" : "saved";
+    if (index < total) {
+      setBatchQueue({ ...batchQueue, index, results });
+      openBatchItem(batchQueue.drafts[index]);
       setToast(
-        "Could not save the listings. Your drafts are still here; check the error above and try again.",
+        result === "saved"
+          ? `Listing ${index} of ${total} ${done}. Next: listing ${index + 1}.`
+          : `Skipped listing ${index}. Next: listing ${index + 1} of ${total}.`,
       );
-      return false;
+      return;
     }
-    const where = account ? "published to Takeover" : "saved in this browser";
+    setBatchQueue(null);
+    hasSellingDraft.current = false;
+    setAccountTab("listings");
+    navigate("account");
     setToast(
-      items.length === 1
-        ? `Listing ${where}.`
-        : `${items.length} listings ${where}.`,
+      saved
+        ? `${saved} listing${saved === 1 ? "" : "s"} ${done}.`
+        : "No listings saved.",
     );
-    return true;
+  }
+  /** Return the items not yet created to the sorting step. */
+  function backToBatchSorting() {
+    if (!batchQueue) return;
+    listingRequest.current?.abort();
+    resetListingConversation();
+    const remaining = batchQueue.drafts.slice(batchQueue.index);
+    const photos = remaining.flatMap((item) => listingPhotos(item));
+    setBatchStart({
+      photos,
+      groups: [],
+      items: remaining.map((item) => {
+        const next = batchItem(listingPhotos(item), item.location);
+        return { ...next, draft: { ...next.draft, title: item.title } };
+      }),
+    });
+    setBatchQueue(null);
+    setBusy(false);
+    setSellMode("batch");
   }
   function editListing(item: Product) {
     if (account && !item.own) return;
@@ -1292,6 +1359,7 @@ export default function App({ account }: { account?: AccountConnection }) {
     navigate("sell");
     resetListingConversation();
     listingRevisions.current = {};
+    setBatchQueue(null);
     setEditingListing(item.id);
     setDraft({
       image: item.image,
@@ -2151,11 +2219,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                   setBatchStart(undefined);
                   setSellMode("single");
                 }}
-                onSave={saveBatch}
-                onDone={() => {
-                  setAccountTab("listings");
-                  navigate("account");
-                }}
+                onStart={startBatchListings}
               />
               {connectionStatus}
             </>
@@ -2178,6 +2242,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                     resetListingConversation();
                     setSellStep(1);
                   } else if (editingListing) navigate("account");
+                  else if (batchQueue) backToBatchSorting();
                   else openBrowse();
                 }}
                 onDraftChange={changeDraft}
@@ -2190,12 +2255,26 @@ export default function App({ account }: { account?: AccountConnection }) {
                 onCreateDraft={() => void generateDraft()}
                 onSuggestionSelected={addListingSuggestion}
                 onPublish={publish}
-                onSellSeveral={() => {
-                  cancelPhotoRead();
-                  setUploadError("");
-                  setBatchStart(undefined);
-                  setSellMode("batch");
-                }}
+                batch={
+                  batchQueue && !editingListing
+                    ? {
+                        index: batchQueue.index,
+                        covers: batchQueue.drafts.map((item) => item.image),
+                        results: batchQueue.results,
+                        onSkip: () => finishBatchItem("skipped"),
+                      }
+                    : undefined
+                }
+                onSellSeveral={
+                  batchQueue
+                    ? undefined
+                    : () => {
+                        cancelPhotoRead();
+                        setUploadError("");
+                        setBatchStart(undefined);
+                        setSellMode("batch");
+                      }
+                }
               />
               {photoSplit && (
                 <PhotoSplitQuestion
@@ -2207,10 +2286,19 @@ export default function App({ account }: { account?: AccountConnection }) {
                     void generateDraft({ together: true });
                   }}
                   onSeparate={(groups, review) => {
+                    if (!review) {
+                      startBatchListings(
+                        itemsFromGroups(
+                          photoSplit.photos,
+                          groups,
+                          draft.location,
+                        ).map((item) => item.draft),
+                      );
+                      return;
+                    }
                     setBatchStart({
                       photos: photoSplit.photos,
                       groups,
-                      notes: draft.raw,
                       review,
                     });
                     setPhotoSplit(null);

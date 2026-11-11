@@ -21,6 +21,7 @@ import {
   Images,
   LoaderCircle,
   MapPin,
+  Pencil,
 } from "@/components/icons";
 import {
   TODAY,
@@ -35,6 +36,17 @@ import PhotoGallery from "./PhotoGallery";
 import ListingChecklist from "./ListingChecklist";
 import WorkspaceHeader from "./WorkspaceHeader";
 import { listingPhotos } from "../../shared/listingPhotos";
+import "./batch-sell.css";
+
+/** Where the seller is when creating several listings one after another. */
+export type BatchProgress = {
+  /** Zero-based position of the listing being created. */
+  index: number;
+  covers: string[];
+  /** Outcome of the listings before this one. */
+  results: ("saved" | "skipped")[];
+  onSkip: () => void;
+};
 
 export type ListingDraft = {
   image: string;
@@ -75,6 +87,8 @@ type SellFlowProps = {
   onPublish: (event: FormEvent<HTMLFormElement>) => void;
   /** Switch to uploading several items at once. */
   onSellSeveral?: () => void;
+  /** Set while creating several listings one after another. */
+  batch?: BatchProgress;
 };
 
 export default function SellFlow({
@@ -100,6 +114,7 @@ export default function SellFlow({
   onSuggestionSelected,
   onPublish,
   onSellSeveral,
+  batch,
 }: SellFlowProps) {
   const [photosOpen, setPhotosOpen] = useState(false);
   const photos = listingPhotos(draft);
@@ -136,7 +151,11 @@ export default function SellFlow({
     },
   ];
   const missing = checks.filter((check) => !check.ready);
-  const measurementField = listingMeasurementField(draft);
+  // Always editable; the label adapts to the item type when it is known.
+  const measurementField = listingMeasurementField(draft) ?? {
+    label: "Measurements",
+    placeholder: "Size or measurements",
+  };
   const unavailable = busy || photoReading;
   const formId = useId();
   const notesId = useId();
@@ -177,13 +196,21 @@ export default function SellFlow({
       )}
       <WorkspaceHeader
         title={isPhotoStep ? "New listing" : "Your listing"}
-        subtitle={isPhotoStep ? "1 of 2 · Photos & details" : undefined}
+        subtitle={
+          batch
+            ? `Listing ${batch.index + 1} of ${batch.covers.length}`
+            : isPhotoStep
+              ? "1 of 2 · Photos & details"
+              : undefined
+        }
         titleRef={headingRef}
         backLabel={
           editing
             ? "Back to my listings"
             : isPhotoStep
-              ? "Back to search"
+              ? batch
+                ? "Back to sorting"
+                : "Back to search"
               : "Back to photos"
         }
         onBack={onBack}
@@ -191,6 +218,60 @@ export default function SellFlow({
         quota={quota}
         actions={isPhotoStep ? undefined : agentTools}
       />
+      {batch && (
+        <nav className="batch-progress" aria-label="Your listings">
+          <p>
+            <strong>
+              Listing {batch.index + 1} of {batch.covers.length}
+            </strong>
+            {batch.results.includes("saved") && (
+              <span>
+                {" "}
+                · {
+                  batch.results.filter((result) => result === "saved").length
+                }{" "}
+                done
+              </span>
+            )}
+          </p>
+          <ol>
+            {batch.covers.map((cover, index) => {
+              const result = batch.results[index];
+              return (
+                <li
+                  key={index}
+                  className={
+                    index === batch.index ? "current" : (result ?? "upcoming")
+                  }
+                  aria-current={index === batch.index ? "step" : undefined}
+                >
+                  <img
+                    src={cover}
+                    alt={`Listing ${index + 1}${
+                      result === "saved"
+                        ? ", done"
+                        : result === "skipped"
+                          ? ", skipped"
+                          : index === batch.index
+                            ? ", current"
+                            : ""
+                    }`}
+                  />
+                  {result === "saved" && <Check size={13} aria-hidden="true" />}
+                </li>
+              );
+            })}
+          </ol>
+          <Button
+            type="button"
+            className="text-button batch-progress-skip"
+            disabled={busy || agentWorking}
+            onClick={batch.onSkip}
+          >
+            Skip this item
+          </Button>
+        </nav>
+      )}
 
       {isPhotoStep ? (
         <div className="sell-layout" aria-busy={unavailable}>
@@ -374,10 +455,10 @@ export default function SellFlow({
             >
               <Button
                 type="button"
-                className="text-button listing-edit-button"
-                aria-label="Edit listing details"
+                className="button secondary listing-edit-button"
                 onClick={() => setFieldsOpen(true)}
               >
+                <Pencil size={15} />
                 Edit details
               </Button>
               {fieldsOpen && (
@@ -451,20 +532,18 @@ export default function SellFlow({
                           }))}
                         />
                       </label>
-                      {measurementField && (
-                        <label>
-                          {measurementField.label}
-                          <span className="optional">Optional</span>
-                          <Input
-                            value={draft.dimensions}
-                            maxLength={160}
-                            onChange={(event) =>
-                              onDraftChange({ dimensions: event.target.value })
-                            }
-                            placeholder={measurementField.placeholder}
-                          />
-                        </label>
-                      )}
+                      <label>
+                        {measurementField.label}
+                        <span className="optional">Optional</span>
+                        <Input
+                          value={draft.dimensions}
+                          maxLength={160}
+                          onChange={(event) =>
+                            onDraftChange({ dimensions: event.target.value })
+                          }
+                          placeholder={measurementField.placeholder}
+                        />
+                      </label>
                     </div>
                     <h2 className="form-section-title collection-title">
                       Collection
@@ -517,9 +596,10 @@ export default function SellFlow({
                   ? "Saving…"
                   : editing
                     ? "Save changes"
-                    : cloud
-                      ? "Publish listing"
-                      : "Save listing locally"}
+                    : (cloud ? "Publish listing" : "Save listing locally") +
+                      (batch && batch.index + 1 < batch.covers.length
+                        ? " & continue"
+                        : "")}
               </Button>
               <span className="quiet-caption">
                 {cloud
@@ -559,10 +639,20 @@ export default function SellFlow({
               </span>
             </Button>
             <div>
-              <span className="source-label">
-                <Armchair size={13} />
-                takeover
-              </span>
+              <div className="listing-preview-heading">
+                <span className="source-label">
+                  <Armchair size={13} />
+                  takeover
+                </span>
+                <Button
+                  type="button"
+                  className="text-button listing-preview-edit"
+                  onClick={() => setFieldsOpen(true)}
+                >
+                  <Pencil size={13} />
+                  Edit
+                </Button>
+              </div>
               <h2>{draft.title || "Your item"}</h2>
               <strong>
                 {draft.price ? money(Number(draft.price)) : "Price not set"}

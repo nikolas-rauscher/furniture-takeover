@@ -230,19 +230,6 @@
   }
 }
 
-.batch-notes-hint {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-  padding: 12px 14px;
-  border-radius: 8px;
-  background: var(--mist);
-  font-size: 14px;
-}
-.batch-notes-hint span {
-  font-size: 12px;
-  color: var(--muted);
-}
 .split-question {
   display: grid;
   gap: 16px;
@@ -298,4 +285,72 @@
 }
 .split-question-count > label {
   margin: 0;
+}
+
+/* Creating several listings one after another with the listing agent. */
+.batch-progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0 0 var(--space-group);
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.batch-progress p {
+  margin: 0;
+  font-size: var(--type-label);
+  color: var(--muted);
+}
+.batch-progress strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.batch-progress ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.batch-progress li {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  outline: 2px solid transparent;
+  outline-offset: 1px;
+}
+.batch-progress li img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--canvas);
+}
+.batch-progress li.current {
+  outline-color: var(--blue);
+}
+.batch-progress li.upcoming img,
+.batch-progress li.skipped img {
+  opacity: 0.45;
+}
+.batch-progress li.skipped img {
+  filter: grayscale(1);
+}
+.batch-progress li svg {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  padding: 2px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: var(--on-primary);
+}
+.batch-progress-skip {
+  margin-left: auto;
+  font-size: var(--type-label);
 }
