@@ -98,14 +98,18 @@ Optional demo listings: review `supabase/seed-demo.sql`, then run it the same wa
 
 ## Step 3. App machine
 
-1. Install Node.js and check its version. The app needs **22.18 or newer**:
+1. Install Node.js 22 from NodeSource. **Do not use the `nodejs` package from Ubuntu or Debian**: it is built without TypeScript support, and the app runs its server from `.ts` files, so it stops with `ERR_NO_TYPESCRIPT`.
 
    ```sh
-   sudo apt update && sudo apt install -y nodejs npm git
-   node --version
+   sudo apt update && sudo apt install -y git curl
+   curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+   sudo apt install -y nodejs
+   node --version        # must be 22.18 or newer
+   echo 'const x: number = 1; console.log(x)' > /tmp/t.ts
+   node --experimental-strip-types /tmp/t.ts    # must print 1
    ```
 
-   If it prints an older version, install Node 22 from NodeSource instead (`https://deb.nodesource.com/setup_22.x`, then `sudo apt install -y nodejs`). The service file below expects Node at `/usr/bin/node`, so avoid a per-user install such as nvm for the service.
+   If you had installed the distro package first, remove it with `sudo apt remove -y nodejs npm` before the commands above. The service file below expects Node at `/usr/bin/node`, which is where this package puts it, so avoid a per-user install such as nvm for the service.
 
 2. Get the code, install and build:
 
