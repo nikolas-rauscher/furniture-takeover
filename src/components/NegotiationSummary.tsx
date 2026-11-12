@@ -1,11 +1,21 @@
+import { MessageCircle, Trash2 } from "lucide-react";
+import "./negotiation-summary.css";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { Item, ItemHeader, ItemContent, ItemActions } from "./ui/item";
+import {
+  Item,
+  ItemHeader,
+  ItemContent,
+  ItemActions,
+  ItemTitle,
+  ItemFooter,
+} from "./ui/item";
 import type { Negotiation } from "../../shared/negotiation";
 import { money } from "../../shared/marketplace";
 export default function NegotiationSummary({
   proposal,
   title,
+  image,
   onReview,
   onContinue,
   onDiscard,
@@ -15,6 +25,7 @@ export default function NegotiationSummary({
 }: {
   proposal: Negotiation;
   title: string;
+  image?: string;
   onReview: () => void;
   onContinue?: () => void;
   onDiscard: () => void;
@@ -61,76 +72,118 @@ export default function NegotiationSummary({
       </section>
     );
   return (
-    <section
+    <Item
+      render={<section />}
+      variant="outline"
       className="negotiation-summary"
       aria-label={`Offer proposal for ${title}`}
     >
-      <div>
-        <strong>{title}</strong>
-        <span>
-          {proposal.draft ? "Draft ready for review" : "Your offer proposal"}
-        </span>
-      </div>
-      <dl>
-        <div>
-          <dt>Offer</dt>
-          <dd>
-            {proposal.terms.amount === null
-              ? "Not decided"
-              : money(proposal.terms.amount)}
-          </dd>
+      <ItemHeader className="proposal-heading">
+        <div className="proposal-identity">
+          {image && (
+            <img
+              key={image}
+              src={image}
+              alt=""
+              className="proposal-thumbnail"
+              onError={(event) => {
+                event.currentTarget.hidden = true;
+              }}
+            />
+          )}
+          <ItemTitle className="proposal-title">{title}</ItemTitle>
         </div>
-        <div>
-          <dt>Handover</dt>
-          <dd>{proposal.terms.fulfillment ?? "Not decided"}</dd>
-        </div>
-        {proposal.terms.fulfillment !== "shipping" && (
-          <>
-            <div>
-              <dt>Time proposal</dt>
-              <dd>{proposal.terms.pickupTime ?? "Not decided"}</dd>
-            </div>
-            <div>
-              <dt>Meeting point proposal</dt>
-              <dd>{proposal.terms.pickupPoint ?? "Ask the seller"}</dd>
-            </div>
-          </>
+        <Badge variant={unavailable ? "destructive" : "secondary"}>
+          {unavailable
+            ? "Listing unavailable"
+            : proposal.draft
+              ? "Ready for review"
+              : "In progress"}
+        </Badge>
+      </ItemHeader>
+      <ItemContent
+        className={`proposal-body${proposal.draft ? " has-message" : ""}`}
+      >
+        <dl className="proposal-terms">
+          <div>
+            <dt>Offer</dt>
+            <dd className="proposal-amount">
+              {proposal.terms.amount === null
+                ? "Not decided"
+                : money(proposal.terms.amount)}
+            </dd>
+          </div>
+          <div>
+            <dt>Handover</dt>
+            <dd>
+              {proposal.terms.fulfillment === "pickup"
+                ? "Pickup"
+                : proposal.terms.fulfillment === "shipping"
+                  ? "Shipping"
+                  : "Not decided"}
+            </dd>
+          </div>
+          {proposal.terms.fulfillment !== "shipping" && (
+            <>
+              <div>
+                <dt>Pickup time</dt>
+                <dd>{proposal.terms.pickupTime ?? "Not decided"}</dd>
+              </div>
+              <div>
+                <dt>Meeting point</dt>
+                <dd>{proposal.terms.pickupPoint ?? "Ask the seller"}</dd>
+              </div>
+            </>
+          )}
+        </dl>
+        {proposal.draft && (
+          <section className="proposal-message" aria-label="Message draft">
+            <h3>Message to seller</h3>
+            <p>{proposal.draft.message}</p>
+          </section>
         )}
-      </dl>
-      {proposal.draft && (
-        <div className="proposal-message-preview" aria-label="Message draft">
-          <strong>Message to seller</strong>
-          <p>{proposal.draft.message}</p>
-        </div>
-      )}
-      <p>
-        {unavailable
-          ? "This listing is no longer available. You can discard the proposal."
-          : "Draft only · Awaiting seller agreement"}
-      </p>
-      <div className="offer-draft-actions">
-        <Button
-          animateIcon
-          className="button primary"
-          disabled={disabled || unavailable}
-          onClick={onReview}
+      </ItemContent>
+      <ItemFooter className="proposal-footer">
+        <p className="proposal-note">
+          {unavailable
+            ? "This listing is no longer available. You can discard the proposal."
+            : "Not sent · Review and send in seller chat"}
+        </p>
+        <div
+          className="proposal-actions"
+          role="group"
+          aria-label="Proposal actions"
         >
-          Open seller chat
-        </Button>
-        {onContinue && (
           <Button
-            className="text-button"
-            disabled={disabled}
-            onClick={onContinue}
+            variant="default"
+            className="proposal-review"
+            disabled={disabled || unavailable}
+            onClick={onReview}
           >
-            Continue with agent
+            <MessageCircle size={16} aria-hidden="true" />
+            Open seller chat
           </Button>
-        )}
-        <Button className="text-button" disabled={disabled} onClick={onDiscard}>
-          Discard proposal
-        </Button>
-      </div>
-    </section>
+          {onContinue && (
+            <Button
+              variant="outline"
+              disabled={disabled || unavailable}
+              onClick={onContinue}
+            >
+              Continue with agent
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            className="proposal-discard"
+            disabled={disabled}
+            onClick={onDiscard}
+          >
+            <Trash2 size={15} aria-hidden="true" />
+            Discard proposal
+          </Button>
+        </div>
+      </ItemFooter>
+    </Item>
   );
 }
 

@@ -918,6 +918,7 @@ export default function App({ account }: { account?: AccountConnection }) {
         proposal={proposal}
         compact={compact}
         title={item?.title ?? "Unavailable listing"}
+        image={item?.image}
         unavailable={!available}
         disabled={running}
         onReview={() => {
