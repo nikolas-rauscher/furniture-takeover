@@ -550,6 +550,15 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
             );
           },
           onToolExecutionEnd: async ({ toolCall, toolOutput }) => {
+            // Failed tools are returned to the model, so surface them for debugging.
+            if (toolOutput.type === "tool-error")
+              console.warn(
+                `Agent tool "${toolCall.toolName}" failed: ${
+                  toolOutput.error instanceof Error
+                    ? toolOutput.error.message
+                    : String(toolOutput.error)
+                }`,
+              );
             const webError =
               toolCall.toolName === "web_search" &&
               toolOutput.type === "tool-error"
