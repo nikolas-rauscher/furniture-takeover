@@ -828,53 +828,11 @@
   gap: 10px;
 }
 
-.negotiation-summary {
-  margin: 16px 0;
-  padding: 16px 18px;
-  border: 1px solid #dce0e9;
-  border-radius: 6px;
-  background: #fff;
-}
-.negotiation-summary > div:first-child {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 8px;
-}
-.negotiation-summary > div:first-child span,
-.negotiation-summary p {
-  font-size: 13px;
-  color: #667080;
-}
-.negotiation-summary dl {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin: 14px 0;
-}
-.negotiation-summary dt {
-  font-size: 12px;
-  color: #667080;
-}
-.negotiation-summary dd {
-  margin: 4px 0 0;
-  font-size: 14px;
-  overflow-wrap: anywhere;
-}
-.negotiation-summary button {
-  min-height: 40px;
-  font-size: 13px;
-}
 .offer-draft-form select {
   padding: 10px;
   border: 1px solid #dce0e9;
   background: #fff;
   font: inherit;
-}
-@media (max-width: 600px) {
-  .negotiation-summary dl {
-    grid-template-columns: 1fr 1fr;
-  }
 }
 .agent-run-panel .agent-run-status {
   min-width: 0;
