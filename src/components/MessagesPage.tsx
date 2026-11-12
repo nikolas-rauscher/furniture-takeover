@@ -17,6 +17,8 @@ import type { Product } from "../../shared/marketplace";
 import "./messages.css";
 export type MessagesPageProps = {
   account?: AccountConnection;
+  /** Enables local role previews only; account inboxes always use real identity. */
+  developerMode?: boolean;
   onDeleted?: (id: string) => void;
   /** Feature-flagged availability prototype shown above the open thread. */
   threadBanner?: (thread: {
@@ -51,6 +53,7 @@ export default function MessagesPage(props: MessagesPageProps) {
   return <DemoMessagesPage {...props} />;
 }
 function DemoMessagesPage({
+  developerMode = false,
   listingId,
   listing,
   listings,
@@ -64,7 +67,12 @@ function DemoMessagesPage({
   const [conversations, setConversations] = useState<SellerConversation[]>([]);
   const [selected, setSelected] = useState(listingId ?? "");
   const [showConversation, setShowConversation] = useState(Boolean(listingId));
-  const [role, setRole] = useState<"buyer" | "seller">("buyer");
+  const [previewRole, setRole] = useState<"buyer" | "seller">("buyer");
+  // Use buyer immediately on disable, including before the effect runs.
+  const role = developerMode ? previewRole : "buyer";
+  useEffect(() => {
+    if (!developerMode) setRole("buyer");
+  }, [developerMode]);
   const [drafts, setDrafts] = useState<Record<string, string>>(
     listingId && initialMessage
       ? { [`${listingId}:buyer`]: initialMessage }
@@ -215,8 +223,8 @@ function DemoMessagesPage({
         <p>Talk to sellers and arrange your pickup.</p>
       </div>
       <p className="quiet-caption">
-        Local demo inbox · Seller view previews the other side. Real accounts
-        are not connected yet.
+        Local workspace inbox · Conversations are linked to this browser.
+        {developerMode && " Seller view previews the other side."}
       </p>
       <div className="seller-chat-layout">
         <nav aria-label="Conversations">
@@ -308,21 +316,23 @@ function DemoMessagesPage({
                     </Button>
                   )}
                 </div>
-                <label>
-                  Demo view{" "}
-                  <SelectField
-                    aria-label="Demo view"
-                    value={role}
-                    disabled={busy}
-                    onValueChange={(value) =>
-                      setRole(value as "buyer" | "seller")
-                    }
-                    options={[
-                      { value: "buyer", label: "Buyer" },
-                      { value: "seller", label: "Seller" },
-                    ]}
-                  />
-                </label>
+                {developerMode && (
+                  <label>
+                    Demo view{" "}
+                    <SelectField
+                      aria-label="Demo view"
+                      value={role}
+                      disabled={busy}
+                      onValueChange={(value) =>
+                        setRole(value as "buyer" | "seller")
+                      }
+                      options={[
+                        { value: "buyer", label: "Buyer" },
+                        { value: "seller", label: "Seller" },
+                      ]}
+                    />
+                  </label>
+                )}
               </header>
               {threadBanner?.({
                 listingId: current.listingId,

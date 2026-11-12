@@ -2,7 +2,13 @@ import { SelectField } from "../components/ui/select-field";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { LogOut } from "@/components/icons";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { fail } from "./client";
@@ -21,10 +27,12 @@ export default function Account({
   client,
   session,
   onProfileSaved,
+  browserTools,
 }: {
   client: SupabaseClient;
   session: Session;
   onProfileSaved?: (region: string) => void;
+  browserTools?: ReactNode;
 }) {
   const [section, setSection] = useState<AccountSection>("profile");
   const [name, setName] = useState(""),
@@ -504,6 +512,12 @@ export default function Account({
               Sign out other devices
             </Button>
           </form>
+          {browserTools && (
+            <section hidden={section !== "privacy"}>
+              <h2>Browser tools</h2>
+              {browserTools}
+            </section>
+          )}
           <section hidden={section !== "privacy"}>
             <h2>Blocked users</h2>
             <p>

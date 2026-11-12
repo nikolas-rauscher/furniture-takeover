@@ -183,12 +183,16 @@ export async function requestAgentAssist(
 /** Ask the agent which uploaded photos show the same item. Indices refer to `images`. */
 export async function requestPhotoGroups(
   images: string[],
-  { signal }: RequestOptions = {},
+  { signal, accessToken }: RequestOptions = {},
   itemCount?: number,
 ): Promise<PhotoGroupResponse> {
+  accessToken ??= await accountAccessToken();
   const data = await requestJson("/api/agent/group-photos", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
     body: JSON.stringify(itemCount ? { images, itemCount } : { images }),
     signal,
   });

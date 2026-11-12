@@ -1,0 +1,30 @@
+.developer-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-block: 16px;
+  border-block: 1px solid var(--line);
+}
+.developer-setting-copy {
+  min-width: 0;
+}
+.developer-setting-copy p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+/* This app omits Tailwind Preflight and has an unlayered button reset. */
+.developer-setting [data-slot="switch"] {
+  box-sizing: border-box;
+  padding: 0;
+  border: 1px solid transparent;
+  background: var(--line);
+}
+.developer-setting [data-slot="switch"][data-checked] {
+  background: var(--blue);
+}
+.developer-setting [data-slot="switch"]::after {
+  inset: -13px -6px;
+}
