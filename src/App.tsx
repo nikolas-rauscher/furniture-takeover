@@ -72,6 +72,12 @@ import Modal from "./components/Modal";
 import ProductCard from "./components/ProductCard";
 import SearchPreferencesFields from "./components/SearchPreferencesFields";
 import SellFlow, { type ListingDraft } from "./components/SellFlow";
+import PhotoSearchFeedback from "./components/PhotoSearchFeedback";
+import {
+  photoSearchFailure,
+  photoSearchClarification,
+  type PhotoSearchNotice,
+} from "./photoSearchFeedback";
 import PhotoSearchButton, { imageFrom } from "./components/PhotoSearchButton";
 import BatchSellFlow, { type BatchStart } from "./components/BatchSellFlow";
 import { batchItem, itemsFromGroups } from "./batchListings";
@@ -419,7 +425,8 @@ export default function App({ account }: { account?: AccountConnection }) {
     request: string;
   } | null>(null);
   const [photoSearchBusy, setPhotoSearchBusy] = useState(false);
-  const [photoSearchError, setPhotoSearchError] = useState("");
+  const [photoSearchNotice, setPhotoSearchNotice] =
+    useState<PhotoSearchNotice | null>(null);
   const photoSearchRequest = useRef<AbortController | null>(null);
   const activePhotoSearch =
     photoSearch && committedSearch?.originalRequest === photoSearch.request
@@ -781,6 +788,9 @@ export default function App({ account }: { account?: AccountConnection }) {
     question?: string,
   ) {
     if (!text.trim() || running || quotaExhausted) return;
+    photoSearchRequest.current?.abort();
+    setPhotoSearchBusy(false);
+    setPhotoSearchNotice(null);
     const unanswered =
       isFollowUp && !question
         ? agentRun.state.questions.find(
@@ -815,14 +825,15 @@ export default function App({ account }: { account?: AccountConnection }) {
       question,
     );
   }
-  /** Describe the furniture in an inspiration photo, then search for that description. */
+  /** Identify an item in an inspiration photo, then search for that description. */
   async function searchByPhoto(file: File) {
     if (running || photoSearchBusy) return;
     photoSearchRequest.current?.abort();
     const controller = new AbortController();
     photoSearchRequest.current = controller;
     setPhotoSearchBusy(true);
-    setPhotoSearchError("");
+    setPhotoSearchNotice(null);
+    setPhotoSearch(null);
     try {
       const image = await readListingPhoto(file, controller.signal);
       const notes = query.trim();
@@ -836,22 +847,18 @@ export default function App({ account }: { account?: AccountConnection }) {
         { signal: controller.signal },
       );
       const item = response.metadata.query?.trim();
-      if (!item)
-        throw new Error(
-          response.missingDetails[0] ??
-            "No furniture recognised in this photo. Try another photo.",
-        );
+      if (controller.signal.aborted) return;
+      if (!item) {
+        setPhotoSearchNotice(photoSearchClarification());
+        return;
+      }
       const request = (notes ? `${item}. ${notes}` : item).slice(0, 4000);
       setPhotoSearch({ image, item, request });
       setPhotoSearchBusy(false);
       await runSearch(request);
     } catch (error) {
       if (controller.signal.aborted) return;
-      setPhotoSearchError(
-        error instanceof Error
-          ? error.message
-          : "Could not read this photo. Try another one.",
-      );
+      setPhotoSearchNotice(photoSearchFailure(error));
     } finally {
       if (photoSearchRequest.current === controller) {
         photoSearchRequest.current = null;
@@ -1886,10 +1893,8 @@ export default function App({ account }: { account?: AccountConnection }) {
                       </div>
                     </div>
                   </form>
-                  {photoSearchError && (
-                    <p className="form-error photo-search-error" role="alert">
-                      {photoSearchError}
-                    </p>
+                  {photoSearchNotice && (
+                    <PhotoSearchFeedback notice={photoSearchNotice} />
                   )}
                   {connectionStatus}
                   <AgentSuggestions
@@ -1939,10 +1944,8 @@ export default function App({ account }: { account?: AccountConnection }) {
                         : undefined
                     }
                   />
-                  {!reviewingListing && photoSearchError && (
-                    <p className="form-error photo-search-error" role="alert">
-                      {photoSearchError}
-                    </p>
+                  {!reviewingListing && photoSearchNotice && (
+                    <PhotoSearchFeedback notice={photoSearchNotice} />
                   )}
                   {!reviewingListing && activePhotoSearch && (
                     <div className="photo-search-source">
