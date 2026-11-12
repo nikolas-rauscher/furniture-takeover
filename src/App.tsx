@@ -82,7 +82,8 @@ import { useAgentRun } from "./hooks/useAgentRun";
 import { useAgentAssist } from "./hooks/useAgentAssist";
 import { useSaved } from "./hooks/useSaved";
 import { useAlerts } from "./alerts/useAlerts";
-import { demandLadder, NO_BUDGET, similarListings } from "./alerts/matching";
+import { demandLadder, similarListings } from "./alerts/matching";
+import { activateWatch, findWatch, watchSearch } from "./alerts/watch";
 import SellerInsight from "./alerts/SellerInsight";
 import MatchAlerts from "./alerts/MatchAlerts";
 import WatchPrompt from "./alerts/WatchPrompt";
@@ -1114,40 +1115,19 @@ export default function App({ account }: { account?: AccountConnection }) {
     void runListing(answer, question.question);
     return true;
   }
-  const sameWatch = (job: SavedSearch, query: string, maxPrice?: number) =>
-    job.criteria.query.trim().toLowerCase() === query.trim().toLowerCase() &&
-    job.criteria.maxPrice === (maxPrice ?? NO_BUDGET);
-  const isWatching = (query: string, maxPrice?: number) =>
-    savedSearches.some((job) => sameWatch(job, query, maxPrice));
-  /** Creates a saved search; the alerts hook then watches it for new matches. */
+  function isWatching(query: string, maxPrice?: number) {
+    const search = watchSearch(query, location, maxPrice);
+    return !!search && findWatch(jobs, search)?.paused === false;
+  }
   function addWatch(query: string, maxPrice?: number) {
-    const text = query.trim().slice(0, 120);
-    if (!text) return;
-    const price =
-      maxPrice === undefined || !Number.isFinite(maxPrice)
-        ? undefined
-        : Math.min(Math.max(maxPrice, 0), 1_000_000);
-    if (isWatching(text, price)) {
+    const search = watchSearch(query, location, maxPrice);
+    if (!search) return;
+    if (findWatch(jobs, search)?.paused === false) {
       setToast("You are already watching for this.");
       return;
     }
-    const search = preferenceSearch(
-      { ...defaults, query: text, maxPrice: price ?? NO_BUDGET },
-      location,
-    );
-    setJobs((current) => [
-      ...current,
-      {
-        id: crypto.randomUUID(),
-        title: criteriaTitle(search.criteria),
-        criteria: search.criteria,
-        location: search.location,
-        request: search.text,
-        search,
-        paused: false,
-        seen: true,
-      },
-    ]);
+    const id = crypto.randomUUID();
+    setJobs((current) => activateWatch(current, search, id));
     setToast("Watching. You'll be notified in the app when a match appears.");
   }
   function saveSearch() {
