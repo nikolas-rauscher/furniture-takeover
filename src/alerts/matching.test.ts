@@ -98,6 +98,81 @@ test("unread alerts per search are capped, and held-back items alert later", () 
   assert.equal(run(read, many).alerts.length, MAX_UNREAD_PER_SEARCH + 2);
 });
 
+test("unavailable or non-matching alerts release the unread cap immediately", () => {
+  const matches = Array.from({ length: MAX_UNREAD_PER_SEARCH }, (_, i) =>
+    listing(`old${i}`),
+  );
+  const capped = run(run(emptyAlerts(), []), matches);
+  const unavailable: Product[][] = [
+    ...(["sold", "reserved", "withdrawn"] as const).map((status) =>
+      matches.map((item) => ({ ...item, status })),
+    ),
+    [], // Removed from the catalog entirely.
+    matches.map((item) => ({ ...item, price: 900 })),
+  ];
+  for (const stale of unavailable) {
+    const listings = [...stale, listing("new")];
+    const next = run(capped, listings);
+    assert.deepEqual(
+      next.alerts.map((alert) => alert.listingId),
+      ["new"],
+    );
+    assert.equal(unreadCount(next), 1);
+    assert.deepEqual(next.baselines.job.listingIds, ["new"]);
+    assert.equal(run(next, listings), next);
+  }
+});
+
+test("a retired match alerts once when it becomes active again", () => {
+  const active = [listing("a")];
+  const alerted = run(run(emptyAlerts(), []), active);
+  const retired = run(alerted, [listing("a", { status: "sold" })]);
+  assert.deepEqual(retired.alerts, []);
+  assert.deepEqual(retired.baselines.job.listingIds, []);
+  const returned = run(retired, active);
+  assert.equal(unreadCount(returned), 1);
+  assert.deepEqual(
+    returned.alerts.map((alert) => alert.listingId),
+    ["a"],
+  );
+  assert.equal(run(returned, active), returned);
+});
+
+test("retiring alerts preserves read and dismissed matches in the baseline", () => {
+  const matches = [listing("read"), listing("dismissed"), listing("stale")];
+  const alerted = run(run(emptyAlerts(), []), matches);
+  const read = markAlertsRead(alerted, (alert) => alert.listingId === "read");
+  const dismissed = dismissAlert(
+    read,
+    read.alerts.find((alert) => alert.listingId === "dismissed")!.id,
+  );
+  const active = matches.slice(0, 2);
+  const next = run(dismissed, active);
+  assert.deepEqual(
+    next.alerts.map((alert) => [alert.listingId, alert.read]),
+    [["read", true]],
+  );
+  assert.equal(unreadCount(next), 0);
+  assert.deepEqual(next.baselines.job.listingIds, ["read", "dismissed"]);
+  assert.equal(run(next, active), next);
+});
+
+test("retirement keeps search edits and paused resumptions silent", () => {
+  const alerted = run(run(emptyAlerts(), []), [listing("old")]);
+  const edited = { ...job, criteria: { ...job.criteria, maxPrice: 40 } };
+  const editedListings = [listing("old"), listing("existing", { price: 30 })];
+  const reset = run(alerted, editedListings, [edited]);
+  assert.deepEqual(reset.alerts, []);
+  assert.deepEqual(reset.baselines.job.listingIds, ["existing"]);
+  assert.equal(run(reset, editedListings, [edited]), reset);
+
+  const paused = { ...job, paused: true };
+  const during = run(alerted, [listing("old", { status: "sold" })], [paused]);
+  assert.deepEqual(during.alerts, []);
+  const returnedWhilePaused = run(during, [listing("old")], [paused]);
+  assert.equal(run(returnedWhilePaused, [listing("old")]).alerts.length, 0);
+});
+
 test("deleting a search removes its alerts and baseline", () => {
   const first = run(emptyAlerts(), []);
   const withAlert = run(first, [listing("a")]);

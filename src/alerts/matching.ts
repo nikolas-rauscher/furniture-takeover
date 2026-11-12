@@ -25,7 +25,7 @@ export type AlertItem = {
   id: string;
   jobId: string;
   listingId: string;
-  /** Kept because a withdrawn or removed listing can no longer be looked up. */
+  /** Snapshot of the listing when it first matched. */
   title: string;
   reason: string;
   createdAt: string;
@@ -90,13 +90,26 @@ export function updateAlerts(
 ): AlertsState {
   const baselines: Record<string, AlertBaseline> = {};
   const created: AlertItem[] = [];
+  const matchesByJob = new Map(
+    jobs.map((job) => [job.id, currentMatches(listings, job.criteria)]),
+  );
+  const matchingIdsByJob = new Map(
+    [...matchesByJob].map(([id, matches]) => [
+      id,
+      new Set(matches.map((item) => item.id)),
+    ]),
+  );
+  // Retire matches the buyer can no longer act on before applying the cap.
+  const retained = state.alerts.filter((alert) =>
+    matchingIdsByJob.get(alert.jobId)?.has(alert.listingId),
+  );
   const unread = new Map<string, number>();
-  for (const alert of state.alerts)
+  for (const alert of retained)
     if (!alert.read)
       unread.set(alert.jobId, (unread.get(alert.jobId) ?? 0) + 1);
 
   for (const job of jobs) {
-    const matches = currentMatches(listings, job.criteria);
+    const matches = matchesByJob.get(job.id)!;
     const sig = signature(job.criteria);
     const previous = state.baselines[job.id];
     baselines[job.id] = {
@@ -128,11 +141,7 @@ export function updateAlerts(
     }
   }
 
-  const jobIds = new Set(jobs.map((job) => job.id));
-  const alerts = [
-    ...created,
-    ...state.alerts.filter((alert) => jobIds.has(alert.jobId)),
-  ].slice(0, MAX_ALERTS);
+  const alerts = [...created, ...retained].slice(0, MAX_ALERTS);
   const unchanged =
     !created.length &&
     alerts.length === state.alerts.length &&
