@@ -3,6 +3,7 @@ import {
   webEvidenceSkill,
   buyerWorkflowSkill,
   sellerWorkflowSkill,
+  sellerFurnitureResearchSkill,
 } from "./agent-skills.ts";
 import type { AgentRunInventoryItem } from "../shared/runs.ts";
 
@@ -73,7 +74,7 @@ export function buildAgentInstructions({
     actionInstructions,
     !listingMode ? `${negotiationInstructions}\n${buyerWorkflowSkill}` : "",
     listingAssist
-      ? `${sellerWorkflowSkill}\nThis turn is listing_assist: prepare useful draft changes with tools, perform requested research, or ask the next necessary question. Do not stop at generic advice when a grounded field update is possible.`
+      ? `${sellerWorkflowSkill}\n${sellerFurnitureResearchSkill}\nThis turn is listing_assist: prepare useful draft changes with tools, perform requested research, or ask the next necessary question. Do not stop at generic advice when a grounded field update is possible.`
       : "",
     allowWebSearch
       ? "The web_search tool is configured and available. If the user requests external offers, call it before reporting web findings. Never say web search is unavailable unless an actual tool attempt failed. The UI supplies source previews and failure/empty status; keep your explanation focused on relevance and useful next steps."

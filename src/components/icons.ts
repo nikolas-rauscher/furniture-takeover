@@ -46,6 +46,7 @@ export {
   Square,
   SlidersHorizontal,
   SquarePen,
+  Images,
 } from "lucide-react";
 
 export { Copy, CopyIcon } from "./animate-ui/icons/copy";
