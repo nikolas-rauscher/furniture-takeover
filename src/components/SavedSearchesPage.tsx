@@ -64,6 +64,8 @@ export default function SavedSearchesPage({
           Max price (CHF)
           <input
             type="number"
+            inputMode="decimal"
+            step="0.01"
             min={0}
             max={1000000}
             value={wantedPrice}
