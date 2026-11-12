@@ -8,6 +8,194 @@ import {
 import test from "node:test";
 import assert from "node:assert/strict";
 import { MockLanguageModelV4 } from "ai/test";
+import { newNegotiation } from "../../shared/negotiation.ts";
+
+test("unconfirmed proposal changes expose safe recovery details without saving an inferred price", async () => {
+  for (const [changes, code] of [
+    [
+      { amount: { value: 145, origin: "buyer", quote: "I take it" } },
+      "PROPOSAL_AMOUNT_UNCONFIRMED",
+    ],
+    [
+      { amount: { value: 145, origin: "buyer", quote: "CHF 145" } },
+      "PROPOSAL_DETAIL_UNCONFIRMED",
+    ],
+    [
+      {
+        amount: {
+          value: 145,
+          origin: "listing",
+          quote: ownDesk.description,
+        },
+      },
+      "PROPOSAL_DETAIL_UNCONFIRMED",
+    ],
+  ] as const) {
+    const model = new MockLanguageModelV4({
+      doStream: [
+        toolCall(
+          "update_negotiation",
+          { expectedVersion: 1, changes },
+          "unconfirmed-amount",
+        ),
+        toolCall(
+          "ask_user",
+          {
+            question: "What amount would you like to offer?",
+            choices: ["CHF 145", "Another amount"],
+          },
+          "confirm-amount",
+        ),
+      ],
+    });
+    const events = await eventsFor(
+      createAgentRuntime({ apiKey: "test", modelImpl: model }),
+      {
+        text: "I take it",
+        context: {
+          intent: "negotiation",
+          negotiation: newNegotiation("proposal", ownDesk.id),
+        },
+        inventory: [{ ...ownDesk, price: 145 }],
+      },
+    );
+    const failed = events.find(
+      (event) =>
+        event.type === "status" &&
+        event.id === "unconfirmed-amount" &&
+        event.state === "error",
+    );
+    assert.ok(failed?.type === "status" && failed.failure);
+    assert.equal(failed.failure.code, code);
+    assert.equal(failed.failure.retryable, true);
+    assert.match(failed.failure.message, /[Cc]onfirm/);
+    assert.doesNotMatch(
+      failed.failure.message,
+      /quote|origin|schema|validation/i,
+    );
+    assert.ok(!events.some((event) => event.type === "negotiation_update"));
+    assert.ok(
+      events.some(
+        (event) => event.type === "question" && event.id === "confirm-amount",
+      ),
+    );
+    assert.ok(events.some((event) => event.type === "complete"));
+  }
+});
+
+test("a stale proposal update explains recovery and a corrected retry saves only once", async () => {
+  const changes = { amount: { value: 70, origin: "buyer", quote: "CHF 70" } };
+  const model = new MockLanguageModelV4({
+    doStream: [
+      toolCall(
+        "update_negotiation",
+        { expectedVersion: 2, changes },
+        "stale-update",
+      ),
+      toolCall("get_negotiation", {}, "read-current"),
+      toolCall(
+        "update_negotiation",
+        { expectedVersion: 1, changes },
+        "corrected-update",
+      ),
+      toolCall("prepare_offer_draft", { expectedVersion: 2 }, "prepare"),
+      answer("Your draft is ready for review."),
+    ],
+  });
+  const events = await eventsFor(
+    createAgentRuntime({ apiKey: "test", modelImpl: model }),
+    {
+      text: "I offer CHF 70. Prepare the draft.",
+      context: {
+        intent: "negotiation",
+        negotiation: newNegotiation("proposal", ownDesk.id),
+      },
+      inventory: [ownDesk],
+    },
+  );
+  const failed = events.find(
+    (event) =>
+      event.type === "status" &&
+      event.id === "stale-update" &&
+      event.state === "error",
+  );
+  assert.ok(failed?.type === "status");
+  assert.deepEqual(failed.failure, {
+    code: "PROPOSAL_CHANGED",
+    message: "Your proposal changed. Try again using its latest draft.",
+    retryable: true,
+  });
+  const updates = events.filter((event) => event.type === "negotiation_update");
+  assert.equal(updates.length, 2);
+  assert.equal(updates[0].negotiation.version, 2);
+  assert.equal(updates[0].negotiation.terms.amount, 70);
+  assert.ok(updates[1].negotiation.draft);
+  assert.ok(
+    events.some(
+      (event) =>
+        event.type === "status" &&
+        event.id === "corrected-update" &&
+        event.state === "complete" &&
+        !event.failure,
+    ),
+  );
+  assert.ok(events.some((event) => event.type === "complete"));
+});
+
+test("unexpected proposal tool errors never expose internal messages in activity", async () => {
+  const privateError = "internal provider token=private-test-value";
+  const model = new MockLanguageModelV4({
+    doStream: [
+      toolCall(
+        "update_negotiation",
+        {
+          expectedVersion: 1,
+          changes: { amount: { value: 70, origin: "buyer", quote: "CHF 70" } },
+        },
+        "failed-save",
+      ),
+      toolCall(
+        "ask_user",
+        { question: "Would you like to try again?", choices: ["Try again"] },
+        "retry",
+      ),
+    ],
+  });
+  const events: Awaited<ReturnType<typeof eventsFor>> = [];
+  await createAgentRuntime({ apiKey: "test", modelImpl: model }).run(
+    {
+      text: "I offer CHF 70.",
+      context: {
+        intent: "negotiation",
+        negotiation: newNegotiation("proposal", ownDesk.id),
+      },
+      inventory: [ownDesk],
+    },
+    (event) => {
+      if (event.type === "negotiation_update") throw new Error(privateError);
+      events.push(event);
+    },
+  );
+  const failed = events.find(
+    (event) =>
+      event.type === "status" &&
+      event.id === "failed-save" &&
+      event.state === "error",
+  );
+  assert.ok(failed?.type === "status");
+  assert.deepEqual(failed.failure, {
+    code: "PROPOSAL_STEP_FAILED",
+    message:
+      "That proposal step could not finish. Try again using the current draft.",
+    retryable: true,
+  });
+  assert.doesNotMatch(
+    JSON.stringify(events),
+    /private-test-value|internal provider/,
+  );
+  assert.ok(!events.some((event) => event.type === "negotiation_update"));
+  assert.ok(events.some((event) => event.type === "complete"));
+});
 
 test("review-only offers require an observed Takeover listing and recover from invented IDs", async () => {
   const model = new MockLanguageModelV4({
