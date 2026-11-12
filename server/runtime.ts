@@ -148,6 +148,10 @@ const toolActivity: Record<string, { label: string; task: AgentTaskKind }> = {
     task: "listings",
   },
   suggest_takeover_offer: { label: "Suggesting an offer", task: "listings" },
+  suggest_watch: {
+    label: "Offering to watch for this item",
+    task: "listings",
+  },
   get_listing: { label: "Checking listing details", task: "listings" },
   get_negotiation: { label: "Reading your proposal", task: "proposal" },
   select_listing: { label: "Starting your proposal", task: "proposal" },
@@ -546,6 +550,15 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
             );
           },
           onToolExecutionEnd: async ({ toolCall, toolOutput }) => {
+            // Failed tools are returned to the model, so surface them for debugging.
+            if (toolOutput.type === "tool-error")
+              console.warn(
+                `Agent tool "${toolCall.toolName}" failed: ${
+                  toolOutput.error instanceof Error
+                    ? toolOutput.error.message
+                    : String(toolOutput.error)
+                }`,
+              );
             const webError =
               toolCall.toolName === "web_search" &&
               toolOutput.type === "tool-error"

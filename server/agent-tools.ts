@@ -2,7 +2,7 @@ import { tool, type ToolSet } from "ai";
 import { z } from "zod";
 import { RunError } from "./errors.ts";
 import { repeatedQuestion } from "./conversation.ts";
-import { inventoryWords } from "./inventory-terms.ts";
+import { inventoryWords } from "../shared/inventoryTerms.ts";
 import { searchWeb } from "./web-search.ts";
 import type { ListingText } from "./listing-language.ts";
 import type { createNegotiationTools } from "./negotiation-tools.ts";
@@ -345,6 +345,29 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
               };
             },
           }),
+          suggest_watch: tool({
+            description:
+              "Offer to watch for an item when Takeover has no suitable match yet. This only displays a button; the buyer taps it to be notified in the app when a matching Takeover listing appears. It does not create the alert itself, so never claim an alert is active. Use the core item words and only a budget the buyer stated.",
+            inputSchema: z
+              .object({
+                query: z.string().trim().min(1).max(120),
+                maxPrice: z.number().min(0).max(1_000_000).optional(),
+              })
+              .strict(),
+            execute: async ({ query, maxPrice }) => {
+              claimTool();
+              await send({
+                type: "watch_suggestion",
+                query,
+                ...(maxPrice === undefined ? {} : { maxPrice }),
+              });
+              return {
+                suggested: true,
+                nextStep:
+                  "A button now lets the buyer choose to be notified. Nothing is active until they tap it. In-app notifications only; no email.",
+              };
+            },
+          }),
           show_takeover_listings: tool({
             description:
               "Display up to six genuinely relevant takeover offer cards, ranked best first. Use only IDs from the current database catalog or inventory_search results. Exclude accessories that do not match the wanted item. Use an empty array if no relevant match exists. Required before the final discovery answer.",
@@ -432,10 +455,11 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                     apiKey: braveApiKey,
                     fetchImpl,
                     scope:
-                    purpose === "product_info" || purpose === "similar_items"
-                      ? "research"
-                      : "offers",
-                    ...(purpose !== "product_info" && purpose !== "similar_items"
+                      purpose === "product_info" || purpose === "similar_items"
+                        ? "research"
+                        : "offers",
+                    ...(purpose !== "product_info" &&
+                    purpose !== "similar_items"
                       ? { source: requestedSource }
                       : {}),
                   },
@@ -475,10 +499,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                     id: `web-${++sourceSequence}`,
                   };
                   sources.push(source);
-                  if (
-                    purpose !== "product_info" &&
-                    purpose !== "similar_items"
-                  )
+                  if (purpose !== "product_info" && purpose !== "similar_items")
                     offerSourceIds.add(source.id);
                   return source;
                 })

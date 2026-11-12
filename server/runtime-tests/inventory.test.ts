@@ -402,3 +402,26 @@ test("hosted search includes other sellers and ignores browser-injected inventor
     /browser-injected-desk/,
   );
 });
+
+test("suggest_watch only displays a suggestion and creates nothing", async () => {
+  const model = new MockLanguageModelV4({
+    doStream: [
+      toolCall("inventory_search", { query: "piano" }, "find"),
+      toolCall("show_takeover_listings", { ids: [] }, "show"),
+      toolCall("suggest_watch", { query: "piano", maxPrice: 300 }, "watch"),
+      answer("## Takeover\nNo piano yet. Tap the button to be notified."),
+    ],
+  });
+  const events = await eventsFor(
+    createAgentRuntime({ apiKey: "test-key", modelImpl: model }),
+    {
+      text: "Find a piano under CHF 300",
+      context: { maxPrice: 300, budgetSpecified: true, source: "takeover" },
+      inventory: [ownDesk],
+    },
+  );
+  assert.deepEqual(
+    events.filter((event) => event.type === "watch_suggestion"),
+    [{ type: "watch_suggestion", query: "piano", maxPrice: 300 }],
+  );
+});

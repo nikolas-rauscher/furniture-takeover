@@ -77,6 +77,8 @@ type SellFlowProps = {
   agentConversation?: ReactNode;
   agentTools?: ReactNode;
   agentWorking?: boolean;
+  /** Demand and price context for the listing being written. */
+  insight?: ReactNode;
   quota?: AgentQuota;
   onAccount: () => void;
   onBack: () => void;
@@ -97,6 +99,7 @@ export default function SellFlow({
   step,
   editing,
   pickupMin = TODAY,
+  insight,
   busy,
   photoReading = false,
   uploadError,
@@ -657,6 +660,7 @@ export default function SellFlow({
               <strong>
                 {draft.price ? money(Number(draft.price)) : "Price not set"}
               </strong>
+              {insight}
               {draft.description && (
                 <p className="listing-preview-description">
                   {draft.description}

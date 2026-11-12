@@ -81,6 +81,12 @@ import AgentRunPanel from "./components/AgentRunPanel";
 import { useAgentRun } from "./hooks/useAgentRun";
 import { useAgentAssist } from "./hooks/useAgentAssist";
 import { useSaved } from "./hooks/useSaved";
+import { useAlerts } from "./alerts/useAlerts";
+import { demandLadder, similarListings } from "./alerts/matching";
+import { activateWatch, findWatch, watchSearch } from "./alerts/watch";
+import SellerInsight from "./alerts/SellerInsight";
+import MatchAlerts from "./alerts/MatchAlerts";
+import WatchPrompt from "./alerts/WatchPrompt";
 import {
   agentSearchRequest,
   isSavedSearches,
@@ -322,6 +328,25 @@ export default function App({ account }: { account?: AccountConnection }) {
   );
   const editingItem = own.find((item) => item.id === editingListing);
   const savedSearches = jobs.filter((job) => job.id !== "seed-search");
+  const alerts = useAlerts(savedSearches, visibleListings, database.ready);
+  const alertListings = new Map(visibleListings.map((item) => [item.id, item]));
+  // A match is only useful while its listing can still be opened.
+  const shownAlerts = alerts.alerts.filter(
+    (alert) => alertListings.get(alert.listingId)?.status === "active",
+  );
+  const matchAlerts = (items: typeof shownAlerts, markAll = false) => (
+    <MatchAlerts
+      alerts={items}
+      searchTitle={(id) => jobs.find((job) => job.id === id)?.title}
+      onOpen={(alert) => {
+        const item = alertListings.get(alert.listingId);
+        alerts.markRead(alert.id);
+        if (item) openProduct(item);
+      }}
+      onDismiss={(alert) => alerts.dismiss(alert.id)}
+      onMarkAllRead={markAll ? alerts.markAllRead : undefined}
+    />
+  );
   const savedListings = visibleListings.filter((item) =>
     favorites.includes(item.id),
   );
@@ -1090,6 +1115,21 @@ export default function App({ account }: { account?: AccountConnection }) {
     void runListing(answer, question.question);
     return true;
   }
+  function isWatching(query: string, maxPrice?: number) {
+    const search = watchSearch(query, location, maxPrice);
+    return !!search && findWatch(jobs, search)?.paused === false;
+  }
+  function addWatch(query: string, maxPrice?: number) {
+    const search = watchSearch(query, location, maxPrice);
+    if (!search) return;
+    if (findWatch(jobs, search)?.paused === false) {
+      setToast("You are already watching for this.");
+      return;
+    }
+    const id = crypto.randomUUID();
+    setJobs((current) => activateWatch(current, search, id));
+    setToast("Watching. You'll be notified in the app when a match appears.");
+  }
   function saveSearch() {
     const existing = editingJob
       ? jobs.find((job) => job.id === editingJob)
@@ -1626,6 +1666,14 @@ export default function App({ account }: { account?: AccountConnection }) {
           >
             Saved searches
             <span className="nav-count">{savedSearches.length}</span>
+            {alerts.unread > 0 && (
+              <span
+                className="nav-count unread"
+                aria-label={`${alerts.unread} new matches`}
+              >
+                {alerts.unread}
+              </span>
+            )}
           </Button>
           <Button
             className={view === "messages" ? "active" : ""}
@@ -2045,46 +2093,64 @@ export default function App({ account }: { account?: AccountConnection }) {
                           externalComposer
                           readOnly={archived}
                           outcome={
-                            turn.proposal?.draft && (
-                              <MessageDraftPreview
-                                proposal={turn.proposal}
-                                sent={negotiations.items.some(
-                                  (proposal) =>
-                                    proposal.id === turn.proposal?.id &&
-                                    proposal.status === "sent",
-                                )}
-                                title={
-                                  own.find(
-                                    (item) =>
-                                      item.id === turn.proposal?.listingId,
-                                  )?.title ?? "Listing"
-                                }
-                                onReview={
-                                  negotiations.items.some(
+                            <>
+                              {turn.proposal?.draft && (
+                                <MessageDraftPreview
+                                  proposal={turn.proposal}
+                                  sent={negotiations.items.some(
                                     (proposal) =>
                                       proposal.id === turn.proposal?.id &&
-                                      proposal.version ===
-                                        turn.proposal.version &&
-                                      proposal.status === "draft",
-                                  ) &&
-                                  own.some(
-                                    (item) =>
-                                      item.id === turn.proposal?.listingId &&
-                                      item.status === "active",
-                                  )
-                                    ? () => {
-                                        negotiations.activate(
-                                          turn.proposal!.id,
-                                        );
-                                        openMessages(
-                                          turn.proposal!.listingId,
-                                          turn.proposal,
-                                        );
-                                      }
-                                    : undefined
-                                }
-                              />
-                            )
+                                      proposal.status === "sent",
+                                  )}
+                                  title={
+                                    own.find(
+                                      (item) =>
+                                        item.id === turn.proposal?.listingId,
+                                    )?.title ?? "Listing"
+                                  }
+                                  onReview={
+                                    negotiations.items.some(
+                                      (proposal) =>
+                                        proposal.id === turn.proposal?.id &&
+                                        proposal.version ===
+                                          turn.proposal.version &&
+                                        proposal.status === "draft",
+                                    ) &&
+                                    own.some(
+                                      (item) =>
+                                        item.id === turn.proposal?.listingId &&
+                                        item.status === "active",
+                                    )
+                                      ? () => {
+                                          negotiations.activate(
+                                            turn.proposal!.id,
+                                          );
+                                          openMessages(
+                                            turn.proposal!.listingId,
+                                            turn.proposal,
+                                          );
+                                        }
+                                      : undefined
+                                  }
+                                />
+                              )}
+                              {!reviewingListing && turn.watchSuggestion && (
+                                <WatchPrompt
+                                  query={turn.watchSuggestion.query}
+                                  maxPrice={turn.watchSuggestion.maxPrice}
+                                  watching={isWatching(
+                                    turn.watchSuggestion.query,
+                                    turn.watchSuggestion.maxPrice,
+                                  )}
+                                  onWatch={() =>
+                                    addWatch(
+                                      turn.watchSuggestion!.query,
+                                      turn.watchSuggestion!.maxPrice,
+                                    )
+                                  }
+                                />
+                              )}
+                            </>
                           }
                           className={`${reviewingListing ? "" : "search-agent-message"} ${archived ? "archived-agent-response" : ""}`}
                           showHistory={false}
@@ -2141,6 +2207,8 @@ export default function App({ account }: { account?: AccountConnection }) {
                   .filter((item) => item.status === "draft")
                   .map((proposal) => proposalSummary(proposal))}
               {searchIsHome && availability?.notices()}
+              {searchIsHome &&
+                matchAlerts(shownAlerts.filter((alert) => !alert.read))}
               {searchIsHome && visibleListings.length > 0 && (
                 <>
                   <div className="section-heading">
@@ -2192,6 +2260,17 @@ export default function App({ account }: { account?: AccountConnection }) {
             <SavedSearchesPage
               searches={savedSearches}
               location={location}
+              alerts={matchAlerts(shownAlerts, true)}
+              onTogglePause={(job) =>
+                setJobs((current) =>
+                  current.map((item) =>
+                    item.id === job.id
+                      ? { ...item, paused: !item.paused }
+                      : item,
+                  ),
+                )
+              }
+              onWatch={addWatch}
               onFind={goHome}
               onRun={(job) => {
                 const search = restoreSearch(job, location);
@@ -2260,6 +2339,26 @@ export default function App({ account }: { account?: AccountConnection }) {
                 }}
                 onDraftChange={changeDraft}
                 agentWorking={listingRun.state.status === "running"}
+                insight={
+                  <SellerInsight
+                    price={
+                      draft.price.trim() ? Number(draft.price) : Number.NaN
+                    }
+                    ladder={demandLadder(savedSearches, {
+                      title: draft.title,
+                      price: draft.price.trim()
+                        ? Number(draft.price)
+                        : Number.NaN,
+                      condition: draft.condition,
+                      pickupBy: draft.pickup,
+                    })}
+                    similar={similarListings(
+                      visibleListings,
+                      draft.title,
+                      editingListing ?? undefined,
+                    )}
+                  />
+                }
                 agentConversation={listingConversation}
                 agentTools={listingTools}
                 quota={agentHealth?.quota}
@@ -2411,6 +2510,7 @@ export default function App({ account }: { account?: AccountConnection }) {
       </div>
 
       <MobileNav
+        badges={{ searches: alerts.unread }}
         active={
           view === "sell"
             ? "sell"
@@ -2693,8 +2793,8 @@ export default function App({ account }: { account?: AccountConnection }) {
       {modal === "clear" && (
         <Modal title="Clear local workspace?" onClose={() => setModal(null)}>
           <p className="modal-intro">
-            This removes your listings, favourites and saved searches from this
-            browser.
+            This removes your listings, favourites, saved searches and their
+            alerts from this browser.
           </p>
           <div className="modal-actions">
             <Button className="button secondary" onClick={() => setModal(null)}>
@@ -2707,6 +2807,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                 setOwn([]);
                 setFavorites([]);
                 setJobs([]);
+                alerts.clear();
                 setCompared([]);
                 setSearchArea({
                   location: "Lausanne",

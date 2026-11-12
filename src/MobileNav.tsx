@@ -22,6 +22,7 @@ export type MobileDestination =
 type MobileNavProps = {
   active: MobileDestination | null;
   onNavigate: (destination: MobileDestination) => void;
+  badges?: Partial<Record<MobileDestination, number>>;
 };
 
 const destinations = [
@@ -33,7 +34,11 @@ const destinations = [
   { id: "account", label: "My listings", Icon: Package },
 ] as const;
 
-export default function MobileNav({ active, onNavigate }: MobileNavProps) {
+export default function MobileNav({
+  active,
+  onNavigate,
+  badges,
+}: MobileNavProps) {
   return (
     <BottomNavigation
       className="mobile-nav"
@@ -53,7 +58,10 @@ export default function MobileNav({ active, onNavigate }: MobileNavProps) {
                   <Button
                     className={`mobile-nav-item${id === "sell" ? " mobile-nav-sell" : ""}`}
                     type="button"
-                    aria-label={id === "account" ? "My listings" : label}
+                    aria-label={
+                      (id === "account" ? "My listings" : label) +
+                      (badges?.[id] ? `, ${badges[id]} new` : "")
+                    }
                   >
                     <Icon
                       size={id === "sell" ? 26 : 22}
@@ -63,6 +71,14 @@ export default function MobileNav({ active, onNavigate }: MobileNavProps) {
                     <BottomNavigationLabel>
                       {id === "account" ? "Listings" : label}
                     </BottomNavigationLabel>
+                    {Boolean(badges?.[id]) && (
+                      <span
+                        className="mobile-nav-badge"
+                        aria-hidden="true"
+                      >
+                        {badges?.[id]}
+                      </span>
+                    )}
                   </Button>
                 </BottomNavigationItem>
               </BottomNavigationHighlightItem>

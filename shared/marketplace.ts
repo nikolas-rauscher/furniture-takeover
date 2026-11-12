@@ -1,3 +1,5 @@
+import { inventoryWords } from "./inventoryTerms.ts";
+
 // Optional free-form labels on legacy listings; users never choose from a taxonomy.
 export type Category = string;
 export type Source = "takeover" | "Ricardo" | "Anibis";
@@ -263,34 +265,7 @@ export function parseSearch(
   };
 }
 function queryMatches(product: Product, query: string): boolean {
-  const aliases: Record<string, string> = {
-    schreibtisch: "desk",
-    schreibtische: "desk",
-    lernplatz: "desk",
-    arbeitsplatz: "desk",
-    stuhl: "chair",
-    stuhle: "chair",
-    sessel: "armchair",
-    hocker: "stool",
-    couch: "sofa",
-    regal: "shelf",
-    regale: "shelf",
-    shelves: "shelf",
-    bookshelf: "shelf",
-    bookcase: "shelf",
-    lampe: "lamp",
-    lampen: "lamp",
-    licht: "lamp",
-    lighting: "lamp",
-  };
-  const words = (value: string) =>
-    normalize(value)
-      .split(/[^\p{L}\p{N}]+/u)
-      .filter(Boolean)
-      .map(
-        (word) =>
-          aliases[word] || (word.length > 3 ? word.replace(/s$/, "") : word),
-      );
+  const words = inventoryWords;
   // The listing's identity comes from its title and optional legacy label.
   // Descriptions can mention accessories or other items that are not for sale.
   const haystack = words(`${product.title} ${product.category}`);
@@ -331,7 +306,9 @@ export function filterProducts(items: Product[], c: Criteria): Product[] {
   );
 }
 export function criteriaTitle(c: Criteria) {
-  return `${c.category === "All" ? c.query || "Furniture" : c.category} under CHF ${c.maxPrice}`;
+  const item = c.category === "All" ? c.query || "Furniture" : c.category;
+  // 1,000,000 is the "Any budget" value; it is not a price to print.
+  return c.maxPrice >= 1_000_000 ? item : `${item} under CHF ${c.maxPrice}`;
 }
 export function shortDate(value: string) {
   return value

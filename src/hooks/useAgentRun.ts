@@ -30,6 +30,7 @@ export type AgentRunTurn = {
   error: string | null;
   steps?: AgentRunStep[];
   inventoryMatchIds?: string[] | null;
+  watchSuggestion?: { query: string; maxPrice?: number };
 };
 export type AgentRunState = AgentRunTurn & {
   offerListingIds?: string[];
@@ -98,6 +99,7 @@ export function beginAgentRun(
         error: previous.error,
         steps: previous.steps,
         inventoryMatchIds: previous.inventoryMatchIds,
+        watchSuggestion: previous.watchSuggestion,
       },
     ];
   }
@@ -165,6 +167,14 @@ export function applyAgentRunEvent(
         offerListingIds: [
           ...new Set([...(state.offerListingIds ?? []), event.listingId]),
         ].slice(0, 6),
+      };
+    case "watch_suggestion":
+      return {
+        ...state,
+        watchSuggestion: {
+          query: event.query,
+          ...(event.maxPrice === undefined ? {} : { maxPrice: event.maxPrice }),
+        },
       };
     case "inventory_matches":
       return { ...state, inventoryMatchIds: event.ids };
