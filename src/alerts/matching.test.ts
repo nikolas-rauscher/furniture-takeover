@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { defaults, type Product } from "../../shared/marketplace.ts";
 import { products } from "../testing/fixtures.ts";
+import { inventorySearch } from "../../server/agent-tools.ts";
 import {
   demandLadder,
   hasBudget,
@@ -34,6 +35,29 @@ const run = (
   listings: Product[],
   jobs = [job],
 ) => updateAlerts(state, jobs, listings, now);
+
+test("saved watches and discovery share supported marketplace vocabulary", () => {
+  for (const [query, title] of [
+    ["bureau", "White desk"],
+    ["coffee machine", "Espresso machine"],
+    ["vélo", "City bicycle"],
+    ["schreibtische", "Office desks"],
+    ["bookshelves", "Storage shelf"],
+  ]) {
+    const item = listing("new", { title, category: "All" });
+    const criteria = { ...job.criteria, query };
+    const jobs = [{ ...job, criteria }];
+    const baseline = run(emptyAlerts(), [], jobs);
+    assert.deepEqual(
+      inventorySearch([item], query).map((p) => p.id),
+      [item.id],
+    );
+    assert.deepEqual(
+      run(baseline, [item], jobs).alerts.map((a) => a.listingId),
+      [item.id],
+    );
+  }
+});
 
 test("the first pass records a baseline and never alerts for existing listings", () => {
   const state = run(emptyAlerts(), [listing("a")]);

@@ -2,7 +2,7 @@ import { tool, type ToolSet } from "ai";
 import { z } from "zod";
 import { RunError } from "./errors.ts";
 import { repeatedQuestion } from "./conversation.ts";
-import { inventoryWords } from "./inventory-terms.ts";
+import { inventoryWords } from "../shared/inventoryTerms.ts";
 import { searchWeb } from "./web-search.ts";
 import type { ListingText } from "./listing-language.ts";
 import type { createNegotiationTools } from "./negotiation-tools.ts";
@@ -455,10 +455,11 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                     apiKey: braveApiKey,
                     fetchImpl,
                     scope:
-                    purpose === "product_info" || purpose === "similar_items"
-                      ? "research"
-                      : "offers",
-                    ...(purpose !== "product_info" && purpose !== "similar_items"
+                      purpose === "product_info" || purpose === "similar_items"
+                        ? "research"
+                        : "offers",
+                    ...(purpose !== "product_info" &&
+                    purpose !== "similar_items"
                       ? { source: requestedSource }
                       : {}),
                   },
@@ -498,10 +499,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                     id: `web-${++sourceSequence}`,
                   };
                   sources.push(source);
-                  if (
-                    purpose !== "product_info" &&
-                    purpose !== "similar_items"
-                  )
+                  if (purpose !== "product_info" && purpose !== "similar_items")
                     offerSourceIds.add(source.id);
                   return source;
                 })
