@@ -199,7 +199,12 @@ export function isAlertsState(value: unknown): value is AlertsState {
   );
 }
 
-type DraftForDemand = { title: string; price: number; condition?: string };
+type DraftForDemand = {
+  title: string;
+  price: number;
+  condition?: string;
+  pickupBy?: string;
+};
 
 function matchingJobs<T extends Pick<SearchJob, "criteria" | "paused">>(
   jobs: T[],
@@ -214,7 +219,7 @@ function matchingJobs<T extends Pick<SearchJob, "criteria" | "paused">>(
     category: "All",
     condition: draft.condition ?? "",
     source: "takeover",
-    pickupBy: "",
+    pickupBy: draft.pickupBy ?? "",
     status: "active",
   } as Product;
   return jobs.filter(

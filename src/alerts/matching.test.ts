@@ -252,6 +252,29 @@ test("demand ladder ignores paused, non-matching and invalid drafts", () => {
   );
 });
 
+test("seller demand respects the pickup deadline used by actual alerts", () => {
+  const deadline = {
+    ...budget(100),
+    criteria: { ...budget(100).criteria, pickup: "2026-11-20" },
+  };
+  for (const [pickupBy, expected] of [
+    ["2026-11-25", 0],
+    ["2026-11-20", 1],
+    ["2026-11-15", 1],
+  ] as const) {
+    const hypothetical = { ...draft, pickupBy };
+    assert.equal(
+      demandLadder([deadline], hypothetical).rungs[0].count,
+      expected,
+    );
+    const baseline = run(emptyAlerts(), [], [deadline]);
+    assert.equal(
+      run(baseline, [listing("new", hypothetical)], [deadline]).alerts.length,
+      expected,
+    );
+  }
+});
+
 test("a free listing has a single rung", () => {
   assert.deepEqual(
     demandLadder([budget(0)], { title: "Desk", price: 0 }).rungs,

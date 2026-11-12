@@ -2350,6 +2350,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                         ? Number(draft.price)
                         : Number.NaN,
                       condition: draft.condition,
+                      pickupBy: draft.pickup,
                     })}
                     similar={similarListings(
                       visibleListings,
