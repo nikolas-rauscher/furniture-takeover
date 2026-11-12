@@ -29,6 +29,8 @@ type ListingDetailPageProps = {
   onMessage(): void;
   onEdit(): void;
   onAskAgent(): void;
+  /** Feature-flagged availability prototype; replaces "Message seller". */
+  availabilityPanel?: ReactNode;
 };
 
 export default function ListingDetailPage({
@@ -45,6 +47,7 @@ export default function ListingDetailPage({
   onMessage,
   onEdit,
   onAskAgent,
+  availabilityPanel,
 }: ListingDetailPageProps) {
   if (!selected)
     return (
@@ -162,18 +165,22 @@ export default function ListingDetailPage({
             {(!cloud || !selected.own) && (
               <div
                 className={
-                  mobileContact ? "listing-detail-mobile-contact" : undefined
+                  mobileContact && !availabilityPanel
+                    ? "listing-detail-mobile-contact"
+                    : undefined
                 }
               >
-                <Button
-                  animateIcon
-                  className="button primary full"
-                  type="button"
-                  disabled={selected.status !== "active"}
-                  onClick={onMessage}
-                >
-                  <MessageCircle size={17} /> Message seller
-                </Button>
+                {availabilityPanel ?? (
+                  <Button
+                    animateIcon
+                    className="button primary full"
+                    type="button"
+                    disabled={selected.status !== "active"}
+                    onClick={onMessage}
+                  >
+                    <MessageCircle size={17} /> Message seller
+                  </Button>
+                )}
               </div>
             )}
             {(!cloud || selected.own) && (

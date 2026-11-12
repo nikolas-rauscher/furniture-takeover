@@ -5,7 +5,7 @@ import type { AccountConnection } from "../cloud/AccountSession";
 import AccountMessages from "../cloud/AccountMessages";
 import { ArrowLeft, Image as ImageIcon, Trash2 } from "@/components/icons";
 import { motionBehavior } from "../uiMotion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { SellerConversation } from "../../shared/messages";
 import {
   listMessages,
@@ -18,6 +18,12 @@ import "./messages.css";
 export type MessagesPageProps = {
   account?: AccountConnection;
   onDeleted?: (id: string) => void;
+  /** Feature-flagged availability prototype shown above the open thread. */
+  threadBanner?: (thread: {
+    listingId: string;
+    role: "buyer" | "seller";
+    onConversation: (conversation: SellerConversation) => void;
+  }) => ReactNode;
   listingId?: string;
   listing?: Product;
   listings: Product[];
@@ -53,6 +59,7 @@ function DemoMessagesPage({
   onBeforeSend,
   onSent,
   onDeleted,
+  threadBanner,
 }: MessagesPageProps) {
   const [conversations, setConversations] = useState<SellerConversation[]>([]);
   const [selected, setSelected] = useState(listingId ?? "");
@@ -317,6 +324,17 @@ function DemoMessagesPage({
                   />
                 </label>
               </header>
+              {threadBanner?.({
+                listingId: current.listingId,
+                role,
+                onConversation: (updated) => {
+                  stickToBottom.current = true;
+                  setConversations((items) => [
+                    updated,
+                    ...items.filter((item) => item.id !== updated.id),
+                  ]);
+                },
+              })}
               <div
                 className="seller-chat-messages"
                 ref={messagesRef}

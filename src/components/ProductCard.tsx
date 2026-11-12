@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Button } from "./ui/button";
 import { listingPhotos } from "../../shared/listingPhotos";
 import { GitCompareArrows, Image as ImageIcon } from "@/components/icons";
@@ -12,6 +13,9 @@ type ProductCardProps = {
   onOpen: () => void;
   onToggleFavorite: () => void;
   onToggleCompare: () => void;
+  /** Feature-flagged availability prototypes; absent on main. */
+  statusLabel?: ReactNode;
+  availabilityNote?: ReactNode;
 };
 
 export default function ProductCard({
@@ -22,6 +26,8 @@ export default function ProductCard({
   onOpen,
   onToggleFavorite,
   onToggleCompare,
+  statusLabel,
+  availabilityNote,
 }: ProductCardProps) {
   const itemTags = product.tags?.filter((tag) => tag !== "Demo") ?? [];
   const tags = [
@@ -69,6 +75,7 @@ export default function ProductCard({
           </span>
         )}
         {product.status === "sold" && <span className="sold-label">Sold</span>}
+        {statusLabel}
       </div>
       <div className="product-info">
         <div className="product-tags" aria-label="Listing details">
@@ -95,6 +102,7 @@ export default function ProductCard({
             {product.pickupPoint.address}
           </p>
         )}
+        {availabilityNote}
         <div className="product-bottom">
           <span
             className={`pickup ${product.pickupBy === TODAY ? "today" : ""}`}

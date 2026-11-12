@@ -110,6 +110,7 @@ import type {
   AgentPreferencesPatchEvent,
 } from "../shared/actions";
 import { useAgentHealth } from "./hooks/useAgentHealth";
+import { useAvailability } from "./availability/useAvailability";
 import {
   defaults,
   criteriaTitle,
@@ -245,6 +246,15 @@ export default function App({ account }: { account?: AccountConnection }) {
   const database = useMarketplaceListings(account);
   const own = database.listings;
   const setOwn = database.setListings;
+  // `?availability=reserve` prototype; null (main behaviour) when the flag is off.
+  const availability = useAvailability({
+    localDemo: !account,
+    listings: own,
+    ready: database.ready,
+    setStatus,
+    setToast,
+    onFindSimilar: (title) => void runSearch(title),
+  });
   const [compared, setCompared] = useState<string[]>([]);
   const comparisonOrigin = useRef<View>("discover");
   const [selectedId, setSelectedId] = useState<string | null>(
@@ -1502,6 +1512,7 @@ export default function App({ account }: { account?: AccountConnection }) {
       onOpen={() => openProduct(item)}
       onToggleFavorite={() => toggleFavorite(item.id)}
       onToggleCompare={() => toggleCompare(item.id)}
+      {...availability?.cardProps(item)}
     />
   );
 
@@ -1773,6 +1784,7 @@ export default function App({ account }: { account?: AccountConnection }) {
               onDeleted={() =>
                 window.history.replaceState(null, "", "#messages")
               }
+              threadBanner={availability?.threadBanner}
               listings={own}
               account={account}
               listing={own.find((item) => item.id === messageListingId)}
@@ -2128,6 +2140,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                 negotiations.items
                   .filter((item) => item.status === "draft")
                   .map((proposal) => proposalSummary(proposal))}
+              {searchIsHome && availability?.notices()}
               {searchIsHome && visibleListings.length > 0 && (
                 <>
                   <div className="section-heading">
@@ -2310,9 +2323,19 @@ export default function App({ account }: { account?: AccountConnection }) {
             </>
           </WorkspacePage>
 
+          {view === "detail" &&
+            !selected &&
+            selectedId &&
+            availability?.notices(selectedId)}
           {view === "detail" && (
             <ListingDetailPage
               selected={selected}
+              availabilityPanel={
+                selected &&
+                availability?.detailPanel(selected, () =>
+                  openMessages(selected.id),
+                )
+              }
               cloud={!!account}
               catalog={localListings}
               renderProduct={productCard}
@@ -2449,6 +2472,7 @@ export default function App({ account }: { account?: AccountConnection }) {
             </Button>
           </div>
         )}
+      {availability?.overlay}
       {toast && (
         <div className="toast" role="status">
           <Check size={18} />
