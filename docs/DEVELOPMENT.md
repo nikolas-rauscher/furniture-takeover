@@ -6,6 +6,7 @@ The browser calls relative `/api/...` URLs. Vite forwards them to the loopback A
 
 - `GET /api/health`: reports whether provider credentials are configured. It does not make a paid call or verify that a key is valid.
 - `POST /api/agent/assist`: validated structured typing suggestions and photo-to-listing drafts.
+- `POST /api/agent/group-photos`: sorts up to 12 reduced photo previews into one group per item for the "sell several items" flow. Each group is then drafted through `/api/agent/assist` with that item's own photos and notes.
 - `POST /api/agent/run`: bounded agent execution, returning NDJSON tool events, questions, patches, answer text and sources.
 - `/api/listings`: seeded demo catalog and validated updates.
 - `/api/messages`: local conversation preview, isolated by browser workspace identifier.

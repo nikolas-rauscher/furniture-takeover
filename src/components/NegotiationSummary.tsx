@@ -1,3 +1,6 @@
+import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
+import { Item, ItemHeader, ItemContent, ItemActions } from "./ui/item";
 import type { Negotiation } from "../../shared/negotiation";
 import { money } from "../../shared/marketplace";
 export default function NegotiationSummary({
@@ -38,15 +41,15 @@ export default function NegotiationSummary({
                 ].join(" · ")}
           </span>
         </div>
-        <button
+        <Button
           type="button"
           className="button"
           disabled={disabled || unavailable}
           onClick={onReview}
         >
           Open chat
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           className="text-button proposal-dismiss"
           disabled={disabled}
@@ -54,7 +57,7 @@ export default function NegotiationSummary({
           aria-label="Discard proposal"
         >
           ×
-        </button>
+        </Button>
       </section>
     );
   return (
@@ -106,25 +109,26 @@ export default function NegotiationSummary({
           : "Draft only · Awaiting seller agreement"}
       </p>
       <div className="offer-draft-actions">
-        <button
+        <Button
+          animateIcon
           className="button primary"
           disabled={disabled || unavailable}
           onClick={onReview}
         >
           Open seller chat
-        </button>
+        </Button>
         {onContinue && (
-          <button
+          <Button
             className="text-button"
             disabled={disabled}
             onClick={onContinue}
           >
             Continue with agent
-          </button>
+          </Button>
         )}
-        <button className="text-button" disabled={disabled} onClick={onDiscard}>
+        <Button className="text-button" disabled={disabled} onClick={onDiscard}>
           Discard proposal
-        </button>
+        </Button>
       </div>
     </section>
   );
@@ -144,21 +148,31 @@ export function MessageDraftPreview({
 }) {
   if (!proposal.draft || proposal.status !== "draft") return null;
   return (
-    <section
+    <Item
+      render={<section />}
       className="chat-message-draft"
       aria-label={`Message draft for ${title}`}
     >
-      <div className="chat-message-draft-heading">
+      <ItemHeader className="chat-message-draft-heading">
         <strong>Message to seller</strong>
-        <span>
+        <Badge variant="secondary">
           {sent ? "Sent" : onReview ? "Ready for review" : "Earlier draft"}
-        </span>
-      </div>
-      <p>{proposal.draft.message}</p>
+        </Badge>
+      </ItemHeader>
+      <ItemContent>
+        <p>{proposal.draft.message}</p>
+      </ItemContent>
       {onReview && (
-        <button type="button" className="button primary" onClick={onReview}>
-          Open seller chat
-        </button>
+        <ItemActions>
+          <Button
+            animateIcon
+            type="button"
+            className="button primary"
+            onClick={onReview}
+          >
+            Open seller chat
+          </Button>
+        </ItemActions>
       )}
       <small>
         {sent
@@ -167,6 +181,6 @@ export function MessageDraftPreview({
             ? "Draft only · Not sent"
             : "This is a previous version of the message."}
       </small>
-    </section>
+    </Item>
   );
 }

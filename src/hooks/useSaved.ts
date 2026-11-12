@@ -1,3 +1,4 @@
+import { accountStorageKey } from "../cloud/session.ts";
 import { useEffect, useState } from "react";
 import { restoreSavedValue, type SavedValueValidator } from "./savedState";
 
@@ -6,6 +7,7 @@ export function useSaved<T>(
   fallback: T,
   validate: SavedValueValidator<T>,
 ) {
+  key = accountStorageKey(key);
   const [initial] = useState(() => {
     try {
       return restoreSavedValue(localStorage.getItem(key), fallback, validate);

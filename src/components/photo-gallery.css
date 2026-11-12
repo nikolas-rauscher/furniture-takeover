@@ -3,10 +3,13 @@
   flex-direction: column;
   min-height: 0;
   min-width: 0;
+  max-width: 100%;
   gap: 8px;
 }
 .photo-gallery-stage {
   position: relative;
+  min-width: 0;
+  max-width: 100%;
   min-height: 0;
   overflow: hidden;
   border-radius: 8px;
@@ -26,19 +29,29 @@
   padding: 3px 8px;
   border-radius: 20px;
   background: #fff;
-  font-size: 11px;
+  font-size: var(--type-caption);
 }
 .photo-gallery-controls {
   flex: 0 0 auto;
   min-width: 0;
+  max-width: 100%;
   display: grid;
   gap: 6px;
 }
 .photo-gallery-thumbnails {
   display: flex;
+  flex-wrap: nowrap;
+  min-width: 0;
+  max-width: 100%;
   gap: 6px;
   overflow-x: auto;
-  padding: 2px;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  scroll-padding-inline: 4px;
+  padding: 3px;
+}
+.photo-gallery-thumbnails::-webkit-scrollbar {
+  display: none;
 }
 .photo-gallery-thumbnails button {
   flex: 0 0 44px;
@@ -52,6 +65,10 @@
 .photo-gallery-thumbnails button[aria-pressed="true"] {
   border-color: #3c50be;
   outline: 1px solid #3c50be;
+}
+.photo-gallery-thumbnails button:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: -4px;
 }
 .photo-gallery-thumbnails img {
   width: 100%;
@@ -70,31 +87,32 @@
 }
 .photo-gallery-actions {
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
   align-items: center;
   gap: 12px;
-  min-height: 30px;
+  min-height: 44px;
   font-size: 12px;
 }
 .photo-gallery-actions > span {
   margin-left: auto;
   color: #777;
 }
-.photo-gallery-actions .button {
-  min-height: 30px;
-  padding: 4px 8px;
+.photo-gallery-actions button {
+  min-height: 44px;
+  padding: 8px 12px;
   margin: 0;
-  font-size: 12px;
-}
-.photo-gallery-actions .file-label:has(input:disabled) {
-  opacity: 0.5;
-  cursor: default;
+  font-size: var(--type-label);
 }
 .photo-gallery-remove {
   position: absolute;
   top: 8px;
   right: 8px;
+  width: 44px;
+  height: 44px;
 }
-.selling-photo-layout .sell-layout > .photo-upload-panel {
+.selling-photo-layout .photo-upload-panel {
   display: flex;
   min-height: 0;
 }
@@ -131,6 +149,9 @@
   display: block;
 }
 .listing-preview-photos > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   position: absolute;
   bottom: 8px;
   right: 8px;
@@ -162,6 +183,9 @@
   object-fit: contain;
 }
 @media (max-width: 760px) {
+  .selling-chat-layout .listing-preview-photo-caption {
+    display: none;
+  }
   .selling-chat-layout .listing-preview-photos {
     width: 40px;
     height: 44px;
@@ -222,19 +246,52 @@
   flex-wrap: wrap;
   gap: 8px;
 }
-.photo-gallery-actions label.file-label {
+.photo-add-button {
   display: inline-flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: 6px;
   width: auto;
-  height: 36px;
-  min-height: 36px;
-  white-space: nowrap;
+  max-width: 100%;
+  height: auto;
+  min-height: 44px;
+  white-space: normal;
   cursor: pointer;
 }
-.photo-gallery-actions > span { margin-left: 0; white-space: nowrap; }
+.photo-gallery > input[hidden] {
+  display: none;
+}
+.photo-upload-empty {
+  flex: 1 1 auto;
+  padding: 0;
+  gap: 12px;
+}
+.photo-upload-empty [data-slot="empty-header"] {
+  gap: 4px;
+}
+.photo-upload-empty [data-slot="empty-title"] {
+  color: var(--ink);
+  font-size: 1.0625rem;
+  font-weight: 550;
+}
+.photo-upload-empty [data-slot="empty-description"] {
+  color: var(--muted);
+  font-size: var(--type-support);
+}
+.photo-upload-empty [data-slot="empty-content"] {
+  gap: 8px;
+}
+.photo-upload-empty .file-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  line-height: 1.4;
+}
+.photo-gallery-actions > span {
+  margin-left: 0;
+  white-space: nowrap;
+}
 .photo-gallery.is-editable .photo-gallery-stage.has-image {
   display: block;
   background: #f1f2f4;
@@ -246,4 +303,22 @@
   height: 100%;
   max-height: none;
   object-fit: contain;
+}
+
+.listing-no-photo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+  min-height: 120px;
+  color: var(--muted);
+  background: var(--mist);
+  font-size: 13px;
+}
+
+.product-photo .listing-no-photo {
+  min-height: 0;
 }

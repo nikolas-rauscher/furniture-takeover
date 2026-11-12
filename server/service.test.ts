@@ -23,6 +23,60 @@ const rejectsCode = (code: string) => (error: unknown) =>
 const png =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==";
 
+test("reply assistance receives the actual conversation and never uses canned search suggestions", async () => {
+  const conversation = {
+    role: "buyer" as const,
+    listing: {
+      title: "Desk",
+      price: 40,
+      location: "Lausanne",
+      pickup: "Saturday afternoon",
+    },
+    messages: [
+      { role: "other" as const, text: "Could you bring a second person?" },
+    ],
+  };
+  const suggestions = ["How heavy is the desk, and can the legs be removed?"];
+  const service = createAgentService({
+    ...fakeConfig,
+    fetchImpl: fakeFetch(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      assert.deepEqual(
+        JSON.parse(body.messages[1].content).conversation,
+        conversation,
+      );
+      assert.match(body.messages[0].content, /not a fixed list/);
+      return completion({
+        suggestions,
+        missingDetails: [],
+        metadata: { keywords: [] },
+      });
+    }),
+  });
+  const result = await service.assist({
+    intent: "reply",
+    text: "Suggest replies",
+    conversation,
+  });
+  assert.deepEqual(result.suggestions, suggestions);
+  for (const invalid of [
+    undefined,
+    { ...conversation, role: "admin" },
+    { ...conversation, messages: Array(13).fill(conversation.messages[0]) },
+    { ...conversation, messages: [{ role: "self", text: "x".repeat(4001) }] },
+  ]) {
+    assert.throws(
+      () =>
+        validateRequest({
+          intent: "reply",
+          text: "Suggest replies",
+          conversation: invalid,
+        }),
+      rejectsCode("INVALID_REQUEST"),
+    );
+  }
+});
+
 test("unconfigured provider returns a setup error without fabricated output", async () => {
   let called = false;
   const service = createAgentService({
@@ -95,10 +149,44 @@ test("only explicitly submitted listing photos become provider image content", a
   });
   await service.assist({ intent: "search", text: "Stool" });
   assert.equal(typeof content, "string");
-  await assert.rejects(
-    service.assist({ intent: "search", text: "Stool", image: png }),
-    rejectsCode("INVALID_IMAGE"),
-  );
+});
+
+test("a visual search sends one inspiration photo and rejects a photo set", async () => {
+  let content: unknown;
+  const service = createAgentService({
+    ...fakeConfig,
+    fetchImpl: fakeFetch(async (_url, init) => {
+      content = JSON.parse(String(init?.body)).messages[1].content;
+      return completion({
+        suggestions: [],
+        missingDetails: [],
+        metadata: {
+          query: "white boucle armchair",
+          keywords: ["boucle", "armchair"],
+        },
+      });
+    }),
+  });
+  const result = await service.assist({
+    intent: "search",
+    text: "under CHF 150",
+    images: [png],
+  });
+  assert.equal(result.metadata.query, "white boucle armchair");
+  assert.equal(result.metadata.maxPrice, 150);
+  assert.deepEqual((content as unknown[])[1], {
+    type: "image_url",
+    image_url: { url: png, detail: "auto" },
+  });
+  const otherPng = "data:image/png;base64,iVBORw0KGgo=";
+  for (const request of [
+    { intent: "search", text: "", images: [png, otherPng] },
+    { intent: "search", text: "", image: png, images: [otherPng] },
+  ])
+    await assert.rejects(
+      service.assist(request),
+      rejectsCode("INVALID_IMAGE"),
+    );
 });
 
 test("live search metadata cannot erase explicit constraints and suggestions cannot relax them", async () => {
@@ -644,7 +732,7 @@ test("all listing photos reach the model in order, with a single cover copy", as
     [jpeg, png],
   );
   for (const request of [
-    { intent: "search", text: "desk", images: [png] },
+    { intent: "search", text: "desk", images: [png, png, png] },
     { intent: "listing", text: "", images: Array(7).fill(png) },
     {
       intent: "listing",
@@ -686,4 +774,99 @@ test("typing suggestions may omit background filters while metadata retains them
   assert.deepEqual(result.suggestions, ["used book", "paperback book"]);
   assert.equal(result.metadata.maxPrice, 500);
   assert.equal(result.metadata.radius, 20);
+});
+
+test("photo sorting labels each preview and assigns every photo exactly once", async () => {
+  let sent: { messages: { content: unknown }[] } | undefined;
+  const service = createAgentService({
+    ...fakeConfig,
+    fetchImpl: fakeFetch(async (_url, init) => {
+      sent = JSON.parse(String(init?.body));
+      return completion({
+        groups: [
+          { photos: [2, 0, 0, 9], label: "Pale desk" },
+          { photos: [3], label: "Blue armchair" },
+          { photos: [3, 2] },
+        ],
+      });
+    }),
+  });
+  const result = await service.groupPhotos({ images: [png, png, png, png] });
+  assert.deepEqual(result.groups, [
+    { photos: [2, 0], label: "Pale desk" },
+    { photos: [1], label: "" },
+    { photos: [3], label: "Blue armchair" },
+  ]);
+  const content = sent!.messages[1].content as { type: string; text?: string }[];
+  assert.deepEqual(
+    content.filter((part) => part.text?.startsWith("Photo ")).map((part) => part.text),
+    ["Photo 0", "Photo 1", "Photo 2", "Photo 3"],
+  );
+  assert.equal(content.filter((part) => part.type === "image_url").length, 4);
+});
+
+test("photo sorting validates the photo set before any provider call", async () => {
+  let called = false;
+  const service = createAgentService({
+    ...fakeConfig,
+    fetchImpl: fakeFetch(async () => {
+      called = true;
+      return completion({ groups: [] });
+    }),
+  });
+  for (const images of [[], Array(13).fill(png), ["data:text/plain;base64,AAAA"]])
+    await assert.rejects(
+      service.groupPhotos({ images }),
+      rejectsCode("INVALID_IMAGE"),
+    );
+  assert.equal(called, false);
+  await assert.rejects(
+    createAgentService({ ...fakeConfig, apiKey: "" }).groupPhotos({
+      images: [png],
+    }),
+    rejectsCode("AGENT_NOT_CONFIGURED"),
+  );
+});
+
+test("photo sorting rejects a malformed provider answer", async () => {
+  for (const answer of ["not json", { groups: "desk" }, { groups: [{ photos: 1 }] }])
+    await assert.rejects(
+      serviceWithResponse(answer).groupPhotos({ images: [png] }),
+      rejectsCode("INVALID_AGENT_RESPONSE"),
+    );
+});
+
+test("photo groups larger than one listing allows are split", async () => {
+  const result = await serviceWithResponse({
+    groups: [{ photos: [0, 1, 2, 3, 4, 5, 6, 7], label: "Chairs" }],
+  }).groupPhotos({ images: Array(8).fill(png) });
+  assert.deepEqual(
+    result.groups.map((group) => group.photos),
+    [
+      [0, 1, 2, 3, 4, 5],
+      [6, 7],
+    ],
+  );
+});
+
+test("a seller-chosen item count reaches the provider and is bounded by the photos", async () => {
+  let sent: { messages: { content: unknown }[] } | undefined;
+  const service = createAgentService({
+    ...fakeConfig,
+    fetchImpl: fakeFetch(async (_url, init) => {
+      sent = JSON.parse(String(init?.body));
+      return completion({ groups: [{ photos: [0, 1] }, { photos: [2] }] });
+    }),
+  });
+  const result = await service.groupPhotos({
+    images: [png, png, png],
+    itemCount: 2,
+  });
+  assert.equal(result.groups.length, 2);
+  assert.match(String(sent!.messages[0].content), /exactly 2 separate item/);
+  for (const itemCount of [0, 4, 1.5, "2"])
+    await assert.rejects(
+      service.groupPhotos({ images: [png, png, png], itemCount }),
+      rejectsCode("INVALID_REQUEST"),
+    );
 });

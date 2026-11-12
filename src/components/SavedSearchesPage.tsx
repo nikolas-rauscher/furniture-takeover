@@ -1,13 +1,7 @@
-import {
-  ArrowRight,
-  Bell,
-  BellOff,
-  Bookmark,
-  Pencil,
-  Search,
-  Trash2,
-} from "lucide-react";
+import { Bell, BellOff } from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
+import { Button } from "./ui/button";
+import { ArrowRight, Bookmark, Pencil, Search, Trash2 } from "@/components/icons";
 import { searchText, type SavedSearch } from "../searchRequest";
 
 type SavedSearchesPageProps = {
@@ -100,38 +94,38 @@ export default function SavedSearchesPage({
                     searchText(job.criteria, job.location || location)}
                 </p>
                 <div className="job-actions">
-                  <button
+                  <Button
                     className="button secondary small"
                     onClick={() => onRun(job)}
                   >
                     Run search
                     <ArrowRight size={14} />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     className="button secondary small"
                     aria-pressed={job.paused}
                     onClick={() => onTogglePause(job)}
                   >
                     {job.paused ? <BellOff size={14} /> : <Bell size={14} />}
                     {job.paused ? "Alerts paused" : "Alerts on"}
-                  </button>
+                  </Button>
                 </div>
               </div>
               <div className="job-controls">
-                <button
+                <Button
                   className="icon-button"
                   aria-label={"Edit saved search " + job.title}
                   onClick={() => onEdit(job)}
                 >
                   <Pencil size={16} />
-                </button>
-                <button
+                </Button>
+                <Button
                   className="icon-button"
                   aria-label={"Delete saved search " + job.title}
                   onClick={() => onDelete(job)}
                 >
                   <Trash2 size={16} />
-                </button>
+                </Button>
               </div>
             </article>
           ))}
@@ -141,9 +135,9 @@ export default function SavedSearchesPage({
           <Bookmark size={32} />
           <h2>No saved searches yet</h2>
           <p>Start with what you need, then save your search.</p>
-          <button className="button primary" onClick={onFind}>
+          <Button animateIcon className="button primary" onClick={onFind}>
             Find furniture
-          </button>
+          </Button>
         </div>
       )}
       {searches.length > 0 && (

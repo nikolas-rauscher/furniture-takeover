@@ -684,6 +684,15 @@ export function preferencesAction(
     } else if (value === "" || value === "All") {
       if (
         !wantsClear(field, request.text) &&
+        !(
+          field === "source" &&
+          /\b(?:(?:search|include|use) (?:the )?web|takeover\s+(?:and|und|\+)\s+(?:(?:the|das)\s+)?web)\b/i.test(
+            request.text,
+          ) &&
+          !/\b(?:don't|do not|don’t)\s+(?:search|include|use)\s+(?:the\s+)?web\b/i.test(
+            request.text,
+          )
+        ) &&
         !/\b(?:anything|all furniture|all sources|any condition)\b/i.test(
           request.text,
         )
