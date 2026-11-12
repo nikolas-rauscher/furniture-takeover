@@ -72,6 +72,8 @@ import Modal from "./components/Modal";
 import ProductCard from "./components/ProductCard";
 import SearchPreferencesFields from "./components/SearchPreferencesFields";
 import SellFlow, { type ListingDraft } from "./components/SellFlow";
+import DeveloperSettings from "./components/DeveloperSettings";
+import { useDeveloperMode } from "./availability/useDeveloperMode";
 import PhotoSearchFeedback from "./components/PhotoSearchFeedback";
 import {
   photoSearchFailure,
@@ -252,9 +254,11 @@ export default function App({ account }: { account?: AccountConnection }) {
   const database = useMarketplaceListings(account);
   const own = database.listings;
   const setOwn = database.setListings;
+  const { developerMode, setDeveloperMode } = useDeveloperMode();
   // `?availability=reserve` prototype; null (main behaviour) when the flag is off.
   const availability = useAvailability({
     localDemo: !account,
+    developerMode,
     listings: own,
     ready: database.ready,
     setStatus,
@@ -1701,6 +1705,12 @@ export default function App({ account }: { account?: AccountConnection }) {
                 client={account.client}
                 session={account.session}
                 onProfileSaved={setPickupRegion}
+                browserTools={
+                  <DeveloperSettings
+                    enabled={developerMode}
+                    onEnabledChange={setDeveloperMode}
+                  />
+                }
               />
             ) : account ? (
               <div className="settings-auth-page">
@@ -1718,12 +1728,20 @@ export default function App({ account }: { account?: AccountConnection }) {
                   </p>
                 </div>
                 {connectionStatus}
-                <Button
-                  className="button secondary"
-                  onClick={() => void database.addDemo()}
-                >
-                  Add sample listings
-                </Button>
+                <DeveloperSettings
+                  enabled={developerMode}
+                  onEnabledChange={setDeveloperMode}
+                  clockOffsetMs={availability?.clockOffsetMs}
+                  onResetDemo={availability?.resetDemo}
+                />
+                {developerMode && (
+                  <Button
+                    className="button secondary"
+                    onClick={() => void database.addDemo()}
+                  >
+                    Add sample listings
+                  </Button>
+                )}
                 <Button
                   className="text-button"
                   onClick={() => setModal("help")}
@@ -1740,6 +1758,7 @@ export default function App({ account }: { account?: AccountConnection }) {
             ))}
           <WorkspacePage active={view === "messages"}>
             <MessagesPage
+              developerMode={developerMode}
               listingId={messageListingId}
               initialMessage={
                 messageProposal

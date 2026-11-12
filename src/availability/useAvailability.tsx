@@ -48,6 +48,8 @@ import "./availability.css";
 type Options = {
   /** Local demo mode only: account mode has its own inbox and shared listings. */
   localDemo: boolean;
+  /** Reveals demo tools only; ordinary reservation interactions stay enabled. */
+  developerMode?: boolean;
   listings: Product[];
   ready: boolean;
   setStatus(id: string, status: Product["status"]): void | Promise<void>;
@@ -316,7 +318,18 @@ export function useAvailability(options: Options) {
     setDialog({ kind: "request", listingId });
   }
 
+  async function resetDemo() {
+    setBusy(true);
+    try {
+      await reset(stateRef.current, false);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return {
+    clockOffsetMs: state.clockOffsetMs,
+    resetDemo,
     cardProps(item: Product): {
       statusLabel?: ReactNode;
       availabilityNote?: ReactNode;
@@ -425,37 +438,39 @@ export function useAvailability(options: Options) {
     },
     overlay: (
       <>
-        <DemoControls
-          now={now}
-          offsetMs={state.clockOffsetMs}
-          busy={busy}
-          onSkip={(hours) =>
-            sweep(
-              skipHours(stateRef.current, hours),
-              `Demo clock moved forward ${hours}h. Nothing was due.`,
-            )
-          }
-          onOtherBuyerCancelled={() => {
-            const t = releaseOtherReservations(
-              stateRef.current,
-              optionsRef.current.listings,
-              clock(),
-            );
-            if (!t.statusChanges.length) {
-              optionsRef.current.setToast(
-                "No listing is reserved by another buyer right now.",
-              );
-              return;
+        {options.developerMode && (
+          <DemoControls
+            now={now}
+            offsetMs={state.clockOffsetMs}
+            busy={busy}
+            onSkip={(hours) =>
+              sweep(
+                skipHours(stateRef.current, hours),
+                `Demo clock moved forward ${hours}h. Nothing was due.`,
+              )
             }
-            void commit(t.state, t.statusChanges).then(() =>
-              toastFor(
-                t,
-                "The other buyer cancelled. The item is available again.",
-              ),
-            );
-          }}
-          onReset={() => void reset(stateRef.current, false)}
-        />
+            onOtherBuyerCancelled={() => {
+              const t = releaseOtherReservations(
+                stateRef.current,
+                optionsRef.current.listings,
+                clock(),
+              );
+              if (!t.statusChanges.length) {
+                optionsRef.current.setToast(
+                  "No listing is reserved by another buyer right now.",
+                );
+                return;
+              }
+              void commit(t.state, t.statusChanges).then(() =>
+                toastFor(
+                  t,
+                  "The other buyer cancelled. The item is available again.",
+                ),
+              );
+            }}
+            onReset={() => void resetDemo().catch(failed)}
+          />
+        )}
         {dialog?.kind === "request" && dialogListing && (
           <RequestModal
             listing={dialogListing}
