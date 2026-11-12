@@ -58,7 +58,10 @@ export default function MobileNav({
                   <Button
                     className={`mobile-nav-item${id === "sell" ? " mobile-nav-sell" : ""}`}
                     type="button"
-                    aria-label={id === "account" ? "My listings" : label}
+                    aria-label={
+                      (id === "account" ? "My listings" : label) +
+                      (badges?.[id] ? `, ${badges[id]} new` : "")
+                    }
                   >
                     <Icon
                       size={id === "sell" ? 26 : 22}
@@ -71,7 +74,7 @@ export default function MobileNav({
                     {Boolean(badges?.[id]) && (
                       <span
                         className="mobile-nav-badge"
-                        aria-label={`${badges?.[id]} new`}
+                        aria-hidden="true"
                       >
                         {badges?.[id]}
                       </span>
