@@ -230,7 +230,7 @@ test("demand ladder counts what the asking price and lower prices would alert", 
   assert.deepEqual(demandLadder(jobs, draft), {
     rungs: [
       { price: 65, count: 1 },
-      { price: 59, count: 2 },
+      { price: 58.5, count: 2 },
       { price: 52, count: 2 },
     ],
     noLimit: 0,
@@ -279,6 +279,19 @@ test("a free listing has a single rung", () => {
   assert.deepEqual(
     demandLadder([budget(0)], { title: "Desk", price: 0 }).rungs,
     [{ price: 0, count: 1 }],
+  );
+});
+
+test("demand previews keep cent prices and exact buyer budget boundaries", () => {
+  const exact = demandLadder([budget(49.5)], { title: "Desk", price: 49.5 });
+  assert.deepEqual(exact.rungs[0], { price: 49.5, count: 1 });
+  assert.deepEqual(
+    demandLadder([budget(49.49)], { title: "Desk", price: 49.5 }).rungs[0],
+    { price: 49.5, count: 0 },
+  );
+  assert.deepEqual(
+    exact.rungs.map((rung) => rung.price),
+    [49.5, 44.55, 39.6],
   );
 });
 

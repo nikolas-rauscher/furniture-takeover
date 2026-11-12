@@ -243,7 +243,7 @@ export function demandLadder(
   draft: DraftForDemand,
 ): DemandLadder {
   const prices = [draft.price, draft.price * 0.9, draft.price * 0.8]
-    .map((price) => Math.round(price))
+    .map((price) => Math.round(price * 100) / 100)
     .filter((price, index, all) => price >= 0 && all.indexOf(price) === index);
   const rungs = prices.map((price) => ({
     price,
