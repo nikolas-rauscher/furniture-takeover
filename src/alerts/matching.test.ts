@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { listingInventory } from "../../shared/listingInventory.ts";
 import { defaults, type Product } from "../../shared/marketplace.ts";
 import { products } from "../testing/fixtures.ts";
 import { inventorySearch } from "../../server/agent-tools.ts";
@@ -49,7 +50,7 @@ test("saved watches and discovery share supported marketplace vocabulary", () =>
     const jobs = [{ ...job, criteria }];
     const baseline = run(emptyAlerts(), [], jobs);
     assert.deepEqual(
-      inventorySearch([item], query).map((p) => p.id),
+      inventorySearch(listingInventory([item]), query).map((p) => p.id),
       [item.id],
     );
     assert.deepEqual(
