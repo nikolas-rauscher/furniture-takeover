@@ -1,4 +1,7 @@
+import type { PhotoGroup } from "../shared/agent";
+import { requestPhotoGroups } from "./api/agent";
 import {
+  MAX_BATCH_PHOTOS,
   MAX_STORED_PHOTO_BYTES,
   MAX_UPLOAD_PHOTO_BYTES,
 } from "../shared/listingPhotos";
@@ -55,4 +58,49 @@ export async function readListingPhoto(
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+const base64Bytes = (data: string) =>
+  ((data.length - data.indexOf(",") - 1) * 3) / 4;
+
+/** A smaller copy for sorting many photos at once within one request budget. */
+export async function photoPreview(photo: string): Promise<string> {
+  const budget = MAX_UPLOAD_PHOTO_BYTES / MAX_BATCH_PHOTOS;
+  if (base64Bytes(photo) <= budget) return photo;
+  const image = new Image();
+  image.src = photo;
+  await image.decode();
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Could not prepare this photo.");
+  let longestSide = 640;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const scale = Math.min(
+      1,
+      longestSide / Math.max(image.naturalWidth, image.naturalHeight),
+    );
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    context.fillStyle = "#fff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const data = canvas.toDataURL("image/jpeg", 0.7);
+    if (base64Bytes(data) <= budget) return data;
+    longestSide = Math.round(longestSide * 0.75);
+  }
+  throw new Error("Could not prepare these photos. Try fewer photos.");
+}
+
+/**
+ * Ask the agent which photos show the same item; indices refer to `photos`.
+ * `itemCount` passes on the seller's own count of items.
+ */
+export async function sortListingPhotos(
+  photos: string[],
+  signal: AbortSignal,
+  itemCount?: number,
+): Promise<PhotoGroup[]> {
+  const previews = await Promise.all(photos.map(photoPreview));
+  signal.throwIfAborted();
+  return (await requestPhotoGroups(previews, { signal }, itemCount)).groups;
 }

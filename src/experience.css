@@ -654,6 +654,15 @@ label > textarea {
   margin-top: 64px;
   max-width: 760px;
 }
+.transport-guidance {
+  margin-top: 20px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.transport-guidance > p {
+  margin-top: 8px;
+}
 .detail-description > p {
   font-size: 16px;
   line-height: 1.85;
@@ -1841,7 +1850,9 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
 .selling-chat-layout .listing-preview h2 { font-size: 20px; margin: 0 0 8px; }
 .selling-chat-layout .listing-preview-description { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
 .selling-chat-layout .listing-preview .preview-label { margin: 0; padding: 12px 16px; }
-.selling-chat-layout .listing-edit-button { font-size: 12px; min-height: 42px; }
+.selling-chat-layout .listing-save-form > .listing-edit-button { display: inline-flex; align-items: center; gap: 6px; margin-right: auto; }
+.listing-preview-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.listing-preview-edit { display: inline-flex; align-items: center; gap: 4px; font-size: var(--type-support); }
 @media (max-width: 760px) {
   .selling-chat-layout .view-sell { padding: 8px var(--space-page); }
   .selling-chat-layout .page-title h1 { font-size: 18px; }
@@ -1852,6 +1863,7 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
   .selling-chat-layout .listing-preview h2 { font-size: 13px; white-space: nowrap; display: block; text-overflow: ellipsis; overflow: hidden; margin: 0; }
   .selling-chat-layout .listing-preview strong { font-size: 13px; margin: 0; }
   .selling-chat-layout .listing-preview p, .selling-chat-layout .listing-preview .source-label { display: none; }
+  .selling-chat-layout .listing-preview-heading { display: none; }
   .selling-chat-layout .listing-save-form > .button { padding: 8px 12px; font-size: 12px; }
 }
 @media (max-height: 600px) {

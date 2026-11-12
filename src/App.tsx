@@ -21,7 +21,8 @@ import ListingDetailPage from "./components/ListingDetailPage";
 import ComparePage from "./components/ComparePage";
 import SavedSearchesPage from "./components/SavedSearchesPage";
 import { listingPhotos, MAX_LISTING_PHOTOS } from "../shared/listingPhotos";
-import { readListingPhoto } from "./listingPhotos";
+import { readListingPhoto, sortListingPhotos } from "./listingPhotos";
+import type { PhotoGroup } from "../shared/agent";
 import WorkspacePage from "./components/WorkspacePage";
 import WorkspaceHeader from "./components/WorkspaceHeader";
 import MessagesPage from "./components/MessagesPage";
@@ -38,7 +39,11 @@ import {
 import AgentConversation from "./components/AgentConversation";
 import AgentListings from "./components/AgentListings";
 import AgentComposer from "./components/AgentComposer";
-import { prepareListingDraft } from "./listingPreparation";
+import {
+  listingDraftReady,
+  listingFromDraft,
+  prepareListingDraft,
+} from "./listingPreparation";
 import { HeroHeadline } from "./components/HeroHeadline";
 import {
   useEffect,
@@ -55,6 +60,7 @@ import {
   Check,
   ChevronDown,
   GitCompareArrows,
+  Images,
   Plus,
   Search,
   SquarePen,
@@ -66,6 +72,10 @@ import Modal from "./components/Modal";
 import ProductCard from "./components/ProductCard";
 import SearchPreferencesFields from "./components/SearchPreferencesFields";
 import SellFlow, { type ListingDraft } from "./components/SellFlow";
+import PhotoSearchButton, { imageFrom } from "./components/PhotoSearchButton";
+import BatchSellFlow, { type BatchStart } from "./components/BatchSellFlow";
+import { batchItem, itemsFromGroups } from "./batchListings";
+import PhotoSplitQuestion from "./components/PhotoSplitQuestion";
 import AgentSuggestions from "./components/AgentSuggestions";
 import AgentRunPanel from "./components/AgentRunPanel";
 import { useAgentRun } from "./hooks/useAgentRun";
@@ -83,7 +93,7 @@ import {
   type SearchSnapshot,
 } from "./searchRequest";
 import { requestAgentAssist } from "./api/agent";
-import { listingPickupMinimum, validListingPickup } from "./listingValidation";
+import { listingPickupMinimum } from "./listingValidation";
 import {
   agentDraft,
   applyListingAction,
@@ -266,6 +276,19 @@ export default function App({ account }: { account?: AccountConnection }) {
     setDraftState(next);
   }
   const [sellStep, setSellStep] = useState(1);
+  const [sellMode, setSellMode] = useState<"single" | "batch">("single");
+  // Set when several photos turn out to show different items.
+  const [photoSplit, setPhotoSplit] = useState<{
+    photos: string[];
+    groups: PhotoGroup[];
+  } | null>(null);
+  const [batchStart, setBatchStart] = useState<BatchStart | undefined>();
+  // Several sorted items, created one after another with the listing agent.
+  const [batchQueue, setBatchQueue] = useState<{
+    drafts: ListingDraft[];
+    index: number;
+    results: ("saved" | "skipped")[];
+  } | null>(null);
   const [editingListing, setEditingListing] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState("");
   const hasSellingDraft = useRef(view === "sell");
@@ -389,6 +412,19 @@ export default function App({ account }: { account?: AccountConnection }) {
         ].join(" · ")
       : "";
   const running = agentRun.state.status === "running";
+  // The inspiration photo stays attached to the search it started.
+  const [photoSearch, setPhotoSearch] = useState<{
+    image: string;
+    item: string;
+    request: string;
+  } | null>(null);
+  const [photoSearchBusy, setPhotoSearchBusy] = useState(false);
+  const [photoSearchError, setPhotoSearchError] = useState("");
+  const photoSearchRequest = useRef<AbortController | null>(null);
+  const activePhotoSearch =
+    photoSearch && committedSearch?.originalRequest === photoSearch.request
+      ? photoSearch
+      : null;
   const hasSearchDraft = query.trim().length > 0;
   const searchHeading = "Your search";
   const quotaExhausted = agentHealth?.quota?.remaining === 0;
@@ -415,7 +451,11 @@ export default function App({ account }: { account?: AccountConnection }) {
       : null,
   );
   const listingAssist = useAgentAssist(
-    configured && view === "sell" && sellStep === 1 && !busy
+    configured &&
+      view === "sell" &&
+      sellMode === "single" &&
+      sellStep === 1 &&
+      !busy
       ? {
           intent: "listing",
           text: draft.raw,
@@ -472,6 +512,9 @@ export default function App({ account }: { account?: AccountConnection }) {
       agentRun.cancel();
       listingRun.cancel();
       listingRequest.current?.abort();
+      photoSearchRequest.current?.abort();
+      photoSearchRequest.current = null;
+      setPhotoSearchBusy(false);
       cancelPhotoRead();
       setBusy(false);
     }
@@ -555,6 +598,10 @@ export default function App({ account }: { account?: AccountConnection }) {
     listingRevisions.current = {};
     setDraft({ ...emptyDraft, location: pickupRegion || location });
     setSellStep(1);
+    setSellMode("single");
+    setPhotoSplit(null);
+    setBatchStart(undefined);
+    setBatchQueue(null);
     setEditingListing(null);
     setUploadError("");
   }
@@ -767,6 +814,50 @@ export default function App({ account }: { account?: AccountConnection }) {
           ),
       question,
     );
+  }
+  /** Describe the furniture in an inspiration photo, then search for that description. */
+  async function searchByPhoto(file: File) {
+    if (running || photoSearchBusy) return;
+    photoSearchRequest.current?.abort();
+    const controller = new AbortController();
+    photoSearchRequest.current = controller;
+    setPhotoSearchBusy(true);
+    setPhotoSearchError("");
+    try {
+      const image = await readListingPhoto(file, controller.signal);
+      const notes = query.trim();
+      const response = await requestAgentAssist(
+        {
+          intent: "search",
+          text: notes,
+          images: [image],
+          context: { location, radius: criteria.radius },
+        },
+        { signal: controller.signal },
+      );
+      const item = response.metadata.query?.trim();
+      if (!item)
+        throw new Error(
+          response.missingDetails[0] ??
+            "No furniture recognised in this photo. Try another photo.",
+        );
+      const request = (notes ? `${item}. ${notes}` : item).slice(0, 4000);
+      setPhotoSearch({ image, item, request });
+      setPhotoSearchBusy(false);
+      await runSearch(request);
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      setPhotoSearchError(
+        error instanceof Error
+          ? error.message
+          : "Could not read this photo. Try another one.",
+      );
+    } finally {
+      if (photoSearchRequest.current === controller) {
+        photoSearchRequest.current = null;
+        setPhotoSearchBusy(false);
+      }
+    }
   }
   function continueOffer(item: Product, existing?: Negotiation) {
     const proposal = existing ?? negotiations.open(item.id);
@@ -1078,12 +1169,18 @@ export default function App({ account }: { account?: AccountConnection }) {
       }
     }
   }
-  async function generateDraft() {
-    if (photoReading) {
+  /**
+   * `together` skips the different-items check after the seller chose one listing;
+   * `keepTitle` keeps a title the seller already wrote instead of the agent's.
+   */
+  async function generateDraft({ together = false, keepTitle = false } = {}) {
+    // The ref, not state: a batch item may start right after a cancelled read.
+    if (imageReader.current) {
       setUploadError("Your photo is still loading.");
       return;
     }
-    if (!draft.image) {
+    const start = draftRef.current;
+    if (!start.image) {
       setUploadError("Add a photo first.");
       return;
     }
@@ -1093,12 +1190,24 @@ export default function App({ account }: { account?: AccountConnection }) {
     setBusy(true);
     setUploadError("");
     try {
+      const photos = listingPhotos(start);
+      if (!together && photos.length > 1) {
+        // Sorting is a hint: if it fails, draft one listing as before.
+        const groups = await sortListingPhotos(photos, controller.signal).catch(
+          () => null,
+        );
+        if (controller.signal.aborted) return;
+        if (groups && groups.length > 1) {
+          setPhotoSplit({ photos, groups });
+          return;
+        }
+      }
       const response = await requestAgentAssist(
         {
           intent: "listing",
-          text: draft.raw,
-          images: listingPhotos(draft),
-          context: { location: draft.location },
+          text: start.raw,
+          images: photos,
+          context: { location: start.location },
         },
         { signal: controller.signal },
       );
@@ -1106,10 +1215,11 @@ export default function App({ account }: { account?: AccountConnection }) {
       const metadata = response.metadata;
       const current = draftRef.current;
       const prepared = prepareListingDraft(current, metadata);
+      if (keepTitle && current.title.trim()) prepared.title = current.title;
       setDraft(prepared);
       setSellStep(2);
       void runListing(
-        "Help me finish this listing using the recognised photo details already in the draft. If there is no asking price, research comparable second-hand offers and propose a source-backed starting price for my review, then let me choose a price with a slider or give it away. Ask only the next necessary missing detail using short clickable answers, including pickup times when relevant.",
+        "Help me finish this listing using the recognised photo details already in the draft. If there is no asking price, research comparable second-hand offers and propose a source-backed starting price for my review, then let me choose a price with a slider or give it away. Ask only the next necessary missing detail using short clickable answers, such as the item's age or condition, the pickup location or pickup times when relevant.",
       );
     } catch (error) {
       if (!controller.signal.aborted)
@@ -1143,60 +1253,17 @@ export default function App({ account }: { account?: AccountConnection }) {
       navigate("settings");
       return;
     }
-    const price = Number(draft.price);
-    const pickupValid = validListingPickup(draft.pickup, editingItem);
-    if (
-      !draft.image ||
-      !draft.title.trim() ||
-      !draft.description.trim() ||
-      !draft.price.trim() ||
-      !Number.isFinite(price) ||
-      price < 0 ||
-      price > 10000 ||
-      !draft.location.trim() ||
-      !pickupValid
-    ) {
+    if (!listingDraftReady(draft, editingItem)) {
       setToast("Check the listing details before saving.");
       return;
     }
-    const item: Product = {
-      id: editingListing || draftId.current,
-      title: draft.title.trim(),
-      description: draft.description.trim(),
-      tags: draft.tags,
-      price,
-      image: draft.image,
-      images: listingPhotos(draft),
-      category: "All",
-      location: draft.location.trim(),
-      distance: 0,
-      condition: draft.condition,
-      dimensions: draft.dimensions.trim() || "Not specified",
-      source: "takeover",
-      seller: "You",
-      initials: "Y",
-      own: true,
-      demo: editingItem?.demo,
-      pickupPoint:
-        draft.location.trim() === editingItem?.location
-          ? editingItem?.pickupPoint
-          : undefined,
-      photoSourceUrl:
-        draft.image === editingItem?.image
-          ? editingItem?.photoSourceUrl
-          : undefined,
-      pickupBy: draft.pickup,
-      available:
-        editingItem && draft.pickup === editingItem.pickupBy
-          ? editingItem.available
-          : draft.pickup
-            ? "Pickup by " + shortDate(draft.pickup)
-            : "Flexible pickup",
-      status: editingListing
-        ? own.find((current) => current.id === editingListing)?.status ||
-          "active"
-        : "active",
-    };
+    const item = listingFromDraft(
+      draft,
+      editingListing || draftId.current,
+      editingItem,
+    );
+    if (editingItem && draft.pickup === editingItem.pickupBy)
+      item.available = editingItem.available;
     const saved = await setOwn((current) =>
       editingListing
         ? current.map((existing) =>
@@ -1210,6 +1277,10 @@ export default function App({ account }: { account?: AccountConnection }) {
       );
       return;
     }
+    if (batchQueue && !editingListing) {
+      finishBatchItem("saved");
+      return;
+    }
     hasSellingDraft.current = false;
     setAccountTab("listings");
     navigate("account");
@@ -1219,6 +1290,78 @@ export default function App({ account }: { account?: AccountConnection }) {
         : "Listing saved in this browser.",
     );
   }
+  /** Load one sorted item into the single-listing flow and let the agent draft it. */
+  function openBatchItem(next: ListingDraft) {
+    listingRequest.current?.abort();
+    cancelPhotoRead();
+    resetListingConversation();
+    listingRevisions.current = {};
+    draftId.current = crypto.randomUUID();
+    setEditingListing(null);
+    setUploadError("");
+    setPhotoSplit(null);
+    setDraft(next);
+    setSellStep(1);
+    void generateDraft({ together: true, keepTitle: true });
+  }
+  function startBatchListings(drafts: ListingDraft[]) {
+    if (!drafts.length) return;
+    if (!signedIn) {
+      navigate("settings");
+      return;
+    }
+    hasSellingDraft.current = true;
+    setBatchQueue({ drafts, index: 0, results: [] });
+    setBatchStart(undefined);
+    setSellMode("single");
+    openBatchItem(drafts[0]);
+  }
+  function finishBatchItem(result: "saved" | "skipped") {
+    if (!batchQueue) return;
+    const results = [...batchQueue.results, result];
+    const index = batchQueue.index + 1;
+    const total = batchQueue.drafts.length;
+    const saved = results.filter((item) => item === "saved").length;
+    const done = account ? "published" : "saved";
+    if (index < total) {
+      setBatchQueue({ ...batchQueue, index, results });
+      openBatchItem(batchQueue.drafts[index]);
+      setToast(
+        result === "saved"
+          ? `Listing ${index} of ${total} ${done}. Next: listing ${index + 1}.`
+          : `Skipped listing ${index}. Next: listing ${index + 1} of ${total}.`,
+      );
+      return;
+    }
+    setBatchQueue(null);
+    hasSellingDraft.current = false;
+    setAccountTab("listings");
+    navigate("account");
+    setToast(
+      saved
+        ? `${saved} listing${saved === 1 ? "" : "s"} ${done}.`
+        : "No listings saved.",
+    );
+  }
+  /** Return the items not yet created to the sorting step. */
+  function backToBatchSorting() {
+    if (!batchQueue) return;
+    listingRequest.current?.abort();
+    resetListingConversation();
+    const remaining = batchQueue.drafts.slice(batchQueue.index);
+    const photos = remaining.flatMap((item) => listingPhotos(item));
+    setBatchStart({
+      photos,
+      groups: [],
+      items: remaining.map((item) => {
+        const next = batchItem(listingPhotos(item), item.location);
+        return { ...next, draft: { ...next.draft, title: item.title } };
+      }),
+    });
+    setBatchQueue(null);
+    setBusy(false);
+    setSellMode("batch");
+  }
   function editListing(item: Product) {
     if (account && !item.own) return;
     if (item.status === "withdrawn") return;
@@ -1226,6 +1369,7 @@ export default function App({ account }: { account?: AccountConnection }) {
     navigate("sell");
     resetListingConversation();
     listingRevisions.current = {};
+    setBatchQueue(null);
     setEditingListing(item.id);
     setDraft({
       image: item.image,
@@ -1242,6 +1386,7 @@ export default function App({ account }: { account?: AccountConnection }) {
       category: "All",
     });
     setSellStep(2);
+    setSellMode("single");
     setUploadError("");
   }
   async function setStatus(id: string, status: Product["status"]) {
@@ -1530,9 +1675,11 @@ export default function App({ account }: { account?: AccountConnection }) {
           (view === "discover" && !isHome ? " chat-layout" : "") +
           (view === "messages" ? " messages-layout" : "") +
           (view === "sell"
-            ? sellStep === 2
-              ? " selling-chat-layout"
-              : " selling-photo-layout"
+            ? sellMode === "batch"
+              ? " selling-batch-layout"
+              : sellStep === 2
+                ? " selling-chat-layout"
+                : " selling-photo-layout"
             : "")
         }
       >
@@ -1660,8 +1807,8 @@ export default function App({ account }: { account?: AccountConnection }) {
                   </div>
                   <HeroHeadline compact={false} />
                   <p>
-                    Describe what you need. Your agent searches around{" "}
-                    {location}.
+                    Describe what you need or search with a photo. Your agent
+                    searches around {location}.
                   </p>
                   <form
                     className="agent-search"
@@ -1669,8 +1816,30 @@ export default function App({ account }: { account?: AccountConnection }) {
                       event.preventDefault();
                       void runSearch(query);
                     }}
+                    onDragOver={(event) => {
+                      if (event.dataTransfer.types.includes("Files")) {
+                        event.preventDefault();
+                        event.currentTarget.classList.add("drag-over");
+                      }
+                    }}
+                    onDragLeave={(event) =>
+                      event.currentTarget.classList.remove("drag-over")
+                    }
+                    onDrop={(event) => {
+                      event.currentTarget.classList.remove("drag-over");
+                      const file = imageFrom(event.dataTransfer);
+                      if (!file) return;
+                      event.preventDefault();
+                      void searchByPhoto(file);
+                    }}
                   >
                     <Textarea
+                      onPaste={(event) => {
+                        const file = imageFrom(event.clipboardData);
+                        if (!file) return;
+                        event.preventDefault();
+                        void searchByPhoto(file);
+                      }}
                       aria-label="Search furniture"
                       maxLength={4000}
                       value={query}
@@ -1700,16 +1869,28 @@ export default function App({ account }: { account?: AccountConnection }) {
                         {location}
                         <ChevronDown size={13} />
                       </Button>
-                      <Button
-                        animateIcon
-                        className="button primary"
-                        type="submit"
-                        disabled={!query.trim() || running || quotaExhausted}
-                      >
-                        Find it
-                      </Button>
+                      <div className="search-submit-group">
+                        <PhotoSearchButton
+                          busy={photoSearchBusy}
+                          disabled={running || !configured || quotaExhausted}
+                          onFile={(file) => void searchByPhoto(file)}
+                        />
+                        <Button
+                          animateIcon
+                          className="button primary"
+                          type="submit"
+                          disabled={!query.trim() || running || quotaExhausted}
+                        >
+                          Find it
+                        </Button>
+                      </div>
                     </div>
                   </form>
+                  {photoSearchError && (
+                    <p className="form-error photo-search-error" role="alert">
+                      {photoSearchError}
+                    </p>
+                  )}
                   {connectionStatus}
                   <AgentSuggestions
                     state={searchAssist}
@@ -1758,6 +1939,23 @@ export default function App({ account }: { account?: AccountConnection }) {
                         : undefined
                     }
                   />
+                  {!reviewingListing && photoSearchError && (
+                    <p className="form-error photo-search-error" role="alert">
+                      {photoSearchError}
+                    </p>
+                  )}
+                  {!reviewingListing && activePhotoSearch && (
+                    <div className="photo-search-source">
+                      <img src={activePhotoSearch.image} alt="" />
+                      <p>
+                        Similar to your photo
+                        <span>
+                          Recognised as “{activePhotoSearch.item}”. Start a new
+                          search to adjust it.
+                        </span>
+                      </p>
+                    </div>
+                  )}
                   {negotiations.error && (
                     <p role="alert">{negotiations.error}</p>
                   )}
@@ -2024,7 +2222,22 @@ export default function App({ account }: { account?: AccountConnection }) {
             />
           )}
 
-          <WorkspacePage active={view === "sell"}>
+          {view === "sell" && sellMode === "batch" && (
+            <>
+              <BatchSellFlow
+                location={location}
+                liveAgent={configured}
+                start={batchStart}
+                onBack={() => {
+                  setBatchStart(undefined);
+                  setSellMode("single");
+                }}
+                onStart={startBatchListings}
+              />
+              {connectionStatus}
+            </>
+          )}
+          <WorkspacePage active={view === "sell" && sellMode === "single"}>
             <>
               <SellFlow
                 draft={draft}
@@ -2042,6 +2255,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                     resetListingConversation();
                     setSellStep(1);
                   } else if (editingListing) navigate("account");
+                  else if (batchQueue) backToBatchSorting();
                   else openBrowse();
                 }}
                 onDraftChange={changeDraft}
@@ -2051,10 +2265,60 @@ export default function App({ account }: { account?: AccountConnection }) {
                 quota={agentHealth?.quota}
                 onAccount={() => navigate("settings")}
                 onPhotoSelected={upload}
-                onCreateDraft={generateDraft}
+                onCreateDraft={() => void generateDraft()}
                 onSuggestionSelected={addListingSuggestion}
                 onPublish={publish}
+                batch={
+                  batchQueue && !editingListing
+                    ? {
+                        index: batchQueue.index,
+                        covers: batchQueue.drafts.map((item) => item.image),
+                        results: batchQueue.results,
+                        onSkip: () => finishBatchItem("skipped"),
+                      }
+                    : undefined
+                }
+                onSellSeveral={
+                  batchQueue
+                    ? undefined
+                    : () => {
+                        cancelPhotoRead();
+                        setUploadError("");
+                        setBatchStart(undefined);
+                        setSellMode("batch");
+                      }
+                }
               />
+              {photoSplit && (
+                <PhotoSplitQuestion
+                  photos={photoSplit.photos}
+                  groups={photoSplit.groups}
+                  onClose={() => setPhotoSplit(null)}
+                  onTogether={() => {
+                    setPhotoSplit(null);
+                    void generateDraft({ together: true });
+                  }}
+                  onSeparate={(groups, review) => {
+                    if (!review) {
+                      startBatchListings(
+                        itemsFromGroups(
+                          photoSplit.photos,
+                          groups,
+                          draft.location,
+                        ).map((item) => item.draft),
+                      );
+                      return;
+                    }
+                    setBatchStart({
+                      photos: photoSplit.photos,
+                      groups,
+                      review,
+                    });
+                    setPhotoSplit(null);
+                    setSellMode("batch");
+                  }}
+                />
+              )}
               {connectionStatus}
             </>
           </WorkspacePage>
@@ -2396,6 +2660,15 @@ export default function App({ account }: { account?: AccountConnection }) {
                 <strong>Find</strong>The agent searches real web sources and
                 your active local listings. Open a source to check its current
                 availability.
+              </p>
+            </div>
+            <div>
+              <Images size={20} />
+              <p>
+                <strong>Search by photo</strong>An inspiration photo, such as a
+                Pinterest image, is sent to the AI service to describe the
+                furniture. The search then uses that description, which you can
+                edit.
               </p>
             </div>
             <div>

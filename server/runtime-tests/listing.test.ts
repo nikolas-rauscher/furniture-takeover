@@ -447,6 +447,51 @@ test("listing specification research returns actual sources but cannot authorize
     ),
   );
 });
+test("similar-item research returns up to three sources for listing assistance", async () => {
+  const model = new MockLanguageModelV4({
+    doStream: [
+      toolCall(
+        "web_search",
+        {
+          query: "similar white desk 120 cm wide",
+          purpose: "similar_items",
+          responseLanguage: "English",
+        },
+        "similar-items",
+      ),
+      answer("Here are a few similar desk examples [web-1]."),
+    ],
+  });
+  const events = await eventsFor(
+    createAgentRuntime({
+      apiKey: "similar-items-model-key",
+      braveApiKey: "similar-items-search-key",
+      modelImpl: model,
+      fetchImpl: async () =>
+        Response.json({
+          web: {
+            results: [1, 2, 3, 4].map((number) => ({
+              title: `Similar desk ${number}`,
+              url: `https://furniture.example/desk-${number}`,
+              description: "A comparable white desk.",
+            })),
+          },
+        }),
+    }),
+    {
+      text: "Find similar examples",
+      context: {
+        intent: "listing_assist",
+        currentDraft: { ...blankDraft, title: "White desk" },
+      },
+    },
+  );
+  const sources = events.find((event) => event.type === "sources");
+  assert.ok(sources?.type === "sources");
+  assert.equal(sources.sources.length, 3);
+  assert.equal(sources.sources[0]?.title, "Similar desk 1");
+  assert.ok(events.some((event) => event.type === "complete"));
+});
 test("an unanswered handover question never causes automatic description changes", async () => {
   for (const text of [
     "Never mind, do not change anything.",
