@@ -114,6 +114,15 @@ import {
   PageTransitionShared,
   PageTransitionView,
 } from "./components/animate-ui/components/page-transition";
+import Onboarding, {
+  type OnboardingOutcome,
+} from "./components/onboarding/Onboarding";
+import OnboardingInvite from "./components/onboarding/OnboardingInvite";
+import {
+  firstVisitMode,
+  readOnboarding,
+  rememberOnboarding,
+} from "./components/onboarding/onboardingStorage";
 
 type Destination = MobileDestination | "settings";
 /** Order of the mobile bar, left to right: tabs, then Sell beside them, then settings. */
@@ -143,7 +152,14 @@ const emptyDraft: ListingDraft = {
   category: "All",
 };
 
-export default function App({ account }: { account?: AccountConnection }) {
+export default function App({
+  account,
+  onboardingPaused,
+}: {
+  account?: AccountConnection;
+  /** Holds the intro back while another first-visit dialog is open. */
+  onboardingPaused: boolean;
+}) {
   useAppViewport();
   const signedIn = !account || !!account.session;
   const [pickupRegion, setPickupRegion] = useState("");
@@ -213,9 +229,17 @@ export default function App({ account }: { account?: AccountConnection }) {
   const [query, setQuery] = useState("");
   const [followUp, setFollowUp] = useState("");
 
+  const [onboardingRecord] = useState(readOnboarding);
+  const [onboarding, setOnboarding] = useState(() =>
+    firstVisitMode(
+      onboardingRecord,
+      readRoute(window.location.hash).view === "discover",
+      window.matchMedia("(max-width: 760px)").matches,
+    ),
+  );
   const [searchArea, setSearchArea] = useSaved(
     "takeover-search-area",
-    { location: "EPFL, Ecublens", radius: 5 },
+    { location: onboardingRecord?.location ?? "EPFL, Ecublens", radius: 5 },
     isSearchArea,
   );
   const location = searchArea.location;
@@ -562,6 +586,9 @@ export default function App({ account }: { account?: AccountConnection }) {
     setSearchUndone([]);
   }
   function startSell() {
+    startSellAt(pickupRegion || location);
+  }
+  function startSellAt(pickupLocation: string) {
     draftId.current = crypto.randomUUID();
     if (!signedIn) {
       navigate("settings");
@@ -572,10 +599,23 @@ export default function App({ account }: { account?: AccountConnection }) {
     navigate("sell");
     resetListingConversation();
     listingRevisions.current = {};
-    setDraft({ ...emptyDraft, location: pickupRegion || location });
+    setDraft({ ...emptyDraft, location: pickupLocation });
     setSellStep(1);
     setEditingListing(null);
     setUploadError("");
+  }
+  /** Applies the visitor's intro answers and opens what they chose to do first. */
+  function completeOnboarding(outcome: OnboardingOutcome) {
+    const area = "location" in outcome ? outcome.location : undefined;
+    rememberOnboarding(area ? { location: area } : {});
+    if (area) setSearchArea((current) => ({ ...current, location: area }));
+    if (outcome.next === "sign-in") navigate("settings");
+    else if (outcome.next === "sell") startSellAt(outcome.location);
+    else if (outcome.next === "search") setQuery(outcome.query);
+  }
+  function declineOnboarding() {
+    rememberOnboarding({});
+    setOnboarding("closed");
   }
   const currentDestination: Destination =
     view === "sell"
@@ -1722,6 +1762,12 @@ export default function App({ account }: { account?: AccountConnection }) {
                     <div className="agent-modes">
                       <span>Find something</span>
                       <Button onClick={startSell}>Sell from a photo</Button>
+                      <Button
+                        className="agent-modes-intro"
+                        onClick={() => setOnboarding("open")}
+                      >
+                        How it works
+                      </Button>
                     </div>
                     <HeroHeadline compact={false} />
                     <p>
@@ -2518,6 +2564,19 @@ export default function App({ account }: { account?: AccountConnection }) {
             </Button>
           </div>
         </Modal>
+      )}
+      {onboarding === "open" && !onboardingPaused && (
+        <Onboarding
+          accountAction={!signedIn}
+          onComplete={completeOnboarding}
+          onClosed={() => setOnboarding("closed")}
+        />
+      )}
+      {onboarding === "invite" && !onboardingPaused && (
+        <OnboardingInvite
+          onStart={() => setOnboarding("open")}
+          onDismiss={declineOnboarding}
+        />
       )}
     </>
   );
