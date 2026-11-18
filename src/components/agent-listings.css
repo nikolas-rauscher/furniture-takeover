@@ -31,6 +31,11 @@
   margin: 0;
   border-radius: 8px;
 }
+/* Base UI keeps boundary controls focusable via aria-disabled. */
+.agent-carousel-controls [aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.45;
+}
 .agent-product-track {
   margin-left: -12px;
   align-items: stretch;
@@ -40,28 +45,34 @@
   flex-basis: calc(100% - 28px);
   padding-left: 12px;
 }
+/* A result is a compact row: small photo, the facts, one action. The answer below
+   it stays in view instead of being pushed off the screen by a large card. */
 .agent-product-card {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
   width: 100%;
   min-width: 0;
-  overflow: hidden;
+  padding: 10px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface);
+}
+.has-single-product .agent-product-card {
+  max-width: 36rem;
 }
 .agent-product-card .agent-product-photo {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  flex: 0 0 auto;
-  height: clamp(120px, 40cqi, 180px);
+  width: 96px;
+  height: 96px;
   overflow: hidden;
   min-width: 0;
   min-height: 0;
   padding: 0;
-  border-radius: 0;
+  border-radius: 8px;
   color: var(--muted);
   background: var(--mist);
 }
@@ -69,58 +80,59 @@
   display: block;
   width: 100%;
   height: 100%;
-  min-height: 0;
-  min-width: 0;
-  object-fit: contain;
+  object-fit: cover;
 }
 .agent-product-content {
   display: flex;
-  flex: 1;
   flex-direction: column;
   min-width: 0;
-  gap: 5px;
-  padding: 12px;
+  min-height: 96px;
+  gap: 2px;
 }
 .agent-product-content h4 {
   margin: 0;
 }
 .agent-product-card .agent-product-title {
   justify-content: flex-start;
-  min-height: 44px;
+  min-height: 0;
   padding: 0;
   color: var(--ink);
   text-align: left;
   white-space: normal;
   font-size: var(--type-item);
   font-weight: 550;
-  line-height: 1.4;
+  line-height: 1.35;
   overflow-wrap: anywhere;
-}
-.agent-product-price {
-  color: var(--ink);
-  font-size: 1.125rem;
-  font-weight: 600;
-  line-height: 1.4;
 }
 .agent-product-content p {
   margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   color: var(--muted);
   font-size: var(--type-support);
   line-height: 1.45;
-  overflow-wrap: anywhere;
+}
+.agent-product-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-top: auto;
+  padding-top: 6px;
+}
+.agent-product-price {
+  color: var(--ink);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.4;
 }
 .agent-product-card .agent-product-offer {
-  width: 100%;
-  min-height: 44px;
-  height: auto;
-  margin-top: auto;
-  padding: 10px 12px;
-  white-space: normal;
+  min-height: 40px;
+  padding: 6px 14px;
   color: var(--blue);
-  font-size: var(--type-label);
-}
-.agent-product-content p:last-of-type {
-  margin-bottom: 7px;
+  font-size: var(--type-support);
 }
 .agent-product-photo:focus-visible {
   outline-offset: -3px;
@@ -129,17 +141,8 @@
   .agent-product-slide {
     flex-basis: 50%;
   }
-  .has-single-product .agent-product-card {
-    display: grid;
-    grid-template-columns: 40% minmax(0, 1fr);
-  }
-  .has-single-product .agent-product-photo {
-    height: 100%;
-    min-height: 180px;
-    aspect-ratio: auto;
-  }
 }
-@container agent-listings (min-width: 55rem) {
+@container agent-listings (min-width: 58rem) {
   .agent-product-slide {
     flex-basis: 33.333333%;
   }

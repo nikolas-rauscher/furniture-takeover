@@ -5,7 +5,7 @@ import {
   type AgentActionHandlers,
 } from "./AgentActionControls";
 import { answerParts, answerBlocks } from "./AgentAnswerContent";
-import SmoothHeight from "./SmoothHeight";
+import { AutoHeight } from "@animate-ui/react/primitives/effects/auto-height";
 import { useStreamingText } from "../hooks/useStreamingText";
 import { useId, type ReactNode } from "react";
 import AgentRunDetails from "./AgentRunDetails";
@@ -123,6 +123,11 @@ export default function AgentRunPanel({
               ? "Some changes need more details"
               : "Finished";
 
+  // Without steps or reasoning, the activity line itself names the status.
+  const detailsShowStatus =
+    !running &&
+    !state.steps.length &&
+    !(state.reasoning ?? []).some((part) => part.text);
   const heading = (
     <div className={`agent-run-heading${compact ? " agent-run-sender" : ""}`}>
       {compact && (
@@ -150,6 +155,7 @@ export default function AgentRunPanel({
       {compact && (
         <span
           className={
+            detailsShowStatus ||
             [
               "Finished",
               "Working",
@@ -308,14 +314,14 @@ export default function AgentRunPanel({
                 )}
                 {searchAnswer.takeover && (
                   <div className="agent-run-answer">
-                    {answerBlocks(searchAnswer.takeover, [], textArriving)}
+                    {answerBlocks(searchAnswer.takeover, [])}
                   </div>
                 )}
               </section>
             )}
             {searchAnswer.answer && (
               <div className="agent-run-answer">
-                {answerBlocks(searchAnswer.answer, safeSources, textArriving)}
+                {answerBlocks(searchAnswer.answer, safeSources)}
               </div>
             )}
             <AgentWebResults
@@ -327,7 +333,7 @@ export default function AgentRunPanel({
             >
               {searchAnswer.web ? (
                 <div className="agent-run-answer">
-                  {answerBlocks(searchAnswer.web, safeSources, textArriving)}
+                  {answerBlocks(searchAnswer.web, safeSources)}
                 </div>
               ) : null}
             </AgentWebResults>
@@ -337,7 +343,7 @@ export default function AgentRunPanel({
         <>
           <div className={compact ? "agent-search-result-message" : undefined}>
             <div className="agent-run-answer">
-              {answerBlocks(displayText, safeSources, textArriving)}
+              {answerBlocks(displayText, safeSources)}
             </div>
           </div>
         </>
@@ -461,5 +467,9 @@ export default function AgentRunPanel({
       )}
     </section>
   );
-  return compact ? panel : <SmoothHeight>{panel}</SmoothHeight>;
+  return compact ? (
+    panel
+  ) : (
+    <AutoHeight className="auto-height">{panel}</AutoHeight>
+  );
 }

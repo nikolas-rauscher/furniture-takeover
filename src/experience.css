@@ -1,5 +1,7 @@
 /* Quiet paper surfaces with room for the task, rather than decorative panels. */
 .app-header {
+  /* Own layer during page transitions, so sliding pages never cover the header. */
+  view-transition-name: app-header;
   height: var(--app-header-height);
   flex: 0 0 var(--app-header-height);
   padding: 0 max(var(--space-page), calc((100vw - 1240px) / 2));
@@ -1797,7 +1799,7 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
 .messages-layout .messages-page .page-title { margin: 0 0 4px; }
 .messages-layout .messages-page .page-title h1 { font-size: var(--type-title); margin: 0; }
 .messages-layout .messages-page .page-title p { display: none; }
-.messages-layout .messages-page > .quiet-caption { font-size: 11px; margin: 0; }
+.messages-layout .messages-page > .quiet-caption { font-size: 11px; margin: 0; text-align: left; }
 .messages-layout .seller-chat-layout { flex: 1; min-height: 0; margin-top: 8px; }
 .messages-layout .seller-chat-layout nav { overflow-y: auto; min-height: 0; }
 .messages-layout .seller-chat { min-height: 0; padding: 12px; }

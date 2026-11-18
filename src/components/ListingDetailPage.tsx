@@ -24,6 +24,8 @@ type ListingDetailPageProps = {
   compared?: boolean;
   onToggleFavorite?: () => void;
   onToggleCompare?: () => void;
+  /** Names where Back leads: the chat, the catalogue, your listings… */
+  backLabel: string;
   onBack(): void;
   onMessage(): void;
   onEdit(): void;
@@ -40,6 +42,7 @@ export default function ListingDetailPage({
   compared = false,
   onToggleFavorite,
   onToggleCompare,
+  backLabel,
   onBack,
   onMessage,
   onEdit,
@@ -50,7 +53,7 @@ export default function ListingDetailPage({
       <div className="empty-state">
         <h1>Listing not found</h1>
         <Button className="button secondary" onClick={onBack}>
-          Back to listings
+          {backLabel}
         </Button>
       </div>
     );
@@ -68,7 +71,7 @@ export default function ListingDetailPage({
       className={`listing-detail${mobileContact ? " has-mobile-contact" : ""}`}
     >
       <Button className="back-link" type="button" onClick={onBack}>
-        <ArrowLeft size={16} /> Back to listings
+        <ArrowLeft size={16} /> {backLabel}
       </Button>
       <div className="listing-detail-main">
         <div className="listing-detail-media">
@@ -163,7 +166,8 @@ export default function ListingDetailPage({
                   mobileContact ? "listing-detail-mobile-contact" : undefined
                 }
               >
-                <Button animateIcon
+                <Button
+                  animateIcon
                   className="button primary full"
                   type="button"
                   disabled={selected.status !== "active"}

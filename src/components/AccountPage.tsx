@@ -268,7 +268,7 @@ export default function AccountPage({
           Clear filters
         </Button>
       ) : isSaved ? (
-        <Button variant="outline" onClick={onBrowse}>
+        <Button variant="default" onClick={onBrowse}>
           Browse listings
         </Button>
       ) : (

@@ -197,6 +197,7 @@ function CarouselPrevious({
           : "-top-12 left-1/2 -translate-x-1/2 rotate-90",
         className,
       )}
+      focusableWhenDisabled
       disabled={!canScrollPrev}
       onClick={scrollPrev}
       {...props}
@@ -227,6 +228,7 @@ function CarouselNext({
           : "-bottom-12 left-1/2 -translate-x-1/2 rotate-90",
         className,
       )}
+      focusableWhenDisabled
       disabled={!canScrollNext}
       onClick={scrollNext}
       {...props}

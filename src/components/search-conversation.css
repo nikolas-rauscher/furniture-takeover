@@ -38,7 +38,7 @@
   margin-left: auto;
   background: #edf0fa;
   border-bottom-right-radius: 3px;
-  animation: search-message-reveal 650ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: search-message-reveal 200ms ease-out both;
 }
 .previous-agent-message {
   background: #fff;
@@ -67,11 +67,6 @@
 @keyframes search-message-reveal {
   from {
     opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
 @media (max-width: 600px) {
@@ -123,20 +118,28 @@
   scrollbar-gutter: stable;
   padding: 8px 8px 20px;
   overflow-anchor: none;
+  /* The scroller keeps the question in view with instant jumps; let them glide instead. */
+  scroll-behavior: smooth;
 }
+/* The first position is set before the conversation shows, so it must not glide. */
+.chat-scroll-viewport[data-pending-scroll] {
+  scroll-behavior: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-scroll-viewport {
+    scroll-behavior: auto;
+  }
+}
+/* No divider: the conversation fades out above the composer instead. */
 .chat-composer-dock {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: end;
+  position: relative;
   flex: 0 0 auto;
   min-height: 0;
   padding-top: 6px;
   background: var(--paper, #fafaf8);
-  border-top: 1px solid var(--line, #e1e3eb);
-}
-.chat-composer-dock:has(.chat-jump-latest[data-active="true"]) {
-  grid-template-columns: minmax(0, 1fr) 44px;
-  column-gap: 8px;
 }
 .chat-composer-content {
   min-width: 0;
@@ -154,23 +157,35 @@
   width: 100%;
   margin: 0;
 }
+/* Floats above the composer, so the composer keeps its width when it appears. */
 .chat-composer-dock .chat-jump-latest {
-  position: static;
-  inset: auto;
-  translate: none;
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 4px);
+  translate: -50% 0;
   transform: none;
-  width: 44px;
-  height: 44px;
-  min-height: 44px;
-  margin-bottom: 7px;
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  margin: 0;
   padding: 0;
-  border-radius: 8px;
+  border-radius: 999px;
   border: 1px solid var(--line, #e1e3eb);
-  background: #fff;
-  box-shadow: none;
+  background: var(--surface, #fff);
+  box-shadow: 0 4px 14px rgb(41 41 41 / 0.12);
+  transition:
+    opacity 160ms ease-out,
+    translate 220ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 .chat-composer-dock .chat-jump-latest[data-active="false"] {
-  display: none;
+  opacity: 0;
+  translate: -50% 6px;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-composer-dock .chat-jump-latest {
+    transition: none;
+  }
 }
 @media (max-width: 760px) {
   .chat-workspace {
@@ -353,10 +368,25 @@
   text-align: right;
 }
 .chat-workspace .agent-run-panel.conversation-agent .agent-run-question {
+  max-width: none;
   margin: 0;
   padding: 0;
   border: 0;
   background: transparent;
+}
+/* Only the question keeps a reading width; "Skip for now" lines up with the menu above. */
+.chat-workspace
+  .agent-run-panel.conversation-agent
+  .agent-run-question
+  .agent-question-heading
+  > h3 {
+  max-width: 70ch;
+}
+.chat-workspace
+  .agent-run-panel.conversation-agent
+  .agent-question-heading
+  > .question-skip {
+  margin-left: auto;
 }
 
 /* Show the offers first, then the agent's explanation of those offers. */
@@ -379,4 +409,24 @@
 }
 .chat-composer-dock .chat-comparison > .button {
   min-height: var(--control-size);
+}
+
+/*
+ * Entering the chat: the home search box becomes the composer, and the text typed
+ * into it flies up as your message. The box pictures scale with their frame, so the
+ * two outlines stay flush; the text keeps its natural size, so the small bubble is
+ * not blown up to the width of the search field.
+ */
+::view-transition-group(agent-composer) {
+  z-index: 1;
+  overflow: clip;
+  border-radius: 12px;
+}
+::view-transition-group(agent-query) {
+  z-index: 2;
+}
+::view-transition-old(agent-query),
+::view-transition-new(agent-query) {
+  width: auto;
+  height: auto;
 }

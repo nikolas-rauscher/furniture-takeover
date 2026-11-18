@@ -88,57 +88,42 @@
   box-shadow: none;
 }
 .agent-sources {
-  margin-block: var(--space-label) var(--space-field);
+  margin-block: var(--space-label) 0;
 }
 .agent-sources [data-slot="trace-collapsible-trigger"] {
+  max-width: 100%;
   min-height: var(--control-size);
   border: 0;
   padding: 0;
   background: transparent;
   font: inherit;
 }
-.agent-sources [data-slot="trace-collapsible-trigger"]:focus-visible,
-.agent-sources .agent-source-link:focus-visible {
+.agent-sources [data-slot="trace-collapsible-trigger"]:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
   box-shadow: none;
 }
 .agent-sources [data-slot="trace-line"] {
+  min-width: 0;
   font-size: var(--type-label);
+}
+.agent-sources [data-slot="trace-title"] {
+  flex: 0 0 auto;
+}
+/* The domains fill what is left of the line and shorten first. */
+.agent-sources .agent-source-domains {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--type-caption);
+  color: var(--muted);
 }
 .agent-sources [data-slot="trace-collapsible-content-inner"] {
   margin-left: 0;
   padding-left: 0;
   border: 0;
-}
-.agent-source-list {
-  gap: 4px;
-}
-.agent-source-link {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  min-height: var(--control-size);
-  padding-block: var(--space-label);
-  text-decoration: none;
-}
-.agent-source-link [data-slot="trace-line"] {
-  width: 100%;
-  align-items: start;
-}
-.agent-source-link [data-slot="trace-title"] {
-  flex: 1;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  color: var(--blue);
-  line-height: 1.5;
-}
-.agent-source-link:hover [data-slot="trace-title"] {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.agent-source-link [data-slot="trace-icon"] {
-  margin-top: 3px;
 }
 .agent-citation-preview {
   box-sizing: border-box;
@@ -176,8 +161,12 @@
   .agent-message-scroller .agent-user-bubble {
     max-width: 92%;
   }
+  /* On phones the answer sits on the page like a reply, not in a box around the listing cards. */
   .agent-response-bubble .agent-response-content {
-    padding: 12px;
+    padding: 4px 2px;
+    border: 0;
+    border-radius: 0;
+    background: none;
   }
   .agent-message-scroller .agent-run-answer {
     font-size: var(--type-body);

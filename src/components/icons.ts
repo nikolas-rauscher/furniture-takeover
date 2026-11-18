@@ -17,6 +17,7 @@ export {
   LoaderCircle,
   LoaderCircleIcon,
 } from "./animate-ui/icons/loader-circle";
+export { List, ListIcon } from "./animate-ui/icons/list";
 export { LogOut, LogOutIcon } from "./animate-ui/icons/log-out";
 export { MapPin, MapPinIcon } from "./animate-ui/icons/map-pin";
 export {
@@ -46,6 +47,26 @@ export {
   Square,
   SlidersHorizontal,
   SquarePen,
+  Aperture,
+  ArrowLeftRight,
+  BadgeCheck,
+  Banknote,
+  BedSingle,
+  Bike,
+  Building2,
+  CalendarCheck,
+  Clock,
+  CookingPot,
+  GraduationCap,
+  Handshake,
+  KeyRound,
+  LampDesk,
+  Library,
+  PackageOpen,
+  PartyPopper,
+  Sofa,
+  Store,
+  Zap,
 } from "lucide-react";
 
 export { Copy, CopyIcon } from "./animate-ui/icons/copy";

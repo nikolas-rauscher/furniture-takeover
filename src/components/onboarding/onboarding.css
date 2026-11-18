@@ -1,0 +1,182 @@
+/* Shared tokens and primitives of the first-run intro. Each component keeps its own file. */
+.ob,
+.ob-invite {
+  /* Pako's cardboard and the packing-tape blue of the brand. */
+  --ob-kraft: #d9a66b;
+  --ob-kraft-light: #ebc48f;
+  --ob-kraft-shade: #c38c51;
+  --ob-kraft-deep: #8e5b2d;
+  --ob-tape: var(--blue);
+  --ob-cheek: #ef8a6f;
+  /* Accents for confetti, stickers and icon tiles. */
+  --ob-sun: #f2c14e;
+  --ob-coral: #ec7b5c;
+  --ob-sky: #e3e9fc;
+  --ob-sand: #f7ebda;
+  --ob-butter: #fbf1d2;
+  /* Surfaces. Cards stand on a 4px lip that sinks when pressed. */
+  --ob-card: var(--surface);
+  --ob-line: #e3e3dd;
+  --ob-lip: #d3d3cb;
+  --ob-selected: #eef1fc;
+  --ob-radius: 16px;
+  --ob-radius-lg: 22px;
+  --ob-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  color: var(--ink);
+  font-family: var(--font-family);
+}
+
+.ob ::selection,
+.ob-invite ::selection {
+  background: var(--ob-sky);
+  color: var(--ink);
+}
+
+.ob-title {
+  font-size: clamp(1.5rem, 1.2rem + 1vw, 1.875rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.ob-lead {
+  color: var(--muted);
+  font-size: 1.0625rem;
+  line-height: 1.55;
+}
+
+/* Tactile button: the face rests on a darker lip and sinks onto it when pressed. */
+.ob-button {
+  --ob-button-face: var(--blue);
+  --ob-button-lip: var(--blue-dark);
+  --ob-button-text: var(--on-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 14px 22px;
+  border-radius: 14px;
+  background: var(--ob-button-face);
+  color: var(--ob-button-text);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
+  box-shadow: 0 4px 0 var(--ob-button-lip);
+  user-select: none;
+  transition:
+    transform 90ms var(--ob-ease),
+    box-shadow 90ms var(--ob-ease),
+    background-color 160ms ease,
+    color 160ms ease;
+}
+.ob-button:not(:disabled):hover {
+  --ob-button-face: #3c58c7;
+}
+.ob-button:not(:disabled):active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 var(--ob-button-lip);
+}
+.ob-button:disabled {
+  --ob-button-face: #e7e7e1;
+  --ob-button-lip: var(--ob-lip);
+  --ob-button-text: #8b8b84;
+  opacity: 1;
+  cursor: not-allowed;
+}
+.ob-button.secondary {
+  --ob-button-face: var(--ob-card);
+  --ob-button-lip: var(--ob-lip);
+  --ob-button-text: var(--blue);
+  border: 2px solid var(--ob-line);
+}
+.ob-button.secondary:not(:disabled):hover {
+  --ob-button-face: var(--ob-selected);
+}
+.ob-button.quiet {
+  min-height: 44px;
+  background: none;
+  box-shadow: none;
+  color: var(--blue);
+}
+.ob-button.quiet:not(:disabled):hover {
+  color: var(--blue-dark);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.ob-button.quiet:not(:disabled):active {
+  transform: none;
+}
+
+/* The framed area where a story scene plays. */
+.ob-stage {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 16px;
+  border: 2px solid var(--ob-line);
+  border-radius: var(--ob-radius-lg);
+  background: var(--ob-card);
+}
+
+/* Story scenes use illustrative values, so they say so. */
+.ob-demo-tag {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--canvas);
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.ob-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--ob-selected);
+  color: var(--blue-dark);
+  font-size: var(--type-label);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+/* A ring that keeps inviting the visitor to tap the scene's one control. */
+.ob-tap-hint {
+  position: relative;
+}
+.ob-tap-hint::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border: 3px solid var(--blue);
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  animation: ob-tap-pulse 1.6s var(--ob-ease) infinite;
+}
+@keyframes ob-tap-pulse {
+  0% {
+    opacity: 0.55;
+    transform: scale(0.94);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ob-tap-hint::after {
+    animation: none;
+    opacity: 0.45;
+    transform: none;
+  }
+}

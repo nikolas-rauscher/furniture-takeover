@@ -72,6 +72,7 @@ export default function AccountSession() {
       <App
         key={session?.user.id ?? "guest"}
         account={client ? { client, session } : undefined}
+        onboardingPaused={recovery}
       />
       {recovery && client && (
         <Modal title="Set your password" onClose={() => setRecovery(false)}>

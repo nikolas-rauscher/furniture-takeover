@@ -14,6 +14,7 @@ import {
 } from "../api/messages";
 import { PendingMessage } from "../pendingMessage";
 import type { Product } from "../../shared/marketplace";
+import InboxEmpty from "./InboxEmpty";
 import "./messages.css";
 export type MessagesPageProps = {
   account?: AccountConnection;
@@ -22,6 +23,8 @@ export type MessagesPageProps = {
   listing?: Product;
   listings: Product[];
   onOpenListing: (id: string) => void;
+  /** Leads from an empty inbox to the listings, where conversations start. */
+  onBrowse: () => void;
   initialMessage?: string;
   onBeforeSend?: (listingId: string, role: "buyer" | "seller") => void;
   onSent?: (
@@ -49,6 +52,7 @@ function DemoMessagesPage({
   listing,
   listings,
   onOpenListing,
+  onBrowse,
   initialMessage,
   onBeforeSend,
   onSent,
@@ -260,11 +264,7 @@ function DemoMessagesPage({
             )}
           {!conversations.length &&
             (!listing || dismissedListing === listing.id) &&
-            !error && (
-              <p>
-                No conversations yet. Open a listing and choose Message seller.
-              </p>
-            )}
+            !error && <InboxEmpty onBrowse={onBrowse} />}
         </nav>
         <section className="seller-chat" aria-label="Seller conversation">
           {current ? (

@@ -32,6 +32,12 @@ export default function AgentRunDetails({
 }) {
   const [open, setOpen] = useState<boolean>();
   const taskSteps = visibleTaskSteps(steps);
+  // While the agent works, one line names the current step and updates in place;
+  // an open list would grow step by step and push the results below it around.
+  const currentStep = running
+    ? ([...taskSteps].reverse().find((step) => step.state === "running") ??
+      taskSteps.at(-1))
+    : undefined;
   const hasReasoning = reasoning.some(
     (part) => part.text || (running && part.status === "streaming"),
   );
@@ -76,15 +82,23 @@ export default function AgentRunDetails({
           )}
         </TraceIcon>
         <TraceTitle>
-          {steps.length
-            ? hasHeader
-              ? `${taskSteps.length} ${taskSteps.length === 1 ? "step" : "steps"}`
-              : "Activity"
-            : hasReasoning
-              ? "Reasoning"
-              : running
-                ? "Working…"
-                : (status ?? "Activity")}
+          {steps.length ? (
+            currentStep ? (
+              <span key={currentStep.id} className="agent-run-current-step">
+                {currentStep.label}
+              </span>
+            ) : hasHeader ? (
+              `${taskSteps.length} ${taskSteps.length === 1 ? "step" : "steps"}`
+            ) : (
+              "Activity"
+            )
+          ) : hasReasoning ? (
+            "Reasoning"
+          ) : running ? (
+            "Working…"
+          ) : (
+            (status ?? "Activity")
+          )}
         </TraceTitle>
         {!hasHeader && steps.length > 0 && (
           <TraceDescription>
@@ -100,7 +114,7 @@ export default function AgentRunDetails({
       aria-label="Agent activity"
       aria-busy={running}
     >
-      <TraceCollapsible open={open ?? running} onOpenChange={setOpen}>
+      <TraceCollapsible open={open ?? false} onOpenChange={setOpen}>
         {hasHeader ? header(trigger) : trigger}
         <TraceCollapsibleContent
           keepMounted

@@ -69,7 +69,7 @@ export default function SavedSearchesPage({
         </div>
       ) : (
         <div className="empty-state">
-          <Bookmark size={32} />
+          <Bookmark size={28} />
           <h2>No saved searches yet</h2>
           <p>Start with what you need, then save your search.</p>
           <Button animateIcon className="button primary" onClick={onFind}>

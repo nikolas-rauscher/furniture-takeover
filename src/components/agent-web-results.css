@@ -27,9 +27,6 @@
 .agent-run-panel .agent-web-recovery > .button {
   min-height: var(--control-size);
 }
-.agent-sources.has-previews {
-  margin: var(--space-field) 0 var(--space-label);
-}
 .agent-source-previews {
   display: grid;
   gap: var(--space-label);
