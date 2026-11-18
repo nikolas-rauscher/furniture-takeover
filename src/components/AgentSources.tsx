@@ -7,6 +7,7 @@ import {
   TraceCollapsible,
   TraceCollapsibleContent,
   TraceCollapsibleTrigger,
+  TraceDescription,
   TraceIcon,
   TraceLine,
   TraceTitle,
@@ -59,12 +60,15 @@ function SourcePreview({ source }: { source: AgentRunSource }) {
   );
 }
 
+/**
+ * Sources stay out of the way: one line names how many there are and where they
+ * come from; opening it shows each with its title and snippet. Citations in the
+ * answer link to the same pages directly.
+ */
 export default function AgentSources({
   sources,
-  previews = false,
 }: {
   sources: readonly AgentRunSource[];
-  previews?: boolean;
 }) {
   const seen = new Set<string>();
   const unique = sources.filter((source) => {
@@ -74,66 +78,39 @@ export default function AgentSources({
     return true;
   });
   if (!unique.length) return null;
-  const extra = previews ? unique.slice(3) : unique;
+  const domains = [
+    ...new Set(
+      unique.map((source) =>
+        new URL(safeSourceUrl(source.url)!).hostname.replace(/^www\./, ""),
+      ),
+    ),
+  ];
   return (
-    <div className={`agent-sources${previews ? " has-previews" : ""}`}>
-      {previews && (
-        <ul className="agent-source-previews" aria-label="Web sources">
-          {unique.slice(0, 3).map((source) => (
-            <li key={source.url}>
-              <SourcePreview source={source} />
-            </li>
-          ))}
-        </ul>
-      )}
-      {extra.length > 0 && (
-        <Trace>
-          <TraceCollapsible>
-            <TraceCollapsibleTrigger>
-              <TraceLine>
-                <TraceIcon>
-                  <Globe />
-                </TraceIcon>
-                <TraceTitle>
-                  {previews ? "More sources" : "Sources"} ({extra.length})
-                </TraceTitle>
-              </TraceLine>
-            </TraceCollapsibleTrigger>
-            <TraceCollapsibleContent>
-              <Trace className="agent-source-list">
-                {extra.map((source) => {
-                  const url = safeSourceUrl(source.url)!;
-                  const title =
-                    source.title?.trim() ||
-                    new URL(url).hostname.replace(/^www\./, "");
-                  return (
-                    <a
-                      className="agent-source-link"
-                      key={url}
-                      href={url}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                    >
-                      <TraceLine>
-                        <TraceIcon>
-                          <Globe />
-                        </TraceIcon>
-                        <TraceTitle>
-                          {title}
-                          <span className="sr-only"> (opens in a new tab)</span>
-                        </TraceTitle>
-                        <TraceIcon>
-                          <ArrowUpRight />
-                        </TraceIcon>
-                      </TraceLine>
-                    </a>
-                  );
-                })}
-              </Trace>
-            </TraceCollapsibleContent>
-          </TraceCollapsible>
-        </Trace>
-      )}
-    </div>
+    <Trace className="agent-sources">
+      <TraceCollapsible>
+        <TraceCollapsibleTrigger>
+          <TraceLine>
+            <TraceIcon>
+              <Globe />
+            </TraceIcon>
+            <TraceTitle>
+              {unique.length} {unique.length === 1 ? "source" : "sources"}
+            </TraceTitle>
+            <TraceDescription className="agent-source-domains">
+              {domains.join(", ")}
+            </TraceDescription>
+          </TraceLine>
+        </TraceCollapsibleTrigger>
+        <TraceCollapsibleContent>
+          <ul className="agent-source-previews" aria-label="Web sources">
+            {unique.map((source) => (
+              <li key={source.url}>
+                <SourcePreview source={source} />
+              </li>
+            ))}
+          </ul>
+        </TraceCollapsibleContent>
+      </TraceCollapsible>
+    </Trace>
   );
 }

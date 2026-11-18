@@ -26,6 +26,7 @@ import {
 } from "@/components/icons";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import type { MessagesPageProps } from "../components/MessagesPage";
+import InboxEmpty from "../components/InboxEmpty";
 import type { Conversation, Message } from "./client";
 import { fail } from "./client";
 import { sendCloudMessage } from "./messages";
@@ -40,6 +41,7 @@ export default function AccountMessages({
   listing,
   listings,
   onOpenListing,
+  onBrowse,
   initialMessage,
   onBeforeSend,
   onSent,
@@ -377,15 +379,18 @@ export default function AccountMessages({
               </div>
             </div>
           )}
-          {loaded && !visibleThreads.length && !selected.startsWith("new:") && (
-            <p>
-              {query || filter !== "all"
-                ? "No conversations match this filter."
-                : showArchived
-                  ? "No archived conversations."
-                  : "No conversations yet. Open a listing and choose Message seller."}
-            </p>
-          )}
+          {loaded &&
+            !visibleThreads.length &&
+            !selected.startsWith("new:") &&
+            (query || filter !== "all" || showArchived ? (
+              <p>
+                {query || filter !== "all"
+                  ? "No conversations match this filter."
+                  : "No archived conversations."}
+              </p>
+            ) : (
+              <InboxEmpty onBrowse={onBrowse} />
+            ))}
         </nav>
         <section className="seller-chat" aria-label="Seller conversation">
           {selected && (current || product) ? (

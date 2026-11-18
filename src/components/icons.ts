@@ -17,6 +17,7 @@ export {
   LoaderCircle,
   LoaderCircleIcon,
 } from "./animate-ui/icons/loader-circle";
+export { List, ListIcon } from "./animate-ui/icons/list";
 export { LogOut, LogOutIcon } from "./animate-ui/icons/log-out";
 export { MapPin, MapPinIcon } from "./animate-ui/icons/map-pin";
 export {

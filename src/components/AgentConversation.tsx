@@ -1,6 +1,8 @@
-import { Fragment, useId, type ReactNode } from "react";
+import { Fragment, useId, useRef, type ReactNode } from "react";
+import { useScrollFade } from "@animate-ui/react/primitives/effects/scroll-fade";
 import { emptyAgentRunState, type AgentRunState } from "../hooks/useAgentRun";
 import { motionBehavior } from "../uiMotion";
+import { PageTransitionShared } from "./animate-ui/components/page-transition";
 import { ChevronDown, MessageCircle } from "./icons";
 import { Bubble, BubbleContent } from "./ui/bubble";
 import { Message, MessageContent } from "./ui/message";
@@ -22,6 +24,8 @@ type AgentConversationProps = {
   children: (turn: AgentRunState, archived: boolean) => ReactNode;
   footer?: ReactNode;
   context?: ReactNode;
+  /** Names the newest request bubble, so text typed elsewhere can morph into it. */
+  requestTransitionName?: string;
 };
 
 export default function AgentConversation({
@@ -30,8 +34,13 @@ export default function AgentConversation({
   children,
   footer,
   context,
+  requestTransitionName,
 }: AgentConversationProps) {
   const headingId = useId();
+  const viewport = useRef<HTMLDivElement>(null);
+  // Messages dissolve into the header and the composer instead of being cut off there.
+  // No shrink or blur: a whole message still in view looked out of focus.
+  useScrollFade(viewport, { size: 32, shrink: 0, blur: 0 });
   const turns = state.id ? [...state.history, state] : [];
   return (
     <section
@@ -42,9 +51,12 @@ export default function AgentConversation({
         Your conversation
       </h2>
       {context && <div className="chat-context">{context}</div>}
-      <MessageScrollerProvider autoScroll defaultScrollPosition="last-anchor">
+      {/* The question stays anchored while the answer grows below it; following the
+          stream as well made the view jump down and back up. */}
+      <MessageScrollerProvider defaultScrollPosition="last-anchor">
         <MessageScroller className="agent-message-scroller">
           <MessageScrollerViewport
+            ref={viewport}
             className="chat-scroll-viewport"
             aria-label="Conversation messages"
           >
@@ -59,6 +71,18 @@ export default function AgentConversation({
                   ...turn,
                   history: [],
                 };
+                const requestBubble = (
+                  <Bubble
+                    align="end"
+                    variant="muted"
+                    className="agent-user-bubble"
+                  >
+                    <BubbleContent className="search-message user-message">
+                      <span className="sr-only">You</span>
+                      <p>{requestLabel(turn.request)}</p>
+                    </BubbleContent>
+                  </Bubble>
+                );
                 return (
                   <Fragment key={turn.turnKey || turn.id}>
                     <MessageScrollerItem
@@ -68,16 +92,13 @@ export default function AgentConversation({
                     >
                       <Message align="end">
                         <MessageContent>
-                          <Bubble
-                            align="end"
-                            variant="muted"
-                            className="agent-user-bubble"
-                          >
-                            <BubbleContent className="search-message user-message">
-                              <span className="sr-only">You</span>
-                              <p>{requestLabel(turn.request)}</p>
-                            </BubbleContent>
-                          </Bubble>
+                          {requestTransitionName && !archived ? (
+                            <PageTransitionShared name={requestTransitionName}>
+                              {requestBubble}
+                            </PageTransitionShared>
+                          ) : (
+                            requestBubble
+                          )}
                         </MessageContent>
                       </Message>
                     </MessageScrollerItem>

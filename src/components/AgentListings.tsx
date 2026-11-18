@@ -25,7 +25,11 @@ export default function AgentListings({
   const reducedMotion = useReducedMotion();
   const card = (item: Product) => {
     const canOffer = !item.own && item.status === "active";
-    const details = [item.condition, item.dimensions]
+    const details = [
+      item.condition,
+      item.dimensions,
+      item.available?.split(";")[0],
+    ]
       .filter((value) => value && value !== "Not specified")
       .join(" · ");
     return (
@@ -44,7 +48,7 @@ export default function AgentListings({
               draggable={false}
             />
           ) : (
-            <ImageIcon size={32} aria-hidden="true" />
+            <ImageIcon size={28} aria-hidden="true" />
           )}
         </Button>
         <div className="agent-product-content">
@@ -57,23 +61,24 @@ export default function AgentListings({
               {item.title}
             </Button>
           </h4>
-          <strong className="agent-product-price">
-            {item.price === 0 ? "Free" : money(item.price)}
-          </strong>
           <p>{item.location}</p>
           {details && <p>{details}</p>}
-          {item.available && <p>{item.available.split(";")[0]}</p>}
-          <Button
-            className="agent-product-offer"
-            variant="outline"
-            onClick={() => (canOffer ? onOffer(item) : onOpen(item))}
-          >
-            {!canOffer
-              ? "View listing"
-              : item.price === 0
-                ? "Arrange pickup"
-                : "Prepare an offer"}
-          </Button>
+          <div className="agent-product-footer">
+            <strong className="agent-product-price">
+              {item.price === 0 ? "Free" : money(item.price)}
+            </strong>
+            <Button
+              className="agent-product-offer"
+              variant="outline"
+              onClick={() => (canOffer ? onOffer(item) : onOpen(item))}
+            >
+              {!canOffer
+                ? "View listing"
+                : item.price === 0
+                  ? "Arrange pickup"
+                  : "Prepare an offer"}
+            </Button>
+          </div>
         </div>
       </article>
     );

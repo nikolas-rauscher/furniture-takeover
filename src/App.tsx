@@ -61,7 +61,7 @@ import {
   UserRound,
   X,
 } from "@/components/icons";
-import MobileNav from "./MobileNav";
+import MobileNav, { type MobileDestination } from "./MobileNav";
 import Modal from "./components/Modal";
 import ProductCard from "./components/ProductCard";
 import SearchPreferencesFields from "./components/SearchPreferencesFields";
@@ -108,6 +108,24 @@ import {
   type Criteria,
   type Product,
 } from "../shared/marketplace";
+import { transitionPage } from "./pageTransition";
+import {
+  PageTransition,
+  PageTransitionShared,
+  PageTransitionView,
+} from "./components/animate-ui/components/page-transition";
+
+type Destination = MobileDestination | "settings";
+/** Order of the mobile bar, left to right: tabs, then Sell beside them, then settings. */
+const DESTINATION_ORDER: Destination[] = [
+  "browse",
+  "searches",
+  "favorites",
+  "messages",
+  "account",
+  "sell",
+  "settings",
+];
 
 type Dialog =
   "filters" | "save" | "edit-search" | "location" | "help" | "clear" | null;
@@ -237,6 +255,8 @@ export default function App({ account }: { account?: AccountConnection }) {
   const setOwn = database.setListings;
   const [compared, setCompared] = useState<string[]>([]);
   const comparisonOrigin = useRef<View>("discover");
+  /** Where the open listing was reached from; a listing opened by link leads back to Browse. */
+  const [detailOrigin, setDetailOrigin] = useState<View>("discover");
   const [selectedId, setSelectedId] = useState<string | null>(
     readRoute(window.location.hash).view === "detail"
       ? (readRoute(window.location.hash).listingId ?? null)
@@ -457,9 +477,16 @@ export default function App({ account }: { account?: AccountConnection }) {
         top: window.scrollY,
         left: window.scrollX,
       });
-      searchRunToken.current += 1;
+      // A listing opened from the chat is a side trip: the agent keeps working
+      // and the conversation is still there on the way back.
+      const sideTrip = [view, next].every(
+        (page) => page === "discover" || page === "detail",
+      );
+      if (!sideTrip) {
+        searchRunToken.current += 1;
+        agentRun.cancel();
+      }
       listingRunToken.current += 1;
-      agentRun.cancel();
       listingRun.cancel();
       listingRequest.current?.abort();
       cancelPhotoRead();
@@ -485,12 +512,14 @@ export default function App({ account }: { account?: AccountConnection }) {
   useEffect(() => {
     const restore = () => {
       const route = readRoute(window.location.hash);
-      setAccountTab(route.accountTab);
-      setMessageListingId(
-        route.view === "messages" ? route.listingId : undefined,
-      );
-      if (route.view === "detail") setSelectedId(route.listingId ?? null);
-      navigate(route.view, true);
+      transitionPage("nav-back", () => {
+        setAccountTab(route.accountTab);
+        setMessageListingId(
+          route.view === "messages" ? route.listingId : undefined,
+        );
+        if (route.view === "detail") setSelectedId(route.listingId ?? null);
+        navigate(route.view, true);
+      });
     };
     window.addEventListener("popstate", restore);
     return () => window.removeEventListener("popstate", restore);
@@ -548,17 +577,60 @@ export default function App({ account }: { account?: AccountConnection }) {
     setEditingListing(null);
     setUploadError("");
   }
+  const currentDestination: Destination =
+    view === "sell"
+      ? "sell"
+      : view === "messages"
+        ? "messages"
+        : view === "searches"
+          ? "searches"
+          : view === "settings"
+            ? "settings"
+            : view === "account"
+              ? accountTab === "favorites"
+                ? "favorites"
+                : "account"
+              : "browse";
+  /** Tabs to the right push in from the right; tabs to the left from the left. */
+  function openDestination(destination: Destination) {
+    const direction =
+      DESTINATION_ORDER.indexOf(destination) >=
+      DESTINATION_ORDER.indexOf(currentDestination)
+        ? "nav-forward"
+        : "nav-back";
+    transitionPage(direction, () => {
+      if (destination === "browse") openBrowse();
+      else if (destination === "sell") openSell();
+      else if (destination === "messages") openMessages();
+      else if (destination === "searches") navigate("searches");
+      else if (destination === "settings") navigate("settings");
+      else {
+        setAccountTab(destination === "favorites" ? "favorites" : "listings");
+        navigate("account");
+        if (destination === "favorites" && signedIn)
+          window.history.replaceState(null, "", "#saved");
+      }
+    });
+  }
   function openSell() {
     if (hasSellingDraft.current) navigate("sell");
     else startSell();
+  }
+  /** Entering the chat crossfades the page while the search box becomes the composer. */
+  function startSearchFromHome(text: string) {
+    transitionPage("nav-forward", () => void runSearch(text), "fade");
   }
   function openBrowse() {
     navigate("discover");
   }
   function openProduct(item: Product) {
     if (item.status === "withdrawn") return;
-    setSelectedId(item.id);
-    navigate("detail");
+    transitionPage("nav-forward", () => {
+      // Similar items opened from a listing keep leading back to where you started.
+      if (view !== "detail") setDetailOrigin(view);
+      setSelectedId(item.id);
+      navigate("detail");
+    });
     window.history.replaceState(
       null,
       "",
@@ -1447,7 +1519,7 @@ export default function App({ account }: { account?: AccountConnection }) {
           href="#"
           onClick={(event) => {
             event.preventDefault();
-            goHome();
+            transitionPage("nav-back", goHome);
           }}
           aria-label="takeover home"
         >
@@ -1460,29 +1532,26 @@ export default function App({ account }: { account?: AccountConnection }) {
                 ? "active"
                 : ""
             }
-            onClick={openBrowse}
+            onClick={() => openDestination("browse")}
           >
             Find
           </Button>
           <Button
             className={view === "searches" ? "active" : ""}
-            onClick={() => navigate("searches")}
+            onClick={() => openDestination("searches")}
           >
             Saved searches
             <span className="nav-count">{savedSearches.length}</span>
           </Button>
           <Button
             className={view === "messages" ? "active" : ""}
-            onClick={() => openMessages()}
+            onClick={() => openDestination("messages")}
           >
             Messages
           </Button>
           <Button
             className={view === "account" ? "active" : ""}
-            onClick={() => {
-              setAccountTab("listings");
-              navigate("account");
-            }}
+            onClick={() => openDestination("account")}
           >
             My listings
           </Button>
@@ -1491,7 +1560,7 @@ export default function App({ account }: { account?: AccountConnection }) {
           <Button
             animateIcon
             className="button primary sell-nav"
-            onClick={openSell}
+            onClick={() => openDestination("sell")}
           >
             <Plus size={17} />
             Sell furniture
@@ -1506,7 +1575,7 @@ export default function App({ account }: { account?: AccountConnection }) {
                   : "Sign in"
                 : "Open workspace settings"
             }
-            onClick={() => navigate("settings")}
+            onClick={() => openDestination("settings")}
           >
             <UserRound size={20} />
           </Button>
@@ -1525,634 +1594,659 @@ export default function App({ account }: { account?: AccountConnection }) {
             : "")
         }
       >
-        <main
-          ref={mainContent}
-          tabIndex={-1}
-          className={"main-content view-" + view}
-        >
-          {view === "settings" &&
-            (account?.session ? (
-              <AccountSettings
-                client={account.client}
-                session={account.session}
-                onProfileSaved={setPickupRegion}
-              />
-            ) : account ? (
-              <div className="settings-auth-page">
-                <Auth
-                  client={account.client}
-                  onDone={() => navigate("settings")}
-                />
-              </div>
-            ) : (
-              <section className="local-settings-page">
-                <div className="page-title">
-                  <h1>Workspace settings</h1>
-                  <p>
-                    Your listings and preferences are saved in this browser.
-                  </p>
-                </div>
-                {connectionStatus}
-                <Button
-                  className="button secondary"
-                  onClick={() => void database.addDemo()}
-                >
-                  Add sample listings
-                </Button>
-                <Button
-                  className="text-button"
-                  onClick={() => setModal("help")}
-                >
-                  How the agent works
-                </Button>
-                <Button
-                  className="text-button"
-                  onClick={() => setModal("clear")}
-                >
-                  Clear local workspace
-                </Button>
-              </section>
-            ))}
-          <WorkspacePage active={view === "messages"}>
-            <MessagesPage
-              listingId={messageListingId}
-              initialMessage={
-                messageProposal
-                  ? (messageProposal.draft?.message ??
-                    draftMessage(
-                      own.find((item) => item.id === messageListingId)?.title ??
-                        "Listing",
-                      messageProposal.terms,
-                    ))
-                  : undefined
-              }
-              onBeforeSend={(listingId, role) => {
-                if (
-                  !messageProposal ||
-                  listingId !== messageProposal.listingId ||
-                  role !== "buyer"
-                )
-                  return;
-                const current = negotiations.current();
-                if (
-                  !current ||
-                  current.id !== messageProposal.id ||
-                  current.version !== messageProposal.version
-                )
-                  throw new Error(
-                    "This proposal has changed. Reopen its latest message from the agent chat.",
-                  );
-              }}
-              onSent={(listingId, role, message) => {
-                if (
-                  !messageProposal ||
-                  listingId !== messageProposal.listingId ||
-                  role !== "buyer"
-                )
-                  return;
-                negotiations.commit({
-                  type: "negotiation_update",
-                  previousVersion: messageProposal.version,
-                  negotiation: markNegotiationSent(
-                    {
-                      ...messageProposal,
-                      draft: { message, version: messageProposal.version },
-                    },
-                    messageProposal.version,
-                  ),
-                });
-                setMessageProposal(undefined);
-              }}
-              onDeleted={() =>
-                window.history.replaceState(null, "", "#messages")
-              }
-              listings={own}
-              account={account}
-              listing={own.find((item) => item.id === messageListingId)}
-              onOpenListing={(id) => {
-                const item = own.find((item) => item.id === id);
-                if (item) openProduct(item);
-              }}
-            />
-          </WorkspacePage>
-          <WorkspacePage active={view === "discover"}>
-            <>
-              {searchIsHome ? (
-                <section
-                  className={`agent-hero search-entry${hasSearchDraft ? " has-query" : ""}`}
-                  aria-labelledby="agent-title"
-                >
-                  <div className="agent-modes">
-                    <span>Find something</span>
-                    <Button onClick={startSell}>Sell from a photo</Button>
-                  </div>
-                  <HeroHeadline compact={false} />
-                  <p>
-                    Describe what you need. Your agent searches around{" "}
-                    {location}.
-                  </p>
-                  <form
-                    className="agent-search"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      void runSearch(query);
-                    }}
-                  >
-                    <Textarea
-                      aria-label="Search furniture"
-                      maxLength={4000}
-                      value={query}
-                      onChange={(event) => setQuery(event.target.value)}
-                      rows={1}
-                      placeholder="A desk under CHF 80, nearby, ready to collect by Friday…"
-                      onKeyDown={(event) => {
-                        if (
-                          event.key === "Enter" &&
-                          !event.shiftKey &&
-                          !event.nativeEvent.isComposing
-                        ) {
-                          event.preventDefault();
-                          void runSearch(query);
-                        }
-                      }}
+        <PageTransition container={mainContent}>
+          <main
+            ref={mainContent}
+            tabIndex={-1}
+            className={"main-content view-" + view}
+          >
+            {view === "settings" && (
+              <PageTransitionView>
+                {account?.session ? (
+                  <AccountSettings
+                    client={account.client}
+                    session={account.session}
+                    onProfileSaved={setPickupRegion}
+                  />
+                ) : account ? (
+                  <div className="settings-auth-page">
+                    <Auth
+                      client={account.client}
+                      onDone={() => navigate("settings")}
                     />
-                    <div className="agent-search-actions">
-                      <Button
-                        type="button"
-                        className="search-area"
-                        onClick={() => {
-                          setAreaDraft({ location, radius: criteria.radius });
-                          setModal("location");
+                  </div>
+                ) : (
+                  <section className="local-settings-page">
+                    <div className="page-title">
+                      <h1>Workspace settings</h1>
+                      <p>
+                        Your listings and preferences are saved in this browser.
+                      </p>
+                    </div>
+                    {connectionStatus}
+                    <Button
+                      className="button secondary"
+                      onClick={() => void database.addDemo()}
+                    >
+                      Add sample listings
+                    </Button>
+                    <Button
+                      className="text-button"
+                      onClick={() => setModal("help")}
+                    >
+                      How the agent works
+                    </Button>
+                    <Button
+                      className="text-button"
+                      onClick={() => setModal("clear")}
+                    >
+                      Clear local workspace
+                    </Button>
+                  </section>
+                )}
+              </PageTransitionView>
+            )}
+            <WorkspacePage active={view === "messages"}>
+              <MessagesPage
+                listingId={messageListingId}
+                onBrowse={() => openDestination("browse")}
+                initialMessage={
+                  messageProposal
+                    ? (messageProposal.draft?.message ??
+                      draftMessage(
+                        own.find((item) => item.id === messageListingId)
+                          ?.title ?? "Listing",
+                        messageProposal.terms,
+                      ))
+                    : undefined
+                }
+                onBeforeSend={(listingId, role) => {
+                  if (
+                    !messageProposal ||
+                    listingId !== messageProposal.listingId ||
+                    role !== "buyer"
+                  )
+                    return;
+                  const current = negotiations.current();
+                  if (
+                    !current ||
+                    current.id !== messageProposal.id ||
+                    current.version !== messageProposal.version
+                  )
+                    throw new Error(
+                      "This proposal has changed. Reopen its latest message from the agent chat.",
+                    );
+                }}
+                onSent={(listingId, role, message) => {
+                  if (
+                    !messageProposal ||
+                    listingId !== messageProposal.listingId ||
+                    role !== "buyer"
+                  )
+                    return;
+                  negotiations.commit({
+                    type: "negotiation_update",
+                    previousVersion: messageProposal.version,
+                    negotiation: markNegotiationSent(
+                      {
+                        ...messageProposal,
+                        draft: { message, version: messageProposal.version },
+                      },
+                      messageProposal.version,
+                    ),
+                  });
+                  setMessageProposal(undefined);
+                }}
+                onDeleted={() =>
+                  window.history.replaceState(null, "", "#messages")
+                }
+                listings={own}
+                account={account}
+                listing={own.find((item) => item.id === messageListingId)}
+                onOpenListing={(id) => {
+                  const item = own.find((item) => item.id === id);
+                  if (item) openProduct(item);
+                }}
+              />
+            </WorkspacePage>
+            <WorkspacePage
+              active={view === "discover"}
+              pageKey={searchIsHome ? "home" : "search"}
+            >
+              <>
+                {searchIsHome ? (
+                  <section
+                    className={`agent-hero search-entry${hasSearchDraft ? " has-query" : ""}`}
+                    aria-labelledby="agent-title"
+                  >
+                    <div className="agent-modes">
+                      <span>Find something</span>
+                      <Button onClick={startSell}>Sell from a photo</Button>
+                    </div>
+                    <HeroHeadline compact={false} />
+                    <p>
+                      Describe what you need. Your agent searches around{" "}
+                      {location}.
+                    </p>
+                    <PageTransitionShared name="agent-composer">
+                      <form
+                        className="agent-search"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          startSearchFromHome(query);
                         }}
                       >
-                        {location}
-                        <ChevronDown size={13} />
-                      </Button>
-                      <Button
-                        animateIcon
-                        className="button primary"
-                        type="submit"
-                        disabled={!query.trim() || running || quotaExhausted}
-                      >
-                        Find it
-                      </Button>
-                    </div>
-                  </form>
-                  {connectionStatus}
-                  <AgentSuggestions
-                    state={searchAssist}
-                    onSelect={(suggestion) => {
-                      setQuery(suggestion);
-                      void runSearch(suggestion);
-                    }}
-                  />
-                </section>
-              ) : (
-                <>
-                  <WorkspaceHeader
-                    title={reviewingListing ? "Listing review" : searchHeading}
-                    backLabel="New search"
-                    backIcon={<SquarePen size={20} aria-hidden="true" />}
-                    onBack={goHome}
-                    onAccount={() => navigate("settings")}
-                    quota={agentHealth?.quota}
-                    preferences={
-                      !reviewingListing
-                        ? {
-                            summary: activePreferences,
-                            compactSummary: compactPreferences,
-                            onOpen: () => {
-                              setFilterDraft(criteria);
-                              setModal("filters");
-                            },
-                          }
-                        : undefined
-                    }
-                    save={
-                      !reviewingListing
-                        ? {
-                            disabled: running || !committedSearch,
-                            onSave: () => {
-                              setEditingJob(null);
-                              setJobTitle(
-                                (committedSearch?.originalRequest || "").slice(
-                                  0,
-                                  90,
-                                ),
-                              );
-                              setModal("save");
-                            },
-                          }
-                        : undefined
-                    }
-                  />
-                  {negotiations.error && (
-                    <p role="alert">{negotiations.error}</p>
-                  )}
-                  <AgentConversation
-                    state={agentRun.state}
-                    context={
-                      negotiations.active &&
-                      !activeDraftInChat &&
-                      proposalSummary(negotiations.active, true)
-                    }
-                    footer={
-                      <>
-                        {comparison.length > 0 && (
-                          <div
-                            className="chat-comparison"
-                            role="group"
-                            aria-label="Listing comparison"
+                        <PageTransitionShared name="agent-query">
+                          <Textarea
+                            aria-label="Search furniture"
+                            maxLength={4000}
+                            value={query}
+                            onChange={(event) => setQuery(event.target.value)}
+                            rows={1}
+                            placeholder="A desk under CHF 80, nearby, ready to collect by Friday…"
+                            onKeyDown={(event) => {
+                              if (
+                                event.key === "Enter" &&
+                                !event.shiftKey &&
+                                !event.nativeEvent.isComposing
+                              ) {
+                                event.preventDefault();
+                                startSearchFromHome(query);
+                              }
+                            }}
+                          />
+                        </PageTransitionShared>
+                        <div className="agent-search-actions">
+                          <Button
+                            type="button"
+                            className="search-area"
+                            onClick={() => {
+                              setAreaDraft({
+                                location,
+                                radius: criteria.radius,
+                              });
+                              setModal("location");
+                            }}
                           >
-                            <span role="status">
-                              {comparison.length < 2
-                                ? "Choose one more"
-                                : `${comparison.length} selected`}
-                            </span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={comparison.length < 2}
-                              onClick={openComparison}
-                            >
-                              Compare
-                              {comparison.length > 1
-                                ? ` ${comparison.length}`
-                                : ""}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              aria-label="Clear comparison"
-                              onClick={(event) => {
-                                const messages = event.currentTarget
-                                  .closest(".chat-workspace")
-                                  ?.querySelector<HTMLElement>(
-                                    '[aria-label="Conversation messages"]',
-                                  );
-                                setCompared([]);
-                                messages?.focus({ preventScroll: true });
-                              }}
-                            >
-                              <X size={16} aria-hidden="true" />
-                            </Button>
-                          </div>
-                        )}
-                        <div className="composer-status">
-                          {connectionStatus}
+                            {location}
+                            <ChevronDown size={13} />
+                          </Button>
+                          <Button
+                            animateIcon
+                            className="button primary"
+                            type="submit"
+                            disabled={
+                              !query.trim() || running || quotaExhausted
+                            }
+                          >
+                            Find it
+                          </Button>
                         </div>
-                        <AgentComposer
-                          value={followUp}
-                          onChange={setFollowUp}
-                          onSend={() =>
-                            void runSearch(followUp, criteria, true)
-                          }
-                          label="Ask the agent"
-                          placeholder={
-                            reviewingListing
-                              ? "Ask about your listing…"
-                              : "Ask a follow-up…"
-                          }
-                          sendLabel="Send to the agent"
-                          disabled={running || quotaExhausted}
-                          onStop={running ? agentRun.cancel : undefined}
-                        />
-                      </>
-                    }
-                  >
-                    {(turn, archived) => {
-                      const localMatches = (
-                        turn.inventoryMatchIds ?? []
-                      ).flatMap((id) => {
-                        const item = activeListings.find(
-                          (listing) => listing.id === id,
-                        );
-                        return item ? [item] : [];
-                      });
-                      return (
-                        <AgentRunPanel
-                          state={turn}
-                          externalComposer
-                          readOnly={archived}
-                          outcome={
-                            turn.proposal?.draft && (
-                              <MessageDraftPreview
-                                proposal={turn.proposal}
-                                sent={negotiations.items.some(
-                                  (proposal) =>
-                                    proposal.id === turn.proposal?.id &&
-                                    proposal.status === "sent",
-                                )}
-                                title={
-                                  own.find(
-                                    (item) =>
-                                      item.id === turn.proposal?.listingId,
-                                  )?.title ?? "Listing"
-                                }
-                                onReview={
-                                  negotiations.items.some(
+                      </form>
+                    </PageTransitionShared>
+                    {connectionStatus}
+                    <AgentSuggestions
+                      state={searchAssist}
+                      onSelect={(suggestion) => {
+                        setQuery(suggestion);
+                        startSearchFromHome(suggestion);
+                      }}
+                    />
+                  </section>
+                ) : (
+                  <>
+                    <WorkspaceHeader
+                      title={
+                        reviewingListing ? "Listing review" : searchHeading
+                      }
+                      backLabel="New search"
+                      backIcon={<SquarePen size={20} aria-hidden="true" />}
+                      onBack={() => transitionPage("nav-back", goHome, "fade")}
+                      onAccount={() => navigate("settings")}
+                      quota={agentHealth?.quota}
+                      preferences={
+                        !reviewingListing
+                          ? {
+                              summary: activePreferences,
+                              compactSummary: compactPreferences,
+                              onOpen: () => {
+                                setFilterDraft(criteria);
+                                setModal("filters");
+                              },
+                            }
+                          : undefined
+                      }
+                      save={
+                        !reviewingListing
+                          ? {
+                              disabled: running || !committedSearch,
+                              onSave: () => {
+                                setEditingJob(null);
+                                setJobTitle(
+                                  (
+                                    committedSearch?.originalRequest || ""
+                                  ).slice(0, 90),
+                                );
+                                setModal("save");
+                              },
+                            }
+                          : undefined
+                      }
+                    />
+                    {negotiations.error && (
+                      <p role="alert">{negotiations.error}</p>
+                    )}
+                    <AgentConversation
+                      state={agentRun.state}
+                      requestTransitionName="agent-query"
+                      context={
+                        negotiations.active &&
+                        !activeDraftInChat &&
+                        proposalSummary(negotiations.active, true)
+                      }
+                      footer={
+                        <>
+                          {comparison.length > 0 && (
+                            <div
+                              className="chat-comparison"
+                              role="group"
+                              aria-label="Listing comparison"
+                            >
+                              <span role="status">
+                                {comparison.length < 2
+                                  ? "Choose one more"
+                                  : `${comparison.length} selected`}
+                              </span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={comparison.length < 2}
+                                onClick={openComparison}
+                              >
+                                Compare
+                                {comparison.length > 1
+                                  ? ` ${comparison.length}`
+                                  : ""}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label="Clear comparison"
+                                onClick={(event) => {
+                                  const messages = event.currentTarget
+                                    .closest(".chat-workspace")
+                                    ?.querySelector<HTMLElement>(
+                                      '[aria-label="Conversation messages"]',
+                                    );
+                                  setCompared([]);
+                                  messages?.focus({ preventScroll: true });
+                                }}
+                              >
+                                <X size={16} aria-hidden="true" />
+                              </Button>
+                            </div>
+                          )}
+                          <div className="composer-status">
+                            {connectionStatus}
+                          </div>
+                          <PageTransitionShared name="agent-composer">
+                            <AgentComposer
+                              value={followUp}
+                              onChange={setFollowUp}
+                              onSend={() =>
+                                void runSearch(followUp, criteria, true)
+                              }
+                              label="Ask the agent"
+                              placeholder={
+                                reviewingListing
+                                  ? "Ask about your listing…"
+                                  : "Ask a follow-up…"
+                              }
+                              sendLabel="Send to the agent"
+                              disabled={running || quotaExhausted}
+                              onStop={running ? agentRun.cancel : undefined}
+                            />
+                          </PageTransitionShared>
+                        </>
+                      }
+                    >
+                      {(turn, archived) => {
+                        const localMatches = (
+                          turn.inventoryMatchIds ?? []
+                        ).flatMap((id) => {
+                          const item = activeListings.find(
+                            (listing) => listing.id === id,
+                          );
+                          return item ? [item] : [];
+                        });
+                        return (
+                          <AgentRunPanel
+                            state={turn}
+                            externalComposer
+                            readOnly={archived}
+                            outcome={
+                              turn.proposal?.draft && (
+                                <MessageDraftPreview
+                                  proposal={turn.proposal}
+                                  sent={negotiations.items.some(
                                     (proposal) =>
                                       proposal.id === turn.proposal?.id &&
-                                      proposal.version ===
-                                        turn.proposal.version &&
-                                      proposal.status === "draft",
-                                  ) &&
-                                  own.some(
-                                    (item) =>
-                                      item.id === turn.proposal?.listingId &&
-                                      item.status === "active",
-                                  )
-                                    ? () => {
-                                        negotiations.activate(
-                                          turn.proposal!.id,
-                                        );
-                                        openMessages(
-                                          turn.proposal!.listingId,
-                                          turn.proposal,
-                                        );
-                                      }
-                                    : undefined
-                                }
-                              />
-                            )
-                          }
-                          className={`${reviewingListing ? "" : "search-agent-message"} ${archived ? "archived-agent-response" : ""}`}
-                          showHistory={false}
-                          splitSearchResults={
-                            !reviewingListing &&
-                            (archived || !negotiations.active)
-                          }
-                          localListings={
-                            !reviewingListing &&
-                            turn.inventoryMatchIds !== null &&
-                            localMatches.length > 0 ? (
-                              <AgentListings
-                                listings={localMatches}
-                                onOpen={openProduct}
-                                onOffer={continueOffer}
-                              />
-                            ) : undefined
-                          }
-                          onCancel={agentRun.cancel}
-                          onRetry={() =>
-                            committedSearchRef.current &&
-                            void performSearch(committedSearchRef.current)
-                          }
-                          onReset={goHome}
-                          onAnswer={answerSearchQuestion}
-                          onSkipQuestion={(id) =>
-                            answerSearchQuestion(
-                              id,
-                              "Skip this question and continue with my current preferences.",
-                            )
-                          }
-                          onApplyAction={(id) => {
-                            const action = agentRun.state.actions.find(
-                              (item) => item.id === id,
-                            );
-                            if (action?.type === "preferences_patch")
-                              applySearchPatch(action);
-                          }}
-                          onUndoAction={undoSearchPatch}
-                          appliedActionIds={Object.keys(searchChanges)}
-                          undoneActionIds={searchUndone}
-                          actionNotices={searchNotices}
-                        />
-                      );
-                    }}
-                  </AgentConversation>
-                </>
-              )}
-              {searchIsHome && negotiations.error && (
-                <p role="alert">{negotiations.error}</p>
-              )}
-              {searchIsHome &&
-                negotiations.items
-                  .filter((item) => item.status === "draft")
-                  .map((proposal) => proposalSummary(proposal))}
-              {searchIsHome && visibleListings.length > 0 && (
-                <>
+                                      proposal.status === "sent",
+                                  )}
+                                  title={
+                                    own.find(
+                                      (item) =>
+                                        item.id === turn.proposal?.listingId,
+                                    )?.title ?? "Listing"
+                                  }
+                                  onReview={
+                                    negotiations.items.some(
+                                      (proposal) =>
+                                        proposal.id === turn.proposal?.id &&
+                                        proposal.version ===
+                                          turn.proposal.version &&
+                                        proposal.status === "draft",
+                                    ) &&
+                                    own.some(
+                                      (item) =>
+                                        item.id === turn.proposal?.listingId &&
+                                        item.status === "active",
+                                    )
+                                      ? () => {
+                                          negotiations.activate(
+                                            turn.proposal!.id,
+                                          );
+                                          openMessages(
+                                            turn.proposal!.listingId,
+                                            turn.proposal,
+                                          );
+                                        }
+                                      : undefined
+                                  }
+                                />
+                              )
+                            }
+                            className={`${reviewingListing ? "" : "search-agent-message"} ${archived ? "archived-agent-response" : ""}`}
+                            showHistory={false}
+                            splitSearchResults={
+                              !reviewingListing &&
+                              (archived || !negotiations.active)
+                            }
+                            localListings={
+                              !reviewingListing &&
+                              turn.inventoryMatchIds !== null &&
+                              localMatches.length > 0 ? (
+                                <AgentListings
+                                  listings={localMatches}
+                                  onOpen={openProduct}
+                                  onOffer={continueOffer}
+                                />
+                              ) : undefined
+                            }
+                            onCancel={agentRun.cancel}
+                            onRetry={() =>
+                              committedSearchRef.current &&
+                              void performSearch(committedSearchRef.current)
+                            }
+                            onReset={goHome}
+                            onAnswer={answerSearchQuestion}
+                            onSkipQuestion={(id) =>
+                              answerSearchQuestion(
+                                id,
+                                "Skip this question and continue with my current preferences.",
+                              )
+                            }
+                            onApplyAction={(id) => {
+                              const action = agentRun.state.actions.find(
+                                (item) => item.id === id,
+                              );
+                              if (action?.type === "preferences_patch")
+                                applySearchPatch(action);
+                            }}
+                            onUndoAction={undoSearchPatch}
+                            appliedActionIds={Object.keys(searchChanges)}
+                            undoneActionIds={searchUndone}
+                            actionNotices={searchNotices}
+                          />
+                        );
+                      }}
+                    </AgentConversation>
+                  </>
+                )}
+                {searchIsHome && negotiations.error && (
+                  <p role="alert">{negotiations.error}</p>
+                )}
+                {searchIsHome &&
+                  negotiations.items
+                    .filter((item) => item.status === "draft")
+                    .map((proposal) => proposalSummary(proposal))}
+                {searchIsHome && visibleListings.length > 0 && (
+                  <>
+                    <div className="section-heading">
+                      <div>
+                        <h2>
+                          {searchIsHome
+                            ? "Your local listings"
+                            : "From your local listings"}
+                        </h2>
+                        <span>
+                          {account
+                            ? "Items shared on Takeover"
+                            : "Personal browser listings & demo database"}
+                        </span>
+                      </div>
+                      <Button
+                        className="browse-filter"
+                        onClick={() => {
+                          setAccountTab("listings");
+                          navigate("account");
+                        }}
+                      >
+                        Manage listings
+                      </Button>
+                    </div>
+                    <div className="product-grid">
+                      {visibleListings.map((item) => productCard(item))}
+                    </div>
+                  </>
+                )}
+                {searchIsHome && !visibleListings.length && (
                   <div className="section-heading">
                     <div>
-                      <h2>
-                        {searchIsHome
-                          ? "Your local listings"
-                          : "From your local listings"}
-                      </h2>
+                      <h2>Something to sell?</h2>
                       <span>
-                        {account
-                          ? "Items shared on Takeover"
-                          : "Personal browser listings & demo database"}
+                        Upload a photo. Your agent prepares the listing.
                       </span>
                     </div>
-                    <Button
-                      className="browse-filter"
-                      onClick={() => {
-                        setAccountTab("listings");
-                        navigate("account");
-                      }}
-                    >
-                      Manage listings
+                    <Button className="button secondary" onClick={startSell}>
+                      Create a listing
+                      <ArrowRight size={16} />
                     </Button>
                   </div>
-                  <div className="product-grid">
-                    {visibleListings.map((item) => productCard(item))}
-                  </div>
-                </>
-              )}
-              {searchIsHome && !visibleListings.length && (
-                <div className="section-heading">
-                  <div>
-                    <h2>Something to sell?</h2>
-                    <span>
-                      Upload a photo. Your agent prepares the listing.
-                    </span>
-                  </div>
-                  <Button className="button secondary" onClick={startSell}>
-                    Create a listing
-                    <ArrowRight size={16} />
-                  </Button>
-                </div>
-              )}
-            </>
-          </WorkspacePage>
+                )}
+              </>
+            </WorkspacePage>
 
-          {view === "searches" && (
-            <SavedSearchesPage
-              searches={savedSearches}
-              location={location}
-              onFind={goHome}
-              onRun={(job) => {
-                const search = restoreSearch(job, location);
-                setSearchArea({
-                  location: search.location,
-                  radius: search.criteria.radius,
-                });
-                void performSearch(search);
-              }}
-              onEdit={(job) => {
-                setEditingJob(job.id);
-                setJobTitle(job.title);
-                setFilterDraft(job.criteria);
-                setModal("edit-search");
-              }}
-              onDelete={(job) => {
-                setJobs((current) =>
-                  current.filter((item) => item.id !== job.id),
-                );
-                setToastNotice({
-                  message: "Saved search deleted.",
-                  deletedSearch: {
-                    job,
-                    index: jobs.findIndex((item) => item.id === job.id),
-                  },
-                });
-              }}
-            />
-          )}
+            {view === "searches" && (
+              <PageTransitionView>
+                <SavedSearchesPage
+                  searches={savedSearches}
+                  location={location}
+                  onFind={goHome}
+                  onRun={(job) => {
+                    const search = restoreSearch(job, location);
+                    setSearchArea({
+                      location: search.location,
+                      radius: search.criteria.radius,
+                    });
+                    void performSearch(search);
+                  }}
+                  onEdit={(job) => {
+                    setEditingJob(job.id);
+                    setJobTitle(job.title);
+                    setFilterDraft(job.criteria);
+                    setModal("edit-search");
+                  }}
+                  onDelete={(job) => {
+                    setJobs((current) =>
+                      current.filter((item) => item.id !== job.id),
+                    );
+                    setToastNotice({
+                      message: "Saved search deleted.",
+                      deletedSearch: {
+                        job,
+                        index: jobs.findIndex((item) => item.id === job.id),
+                      },
+                    });
+                  }}
+                />
+              </PageTransitionView>
+            )}
 
-          <WorkspacePage active={view === "sell"}>
-            <>
-              <SellFlow
-                draft={draft}
-                step={sellStep}
-                editing={!!editingListing}
-                pickupMin={listingPickupMinimum(draft.pickup, editingItem)}
-                busy={busy || database.pending > 0}
-                cloud={!!account}
-                photoReading={photoReading}
-                uploadError={uploadError}
-                liveAgent={configured}
-                listingAssist={listingAssist}
-                onBack={() => {
-                  if (sellStep === 2 && !editingListing) {
-                    resetListingConversation();
-                    setSellStep(1);
-                  } else if (editingListing) navigate("account");
-                  else openBrowse();
+            <WorkspacePage active={view === "sell"}>
+              <>
+                <SellFlow
+                  draft={draft}
+                  step={sellStep}
+                  editing={!!editingListing}
+                  pickupMin={listingPickupMinimum(draft.pickup, editingItem)}
+                  busy={busy || database.pending > 0}
+                  cloud={!!account}
+                  photoReading={photoReading}
+                  uploadError={uploadError}
+                  liveAgent={configured}
+                  listingAssist={listingAssist}
+                  onBack={() =>
+                    transitionPage("nav-back", () => {
+                      if (sellStep === 2 && !editingListing) {
+                        resetListingConversation();
+                        setSellStep(1);
+                      } else if (editingListing) navigate("account");
+                      else openBrowse();
+                    })
+                  }
+                  onDraftChange={changeDraft}
+                  agentWorking={listingRun.state.status === "running"}
+                  agentConversation={listingConversation}
+                  agentTools={listingTools}
+                  quota={agentHealth?.quota}
+                  onAccount={() => navigate("settings")}
+                  onPhotoSelected={upload}
+                  onCreateDraft={generateDraft}
+                  onSuggestionSelected={addListingSuggestion}
+                  onPublish={publish}
+                />
+                {connectionStatus}
+              </>
+            </WorkspacePage>
+
+            {view === "detail" && (
+              <PageTransitionView key={`listing-${selectedId}`}>
+                <ListingDetailPage
+                  selected={selected}
+                  cloud={!!account}
+                  catalog={localListings}
+                  renderProduct={productCard}
+                  favorite={favorites.includes(selected?.id ?? "")}
+                  compared={compared.includes(selected?.id ?? "")}
+                  onToggleFavorite={() =>
+                    selected && toggleFavorite(selected.id)
+                  }
+                  onToggleCompare={() => selected && toggleCompare(selected.id)}
+                  reportAction={
+                    account?.session && selected && !selected.own ? (
+                      <Report client={account.client} listingId={selected.id} />
+                    ) : undefined
+                  }
+                  backLabel={
+                    detailOrigin === "discover"
+                      ? searching
+                        ? "Back to chat"
+                        : "Back to browse"
+                      : detailOrigin === "account"
+                        ? accountTab === "favorites"
+                          ? "Back to saved items"
+                          : "Back to my listings"
+                        : detailOrigin === "messages"
+                          ? "Back to messages"
+                          : detailOrigin === "compare"
+                            ? "Back to comparison"
+                            : "Back"
+                  }
+                  onBack={() =>
+                    transitionPage("nav-back", () => navigate(detailOrigin))
+                  }
+                  onMessage={() => selected && openMessages(selected.id)}
+                  onEdit={() => selected && editListing(selected)}
+                  onAskAgent={() => {
+                    if (!selected) return;
+                    editListing(selected);
+                    void runListing(
+                      "Review my supplied listing and help me improve it. Ask about missing facts; do not invent them.",
+                    );
+                  }}
+                />
+              </PageTransitionView>
+            )}
+
+            {view === "compare" && (
+              <PageTransitionView>
+                <ComparePage
+                  items={comparison}
+                  onBack={() =>
+                    transitionPage("nav-back", () =>
+                      navigate(comparisonOrigin.current),
+                    )
+                  }
+                  onOpen={openProduct}
+                  onRemove={toggleCompare}
+                />
+              </PageTransitionView>
+            )}
+
+            <WorkspacePage active={view === "account"} pageKey={accountTab}>
+              <AccountPage
+                accountTab={accountTab}
+                setAccountTab={(tab) => {
+                  setAccountTab(tab);
+                  window.history.pushState(
+                    null,
+                    "",
+                    tab === "favorites"
+                      ? "#saved"
+                      : tab === "archive"
+                        ? "#listings/archive"
+                        : "#listings",
+                  );
                 }}
-                onDraftChange={changeDraft}
-                agentWorking={listingRun.state.status === "running"}
-                agentConversation={listingConversation}
-                agentTools={listingTools}
-                quota={agentHealth?.quota}
-                onAccount={() => navigate("settings")}
-                onPhotoSelected={upload}
-                onCreateDraft={generateDraft}
-                onSuggestionSelected={addListingSuggestion}
-                onPublish={publish}
+                visibleListings={
+                  account
+                    ? visibleListings.filter((item) => item.own)
+                    : visibleListings
+                }
+                cloud={!!account}
+                savedListings={savedListings}
+                archivedListings={
+                  account
+                    ? archivedListings.filter((item) => item.own)
+                    : archivedListings
+                }
+                onSell={startSell}
+                onBrowse={openBrowse}
+                onOpen={openProduct}
+                onEdit={editListing}
+                onStatusChange={setStatus}
+                renderProduct={productCard}
               />
-              {connectionStatus}
-            </>
-          </WorkspacePage>
-
-          {view === "detail" && (
-            <ListingDetailPage
-              selected={selected}
-              cloud={!!account}
-              catalog={localListings}
-              renderProduct={productCard}
-              favorite={favorites.includes(selected?.id ?? "")}
-              compared={compared.includes(selected?.id ?? "")}
-              onToggleFavorite={() => selected && toggleFavorite(selected.id)}
-              onToggleCompare={() => selected && toggleCompare(selected.id)}
-              reportAction={
-                account?.session && selected && !selected.own ? (
-                  <Report client={account.client} listingId={selected.id} />
-                ) : undefined
-              }
-              onBack={() =>
-                account && !selected?.own ? openBrowse() : navigate("account")
-              }
-              onMessage={() => selected && openMessages(selected.id)}
-              onEdit={() => selected && editListing(selected)}
-              onAskAgent={() => {
-                if (!selected) return;
-                editListing(selected);
-                void runListing(
-                  "Review my supplied listing and help me improve it. Ask about missing facts; do not invent them.",
-                );
-              }}
-            />
-          )}
-
-          {view === "compare" && (
-            <ComparePage
-              items={comparison}
-              onBack={() => navigate(comparisonOrigin.current)}
-              onOpen={openProduct}
-              onRemove={toggleCompare}
-            />
-          )}
-
-          <WorkspacePage active={view === "account"}>
-            <AccountPage
-              accountTab={accountTab}
-              setAccountTab={(tab) => {
-                setAccountTab(tab);
-                window.history.pushState(
-                  null,
-                  "",
-                  tab === "favorites"
-                    ? "#saved"
-                    : tab === "archive"
-                      ? "#listings/archive"
-                      : "#listings",
-                );
-              }}
-              visibleListings={
-                account
-                  ? visibleListings.filter((item) => item.own)
-                  : visibleListings
-              }
-              cloud={!!account}
-              savedListings={savedListings}
-              archivedListings={
-                account
-                  ? archivedListings.filter((item) => item.own)
-                  : archivedListings
-              }
-              onSell={startSell}
-              onBrowse={openBrowse}
-              onOpen={openProduct}
-              onEdit={editListing}
-              onStatusChange={setStatus}
-              renderProduct={productCard}
-            />
-          </WorkspacePage>
-        </main>
+            </WorkspacePage>
+          </main>
+        </PageTransition>
       </div>
 
       <MobileNav
-        active={
-          view === "sell"
-            ? "sell"
-            : view === "messages"
-              ? "messages"
-              : view === "searches"
-                ? "searches"
-                : view === "settings"
-                  ? null
-                  : view === "account"
-                    ? accountTab === "favorites"
-                      ? "favorites"
-                      : "account"
-                    : "browse"
-        }
-        onNavigate={(destination) => {
-          if (destination === "browse") openBrowse();
-          else if (destination === "sell") openSell();
-          else if (destination === "messages") openMessages();
-          else if (destination === "searches") navigate("searches");
-          else {
-            setAccountTab(
-              destination === "favorites" ? "favorites" : "listings",
-            );
-            navigate("account");
-            if (destination === "favorites" && signedIn)
-              window.history.replaceState(null, "", "#saved");
-          }
-        }}
+        active={currentDestination === "settings" ? null : currentDestination}
+        pageKey={pageKey}
+        onNavigate={openDestination}
       />
       {comparison.length > 0 &&
         !modal &&

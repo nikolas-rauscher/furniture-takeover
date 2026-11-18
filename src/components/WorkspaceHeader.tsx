@@ -181,6 +181,7 @@ export default function WorkspaceHeader({
           <Button
             variant="outline"
             size="sm"
+            className="workspace-preferences-open"
             aria-haspopup="dialog"
             onClick={preferences.onOpen}
           >
@@ -195,6 +196,7 @@ export default function WorkspaceHeader({
             <Button
               variant="outline"
               size="sm"
+              className="workspace-save"
               animateIcon
               aria-haspopup="dialog"
               disabled={save.disabled}

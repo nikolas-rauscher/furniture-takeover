@@ -28,8 +28,14 @@ export default function AgentWebResults({
   const cancelled = latest?.failure?.code === "REQUEST_CANCELLED";
   const failed =
     !searching && !cancelled && !stopped && latest?.state === "error";
+  // Sources wait for their summary, so the summary never pushes them down while it streams.
+  const awaitingSummary = running && !children && sources.length > 0;
   const reviewing =
-    running && !searching && !failed && !cancelled && !sources.length;
+    running &&
+    !searching &&
+    !failed &&
+    !cancelled &&
+    (!sources.length || awaitingSummary);
   const interrupted =
     cancelled ||
     (!running && searches.some((step) => step.state === "running"));
@@ -71,13 +77,14 @@ export default function AgentWebResults({
         </div>
       )}
       {interrupted && <p className="agent-web-note">Web search was stopped.</p>}
-      {empty && (
+      {/* The agent's own summary already says so when it wrote one. */}
+      {empty && !children && (
         <p className="agent-web-note">
           No matching web results were returned for this search.
         </p>
       )}
-      <AgentSources sources={sources} previews />
-      {sources.length > 0 && (
+      {!awaitingSummary && <AgentSources sources={sources} />}
+      {!awaitingSummary && sources.length > 0 && (
         <p className="agent-web-note">
           Search snippets · Check price and availability on the source.
         </p>

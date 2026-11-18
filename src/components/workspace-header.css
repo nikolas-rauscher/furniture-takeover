@@ -200,3 +200,33 @@
     display: none;
   }
 }
+
+/* Desktop: the title, search preferences and save share one row, with the active
+   preferences right below, so the conversation keeps most of the height. */
+@media (min-width: 761px) {
+  .workspace-header:has(.workspace-preferences) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "toolbar open save"
+      "caption caption caption";
+    align-items: center;
+    column-gap: 8px;
+  }
+  .workspace-header:has(.workspace-preferences) .workspace-toolbar {
+    grid-area: toolbar;
+  }
+  .workspace-header .workspace-preferences {
+    display: contents;
+  }
+  .workspace-header .workspace-preferences-open {
+    grid-area: open;
+  }
+  .workspace-header .workspace-save {
+    grid-area: save;
+  }
+  .workspace-header .workspace-preferences .quiet-caption {
+    grid-area: caption;
+    margin: 0 0 4px;
+  }
+}

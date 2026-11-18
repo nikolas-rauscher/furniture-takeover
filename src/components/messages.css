@@ -114,6 +114,12 @@
   background: #fff;
   min-height: 560px;
 }
+/* An empty inbox has nothing to frame, so it reads like the other empty pages. */
+.messages-page .seller-chat-layout:has(.empty-state),
+.messages-page .seller-chat-layout:has(.empty-state) > nav {
+  border-color: transparent;
+  background: none;
+}
 .messages-page .seller-chat-layout nav {
   padding: 16px;
   border-right: 1px solid #e1e3ed;

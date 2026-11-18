@@ -37,13 +37,15 @@ export function useAppViewport() {
           "data-compact-viewport",
           mobile.matches && unzoomed && height < 460,
         );
-        // Enlarged text can wrap the navigation onto additional rows.
-        if (mobile.matches && navigation)
+        // Enlarged text can grow the navigation. Its minimized size while
+        // scrolling is ignored, so pages keep their spacing instead of reflowing.
+        if (!mobile.matches || !navigation)
+          root.style.removeProperty("--mobile-nav-height");
+        else if (!navigation.hasAttribute("data-minimized"))
           root.style.setProperty(
             "--mobile-nav-height",
             `${navigation.getBoundingClientRect().height}px`,
           );
-        else root.style.removeProperty("--mobile-nav-height");
         if (keyboard && active instanceof HTMLElement)
           active.scrollIntoView({ block: "nearest", inline: "nearest" });
       });

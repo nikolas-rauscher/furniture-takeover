@@ -1,7 +1,7 @@
 import { Button } from "./ui/button";
 import { Suggestion, Suggestions } from "./ui/suggestion";
 import { useId, type CSSProperties } from "react";
-import SmoothHeight from "./SmoothHeight";
+import { AutoHeight } from "@animate-ui/react/primitives/effects/auto-height";
 import type { AgentAssistState } from "../hooks/useAgentAssist";
 import "./agent-suggestions.css";
 
@@ -85,8 +85,8 @@ function SuggestionContent({
 /** Keep one height container mounted through idle, loading and result updates. */
 export default function AgentSuggestions(props: AgentSuggestionsProps) {
   return (
-    <SmoothHeight duration={440}>
+    <AutoHeight className="auto-height">
       <SuggestionContent {...props} />
-    </SmoothHeight>
+    </AutoHeight>
   );
 }

@@ -29,14 +29,41 @@
   min-height: var(--control-size);
 }
 .agent-run-details-header > [data-slot="trace-collapsible-trigger"] {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   min-width: 0;
+}
+/* The live step stays on one line, so the header keeps its height while steps change. */
+.agent-run-details-header
+  > [data-slot="trace-collapsible-trigger"]
+  :is([data-slot="trace-line"], [data-slot="trace-title"]) {
+  min-width: 0;
+}
+.agent-run-details-header
+  > [data-slot="trace-collapsible-trigger"]
+  [data-slot="trace-title"] {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.agent-run-current-step {
+  animation: agent-step-enter 180ms ease-out both;
+}
+@keyframes agent-step-enter {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent-run-current-step {
+    animation: none;
+  }
 }
 .agent-run-details-header > .agent-run-actions {
   margin-left: auto;
 }
+/* The sender keeps its width; only the live step beside it truncates. */
 .agent-run-details-header .agent-run-sender {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   min-width: 0;
   align-items: center;
   gap: 6px;
@@ -58,6 +85,7 @@
 }
 .agent-run-details-header .agent-run-sender h2 {
   margin: 0;
+  white-space: nowrap;
   font-size: var(--type-caption);
   line-height: 1.5;
   font-weight: 550;
