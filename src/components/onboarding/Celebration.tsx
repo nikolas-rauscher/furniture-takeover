@@ -61,7 +61,7 @@ export default function Celebration({
       </motion.p>
       <ul className="ob-done-chips" aria-label="Your answers">
         {summaryChips(answers).map(({ key, label, Icon }, index) => (
-          <motion.li key={key} className="ob-chip" {...popIn(index + 2)}>
+          <motion.li key={key} className="chip" {...popIn(index + 2)}>
             <span className="ob-done-chip-icon" aria-hidden="true">
               <Icon size={16} strokeWidth={2} />
             </span>

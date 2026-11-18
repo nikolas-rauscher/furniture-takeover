@@ -213,7 +213,7 @@ function DealCard({
         <BookedBanner />
       ) : (
         <Button
-          className="ob-button ob-chat-confirm ob-tap-hint"
+          className="button primary large ob-chat-confirm ob-tap-hint"
           onClick={onConfirm}
         >
           {scene.role === "buyer" ? "Confirm pickup" : "Confirm sale"}

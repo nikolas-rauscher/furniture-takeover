@@ -5,10 +5,10 @@ import "./celebration.css";
 const PIECE_COUNT = 36;
 const COLORS = [
   "var(--blue)",
-  "var(--ob-kraft)",
-  "var(--ob-sun)",
-  "var(--ob-coral)",
-  "var(--ob-sky)",
+  "var(--kraft)",
+  "var(--sun)",
+  "var(--coral)",
+  "var(--sky)",
 ] as const;
 const SHAPES = ["rect", "strip", "dot"] as const;
 

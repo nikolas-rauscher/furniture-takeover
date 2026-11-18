@@ -55,18 +55,6 @@
   color: #555550;
   font-weight: 500;
 }
-.button {
-  border-radius: 4px;
-  font-weight: 500;
-  min-height: var(--control-size);
-  padding: 0.625rem 0.875rem;
-  font-size: var(--type-label);
-}
-input,
-textarea,
-select {
-  border-radius: 4px;
-}
 label {
   font-size: var(--type-label);
   gap: var(--space-label);

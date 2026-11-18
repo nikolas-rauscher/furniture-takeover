@@ -12,13 +12,34 @@
   --mist: #f0f2f8;
   --canvas: #f4f4f1;
   --yellow: #f4f2e8;
-  --radius: 4px;
+  --radius: 10px;
   --font-family: "DM Sans", sans-serif;
   --background: #fbfbf9;
   --surface: #fff;
   --on-primary: #fff;
   --focus-ring: #8297f5;
   --danger: #a42c36;
+  --danger-dark: #7d1f28;
+  /* Pako's cardboard and the packing-tape blue of the brand. */
+  --kraft: #d9a66b;
+  --kraft-light: #ebc48f;
+  --kraft-shade: #c38c51;
+  --kraft-deep: #8e5b2d;
+  --tape: var(--blue);
+  --cheek: #ef8a6f;
+  /* Accents for stickers, confetti and icon tiles. */
+  --sun: #f2c14e;
+  --coral: #ec7b5c;
+  --sky: #e3e9fc;
+  --sand: #f7ebda;
+  --butter: #fbf1d2;
+  /* Tactile surfaces: cards and buttons stand on a lip that sinks when pressed. */
+  --card-line: #e3e3dd;
+  --lip: #d3d3cb;
+  --selected: #eef1fc;
+  --radius-card: 16px;
+  --radius-stage: 22px;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --mobile-nav-height: 0px;
   --app-header-height: 64px;
   /* Shared roles keep type zoomable and spacing fluid between phone and desktop. */
@@ -90,12 +111,23 @@ textarea:focus-visible {
 input,
 textarea,
 select {
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 2px solid var(--card-line);
+  border-radius: 12px;
   background: var(--surface);
   color: var(--ink);
-  padding: 11px 12px;
+  padding: 10px 13px;
   min-width: 0;
+  transition: border-color 160ms ease;
+}
+input:hover,
+textarea:hover,
+select:hover {
+  border-color: var(--lip);
+}
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--blue);
 }
 input::placeholder,
 textarea::placeholder {
@@ -175,50 +207,110 @@ form > label {
   white-space: nowrap;
   border: 0;
 }
+/* Tactile button: the face rests on a darker lip and sinks onto it when pressed. */
 .button {
+  --button-face: var(--surface);
+  --button-lip: var(--lip);
+  --button-text: var(--ink);
+  --button-depth: 4px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 43px;
-  padding: 11px 17px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.3;
-  transition:
-    background 0.15s,
-    color 0.15s,
-    scale 0.12s cubic-bezier(0.23, 1, 0.32, 1);
+  min-height: var(--control-size);
+  padding: 9px 18px;
+  border: 2px solid var(--card-line);
+  border-radius: 14px;
+  background: var(--button-face);
+  color: var(--button-text);
+  font-size: var(--type-label);
+  font-weight: 700;
+  line-height: 1.25;
   white-space: nowrap;
+  user-select: none;
+  box-shadow: 0 var(--button-depth) 0 var(--button-lip);
+  transition:
+    transform 90ms var(--ease-out),
+    box-shadow 90ms var(--ease-out),
+    background-color 160ms ease,
+    color 160ms ease;
+}
+.button:not(:disabled):active {
+  transform: translateY(var(--button-depth));
+  box-shadow: 0 0 0 var(--button-lip);
 }
 /* A short give under the finger confirms the press, like the tab bar items. */
-.button:not(:disabled):active,
 .icon-button:not(:disabled):active {
-  scale: 0.97;
+  scale: 0.94;
 }
 .button.primary {
-  background: var(--blue);
-  color: white;
-  border: 1px solid var(--blue);
+  --button-face: var(--blue);
+  --button-lip: var(--blue-dark);
+  --button-text: var(--on-primary);
+  border-color: transparent;
 }
 .button.primary:not(:disabled):hover {
-  background: var(--blue-dark);
+  --button-face: #3c58c7;
 }
-.button.secondary {
-  background: white;
-  border: 1px solid #dfe3ed;
+.button.secondary:not(:disabled):hover {
+  --button-face: var(--selected);
 }
-.button.secondary:hover {
-  background: var(--canvas);
+.button.danger {
+  --button-face: var(--danger);
+  --button-lip: var(--danger-dark);
+  --button-text: var(--on-primary);
+  border-color: transparent;
+}
+.button:disabled {
+  --button-face: #e7e7e1;
+  --button-lip: var(--lip);
+  --button-text: #8b8b84;
+  border-color: transparent;
+  opacity: 1;
+  cursor: not-allowed;
 }
 .button.small {
-  font-size: 12px;
-  min-height: 35px;
-  padding: 8px 12px;
+  --button-depth: 3px;
+  min-height: 36px;
+  padding: 6px 13px;
+  border-radius: 12px;
+  font-size: var(--type-support);
+}
+.button.large {
+  min-height: 52px;
+  padding: 13px 22px;
+  font-size: var(--type-body);
+}
+/* A text action that sits among tactile buttons without a face of its own. */
+.button.quiet {
+  --button-face: transparent;
+  --button-text: var(--blue);
+  border-color: transparent;
+  box-shadow: none;
+}
+.button.quiet:not(:disabled):hover {
+  --button-face: transparent;
+  --button-text: var(--blue-dark);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.button.quiet:not(:disabled):active {
+  transform: none;
 }
 .button.full {
   width: 100%;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--selected);
+  color: var(--blue-dark);
+  font-size: var(--type-label);
+  font-weight: 600;
+  line-height: 1.3;
 }
 .icon-button {
   width: 33px;
