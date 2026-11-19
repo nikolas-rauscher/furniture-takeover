@@ -24,6 +24,7 @@ import { useMediaQuery } from "../hooks/useMediaQuery";
 import { usePageVisible } from "../hooks/usePageVisible";
 import type { ThreadReads } from "../hooks/useThreadReads";
 import { demoInboxThread, isUnread } from "../inboxActivity";
+import { newestAt } from "../inboxDeals";
 import type { ThreadMessage } from "../pakoThread";
 import { demoTurnCache } from "../pakoTurnCache";
 import InboxEmpty from "./InboxEmpty";
@@ -75,6 +76,8 @@ export type MessagesProps = {
   ) => void;
   pako: PakoReading;
 };
+/** A conversation the app asks Messages to open; each tap is a new request. */
+export type ThreadRequest = { id: string };
 /** The inbox the app runs: local, signed in, or waiting for a sign-in. */
 export type MessagesInboxProps =
   | { mode: "demo"; inbox: DemoInbox; reads: ThreadReads }
@@ -82,6 +85,8 @@ export type MessagesInboxProps =
       mode: "account";
       account: { client: SupabaseClient; session: Session };
       inbox: AccountInbox;
+      /** A conversation to open by itself, such as a seller's deal from Home. */
+      threadRequest?: ThreadRequest;
     }
   | { mode: "signed-out" };
 export type MessagesPageProps = MessagesProps & MessagesInboxProps;
@@ -321,7 +326,10 @@ function DemoMessagesPage({
   // A listing's "Draft an offer" opens the offer card in its thread, once per tap.
   const offerOpened = useRef<number>(undefined);
   const offerThread =
-    current?.listingId === listingId && role === "buyer" && deal.loaded;
+    current?.listingId === listingId &&
+    role === "buyer" &&
+    deal.loaded &&
+    threadDeal.open;
   const openOffer = useEffectEvent(() =>
     threadDeal.openOffer({ mode: "offer", terms: NO_TERMS }),
   );
@@ -331,14 +339,16 @@ function DemoMessagesPage({
     offerOpened.current = offerRequest;
     openOffer();
   }, [offerRequest, offerThread]);
-  const latestTheirs = [...messages]
-    .reverse()
-    .find((message) => message.from === "them");
+  // Reading a thread covers the other side's newest message and news nobody wrote, such as another buyer's deal.
+  const seenUpTo = newestAt([
+    [...messages].reverse().find((message) => message.from === "them")?.at,
+    saved?.systemEvents?.at(-1)?.at,
+  ]);
   const readKey = current && role === "buyer" ? `${current.id}:buyer` : "";
   useEffect(() => {
-    if (visible && pageVisible && readKey && latestTheirs)
-      reads.markRead(readKey, latestTheirs.at);
-  }, [visible, pageVisible, readKey, latestTheirs?.at, reads.markRead]);
+    if (visible && pageVisible && readKey && seenUpTo)
+      reads.markRead(readKey, seenUpTo);
+  }, [visible, pageVisible, readKey, seenUpTo, reads.markRead]);
   const openThread = (id: string) => {
     setSelected(id);
     setShowConversation(true);

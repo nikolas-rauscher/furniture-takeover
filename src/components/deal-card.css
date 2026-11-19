@@ -570,3 +570,21 @@ button.deal-strip:hover {
     transition: none;
   }
 }
+
+/* Home: the student's live deals as slim bars above their listings. */
+.home-deals-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: 12px;
+  margin: 0 0 var(--space-section);
+  padding: 0;
+  list-style: none;
+}
+.home-deal[data-tone="needs"] {
+  border-color: var(--blue);
+  box-shadow: 0 3px 0 var(--blue-dark);
+}
+.home-deal > .button.small {
+  flex: none;
+  min-height: 44px;
+}

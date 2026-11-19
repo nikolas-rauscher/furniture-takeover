@@ -1,4 +1,5 @@
 import {
+  dealPhase,
   messageStatesTerms,
   missingTerms,
   type Deal,
@@ -314,6 +315,41 @@ export function threadDealNote(
     proposal.terms.amount === null ? "" : ` · ${termPrice(proposal.terms.amount)}`;
   return proposal.by === role ? `Your offer${price}` : `Offer${price}`;
 }
+
+/**
+ * A deal in one line where its thread is not open, such as on Home or on its
+ * listing: the strip's words, read from the deal alone.
+ */
+export function dealView({
+  deal,
+  role,
+  other,
+  listing,
+  now,
+}: {
+  deal: Deal;
+  role: DealRole;
+  other: string;
+  listing: Pick<Product, "price" | "status">;
+  now: Date;
+}): StripView | null {
+  const phase = dealPhase({
+    deal,
+    listing,
+    role,
+    messages: [],
+    turn: null,
+    now,
+  });
+  const view = dealStrip({ phase, deal, role, other, listing });
+  return view?.tone === "start" ? null : view;
+}
+
+/** A seller's listing that an agreed deal reserved: "Reserved for Arjun · Thu 18:00". */
+export const reservedForChip = (other: string, terms: DealTerms) =>
+  [`Reserved for ${other}`, terms.pickupAt && shortPickup(terms.pickupAt)]
+    .filter(Boolean)
+    .join(" · ");
 
 /** The centred chip under a message that changed the deal, or alone for a system event. */
 export function eventChip(event: DealEvent): string {

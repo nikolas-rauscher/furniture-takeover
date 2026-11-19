@@ -24,6 +24,7 @@ import WorkspacePage from "./components/WorkspacePage";
 import WorkspaceHeader from "./components/WorkspaceHeader";
 import MessagesPage, {
   type MessagesInboxProps,
+  type ThreadRequest,
 } from "./components/MessagesPage";
 import PakoReadingSetting from "./components/PakoReadingSetting";
 import { useMessagesInbox } from "./hooks/useMessagesInbox";
@@ -38,6 +39,18 @@ import {
   type Negotiation,
 } from "../shared/negotiation";
 import { nearbyMeetingPoint } from "./dealOptions";
+import { dealView, reservedForChip } from "./dealWords";
+import { effectiveStatus, homeDeals } from "./inboxActivity";
+import {
+  accountInboxDeals,
+  buyerDealFor,
+  demoInboxDeals,
+  reservedForMe,
+  sellerAgreementFor,
+  type InboxDeal,
+} from "./inboxDeals";
+import type { Deal } from "../shared/deal";
+import HomeDeals from "./components/HomeDeals";
 import { draftMessage } from "../shared/dealMessages";
 import AgentConversation, {
   focusConversation,
@@ -139,7 +152,12 @@ import { useAgentHealth } from "./hooks/useAgentHealth";
 import { useNoticeableWait } from "./hooks/useNoticeableWait";
 import { useFocused } from "./hooks/useFocused";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
-import { homeGuide, showedResults, turnAnnouncement } from "./pakoMoods";
+import {
+  homeDealNews,
+  homeGuide,
+  showedResults,
+  turnAnnouncement,
+} from "./pakoMoods";
 import { useAvailability } from "./availability/useAvailability";
 import {
   TODAY,
@@ -321,6 +339,8 @@ export default function App({
   );
   /** Changes on each "Draft an offer" tap, so its thread opens the offer card again. */
   const [offerRequest, setOfferRequest] = useState<number>();
+  /** A conversation to open by itself, such as a seller's deal from Home. */
+  const [threadRequest, setThreadRequest] = useState<ThreadRequest>();
   const [modal, setModal] = useState<Dialog>(null);
   const [accountTab, setAccountTab] = useState<AccountTab>(
     readRoute(window.location.hash).accountTab,
@@ -451,6 +471,57 @@ export default function App({
     favorites.includes(item.id),
   );
   const selected = localListings.find((item) => item.id === selectedId);
+  /** The student's deals in the inbox of the mode the app runs in, each from their side. */
+  const accountRows = messages.accountInbox.rows;
+  const inboxDeals = account
+    ? account.session && accountRows
+      ? accountInboxDeals(accountRows, account.session.user.id)
+      : []
+    : demoInboxDeals(messages.demoInbox.conversations);
+  const inboxDealByThread = new Map(
+    inboxDeals.map((item) => [item.deal.conversationId, item]),
+  );
+  function inboxDealOf(deal: Deal): InboxDeal {
+    const item = inboxDealByThread.get(deal.conversationId);
+    if (!item) throw new Error(`Deal ${deal.conversationId} is not in the inbox.`);
+    return item;
+  }
+  /** A listing as students see it: an agreed deal reserves it while its own status catches up. */
+  const shownListing = (item: Product): Product => ({
+    ...item,
+    status: effectiveStatus(item, messages.deals),
+  });
+  const myReservations = reservedForMe(inboxDeals);
+  const selectedDeal = selected && buyerDealFor(inboxDeals, selected.id);
+  const selectedDealView =
+    selected && selectedDeal
+      ? dealView({
+          deal: selectedDeal.deal,
+          role: "buyer",
+          other: selectedDeal.otherName,
+          listing: shownListing(selected),
+          now: new Date(),
+        })
+      : null;
+  /** Home's live deals, what waits for the student first. */
+  const homeDealItems = homeDeals(
+    inboxDeals.map((item) => item.deal),
+    (deal) => inboxDealOf(deal).role,
+  ).flatMap((deal) => {
+    const item = inboxDealOf(deal);
+    const listing = own.find((entry) => entry.id === item.listingId);
+    const view =
+      listing &&
+      dealView({
+        deal,
+        role: item.role,
+        other: item.otherName,
+        listing: shownListing(listing),
+        now: new Date(),
+      });
+    return listing && view ? [{ item, listing, view }] : [];
+  });
+  const [firstHomeDeal] = homeDealItems;
   /** In the order they were picked, so Pako's best match leads when he compares the top two. */
   const comparison = compared.flatMap((id) =>
     visibleListings.filter((item) => item.id === id),
@@ -646,6 +717,14 @@ export default function App({
       : photoSearchBusy
         ? "reading"
         : photoSearchNotice,
+    deal:
+      firstHomeDeal &&
+      homeDealNews({
+        deal: firstHomeDeal.item.deal,
+        role: firstHomeDeal.item.role,
+        other: firstHomeDeal.item.otherName,
+        title: firstHomeDeal.listing.title,
+      }),
     unreadMatches: watches.unread,
     suggestionsLoading: searchAssist.status === "loading",
     typing: searchFocused || hasSearchDraft,
@@ -795,6 +874,15 @@ export default function App({
   function openOfferCard(item: Product) {
     openMessages(item.id);
     setOfferRequest(Date.now());
+  }
+  /** Opens the conversation a deal is in: a buyer's by its listing, a seller's by itself. */
+  function openDealThread(item: InboxDeal) {
+    if (item.role === "buyer") {
+      openMessages(item.listingId);
+      return;
+    }
+    setThreadRequest({ id: item.threadId });
+    navigate("messages");
   }
   function goHome() {
     scrollPositions.current.delete("home");
@@ -1644,6 +1732,7 @@ export default function App({
         mode: "account",
         account: { client: account.client, session: account.session },
         inbox: messages.accountInbox,
+        threadRequest,
       }
     : account
       ? { mode: "signed-out" }
@@ -1685,7 +1774,8 @@ export default function App({
   const productCard = (item: Product, arriving = false) => (
     <ProductCard
       key={item.id}
-      product={item}
+      product={shownListing(item)}
+      reservedForYou={myReservations.has(item.id)}
       arriving={arriving}
       favorite={favorites.includes(item.id)}
       compared={compared.includes(item.id)}
@@ -2412,6 +2502,18 @@ export default function App({
                   negotiations.items
                     .filter((item) => item.status === "draft")
                     .map((proposal) => proposalSummary(proposal))}
+                {searchIsHome && (
+                  <HomeDeals
+                    deals={homeDealItems.map(({ item, listing, view }) => ({
+                      id: item.threadId,
+                      title: listing.title,
+                      image: listing.image,
+                      view,
+                      onOpen: () => openDealThread(item),
+                    }))}
+                    onSeeAll={() => openDestination("messages")}
+                  />
+                )}
                 {searchIsHome && availability?.notices()}
                 {showHomeListings && visibleListings.length > 0 && (
                   <>
@@ -2622,7 +2724,9 @@ export default function App({
               <PageTransitionView key={`listing-${selectedId}`}>
                 {!selected && selectedId && availability?.notices(selectedId)}
                 <ListingDetailPage
-                  selected={selected}
+                  selected={selected && shownListing(selected)}
+                  deal={selectedDealView ?? undefined}
+                  onOpenChat={() => selectedDeal && openDealThread(selectedDeal)}
                   availabilityPanel={
                     selected &&
                     availability?.detailPanel(selected, () =>
@@ -2728,6 +2832,19 @@ export default function App({
                 renderProduct={productCard}
                 publishedIds={publishedListings}
                 onCelebrationEnd={() => setPublishedListings([])}
+                agreementFor={(listingId) => {
+                  const agreement = sellerAgreementFor(inboxDeals, listingId);
+                  const agreed = agreement?.deal.agreed;
+                  return agreement && agreed
+                    ? {
+                        chip: reservedForChip(
+                          agreement.otherName,
+                          agreed.terms,
+                        ),
+                        onOpenChat: () => openDealThread(agreement),
+                      }
+                    : undefined;
+                }}
               />
             </WorkspacePage>
           </main>

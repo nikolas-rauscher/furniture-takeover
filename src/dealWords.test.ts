@@ -4,8 +4,10 @@ import type { Deal, DealTerms } from "../shared/deal.ts";
 import {
   attachedTermsNote,
   dealStrip,
+  dealView,
   eventChip,
   openTerms,
+  reservedForChip,
   shownTerms,
   slotLabel,
   termPrice,
@@ -231,4 +233,34 @@ test("a thread card names its deal in a few words", () => {
   assert.equal(threadDealNote(deal({ status: "cancelled" }), "buyer"), "Deal cancelled");
   assert.equal(threadDealNote(deal(), "buyer"), undefined);
   assert.equal(threadDealNote(null, "buyer"), undefined);
+});
+
+test("away from its thread a deal reads as its strip, and a thread without an offer has none", () => {
+  const view = (changes: Partial<Deal>) =>
+    dealView({
+      deal: deal(changes),
+      role: "buyer",
+      other: "Léa",
+      listing,
+      now: new Date("2026-11-19T13:05:00.000Z"),
+    });
+  assert.deepEqual(view({ proposal: { by: "seller", terms, messageId: "m1" } }), {
+    lead: "Léa offers",
+    detail: "CHF 40 · Fri 18:00 · FMEL Vortex",
+    tone: "needs",
+  });
+  assert.equal(
+    view({ status: "agreed", agreed: { terms, at: "2026-11-19T13:00:00.000Z" } })
+      ?.tone,
+    "booked",
+  );
+  assert.equal(view({}), null);
+});
+
+test("a seller's reserved listing names the buyer and the pickup", () => {
+  assert.equal(reservedForChip("Arjun", terms), "Reserved for Arjun · Fri 18:00");
+  assert.equal(
+    reservedForChip("Arjun", { ...terms, fulfillment: "shipping", pickupAt: null }),
+    "Reserved for Arjun",
+  );
 });

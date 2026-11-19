@@ -1,4 +1,5 @@
-import type { DealRole, DealTerms } from "../shared/deal";
+import type { Deal, DealRole, DealTerms } from "../shared/deal";
+import { formatPickup } from "../shared/pickupTime.ts";
 import type { AgentTaskKind } from "../shared/runs";
 import { plainAnswer } from "./components/agentAnswer.ts";
 import { agreedWords, termsSentence } from "./dealWords.ts";
@@ -40,14 +41,45 @@ function photoGuide(photo: PhotoMoment): HomeGuide {
   return { mood: photo.mood, line: photo.line, newMatches: false };
 }
 
+/** A deal Pako mentions first on home: an offer waiting for the student, or a booked pickup. */
+export type HomeDealNews =
+  | { kind: "offer"; other: string; title: string }
+  | { kind: "booked"; title: string; when: string };
+
+/** What Pako tells on home about a deal: the other student's offer, or the booked pickup. */
+export function homeDealNews({
+  deal,
+  role,
+  other,
+  title,
+}: {
+  deal: Deal;
+  role: DealRole;
+  other: string;
+  title: string;
+}): HomeDealNews | null {
+  if (deal.status === "open" && deal.proposal && deal.proposal.by !== role)
+    return { kind: "offer", other, title };
+  const pickupAt = deal.status === "agreed" && deal.agreed?.terms.pickupAt;
+  return pickupAt
+    ? { kind: "booked", title, when: formatPickup(pickupAt) }
+    : null;
+}
+
+const dealNewsLine = (deal: HomeDealNews) =>
+  deal.kind === "offer"
+    ? `${deal.other} made you an offer for the ${deal.title}.`
+    : `Pickup booked: the ${deal.title}, ${deal.when}.`;
+
 /**
  * What Pako shows and says beside the search on the home page. A photo search
- * speaks first, then new matches for saved searches; his mood otherwise
- * follows the search box.
+ * speaks first, then a deal that needs the student or is booked, then new
+ * matches for saved searches; his mood otherwise follows the search box.
  */
 export function homeGuide({
   allowanceUsed,
   photo,
+  deal,
   unreadMatches,
   suggestionsLoading,
   typing,
@@ -55,6 +87,7 @@ export function homeGuide({
 }: {
   allowanceUsed: boolean;
   photo: PhotoMoment | null;
+  deal: HomeDealNews | null;
   unreadMatches: number;
   suggestionsLoading: boolean;
   /** The search box has focus or text. */
@@ -68,6 +101,18 @@ export function homeGuide({
       newMatches: false,
     };
   if (photo) return photoGuide(photo);
+  if (deal)
+    return {
+      mood: suggestionsLoading
+        ? "think"
+        : typing
+          ? "listen"
+          : deal.kind === "offer"
+            ? "happy"
+            : "wave",
+      line: dealNewsLine(deal),
+      newMatches: false,
+    };
   const newMatches = unreadMatches > 0;
   return {
     mood: suggestionsLoading

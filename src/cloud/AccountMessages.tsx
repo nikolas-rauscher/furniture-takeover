@@ -17,7 +17,10 @@ import {
   ArrowLeft,
 } from "@/components/icons";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
-import type { MessagesProps } from "../components/MessagesPage";
+import type {
+  MessagesProps,
+  ThreadRequest,
+} from "../components/MessagesPage";
 import InboxEmpty from "../components/InboxEmpty";
 import {
   ChatPartner,
@@ -39,6 +42,7 @@ import {
 import Pako from "../components/onboarding/Pako";
 import { usePageVisible } from "../hooks/usePageVisible";
 import { accountInboxThread, isUnread } from "../inboxActivity";
+import { newestAt } from "../inboxDeals";
 import type { ThreadMessage } from "../pakoThread";
 import { NO_TERMS } from "../dealOptions";
 import { attachedTermsNote, threadDealNote } from "../dealWords";
@@ -91,9 +95,11 @@ export default function AccountMessages({
   onBeforeSend,
   onSent,
   onDeleted,
+  threadRequest,
 }: MessagesProps & {
   account: { client: SupabaseClient; session: Session };
   inbox: AccountInbox;
+  threadRequest?: ThreadRequest;
 }) {
   const { client, session } = account,
     userId = session.user.id;
@@ -123,6 +129,18 @@ export default function AccountMessages({
     requestedSelection.current = { listingId, initialMessage };
     selectionDone.current = false;
   }, [listingId, initialMessage]);
+  // A deal opened from elsewhere in the app, such as a seller's from Home, opens its own thread once.
+  const openedThread = useRef<ThreadRequest>(undefined);
+  useEffect(() => {
+    if (
+      !threadRequest ||
+      openedThread.current === threadRequest ||
+      !rows?.threads.some((thread) => thread.id === threadRequest.id)
+    )
+      return;
+    openedThread.current = threadRequest;
+    setSelected(threadRequest.id);
+  }, [threadRequest, rows]);
   // Once the inbox has loaded, open the conversation the app asked for, or the newest one.
   useEffect(() => {
     if (!rows || selectionDone.current) return;
@@ -276,7 +294,10 @@ export default function AccountMessages({
   // A listing's "Draft an offer" opens the offer card in its thread, once per tap.
   const offerOpened = useRef<number>(undefined);
   const offerThread =
-    product?.id === listingId && role === "buyer" && controller.loaded;
+    product?.id === listingId &&
+    role === "buyer" &&
+    controller.loaded &&
+    threadDeal.open;
   const openOffer = useEffectEvent(() =>
     threadDeal.openOffer({ mode: "offer", terms: NO_TERMS }),
   );
@@ -293,13 +314,16 @@ export default function AccountMessages({
     attached && threadDeal.open && !deal.error
       ? attachedTermsNote(text, attached)
       : null;
-  const latestTheirs = [...messages]
-    .reverse()
-    .find((message) => message.from === "them");
+  // Reading a thread covers the other side's newest message and news nobody wrote, such as another buyer's deal.
+  const news = current && rows?.systemLatest[current.id];
+  const seenUpTo = newestAt([
+    [...messages].reverse().find((message) => message.from === "them")?.at,
+    news && news.sender_id !== userId ? news.created_at : undefined,
+  ]);
   useEffect(() => {
-    if (visible && pageVisible && current && latestTheirs)
-      void inbox.markRead(current.id, latestTheirs.at);
-  }, [visible, pageVisible, current?.id, latestTheirs?.at, inbox.markRead]);
+    if (visible && pageVisible && current && seenUpTo)
+      void inbox.markRead(current.id, seenUpTo);
+  }, [visible, pageVisible, current?.id, seenUpTo, inbox.markRead]);
   async function changeArchive(id: string, remove: boolean) {
     setBusy(true);
     setError("");
@@ -522,7 +546,15 @@ export default function AccountMessages({
                 note={threadNote(c, item)}
                 unread={
                   rows?.reads != null &&
-                  isUnread(accountInboxThread(c.id, newest, userId), rows.reads)
+                  isUnread(
+                    accountInboxThread(
+                      c.id,
+                      newest,
+                      userId,
+                      rows.systemLatest[c.id],
+                    ),
+                    rows.reads,
+                  )
                 }
                 onSelect={() => {
                   setSelected(c.id);
