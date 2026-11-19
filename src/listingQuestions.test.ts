@@ -19,6 +19,7 @@ import {
   splitQuestion,
   tapAction,
   tapOutcome,
+  undatedPickup,
 } from "./listingQuestions.ts";
 
 const draft: ListingDraft = {
@@ -343,4 +344,21 @@ test("Pako's pickup question comes first while he researches, and the run leaves
     ["ask-1", "ask-1:1", "ask-1:2"],
     "without his question the run may ask about pickup",
   );
+});
+
+test("the pickup line says the pickup times the description states", () => {
+  assert.equal(
+    undatedPickup("Brown desk with white legs.\nPickup on weekends."),
+    "Pickup on weekends",
+  );
+  assert.equal(
+    undatedPickup("Collection on weekday evenings only, Ecublens"),
+    "Collection on weekday evenings only, Ecublens",
+  );
+  assert.equal(undatedPickup("Pickup in Lausanne."), "Flexible pickup");
+  assert.equal(undatedPickup("Shipping possible."), "Flexible pickup");
+  const long = `Pickup on weekends ${"near the metro ".repeat(8)}`;
+  const line = undatedPickup(long);
+  assert.ok(line.length <= 80);
+  assert.match(line, /^Pickup on weekends near the metro .*…$/);
 });

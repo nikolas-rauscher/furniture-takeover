@@ -235,15 +235,35 @@ const PICKUP_WORD = /\b(?:pick(?:ing)?[ -]?up|collect(?:ed|ion)?)\b/i;
 const TIME_WORD =
   /\b(?:evenings?|mornings?|afternoons?|weekends?|weekdays?|(?:mon|tues|wednes|thurs|fri|satur|sun)days?|any ?time|appointment|only|until|flexible)\b/i;
 
+/** The longest pickup sentence a listing shows in its short pickup line. */
+const MAX_PICKUP_LINE = 80;
+
+const sentences = (text: string) =>
+  text
+    .split(/[.!?\n]/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+
+const saysPickupTime = (sentence: string) =>
+  PICKUP_WORD.test(sentence) && TIME_WORD.test(sentence);
+
 /** The description already says how or when buyers get the item, not only where. */
 function saysHandover(description: string) {
-  return description
-    .split(/[.!?\n]/)
-    .some(
-      (sentence) =>
-        HANDOVER_METHOD.test(sentence) ||
-        (PICKUP_WORD.test(sentence) && TIME_WORD.test(sentence)),
-    );
+  return sentences(description).some(
+    (sentence) => HANDOVER_METHOD.test(sentence) || saysPickupTime(sentence),
+  );
+}
+
+/**
+ * A listing's pickup line without a last collection day: the pickup times its
+ * description states, such as "Pickup on weekends", or flexible pickup.
+ */
+export function undatedPickup(description: string): string {
+  const times = sentences(description).find(saysPickupTime);
+  if (!times) return "Flexible pickup";
+  return times.length <= MAX_PICKUP_LINE
+    ? times
+    : `${times.slice(0, MAX_PICKUP_LINE - 1).trimEnd()}…`;
 }
 
 /** A question about how or when buyers get the item. */

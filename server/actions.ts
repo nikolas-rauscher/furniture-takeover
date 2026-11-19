@@ -11,7 +11,7 @@ import {
   TODAY,
 } from "../shared/marketplace.ts";
 import { isSkippedAnswer } from "./conversation.ts";
-import { explicitPrice } from "./facts.ts";
+import { AMOUNT, amountValue, bareAmount, explicitPrice } from "./facts.ts";
 
 export const dateSchema = z
   .string()
@@ -150,6 +150,8 @@ export const preferencesUpdateSchema = z
 const normalized = (text: string) =>
   text
     .toLowerCase()
+    // CHF 1,250 and CHF 1250 quote the same amount.
+    .replace(/(?<=\d)[’',](?=\d{3}(?!\d))/g, "")
     .replace(/×/g, "x")
     .replace(/(?<=\d)\s*x\s*(?=\d)/g, "x")
     .replace(/(?<=\d)\s+(?=(?:cm|mm|m)\b)/g, "")
@@ -370,9 +372,9 @@ function latestSellerPrice(request: AgentRunRequest): number | null {
     /(?:price|asking|sell.*for)/i.test(
       request.context?.previousQuestion ?? "",
     ) &&
-    /^\s*\d+(?:[.,]\d{1,2})?\s*$/.test(request.text)
+    bareAmount(request.text) !== null
   )
-    return Number(request.text.trim().replace(",", "."));
+    return bareAmount(request.text);
   return explicitPrice(request.text);
 }
 
@@ -385,9 +387,12 @@ function correctedDescriptionPrice(
   if (oldPrice === null || newPrice === null || oldPrice === newPrice) return;
   let quote = "";
   const result = description.replace(
-    /(\b(?:asking(?: price)?|price)\s*:?\s*(?:CHF\s*)?|\bCHF\s*)(\d+(?:[.,]\d+)?)(?!\d)/gi,
+    new RegExp(
+      String.raw`(\b(?:asking(?: price)?|price)\s*:?\s*(?:CHF\s*)?|\bCHF\s*)(${AMOUNT})(?![\d’',])`,
+      "gi",
+    ),
     (match, prefix: string, amount: string, offset: number) => {
-      if (Number(amount.replace(",", ".")) !== oldPrice) return match;
+      if (amountValue(amount) !== oldPrice) return match;
       const before =
         description
           .slice(0, offset)
@@ -398,7 +403,7 @@ function correctedDescriptionPrice(
       )
         return match;
       quote ||= match;
-      return `${prefix}${newPrice}`;
+      return `${prefix}${newPrice.toLocaleString("en-GB")}`;
     },
   );
   return quote && result.length <= 4000 ? { text: result, quote } : undefined;
@@ -553,12 +558,11 @@ export function listingAction(
         normalized(value.slice(draft.description.length)).replace(/[.!?]+$/, "") ===
           normalized(request.text).replace(/[.!?]+$/, "");
       if (field === "price") {
-        const priceAnswer =
-          /(?:price|asking|sell.*for)/i.test(
-            request.context.previousQuestion ?? "",
-          ) && /^\s*\d+(?:[.,]\d{1,2})?\s*$/.test(request.text)
-            ? Number(request.text.trim().replace(",", "."))
-            : null;
+        const priceAnswer = /(?:price|asking|sell.*for)/i.test(
+          request.context.previousQuestion ?? "",
+        )
+          ? bareAmount(request.text)
+          : null;
         const priceText = /\b(?:eur|usd|dollars?|euros?)\b|[€$]/i.test(
           request.text,
         )

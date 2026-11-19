@@ -191,6 +191,10 @@ export default function AccountPage({
 }: AccountPageProps) {
   const endCelebration = useEffectEvent(onCelebrationEnd);
   const publishedKey = publishedIds.join(" ");
+  /** Listings published during this visit lead the list, so the seller finds them first. */
+  const [leading, setLeading] = useState(publishedIds);
+  if (publishedIds.some((id) => !leading.includes(id)))
+    setLeading([...new Set([...publishedIds, ...leading])]);
   useEffect(() => {
     if (!publishedKey) return;
     const timer = setTimeout(() => endCelebration(), CELEBRATION_MS);
@@ -228,11 +232,18 @@ export default function AccountPage({
     : accountTab === "archive"
       ? archivedListings
       : visibleListings;
-  const items = tabListings.filter(
-    (item) =>
-      matchesQuery(item) &&
-      (accountTab !== "listings" || status === "all" || item.status === status),
-  );
+  const items = tabListings
+    .filter(
+      (item) =>
+        matchesQuery(item) &&
+        (accountTab !== "listings" ||
+          status === "all" ||
+          item.status === status),
+    )
+    .sort(
+      (a, b) =>
+        Number(leading.includes(b.id)) - Number(leading.includes(a.id)),
+    );
   const filtered = Boolean(
     query.trim() || (accountTab === "listings" && status !== "all"),
   );

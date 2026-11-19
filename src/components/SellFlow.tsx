@@ -44,6 +44,7 @@ import Guide from "./onboarding/Guide";
 import type { PhotoInsight } from "../hooks/useListingAnalysis";
 import { useMomentPassed } from "../hooks/useMomentPassed";
 import { isReaction, REACTION_MS } from "../pakoMoods";
+import { undatedPickup } from "../listingQuestions";
 import {
   absenceGuide,
   FILL_IN_ACTION,
@@ -838,7 +839,7 @@ export default function SellFlow({
                 <CalendarDays size={14} />
                 {draft.pickup
                   ? `Last day to collect ${shortDate(draft.pickup)}`
-                  : "Flexible pickup"}
+                  : undatedPickup(draft.description)}
               </p>
             </div>
           </aside>

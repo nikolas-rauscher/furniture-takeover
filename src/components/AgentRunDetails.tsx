@@ -2,7 +2,8 @@ import { useState, type ReactNode } from "react";
 import type { AgentReasoningPart } from "../../shared/runs";
 import type { AgentRunStep } from "../hooks/useAgentRun";
 import { settledSteps, stepsSummary, type StepVoice } from "../pakoMoods";
-import AgentActivity, { StepMark, visibleTaskSteps } from "./AgentActivity";
+import { activityLines } from "../activityLines";
+import AgentActivity, { StepMark } from "./AgentActivity";
 import AgentReasoning from "./AgentReasoning";
 import {
   Trace,
@@ -41,7 +42,7 @@ export default function AgentRunDetails({
   const [open, setOpen] = useState<boolean>();
   const running = workingLine !== undefined;
   const steps = settledSteps(reported);
-  const taskSteps = visibleTaskSteps(steps);
+  const taskSteps = activityLines(steps, place, voice);
   const summary = stepsSummary(taskSteps.length, sourceCount, voice);
   const hasReasoning = reasoning.some(
     (part) => part.text || (running && part.status === "streaming"),

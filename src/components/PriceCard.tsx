@@ -8,14 +8,33 @@ import { plainAnswer } from "./agentAnswer";
 import { Button } from "./ui/button";
 
 const MAX_PRICE = 10_000;
+/** "1,250", "1'250" or "1 250": thousands written with a separator, as the app writes them. */
+const GROUPED = /^\d{1,3}(?:[,'’ ]\d{3})+(?:\.\d{1,2})?$/;
+
+/** The amount as the rest of the app writes it, such as 1,250. */
+const amountText = (price: number) => price.toLocaleString("en-GB");
 
 /** The amount in the field, or nothing while it is empty or not a valid price. */
 function typedPrice(text: string): number | undefined {
-  if (!text.trim()) return undefined;
-  const value = Number(text.replace(",", "."));
+  const typed = text.trim();
+  if (!typed) return undefined;
+  const value = Number(
+    GROUPED.test(typed) ? typed.replace(/[,'’ ]/g, "") : typed.replace(",", "."),
+  );
   return Number.isFinite(value) && value >= 0 && value <= MAX_PRICE
     ? value
     : undefined;
+}
+
+/** Why Pako suggests no price, and what helps him find one. */
+function withoutSuggestion(offersCompared: number) {
+  const compared =
+    offersCompared === 0
+      ? ""
+      : offersCompared === 1
+        ? "The one offer I compared showed no clear asking price. "
+        : `None of the ${offersCompared} offers I compared showed a clear asking price. `;
+  return `${compared}Set your own, or add the brand, model or size and choose Suggest a price under Ask Pako.`;
 }
 
 /** One stepper step up or down, landing on the step's grid: 43 goes to 45 or 40. */
@@ -52,7 +71,9 @@ export default function PriceCard({
   onPrice: (price: number) => void;
   onLater: () => void;
 }) {
-  const [text, setText] = useState(start === undefined ? "" : String(start));
+  const [text, setText] = useState(
+    start === undefined ? "" : amountText(start),
+  );
   const [whyOpen, setWhyOpen] = useState(false);
   const fieldId = useId();
   const whyId = useId();
@@ -66,12 +87,15 @@ export default function PriceCard({
   const suggested = suggestion?.patch.price;
   return (
     <div className="price-card">
+      {start === undefined && (
+        <p className="price-card-note">{withoutSuggestion(sources.length)}</p>
+      )}
       <div className="price-card-amount">
         <Button
           className="button secondary icon-button price-card-step"
           aria-label={`Lower the price to ${money(lower)}`}
           disabled={disabled || current <= 0}
-          onClick={() => setText(String(lower))}
+          onClick={() => setText(amountText(lower))}
         >
           <Minus size={18} aria-hidden="true" />
         </Button>
@@ -84,10 +108,10 @@ export default function PriceCard({
             id={fieldId}
             inputMode="decimal"
             autoComplete="off"
-            placeholder="0"
             value={text}
             disabled={disabled}
             onChange={(event) => setText(event.target.value)}
+            onBlur={() => price !== undefined && setText(amountText(price))}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
@@ -100,7 +124,7 @@ export default function PriceCard({
           className="button secondary icon-button price-card-step"
           aria-label={`Raise the price to ${money(raise)}`}
           disabled={disabled || current >= MAX_PRICE}
-          onClick={() => setText(String(raise))}
+          onClick={() => setText(amountText(raise))}
         >
           <Plus size={18} aria-hidden="true" />
         </Button>

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { RunError } from "./errors.ts";
 import { askingPriceQuestion, formatQuestion } from "./listing-questions.ts";
 import { repeatedQuestion } from "./conversation.ts";
+import { appPrices } from "./facts.ts";
 import { inventoryWords } from "../shared/inventoryTerms.ts";
 import { searchWeb } from "./web-search.ts";
 import type { ListingText } from "./listing-language.ts";
@@ -258,11 +259,11 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                     ...action.patch,
                     ...(action.patch.title !== undefined ||
                     english.title !== draft.title
-                      ? { title: english.title }
+                      ? { title: appPrices(english.title) }
                       : {}),
                     ...(action.patch.description !== undefined ||
                     english.description !== draft.description
-                      ? { description: english.description }
+                      ? { description: appPrices(english.description) }
                       : {}),
                   };
                 }
