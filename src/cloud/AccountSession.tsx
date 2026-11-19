@@ -1,7 +1,7 @@
 import { Button } from "../components/ui/button";
 import { useEffect, useState } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
-import App from "../App";
+import Marketplace from "../Marketplace";
 import Modal from "../components/Modal";
 import Auth from "./Auth";
 import {
@@ -11,19 +11,25 @@ import {
   restoreAccountSession,
   setAccountScope,
 } from "./session";
-import "./account.css";
 export type AccountConnection = {
   client: SupabaseClient;
   session: Session | null;
 };
-export default function AccountSession() {
+
+function configuredClient() {
   const client = getCloudClient();
+  if (!client) throw new Error("Accounts are not configured.");
+  return client;
+}
+
+/** Account mode: restores the student's session, then opens the marketplace as them. */
+export default function AccountSession() {
+  const [client] = useState(configuredClient);
   const [session, setSession] = useState<Session | null>(null),
-    [ready, setReady] = useState(!client),
+    [ready, setReady] = useState(false),
     [recovery, setRecovery] = useState(false),
     [error, setError] = useState("");
   useEffect(() => {
-    if (!client) return;
     let alive = true;
     function update(next: Session | null) {
       if (alive) {
@@ -70,12 +76,12 @@ export default function AccountSession() {
           <Button onClick={() => setError("")}>Dismiss</Button>
         </div>
       )}
-      <App
+      <Marketplace
         key={session?.user.id ?? "guest"}
-        account={client ? { client, session } : undefined}
+        account={{ client, session }}
         onboardingPaused={recovery}
       />
-      {recovery && client && (
+      {recovery && (
         <Modal title="Set your password" onClose={() => setRecovery(false)}>
           <Auth
             client={client}

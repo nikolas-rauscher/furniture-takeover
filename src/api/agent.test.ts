@@ -11,6 +11,7 @@ import {
   getCloudClient,
   restoreAccountSession,
 } from "../cloud/session.ts";
+import { cloudClient } from "../cloud/cloudClient.ts";
 
 const validResponse = {
   mode: "live",
@@ -108,10 +109,13 @@ test("photo grouping uses the restored account session and lets explicit credent
       return Response.json(validPhotoGroups);
     },
   );
-  configureCloud({
-    supabaseUrl: "https://example.supabase.co",
-    supabaseKey: "sb_publishable_test",
-  });
+  configureCloud(
+    {
+      supabaseUrl: "https://example.supabase.co",
+      supabaseKey: "sb_publishable_test",
+    },
+    cloudClient,
+  );
   const client = getCloudClient()!;
   assert.equal(
     (

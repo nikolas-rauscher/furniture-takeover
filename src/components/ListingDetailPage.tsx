@@ -267,6 +267,7 @@ export default function ListingDetailPage({
                           className="button primary full"
                           type="button"
                           disabled={selected.status !== "active"}
+                          data-prefetch="messages"
                           onClick={onMessage}
                         >
                           <MessageCircle size={17} />
@@ -278,6 +279,7 @@ export default function ListingDetailPage({
                     <Button
                       className="button secondary listing-detail-offer"
                       type="button"
+                      data-prefetch="messages"
                       onClick={onOffer}
                     >
                       <PakoReaction mood="idle" size={26} still />

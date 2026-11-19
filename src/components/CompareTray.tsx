@@ -46,6 +46,7 @@ export default function CompareTray({
             className="button primary small"
             disabled={count < 2}
             title={count < 2 ? "Choose one more" : undefined}
+            data-prefetch="compare"
             onClick={onCompare}
           >
             Compare

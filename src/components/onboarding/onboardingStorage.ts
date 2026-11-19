@@ -1,4 +1,5 @@
 import { restoreSavedValue } from "../../hooks/savedState.ts";
+import { readRoute } from "../../navigation.ts";
 
 /** Not account-scoped: finishing the intro as a guest still counts after signing in. */
 const STORAGE_KEY = "takeover-onboarding";
@@ -56,4 +57,13 @@ export function firstVisitMode(
 ): OnboardingMode {
   if (record || !onHome) return "closed";
   return phone ? "open" : "invite";
+}
+
+/** The intro's mode for the page as it is now opened. */
+export function firstVisitModeHere(record: OnboardingRecord | null) {
+  return firstVisitMode(
+    record,
+    readRoute(window.location.hash).view === "discover",
+    window.matchMedia("(max-width: 760px)").matches,
+  );
 }

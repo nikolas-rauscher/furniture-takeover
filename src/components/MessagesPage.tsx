@@ -1,6 +1,6 @@
 import { Button } from "./ui/button";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
-import AccountMessages from "../cloud/AccountMessages";
+import { lazyScreen } from "../lazyScreen";
 import type { AccountInbox } from "../cloud/useAccountInbox";
 import { ArrowLeft, Trash2, X } from "@/components/icons";
 import { AnimatePresence } from "motion/react";
@@ -119,6 +119,8 @@ export type MessagesInboxProps =
     }
   | { mode: "signed-out" };
 export type MessagesPageProps = MessagesProps & MessagesInboxProps;
+/** Only account inboxes need it, so the local demo never loads it. */
+const AccountMessages = lazyScreen(() => import("../cloud/AccountMessages"));
 const DEMO_ROLES = [
   ["buyer", "Buyer"],
   ["seller", "Seller"],

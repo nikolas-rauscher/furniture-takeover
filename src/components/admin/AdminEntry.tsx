@@ -8,6 +8,7 @@ export default function AdminEntry({ onOpen }: { onOpen: () => void }) {
     <Button
       className="settings-row admin-entry"
       data-tone="sky"
+      data-prefetch="admin"
       onClick={onOpen}
     >
       <span className="settings-row-icon" aria-hidden="true">

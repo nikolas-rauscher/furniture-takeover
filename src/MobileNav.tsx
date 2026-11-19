@@ -114,6 +114,7 @@ export default function MobileNav({
                     <Button
                       className="mobile-nav-item"
                       type="button"
+                      data-prefetch={id === "messages" ? id : undefined}
                       aria-label={
                         id === "searches"
                           ? tabName(name, newMatches, ["match", "matches"])
@@ -144,6 +145,7 @@ export default function MobileNav({
           <Button
             className="mobile-nav-sell"
             type="button"
+            data-prefetch="sell"
             aria-label="Sell"
             aria-current={selling ? "page" : undefined}
             onClick={() => {

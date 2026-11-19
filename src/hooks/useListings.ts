@@ -12,12 +12,16 @@ import type { Product } from "../../shared/marketplace";
 import { isProducts } from "./savedState";
 import { useSaved } from "./useSaved";
 import { ListingOutbox } from "./listingOutbox";
+import { readDemoCatalog } from "../demoCatalogRead";
 
 async function requestListings(
   path: string,
   init?: RequestInit,
 ): Promise<Product[]> {
-  const response = await fetch(path, init);
+  return listingsFrom(await fetch(path, init));
+}
+
+async function listingsFrom(response: Response): Promise<Product[]> {
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     if (body?.error?.code === "admin_listing_hidden")
@@ -136,15 +140,15 @@ export function useListings(enabled = true) {
       reading.current = true;
       const generation = ++loadGeneration.current;
       try {
-        if (journal.outbox) persist(journal.outbox.pending());
+        const writes = journal.outbox?.pending() ?? [];
+        persist(writes);
         await queue.current;
         if (!mounted.current || generation !== loadGeneration.current)
           return false;
         const startedAt = revision.current;
-        const listings = await requestListings(
-          seed ? "/api/listings/demo/seed" : "/api/listings?demo=true",
-          seed ? { method: "POST" } : { signal: AbortSignal.timeout(8000) },
-        );
+        const listings = seed
+          ? await requestListings("/api/listings/demo/seed", { method: "POST" })
+          : await listingsFrom(await readDemoCatalog(writes.length > 0));
         if (!mounted.current || generation !== loadGeneration.current)
           return false;
         // Never replace or transmit personal browser records.

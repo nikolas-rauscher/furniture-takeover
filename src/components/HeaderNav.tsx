@@ -60,6 +60,7 @@ export default function HeaderNav(props: HeaderNavProps) {
         <Button
           key={id}
           className="header-nav-item"
+          data-prefetch={id === "messages" ? id : undefined}
           aria-current={active === id ? "page" : undefined}
           aria-label={itemName(id, label, props)}
           onClick={() => onNavigate(id)}

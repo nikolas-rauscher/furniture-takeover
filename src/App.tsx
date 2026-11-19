@@ -4,10 +4,6 @@ import { Textarea } from "./components/ui/textarea";
 import { Input } from "./components/ui/input";
 import { historyPosition, readRoute, type View } from "./navigation";
 import type { AccountConnection } from "./cloud/AccountSession";
-import Auth from "./cloud/Auth";
-import AccountSettings from "./cloud/Account";
-import LocalSettings from "./components/LocalSettings";
-import Report from "./cloud/Report";
 import { useMarketplaceListings } from "./cloud/useMarketplaceListings";
 import { useFavorites } from "./cloud/useFavorites";
 import { useAppViewport } from "./hooks/useAppViewport";
@@ -17,7 +13,6 @@ import AccountPage, {
   type ListingPickup,
 } from "./components/AccountPage";
 import ListingDetailPage from "./components/ListingDetailPage";
-import ComparePage from "./components/ComparePage";
 import SavedSearchesPage from "./components/SavedSearchesPage";
 import { listingPhotos, MAX_LISTING_PHOTOS } from "../shared/listingPhotos";
 import { readListingPhoto } from "./listingPhotos";
@@ -25,9 +20,9 @@ import { randomUuid } from "./randomUuid";
 import type { PhotoGroup } from "../shared/agent";
 import WorkspacePage from "./components/WorkspacePage";
 import WorkspaceHeader from "./components/WorkspaceHeader";
-import MessagesPage, {
-  type MessagesInboxProps,
-  type ThreadRequest,
+import type {
+  MessagesInboxProps,
+  ThreadRequest,
 } from "./components/MessagesPage";
 import PakoReadingSetting from "./components/PakoReadingSetting";
 import {
@@ -117,15 +112,9 @@ import Modal from "./components/Modal";
 import ProductCard from "./components/ProductCard";
 import ProductGrid from "./components/ProductGrid";
 import SearchPreferencesFields from "./components/SearchPreferencesFields";
-import SellFlow, {
-  listingSaveWords,
-  saveActionLabel,
-  type BatchProgress,
-  type ListingDraft,
-} from "./components/SellFlow";
-import ListingConversation from "./components/ListingConversation";
+import type { BatchProgress, ListingDraft } from "./components/SellFlow";
+import { listingSaveWords, saveActionLabel } from "./listingSaveWords";
 import AskPakoMenu, { LISTING_REQUESTS } from "./components/AskPakoMenu";
-import DeveloperSettings from "./components/DeveloperSettings";
 import { useDeveloperMode } from "./availability/useDeveloperMode";
 import {
   photoSearchFailure,
@@ -133,7 +122,7 @@ import {
   type PhotoSearchNotice,
 } from "./photoSearchFeedback";
 import PhotoSearchButton, { imageFrom } from "./components/PhotoSearchButton";
-import BatchSellFlow, { type BatchStart } from "./components/BatchSellFlow";
+import type { BatchStart } from "./components/BatchSellFlow";
 import { batchItem, itemsFromGroups } from "./batchListings";
 import { batchStepNote } from "./sellingCelebration";
 import AgentSuggestions from "./components/AgentSuggestions";
@@ -196,22 +185,39 @@ import {
   PageTransitionShared,
   PageTransitionView,
 } from "./components/animate-ui/components/page-transition";
-import Onboarding, {
-  type OnboardingOutcome,
-} from "./components/onboarding/Onboarding";
+import type { OnboardingOutcome } from "./components/onboarding/Onboarding";
 import OnboardingInvite from "./components/onboarding/OnboardingInvite";
 import Pako from "./components/onboarding/Pako";
 import PakoReaction from "./components/PakoReaction";
 import type { PakoMood } from "./components/onboarding/storyTypes";
 import {
-  firstVisitMode,
+  firstVisitModeHere,
   readOnboarding,
   rememberOnboarding,
+  type OnboardingMode,
 } from "./components/onboarding/onboardingStorage";
+import { introFocusTarget } from "./components/onboarding/introFocus";
 import { placeName } from "./components/onboarding/onboardingContent";
-import AdminArea from "./components/admin/AdminArea";
 import AdminEntry from "./components/admin/AdminEntry";
 import { useAdmin } from "./api/admin";
+import {
+  AccountSettings,
+  AdminArea,
+  Auth,
+  BatchSellFlow,
+  ComparePage,
+  DeveloperSettings,
+  ListingConversation,
+  LocalSettings,
+  MessagesPage,
+  LIKELY_NEXT,
+  Onboarding,
+  SellFlow,
+} from "./screens";
+import Report from "./cloud/Report";
+import LazyBoundary from "./components/LazyBoundary";
+import { useIntentPrefetch } from "./hooks/useIntentPrefetch";
+import "./cloud/account.css";
 
 type Destination = MobileDestination | "settings";
 /** Order of the mobile bar, left to right: tabs, then Sell beside them, then settings. */
@@ -265,10 +271,13 @@ const STATUS_NOTICES: Record<Product["status"], string> = {
 export default function App({
   account,
   onboardingPaused,
+  introOutcome,
 }: {
   account?: AccountConnection;
   /** Holds the intro back while another first-visit dialog is open. */
   onboardingPaused: boolean;
+  /** How the intro shown before the marketplace loaded ended; the marketplace opens what it chose. */
+  introOutcome?: OnboardingOutcome;
 }) {
   useAppViewport();
   const pageScrolled = useWindowScrolled();
@@ -342,12 +351,8 @@ export default function App({
   /** A search asked for in the step that also moved the search area; it runs once the area is in state. */
   const [pendingSearch, setPendingSearch] = useState<string | null>(null);
   const [onboardingRecord] = useState(readOnboarding);
-  const [onboarding, setOnboarding] = useState(() =>
-    firstVisitMode(
-      onboardingRecord,
-      readRoute(window.location.hash).view === "discover",
-      window.matchMedia("(max-width: 760px)").matches,
-    ),
+  const [onboarding, setOnboarding] = useState<OnboardingMode>(() =>
+    introOutcome ? "closed" : firstVisitModeHere(onboardingRecord),
   );
   const [searchArea, setSearchArea] = useSaved(
     "takeover-search-area",
@@ -418,6 +423,30 @@ export default function App({
     onFindSimilar: (title) => void runSearch(title),
   });
   const [compared, setCompared] = useSessionIds("takeover-compare");
+  useIntentPrefetch(
+    {
+      sell: () =>
+        Promise.all([SellFlow.prefetch(), ListingConversation.prefetch()]),
+      messages: MessagesPage.prefetch,
+      compare: ComparePage.prefetch,
+      settings: () =>
+        Promise.all([
+          account?.session
+            ? AccountSettings.prefetch()
+            : account
+              ? Auth.prefetch()
+              : LocalSettings.prefetch(),
+          DeveloperSettings.prefetch(),
+        ]),
+      admin: AdminArea.prefetch,
+      intro: Onboarding.prefetch,
+    },
+    [
+      ...(LIKELY_NEXT[view] ?? []),
+      ...(compared.length >= 2 ? (["compare"] as const) : []),
+      ...(onboarding === "invite" ? (["intro"] as const) : []),
+    ],
+  );
   const comparisonOrigin = useRef<View>("discover");
   /** Where the open listing was reached from; a listing opened by link leads back to Browse. */
   const [detailOrigin, setDetailOrigin] = useState<View>("discover");
@@ -1064,11 +1093,15 @@ export default function App({
       setPendingSearch(outcome.query);
     }
   }
-  /** After the intro, focus returns to its help button, or moves to the page the intro opened. */
+  const applyIntroOutcome = useEffectEvent(completeOnboarding);
+  const introApplied = useRef(false);
+  useEffect(() => {
+    if (!introOutcome || introApplied.current) return;
+    introApplied.current = true;
+    applyIntroOutcome(introOutcome);
+  }, [introOutcome]);
   function introFocus(outcome: OnboardingOutcome) {
-    return outcome.next === "dismiss" || outcome.next === "explore"
-      ? helpButton.current
-      : mainContent.current;
+    return introFocusTarget(outcome, helpButton.current, mainContent.current);
   }
   /** Clears the chat and leaves the search box ready for the next request. */
   function startNewSearch() {
@@ -2034,6 +2067,7 @@ export default function App({
           <Button
             animateIcon
             className="button primary sell-nav"
+            data-prefetch="sell"
             onClick={() => openDestination("sell")}
           >
             <Plus size={17} aria-hidden="true" />
@@ -2042,6 +2076,7 @@ export default function App({
           <Button
             ref={helpButton}
             className="icon-button help-nav"
+            data-prefetch="intro"
             aria-label="How it works"
             onClick={() => setOnboarding("open")}
           >
@@ -2050,6 +2085,7 @@ export default function App({
           </Button>
           <Button
             className={`icon-button${view === "settings" ? " active" : ""}`}
+            data-prefetch="settings"
             aria-current={view === "settings" ? "page" : undefined}
             aria-label={
               account
@@ -2087,73 +2123,79 @@ export default function App({
           >
             {view === "settings" && (
               <PageTransitionView>
-                {account?.session ? (
-                  <AccountSettings
-                    client={account.client}
-                    session={account.session}
-                    startSection={
-                      readingSettingsRequested ? "privacy" : "profile"
-                    }
-                    pakoSetting={
-                      <PakoReadingSetting
-                        enabled={messages.autoRead}
-                        unavailable={messages.autoReadUnavailable}
-                        onEnabledChange={messages.setAutoRead}
-                      />
-                    }
-                    onProfileSaved={setPickupRegion}
-                    adminEntry={adminEntry}
-                    browserTools={
-                      <DeveloperSettings
-                        enabled={developerMode}
-                        onEnabledChange={setDeveloperMode}
-                        detail="While you write a listing, see how many of this browser's saved searches would get an alert. Saved in this browser."
-                      />
-                    }
-                  />
-                ) : account ? (
-                  <div className="settings-auth-page">
-                    <Auth
+                <LazyBoundary label="Loading settings">
+                  {account?.session ? (
+                    <AccountSettings
                       client={account.client}
-                      onDone={() => navigate("settings")}
+                      session={account.session}
+                      startSection={
+                        readingSettingsRequested ? "privacy" : "profile"
+                      }
+                      pakoSetting={
+                        <PakoReadingSetting
+                          enabled={messages.autoRead}
+                          unavailable={messages.autoReadUnavailable}
+                          onEnabledChange={messages.setAutoRead}
+                        />
+                      }
+                      onProfileSaved={setPickupRegion}
+                      adminEntry={adminEntry}
+                      browserTools={
+                        <DeveloperSettings
+                          enabled={developerMode}
+                          onEnabledChange={setDeveloperMode}
+                          detail="While you write a listing, see how many of this browser's saved searches would get an alert. Saved in this browser."
+                        />
+                      }
                     />
-                  </div>
-                ) : (
-                  <LocalSettings
-                    connectionStatus={connectionStatus}
-                    pakoSetting={
-                      <PakoReadingSetting
-                        enabled={messages.autoRead}
-                        onEnabledChange={messages.setAutoRead}
+                  ) : account ? (
+                    <div className="settings-auth-page">
+                      <Auth
+                        client={account.client}
+                        onDone={() => navigate("settings")}
                       />
-                    }
-                    developerSettings={
-                      <DeveloperSettings
-                        enabled={developerMode}
-                        onEnabledChange={setDeveloperMode}
-                        detail="Sample listings, the seller's view in Messages, demo time skips and alert counts while selling. Saved in this browser."
-                        clockOffsetMs={availability?.clockOffsetMs}
-                        onResetDemo={availability?.resetDemo}
-                      />
-                    }
-                    onAddDemo={
-                      developerMode ? () => void database.addDemo() : undefined
-                    }
-                    onHelp={() => setModal("help")}
-                    onClear={() => setModal("clear")}
-                    adminEntry={adminEntry}
-                  />
-                )}
+                    </div>
+                  ) : (
+                    <LocalSettings
+                      connectionStatus={connectionStatus}
+                      pakoSetting={
+                        <PakoReadingSetting
+                          enabled={messages.autoRead}
+                          onEnabledChange={messages.setAutoRead}
+                        />
+                      }
+                      developerSettings={
+                        <DeveloperSettings
+                          enabled={developerMode}
+                          onEnabledChange={setDeveloperMode}
+                          detail="Sample listings, the seller's view in Messages, demo time skips and alert counts while selling. Saved in this browser."
+                          clockOffsetMs={availability?.clockOffsetMs}
+                          onResetDemo={availability?.resetDemo}
+                        />
+                      }
+                      onAddDemo={
+                        developerMode
+                          ? () => void database.addDemo()
+                          : undefined
+                      }
+                      onHelp={() => setModal("help")}
+                      onClear={() => setModal("clear")}
+                      adminEntry={adminEntry}
+                    />
+                  )}
+                </LazyBoundary>
               </PageTransitionView>
             )}
             {view === "admin" && (
               <PageTransitionView>
-                <AdminArea
-                  api={admin.api}
-                  checking={admin.loading}
-                  accessError={admin.error?.message}
-                  onBack={() => navigate("settings")}
-                />
+                <LazyBoundary label="Loading the admin area">
+                  <AdminArea
+                    api={admin.api}
+                    checking={admin.loading}
+                    accessError={admin.error?.message}
+                    onBack={() => navigate("settings")}
+                  />
+                </LazyBoundary>
               </PageTransitionView>
             )}
             <WorkspacePage active={view === "messages"}>
@@ -2162,85 +2204,93 @@ export default function App({
                   priceNamedInSearch(negotiations.items, listingId)
                 }
               >
-                <MessagesPage
-                  developerMode={developerMode}
-                  listingId={messageListingId}
-                  onBrowse={() => openDestination("browse")}
-                  initialMessage={
-                    messageProposal
-                      ? (messageProposal.draft?.message ??
-                        draftMessage(
-                          own.find((item) => item.id === messageListingId)
-                            ?.title ?? "Listing",
-                          messageProposal.terms,
-                        ))
-                      : messageDraft
-                  }
-                  initialTerms={
-                    messageProposal &&
-                    dealTermsFromNegotiation(messageProposal.terms, new Date())
-                  }
-                  offerRequest={offerRequest}
-                  homePoint={nearbyMeetingPoint(location)}
-                  onListingStatus={followDealStatus}
-                  onBeforeSend={(listingId, role) => {
-                    if (
-                      !messageProposal ||
-                      listingId !== messageProposal.listingId ||
-                      role !== "buyer"
-                    )
-                      return;
-                    const current = negotiations.current();
-                    if (
-                      !current ||
-                      current.id !== messageProposal.id ||
-                      current.version !== messageProposal.version
-                    )
-                      throw new Error(
-                        "This proposal has changed. Reopen its latest message from the agent chat.",
-                      );
-                  }}
-                  onSent={(listingId, role, message) => {
-                    if (
-                      !messageProposal ||
-                      listingId !== messageProposal.listingId ||
-                      role !== "buyer"
-                    )
-                      return;
-                    negotiations.commit({
-                      type: "negotiation_update",
-                      previousVersion: messageProposal.version,
-                      negotiation: markNegotiationSent(
-                        {
-                          ...messageProposal,
-                          draft: { message, version: messageProposal.version },
-                        },
-                        messageProposal.version,
-                      ),
-                    });
-                    setMessageProposal(undefined);
-                  }}
-                  onDeleted={() => replaceRoute("#messages")}
-                  threadBanner={availability?.threadBanner}
-                  listings={own.map(shownListing)}
-                  {...messagesInbox}
-                  pako={{
-                    available: messages.available,
-                    autoRead: messages.autoRead,
-                    remaining: messages.remaining,
-                    onRemaining: messages.setRemaining,
-                    onOpenSettings: () => {
-                      setReadingSettingsRequested(true);
-                      openDestination("settings");
-                    },
-                    onFindSimilar: (title) => void runSearch(title),
-                  }}
-                  listing={own.find((item) => item.id === messageListingId)}
-                  onOpenListing={(id) => {
-                    const item = own.find((item) => item.id === id);
-                    if (item) openProduct(item);
-                  }}
-                />
+                <LazyBoundary label="Loading Messages">
+                  <MessagesPage
+                    developerMode={developerMode}
+                    listingId={messageListingId}
+                    onBrowse={() => openDestination("browse")}
+                    initialMessage={
+                      messageProposal
+                        ? (messageProposal.draft?.message ??
+                          draftMessage(
+                            own.find((item) => item.id === messageListingId)
+                              ?.title ?? "Listing",
+                            messageProposal.terms,
+                          ))
+                        : messageDraft
+                    }
+                    initialTerms={
+                      messageProposal &&
+                      dealTermsFromNegotiation(
+                        messageProposal.terms,
+                        new Date(),
+                      )
+                    }
+                    offerRequest={offerRequest}
+                    homePoint={nearbyMeetingPoint(location)}
+                    onListingStatus={followDealStatus}
+                    onBeforeSend={(listingId, role) => {
+                      if (
+                        !messageProposal ||
+                        listingId !== messageProposal.listingId ||
+                        role !== "buyer"
+                      )
+                        return;
+                      const current = negotiations.current();
+                      if (
+                        !current ||
+                        current.id !== messageProposal.id ||
+                        current.version !== messageProposal.version
+                      )
+                        throw new Error(
+                          "This proposal has changed. Reopen its latest message from the agent chat.",
+                        );
+                    }}
+                    onSent={(listingId, role, message) => {
+                      if (
+                        !messageProposal ||
+                        listingId !== messageProposal.listingId ||
+                        role !== "buyer"
+                      )
+                        return;
+                      negotiations.commit({
+                        type: "negotiation_update",
+                        previousVersion: messageProposal.version,
+                        negotiation: markNegotiationSent(
+                          {
+                            ...messageProposal,
+                            draft: {
+                              message,
+                              version: messageProposal.version,
+                            },
+                          },
+                          messageProposal.version,
+                        ),
+                      });
+                      setMessageProposal(undefined);
+                    }}
+                    onDeleted={() => replaceRoute("#messages")}
+                    threadBanner={availability?.threadBanner}
+                    listings={own.map(shownListing)}
+                    {...messagesInbox}
+                    pako={{
+                      available: messages.available,
+                      autoRead: messages.autoRead,
+                      remaining: messages.remaining,
+                      onRemaining: messages.setRemaining,
+                      onOpenSettings: () => {
+                        setReadingSettingsRequested(true);
+                        openDestination("settings");
+                      },
+                      onFindSimilar: (title) => void runSearch(title),
+                    }}
+                    listing={own.find((item) => item.id === messageListingId)}
+                    onOpenListing={(id) => {
+                      const item = own.find((item) => item.id === id);
+                      if (item) openProduct(item);
+                    }}
+                  />
+                </LazyBoundary>
               </NamedOfferPriceContext.Provider>
             </WorkspacePage>
             <WorkspacePage
@@ -2789,113 +2839,117 @@ export default function App({
 
             {view === "sell" && sellMode === "batch" && (
               <PageTransitionView>
-                <BatchSellFlow
-                  location={location}
-                  liveAgent={configured}
-                  quota={healthError ? undefined : agentHealth?.quota}
-                  onAccount={() => navigate("settings")}
-                  start={batchStart}
-                  onBack={() => {
-                    setBatchStart(undefined);
-                    setSellMode("single");
-                  }}
-                  onStart={startBatchListings}
-                />
+                <LazyBoundary label="Loading selling">
+                  <BatchSellFlow
+                    location={location}
+                    liveAgent={configured}
+                    quota={healthError ? undefined : agentHealth?.quota}
+                    onAccount={() => navigate("settings")}
+                    start={batchStart}
+                    onBack={() => {
+                      setBatchStart(undefined);
+                      setSellMode("single");
+                    }}
+                    onStart={startBatchListings}
+                  />
+                </LazyBoundary>
                 {connectionStatus}
               </PageTransitionView>
             )}
             <WorkspacePage active={view === "sell" && sellMode === "single"}>
               <>
-                <SellFlow
-                  draft={draft}
-                  step={sellStep}
-                  editing={!!editingListing}
-                  pickupMin={listingPickupMinimum(draft.pickup, editingItem)}
-                  busy={(busy && !listingStarting) || database.pending > 0}
-                  cloud={!!account}
-                  photoReading={photoReading}
-                  uploadError={uploadError}
-                  liveAgent={configured}
-                  photoInsight={listingAnalysis.insight}
-                  pakoAbsence={pakoAbsence}
-                  pakoBack={quotaResets || undefined}
-                  manual={manualListing}
-                  onFillIn={fillInDetails}
-                  onRetryPako={refreshHealth}
-                  onBack={() =>
-                    transitionPage("nav-back", () => {
-                      if (sellStep === 2 && !editingListing) {
-                        listingRequest.current?.abort();
-                        listing.resetConversation();
-                        setManualListing(false);
-                        setSellStep(1);
-                      } else if (editingListing) navigate("account");
-                      else if (batchQueue) backToBatchSorting();
-                      else openBrowse();
-                    })
-                  }
-                  onDraftChange={listing.editDraft}
-                  agentWorking={listingStarting || listing.running}
-                  suggestedPrice={pendingPrice(
-                    [...listing.state.history, listing.state],
-                    draft,
-                  )}
-                  onReviewPrice={
-                    listing.decidingPrice ? listing.reviewPrice : undefined
-                  }
-                  insight={
-                    <SellerInsight
-                      similar={similarListings(
-                        visibleListings,
-                        draft.title,
-                        editingListing ?? undefined,
-                      )}
-                      ladder={
-                        developerMode
-                          ? demandLadder(savedSearches, {
-                              title: draft.title,
-                              price: draft.price.trim()
-                                ? Number(draft.price)
-                                : Number.NaN,
-                              condition: draft.condition,
-                              pickupBy: draft.pickup,
-                            })
-                          : undefined
-                      }
-                    />
-                  }
-                  agentConversation={listingConversation}
-                  agentTools={listingTools}
-                  quota={healthError ? undefined : agentHealth?.quota}
-                  onAccount={() => navigate("settings")}
-                  onPhotoSelected={upload}
-                  onCreateDraft={() => void generateDraft()}
-                  sortFailed={listingAnalysis.sortFailed}
-                  onSeparate={separateItems}
-                  onKeepTogether={listingAnalysis.keepTogether}
-                  onSortYourself={() =>
-                    separateItems(
-                      listingPhotos(draftRef.current).map((_, index) => ({
-                        photos: [index],
-                        label: "",
-                      })),
-                      true,
-                    )
-                  }
-                  onNotesDone={listingAnalysis.flushNote}
-                  onPublish={publish}
-                  batch={sellBatch}
-                  onSellSeveral={
-                    batchQueue
-                      ? undefined
-                      : () => {
-                          cancelPhotoRead();
-                          setUploadError("");
-                          setBatchStart(undefined);
-                          setSellMode("batch");
+                <LazyBoundary label="Loading selling">
+                  <SellFlow
+                    draft={draft}
+                    step={sellStep}
+                    editing={!!editingListing}
+                    pickupMin={listingPickupMinimum(draft.pickup, editingItem)}
+                    busy={(busy && !listingStarting) || database.pending > 0}
+                    cloud={!!account}
+                    photoReading={photoReading}
+                    uploadError={uploadError}
+                    liveAgent={configured}
+                    photoInsight={listingAnalysis.insight}
+                    pakoAbsence={pakoAbsence}
+                    pakoBack={quotaResets || undefined}
+                    manual={manualListing}
+                    onFillIn={fillInDetails}
+                    onRetryPako={refreshHealth}
+                    onBack={() =>
+                      transitionPage("nav-back", () => {
+                        if (sellStep === 2 && !editingListing) {
+                          listingRequest.current?.abort();
+                          listing.resetConversation();
+                          setManualListing(false);
+                          setSellStep(1);
+                        } else if (editingListing) navigate("account");
+                        else if (batchQueue) backToBatchSorting();
+                        else openBrowse();
+                      })
+                    }
+                    onDraftChange={listing.editDraft}
+                    agentWorking={listingStarting || listing.running}
+                    suggestedPrice={pendingPrice(
+                      [...listing.state.history, listing.state],
+                      draft,
+                    )}
+                    onReviewPrice={
+                      listing.decidingPrice ? listing.reviewPrice : undefined
+                    }
+                    insight={
+                      <SellerInsight
+                        similar={similarListings(
+                          visibleListings,
+                          draft.title,
+                          editingListing ?? undefined,
+                        )}
+                        ladder={
+                          developerMode
+                            ? demandLadder(savedSearches, {
+                                title: draft.title,
+                                price: draft.price.trim()
+                                  ? Number(draft.price)
+                                  : Number.NaN,
+                                condition: draft.condition,
+                                pickupBy: draft.pickup,
+                              })
+                            : undefined
                         }
-                  }
-                />
+                      />
+                    }
+                    agentConversation={listingConversation}
+                    agentTools={listingTools}
+                    quota={healthError ? undefined : agentHealth?.quota}
+                    onAccount={() => navigate("settings")}
+                    onPhotoSelected={upload}
+                    onCreateDraft={() => void generateDraft()}
+                    sortFailed={listingAnalysis.sortFailed}
+                    onSeparate={separateItems}
+                    onKeepTogether={listingAnalysis.keepTogether}
+                    onSortYourself={() =>
+                      separateItems(
+                        listingPhotos(draftRef.current).map((_, index) => ({
+                          photos: [index],
+                          label: "",
+                        })),
+                        true,
+                      )
+                    }
+                    onNotesDone={listingAnalysis.flushNote}
+                    onPublish={publish}
+                    batch={sellBatch}
+                    onSellSeveral={
+                      batchQueue
+                        ? undefined
+                        : () => {
+                            cancelPhotoRead();
+                            setUploadError("");
+                            setBatchStart(undefined);
+                            setSellMode("batch");
+                          }
+                    }
+                  />
+                </LazyBoundary>
                 {connectionStatus}
               </>
             </WorkspacePage>
@@ -2969,17 +3023,19 @@ export default function App({
 
             {view === "compare" && (
               <PageTransitionView>
-                <ComparePage
-                  loaded={listingsSettled}
-                  items={comparison}
-                  onBack={() =>
-                    transitionPage("nav-back", () =>
-                      navigate(comparisonOrigin.current),
-                    )
-                  }
-                  onOpen={openProduct}
-                  onRemove={toggleCompare}
-                />
+                <LazyBoundary label="Loading the comparison">
+                  <ComparePage
+                    loaded={listingsSettled}
+                    items={comparison}
+                    onBack={() =>
+                      transitionPage("nav-back", () =>
+                        navigate(comparisonOrigin.current),
+                      )
+                    }
+                    onOpen={openProduct}
+                    onRemove={toggleCompare}
+                  />
+                </LazyBoundary>
               </PageTransitionView>
             )}
 
@@ -3253,12 +3309,14 @@ export default function App({
         </Modal>
       )}
       {onboarding === "open" && !onboardingPaused && (
-        <Onboarding
-          accountAction={!signedIn}
-          onComplete={completeOnboarding}
-          finalFocus={introFocus}
-          onClosed={() => setOnboarding("closed")}
-        />
+        <LazyBoundary label="Loading the intro" placeholder={null}>
+          <Onboarding
+            accountAction={!signedIn}
+            onComplete={completeOnboarding}
+            finalFocus={introFocus}
+            onClosed={() => setOnboarding("closed")}
+          />
+        </LazyBoundary>
       )}
       {onboarding === "invite" && !onboardingPaused && (
         <OnboardingInvite

@@ -1,5 +1,6 @@
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
-import { cloudClient, readAuthRedirect, type CloudConfig } from "./client.ts";
+import { readAuthRedirect, type CloudConfig } from "./client.ts";
+import type { CreateCloudClient } from "./cloudClient.ts";
 let client: SupabaseClient | null = null;
 let scope = "";
 let redirect: ReturnType<typeof readAuthRedirect> | null = null;
@@ -10,7 +11,18 @@ let initialSession: Promise<{
   error: string;
   invited: boolean;
 }> | null = null;
-export function configureCloud(config: CloudConfig | null) {
+/** Accounts take the SDK's client factory, which the local demo never downloads. */
+export function configureCloud(config: null): void;
+export function configureCloud(
+  config: CloudConfig,
+  createClient: CreateCloudClient,
+): void;
+export function configureCloud(
+  config: CloudConfig | null,
+  createClient?: CreateCloudClient,
+) {
+  if (config && !createClient)
+    throw new Error("Accounts need the SDK's client factory.");
   unsubscribeAuth?.();
   unsubscribeAuth = undefined;
   passwordSetupUserId = null;
@@ -22,7 +34,7 @@ export function configureCloud(config: CloudConfig | null) {
       history.replaceState(history.state, "", url);
   } else redirect = null;
   initialSession = null;
-  client = config ? cloudClient(config) : null;
+  client = config && createClient ? createClient(config) : null;
   scope = client ? "guest" : "";
   const connection = client;
   if (connection) {

@@ -1,5 +1,10 @@
-import type { Deal, DealRole, LateMinutes, PickupSignals } from "../../shared/deal";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type {
+  Deal,
+  DealRole,
+  LateMinutes,
+  PickupSignals,
+} from "../../shared/deal";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { isDemoIllustration } from "../../shared/listingPhotos.ts";
 export type CloudConfig = { supabaseUrl: string; supabaseKey: string };
 /** Supabase dashboard invitations use a token fragment, rather than a PKCE code. */
@@ -27,11 +32,6 @@ export function readAuthRedirect(url: URL) {
       url.searchParams.delete(key);
   }
   return { invitation, error };
-}
-export function cloudClient(config: CloudConfig): SupabaseClient {
-  return createClient(config.supabaseUrl, config.supabaseKey, {
-    auth: { flowType: "pkce" },
-  });
 }
 export type Listing = {
   id: string;
