@@ -1,5 +1,5 @@
 import type { AgentRunStep } from "../hooks/useAgentRun";
-import { stepWords } from "../pakoMoods";
+import { stepWords, type StepVoice } from "../pakoMoods";
 import { Check, LoaderCircle, X } from "./icons";
 import {
   Trace,
@@ -33,10 +33,12 @@ function ActivityStep({
   step,
   running,
   place,
+  voice,
 }: {
   step: AgentRunStep;
   running: boolean;
   place?: string;
+  voice: StepVoice;
 }) {
   const active = running && step.state === "running";
   const failed = step.state === "error";
@@ -69,7 +71,7 @@ function ActivityStep({
                 : "done"
         }
       />
-      <TraceTitle>{stepWords(step, place)}</TraceTitle>
+      <TraceTitle>{stepWords(step, place, voice)}</TraceTitle>
       <TraceDescription
         className={visibleStatus ? "agent-step-status" : "sr-only"}
       >
@@ -91,11 +93,13 @@ export default function AgentActivity({
   steps,
   running,
   place,
+  voice = "search",
 }: {
   steps: readonly AgentRunStep[];
   running: boolean;
   /** The search area as Pako names it. */
   place?: string;
+  voice?: StepVoice;
 }) {
   const visible = visibleTaskSteps(steps);
   if (!visible.length) return null;
@@ -107,6 +111,7 @@ export default function AgentActivity({
           step={step}
           running={running}
           place={place}
+          voice={voice}
         />
       ))}
     </Trace>

@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import type { AgentReasoningPart } from "../../shared/runs";
 import type { AgentRunStep } from "../hooks/useAgentRun";
+import { settledSteps, stepsSummary, type StepVoice } from "../pakoMoods";
 import AgentActivity, { StepMark, visibleTaskSteps } from "./AgentActivity";
 import AgentReasoning from "./AgentReasoning";
 import {
@@ -15,8 +16,10 @@ import {
 
 export default function AgentRunDetails({
   reasoning = [],
-  steps = [],
+  steps: reported = [],
   place,
+  voice = "search",
+  sourceCount = 0,
   workingLine,
   heading,
   actions,
@@ -26,6 +29,9 @@ export default function AgentRunDetails({
   steps?: readonly AgentRunStep[];
   /** The search area as Pako names it in the steps. */
   place?: string;
+  voice?: StepVoice;
+  /** The search results the turn brought back, which a listing turn compared. */
+  sourceCount?: number;
   /** What Pako is doing while the agent works; absent once the turn has stopped. */
   workingLine?: string;
   heading?: ReactNode;
@@ -34,7 +40,9 @@ export default function AgentRunDetails({
 }) {
   const [open, setOpen] = useState<boolean>();
   const running = workingLine !== undefined;
+  const steps = settledSteps(reported);
   const taskSteps = visibleTaskSteps(steps);
+  const summary = stepsSummary(taskSteps.length, sourceCount, voice);
   const hasReasoning = reasoning.some(
     (part) => part.text || (running && part.status === "streaming"),
   );
@@ -62,7 +70,7 @@ export default function AgentRunDetails({
     <TraceCollapsibleTrigger
       aria-label={
         hasHeader
-          ? `Agent activity${steps.length ? `, ${taskSteps.length} ${taskSteps.length === 1 ? "step" : "steps"}` : ""}`
+          ? `Agent activity${steps.length ? `, ${summary}` : ""}`
           : undefined
       }
     >
@@ -87,7 +95,7 @@ export default function AgentRunDetails({
             </span>
           ) : steps.length ? (
             hasHeader ? (
-              `${taskSteps.length} ${taskSteps.length === 1 ? "step" : "steps"}`
+              summary
             ) : (
               "Activity"
             )
@@ -98,9 +106,7 @@ export default function AgentRunDetails({
           )}
         </TraceTitle>
         {!hasHeader && steps.length > 0 && (
-          <TraceDescription>
-            {taskSteps.length} {taskSteps.length === 1 ? "step" : "steps"}
-          </TraceDescription>
+          <TraceDescription>{summary}</TraceDescription>
         )}
       </TraceLine>
     </TraceCollapsibleTrigger>
@@ -117,7 +123,12 @@ export default function AgentRunDetails({
           keepMounted
           className="agent-run-details-content"
         >
-          <AgentActivity steps={steps} running={running} place={place} />
+          <AgentActivity
+            steps={steps}
+            running={running}
+            place={place}
+            voice={voice}
+          />
           <AgentReasoning parts={reasoning} running={running} />
         </TraceCollapsibleContent>
       </TraceCollapsible>

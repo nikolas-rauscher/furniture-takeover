@@ -1820,7 +1820,7 @@ export default function App({
     <section className="listing-conversation" aria-label="Listing agent">
       <AgentConversation
         state={listingRun.state}
-        announcement={turnAnnouncement(listingRun.state)}
+        announcement={turnAnnouncement(listingRun.state, undefined, "listing")}
         typing={listingInput.trim() !== ""}
         footer={
           <AgentComposer
@@ -1850,6 +1850,7 @@ export default function App({
             conversational
             externalComposer
             readOnly={archived}
+            voice="listing"
             typing={listingInput.trim() !== ""}
             showHistory={false}
             state={turn}

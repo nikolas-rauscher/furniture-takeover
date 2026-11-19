@@ -22,7 +22,7 @@ import {
 import type { AgentRunState } from "../hooks/useAgentRun";
 import { safeSourceUrl } from "../api/runs";
 import { splitSearchAnswer } from "./agentAnswer";
-import { agentTurnPako, workingLine } from "../pakoMoods";
+import { agentTurnPako, workingLine, type StepVoice } from "../pakoMoods";
 import "./agent-run-panel.css";
 
 type AgentRunPanelProps = AgentActionHandlers & {
@@ -37,6 +37,8 @@ type AgentRunPanelProps = AgentActionHandlers & {
   quickReplies?: ReactNode;
   /** The search area as Pako names it while he searches. */
   place?: string;
+  /** Whose words Pako's steps are told in. */
+  voice?: StepVoice;
   showHistory?: boolean;
   splitSearchResults?: boolean;
   conversational?: boolean;
@@ -59,6 +61,7 @@ export default function AgentRunPanel({
   outcome,
   quickReplies,
   place,
+  voice = "search",
   showHistory = true,
   splitSearchResults = false,
   conversational = false,
@@ -136,7 +139,7 @@ export default function AgentRunPanel({
   // Without steps or reasoning, the activity line itself names the status.
   // Only the live turn moves; earlier turns keep a resting Pako beside them.
   const pako = agentTurnPako(state, { textShown: displayText, typing });
-  const pakoLine = running ? workingLine(state, place) : undefined;
+  const pakoLine = running ? workingLine(state, place, voice) : undefined;
   const avatar = (
     <span className="agent-pako" aria-hidden="true">
       <PakoReaction
@@ -237,6 +240,8 @@ export default function AgentRunPanel({
           reasoning={state.reasoning}
           steps={state.steps}
           place={place}
+          voice={voice}
+          sourceCount={safeSources.length}
           workingLine={pakoLine}
           heading={heading}
           actions={actions}
@@ -261,7 +266,12 @@ export default function AgentRunPanel({
               {turn.request && (
                 <p className="agent-run-history-request">{turn.request}</p>
               )}
-              <AgentRunDetails reasoning={turn.reasoning} steps={turn.steps} />
+              <AgentRunDetails
+                reasoning={turn.reasoning}
+                steps={turn.steps}
+                voice={voice}
+                sourceCount={turn.sources.length}
+              />
               {turn.text && (
                 <div className="agent-run-answer">
                   {answerBlocks(turn.text, turn.sources)}
@@ -300,6 +310,8 @@ export default function AgentRunPanel({
           reasoning={state.reasoning}
           steps={state.steps}
           place={place}
+          voice={voice}
+          sourceCount={safeSources.length}
           workingLine={pakoLine}
         />
       )}
