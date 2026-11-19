@@ -14,7 +14,9 @@ import {
 import {
   dealStrip,
   shownTerms,
+  termPrice,
   termsSummary,
+  type ShownTerms,
   type StripView,
 } from "../dealWords";
 import BookedBanner from "./BookedBanner";
@@ -86,15 +88,21 @@ function Seats({ pair }: { pair: [Seat, Seat] }) {
   );
 }
 
-/** The other student's own words under each term Pako read as agreed. */
-function quotesOf(facts: ThreadFacts) {
-  const quote = (fact?: { quote: string }) =>
-    fact && <q className="deal-card-quote">{fact.quote}</q>;
+/** The students' own words under each term Pako read as agreed, where they say more than the tile. */
+function quotesOf(facts: ThreadFacts, shown: ShownTerms) {
+  const quote = (fact: { quote: string } | undefined, value: string | null) =>
+    fact &&
+    fact.quote.toLowerCase() !== value?.toLowerCase() && (
+      <q className="deal-card-quote">{fact.quote}</q>
+    );
   return {
-    amount: quote(facts.amount),
-    fulfillment: quote(facts.fulfillment),
-    pickupTime: quote(facts.pickupTime),
-    pickupPoint: quote(facts.pickupPoint),
+    amount: quote(
+      facts.amount,
+      shown.amount === null ? null : termPrice(shown.amount),
+    ),
+    fulfillment: quote(facts.fulfillment, shown.fulfillment),
+    pickupTime: quote(facts.pickupTime, shown.pickupTime),
+    pickupPoint: quote(facts.pickupPoint, shown.pickupPoint),
   };
 }
 
@@ -149,7 +157,8 @@ function termNotes(
   turn: ThreadTurn | null,
   listing: Listing,
 ) {
-  if (phase === "looks_agreed" && turn) return quotesOf(turn.facts);
+  if (phase === "looks_agreed" && turn)
+    return quotesOf(turn.facts, shownTerms(terms));
   if ((phase === "agreed" || phase === "completed") && terms.pickupPoint)
     return { pickupPoint: placeNote(terms.pickupPoint, listing) };
   return {};
@@ -265,7 +274,9 @@ function CardBody({
         </BookedBanner>
       )}
       {phase === "looks_agreed" && (
-        <PakoLabel>Looks agreed · Confirm so {otherName} can confirm too.</PakoLabel>
+        <PakoLabel>
+          Pako read this as agreed. Confirm, then {otherName} confirms too.
+        </PakoLabel>
       )}
       {pair && <Seats pair={pair} />}
       {terms && (
