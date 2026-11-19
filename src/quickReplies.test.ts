@@ -84,6 +84,7 @@ const replies = (overrides: Partial<QuickRepliesInput> = {}) =>
     latest: true,
     search: search(),
     negotiating: false,
+    watching: false,
     listings: twoDesks,
     today: THURSDAY,
     ...overrides,
@@ -323,4 +324,69 @@ test("only the comparison works without Pako's daily allowance", () => {
     true,
     true,
   ]);
+});
+
+const watchFor = { query: "green armchair", maxPrice: 120 };
+
+test("when nothing fits yet, keeping watch comes first, ahead of two broader searches", () => {
+  assert.deepEqual(
+    replies({
+      turn: { ...emptySearch, watchSuggestion: watchFor },
+      listings: [],
+    }),
+    {
+      line: "Nothing yet. Shall I keep an eye out for you, or look a little wider?",
+      replies: [
+        {
+          kind: "watch",
+          text: "Tell me when one is listed",
+          query: "green armchair",
+          maxPrice: 120,
+        },
+        { kind: "ask", text: "Raise my budget to CHF 105" },
+        { kind: "ask", text: "Search within 10 km" },
+      ],
+    },
+  );
+});
+
+test("with only web results, the watch reply asks about new student listings", () => {
+  assert.deepEqual(
+    texts({
+      turn: finished({
+        inventoryMatchIds: [],
+        sources: [webResult],
+        watchSuggestion: { query: "desk" },
+      }),
+      listings: [],
+    }),
+    [
+      "Tell me about new student listings",
+      "Cheaper: under CHF 60",
+      "Closer: within 2 km",
+      "Free items only (CHF 0)",
+    ],
+  );
+});
+
+test("once the watch is on, its reply turns into a confirmation", () => {
+  const result = replies({
+    turn: { ...emptySearch, watchSuggestion: watchFor },
+    listings: [],
+    watching: true,
+  });
+  assert.equal(result.line, "Nothing yet, but I'm keeping an eye out for you.");
+  assert.deepEqual(result.replies[0], {
+    kind: "watching",
+    text: "Watching for “green armchair”",
+  });
+});
+
+test("keeping watch needs no daily allowance", () => {
+  const [watch, broader] = replies({
+    turn: { ...emptySearch, watchSuggestion: watchFor },
+    listings: [],
+  }).replies;
+  assert.equal(usesAllowance(watch), false);
+  assert.equal(usesAllowance(broader), true);
 });

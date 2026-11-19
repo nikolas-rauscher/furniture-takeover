@@ -9,11 +9,9 @@ import {
 test("an unrecognised photo asks for an item without treating it as a failure", () => {
   const notice = photoSearchClarification();
   assert.equal(notice.kind, "clarification");
-  assert.match(notice.description, /search box.*clearer photo/);
-  assert.doesNotMatch(
-    notice.title + notice.description,
-    /furniture|error|failed/i,
-  );
+  assert.equal(notice.mood, "think");
+  assert.match(notice.line, /search box.*clearer photo/);
+  assert.doesNotMatch(notice.line, /furniture|error|failed/i);
 });
 
 test("technical failures retain their actionable error and have a fallback", () => {
@@ -21,11 +19,11 @@ test("technical failures retain their actionable error and have a fallback", () 
     photoSearchFailure(new Error("Check your connection and retry.")),
     {
       kind: "error",
-      title: "Photo search couldn't finish",
-      description: "Check your connection and retry.",
+      mood: "dizzy",
+      line: "Check your connection and retry.",
     },
   );
-  assert.match(photoSearchFailure(null).description, /again.*search box/);
+  assert.match(photoSearchFailure(null).line, /again.*search box/);
 });
 
 test("new searches clear notices and cancel pending photo recognition", () => {

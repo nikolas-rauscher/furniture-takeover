@@ -1,9 +1,21 @@
-import { Bell, BellOff } from "lucide-react";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "./ui/button";
-import { ArrowRight, Pencil, Search, Trash2 } from "@/components/icons";
+import { Switch } from "./ui/switch";
+import {
+  ArrowRight,
+  Bell,
+  BellOff,
+  Pencil,
+  Search,
+  Trash2,
+} from "@/components/icons";
 import { searchText, type SavedSearch } from "../searchRequest";
 import Pako from "./onboarding/Pako";
+import MatchAlerts from "../alerts/MatchAlerts";
+import WatchForm from "../alerts/WatchForm";
+import type { WatchMatch } from "../alerts/useWatches";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import "./saved-searches.css";
 
 /** What the card says under the title: the request, or its criteria when the title is the request. */
@@ -13,147 +25,192 @@ function searchDetails(job: SavedSearch, location: string) {
     : searchText(job.criteria, job.location || location);
 }
 
+/** The watch card unfolds in place, like a sheet sliding up. */
+const UNFOLD = { type: "spring", stiffness: 380, damping: 32 } as const;
+
 type SavedSearchesPageProps = {
   searches: SavedSearch[];
   location: string;
+  matches: WatchMatch[];
+  onOpenMatch(match: WatchMatch): void;
+  onDismissMatch(match: WatchMatch): void;
+  onMarkAllSeen(): void;
   onRun(job: SavedSearch): void;
   onEdit(job: SavedSearch): void;
   onDelete(job: SavedSearch): void;
   onTogglePause(job: SavedSearch): void;
   onFind(): void;
   onWatch(query: string, maxPrice?: number): void;
-  alerts?: ReactNode;
 };
 
 export default function SavedSearchesPage({
   searches,
   location,
+  matches,
+  onOpenMatch,
+  onDismissMatch,
+  onMarkAllSeen,
   onRun,
   onEdit,
   onDelete,
   onTogglePause,
   onFind,
   onWatch,
-  alerts,
 }: SavedSearchesPageProps) {
-  const [wantedQuery, setWantedQuery] = useState("");
-  const [wantedPrice, setWantedPrice] = useState("");
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    const query = wantedQuery.trim();
-    if (!query) return;
-    onWatch(query, wantedPrice.trim() === "" ? undefined : Number(wantedPrice));
-    setWantedQuery("");
-    setWantedPrice("");
-  }
+  const phone = useMediaQuery("(max-width: 760px)");
+  const [watchOpen, setWatchOpen] = useState(false);
+  const watchQuery = useRef<HTMLInputElement>(null);
+  // Wide screens keep the watch card open beside saved searches; phones and
+  // the empty page unfold it on request.
+  const watchShown = watchOpen || (searches.length > 0 && !phone);
+  useEffect(() => {
+    if (watchOpen) watchQuery.current?.focus();
+  }, [watchOpen]);
+  const openWatch = () => setWatchOpen(true);
+  const watchCard = (
+    <AnimatePresence initial={false}>
+      {watchShown && (
+        <motion.div
+          key="watch"
+          className="watch-card-frame"
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={UNFOLD}
+        >
+          <WatchForm queryRef={watchQuery} onWatch={onWatch} />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
   return (
     <>
       <div className="page-title">
         <h1>Saved searches</h1>
         <p>
-          Keep a search and get an alert when a new matching listing appears.
+          Pako checks new listings for these and tells you here when one fits.
         </p>
       </div>
-      {alerts}
-      <form
-        className="watch-form"
-        onSubmit={submit}
-        aria-label="Watch for an item"
-      >
-        <label className="grow">
-          Watch for an item
-          <input
-            value={wantedQuery}
-            maxLength={120}
-            placeholder="e.g. desk"
-            onChange={(event) => setWantedQuery(event.target.value)}
-          />
-        </label>
-        <label>
-          Max price (CHF)
-          <input
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            min={0}
-            max={1000000}
-            value={wantedPrice}
-            placeholder="Any"
-            onChange={(event) => setWantedPrice(event.target.value)}
-          />
-        </label>
-        <button
-          className="button primary small"
-          type="submit"
-          disabled={!wantedQuery.trim()}
-        >
-          <Bell size={14} />
-          Notify me
-        </button>
-      </form>
-      {searches.length ? (
-        <div className="search-jobs">
-          {searches.map((job) => (
-            <article className="search-job" key={job.id}>
-              <div className="job-icon">
-                <Search size={20} />
-              </div>
-              <div className="job-main">
-                <h2>{job.title}</h2>
-                <p>{searchDetails(job, location)}</p>
-                <div className="job-actions">
-                  <Button
-                    className="button secondary small"
-                    onClick={() => onRun(job)}
-                  >
-                    Run search
-                    <ArrowRight size={14} />
-                  </Button>
-                  <Button
-                    className="button secondary small"
-                    aria-pressed={job.paused}
-                    onClick={() => onTogglePause(job)}
-                  >
-                    {job.paused ? <BellOff size={14} /> : <Bell size={14} />}
-                    {job.paused ? "Alerts paused" : "Alerts on"}
-                  </Button>
-                </div>
-              </div>
-              <div className="job-controls">
-                <Button
-                  className="icon-button"
-                  aria-label={"Edit saved search " + job.title}
-                  onClick={() => onEdit(job)}
-                >
-                  <Pencil size={16} />
-                </Button>
-                <Button
-                  className="icon-button"
-                  aria-label={"Delete saved search " + job.title}
-                  onClick={() => onDelete(job)}
-                >
-                  <Trash2 size={16} />
-                </Button>
-              </div>
-            </article>
-          ))}
-        </div>
-      ) : (
-        <div className="saved-searches-empty">
-          <Pako mood="wave" size={80} />
-          <h2>No saved searches yet</h2>
-          <p>Tell Pako what you need, then save the search to run it again.</p>
-          <Button animateIcon className="button primary" onClick={onFind}>
-            Find furniture
-          </Button>
-        </div>
+      {matches.length > 0 && (
+        <MatchAlerts
+          matches={matches}
+          onOpen={onOpenMatch}
+          onDismiss={onDismissMatch}
+          onMarkAllSeen={onMarkAllSeen}
+        />
       )}
-      {searches.length > 0 && (
-        <p className="quiet-caption">
-          Stored in this browser. Alerts cover listings in this browser and the
-          demo catalog; nothing is sent to a seller.
-        </p>
+      {searches.length ? (
+        <>
+          {!watchShown && (
+            <Button className="button secondary watch-open" onClick={openWatch}>
+              <Bell size={16} aria-hidden="true" />
+              Watch for an item
+            </Button>
+          )}
+          {watchCard}
+          <div className="search-jobs">
+            {searches.map((job) => (
+              <SearchCard
+                key={job.id}
+                job={job}
+                details={searchDetails(job, location)}
+                onRun={() => onRun(job)}
+                onEdit={() => onEdit(job)}
+                onDelete={() => onDelete(job)}
+                onTogglePause={() => onTogglePause(job)}
+              />
+            ))}
+          </div>
+          <p className="quiet-caption">
+            Stored in this browser. Alerts cover listings you can see here;
+            nothing is sent to sellers.
+          </p>
+        </>
+      ) : (
+        <>
+          <div className="saved-searches-empty">
+            <Pako mood="wave" size={80} />
+            <h2>No saved searches yet</h2>
+            <p>
+              Tell Pako what you need, then save the search. New matches show up
+              here.
+            </p>
+            <Button animateIcon className="button primary" onClick={onFind}>
+              Find furniture
+            </Button>
+            {!watchShown && (
+              <Button className="button quiet" onClick={openWatch}>
+                Watch for an item
+              </Button>
+            )}
+          </div>
+          {watchCard}
+        </>
       )}
     </>
+  );
+}
+
+function SearchCard({
+  job,
+  details,
+  onRun,
+  onEdit,
+  onDelete,
+  onTogglePause,
+}: {
+  job: SavedSearch;
+  details: string;
+  onRun(): void;
+  onEdit(): void;
+  onDelete(): void;
+  onTogglePause(): void;
+}) {
+  return (
+    <article className="search-job" data-paused={job.paused || undefined}>
+      <div className="job-icon">
+        <Search size={20} />
+      </div>
+      <div className="job-main">
+        <h2>{job.title}</h2>
+        <p>{details}</p>
+        <div className="job-actions">
+          <Button className="button secondary small" onClick={onRun}>
+            Run search
+            <ArrowRight size={14} />
+          </Button>
+          <label className="job-alerts">
+            <Switch
+              checked={!job.paused}
+              aria-label={`Alerts for ${job.title}`}
+              onCheckedChange={onTogglePause}
+            />
+            Alerts
+          </label>
+          {job.paused && (
+            <span className="chip job-paused">
+              <BellOff size={14} aria-hidden="true" />
+              Paused
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="job-controls">
+        <Button
+          className="icon-button"
+          aria-label={"Edit saved search " + job.title}
+          onClick={onEdit}
+        >
+          <Pencil size={16} />
+        </Button>
+        <Button
+          className="icon-button"
+          aria-label={"Delete saved search " + job.title}
+          onClick={onDelete}
+        >
+          <Trash2 size={16} />
+        </Button>
+      </div>
+    </article>
   );
 }

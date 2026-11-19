@@ -1,45 +1,53 @@
-import { Camera, LoaderCircle } from "lucide-react";
-import "./photo-search.css";
+import { useRef } from "react";
+import { Camera, LoaderCircle } from "@/components/icons";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 
-type Props = {
+type PhotoSearchButtonProps = {
+  /** Pako is reading the photo. */
   busy: boolean;
-  disabled?: boolean;
-  compact?: boolean;
+  disabled: boolean;
   onFile: (file: File) => void;
 };
 
-/** Starts a visual search from an inspiration photo, e.g. a saved Pinterest image. */
+/** Opens the camera or photo library to find something like the photo, e.g. a saved Pinterest image. */
 export default function PhotoSearchButton({
   busy,
-  disabled = false,
-  compact = false,
+  disabled,
   onFile,
-}: Props) {
-  const label = busy ? "Reading your photo…" : "Search by photo";
+}: PhotoSearchButtonProps) {
+  const fileInput = useRef<HTMLInputElement>(null);
   return (
-    <label
-      className={`photo-search-button${compact ? " compact" : ""}`}
-      title="Upload a photo or Pinterest image to find similar furniture"
-      aria-disabled={disabled || busy}
-    >
-      {busy ? (
-        <LoaderCircle className="spin" size={17} />
-      ) : (
-        <Camera size={17} />
-      )}
-      <span className={compact ? "sr-only" : undefined}>{label}</span>
-      <input
-        type="file"
-        aria-label="Search by photo"
-        accept="image/jpeg,image/png,image/webp"
+    <>
+      <Button
+        type="button"
+        className="button secondary small photo-search-button"
+        aria-label={busy ? "Reading your photo" : "Search with a photo"}
+        title="Show me a photo, I'll find similar things"
         disabled={disabled || busy}
+        onClick={() => fileInput.current?.click()}
+      >
+        {busy ? (
+          <LoaderCircle animate size={18} aria-hidden="true" />
+        ) : (
+          <Camera size={18} aria-hidden="true" />
+        )}
+        <span className="photo-search-label">Photo</span>
+      </Button>
+      <Input
+        ref={fileInput}
+        type="file"
+        hidden
+        tabIndex={-1}
+        aria-hidden="true"
+        accept="image/jpeg,image/png,image/webp"
         onChange={(event) => {
           const file = event.target.files?.[0];
           event.target.value = "";
           if (file) onFile(file);
         }}
       />
-    </label>
+    </>
   );
 }
 

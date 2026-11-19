@@ -53,6 +53,8 @@ export {
   BadgeCheck,
   Banknote,
   BedSingle,
+  Bell,
+  BellOff,
   Bike,
   Building2,
   CalendarCheck,

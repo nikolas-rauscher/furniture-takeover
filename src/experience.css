@@ -79,6 +79,11 @@
   background: var(--surface);
   color: var(--blue-dark);
 }
+/* New matches turn the count into a coral "2 new". */
+.app-header .nav-count[data-new] {
+  background: var(--coral);
+  color: var(--on-primary);
+}
 .header-actions {
   gap: 12px;
 }
@@ -251,6 +256,11 @@ label > textarea {
   font-weight: 500;
   line-height: 1.45;
 }
+/* New matches end Pako's line with a way to see them. */
+.agent-hero-bubble > .agent-hero-matches {
+  display: flex;
+  margin: 2px 0 -6px -13px;
+}
 /* The search card is the page's focal point: the one card that floats above it. */
 .agent-search {
   margin-top: var(--hero-gap);
@@ -301,6 +311,45 @@ label > textarea {
 }
 .agent-search-actions .button {
   flex: none;
+}
+/* The camera sits flat beside "Find it": snap it to find it, like snap it to sell it. */
+.agent-search-actions .photo-search-button {
+  gap: 6px;
+  min-width: 44px;
+  min-height: 40px;
+  margin-left: auto;
+  padding: 6px 12px;
+}
+@media (max-width: 760px) {
+  .agent-search-actions .photo-search-button {
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+  .photo-search-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+/* A photo dragged over the search makes the card a drop target. */
+.agent-search[data-dragging] {
+  border-style: dashed;
+  border-color: var(--blue);
+  background: var(--selected);
+  scale: 1.01;
+  transition:
+    scale 160ms var(--ease-out),
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent-search[data-dragging] {
+    scale: none;
+  }
 }
 /* The search area is a pill, so a long residence name truncates instead of wrapping. */
 .search-area {

@@ -31,9 +31,8 @@ type HeaderNavProps = {
 };
 
 function searchesName(label: string, saved: number, unread: number) {
-  return unread > 0
-    ? `${label} (${saved} saved, ${unread} new matches)`
-    : `${label} (${saved} saved)`;
+  if (!unread) return `${label} (${saved} saved)`;
+  return `${label} (${saved} saved, ${unread} new ${unread === 1 ? "match" : "matches"})`;
 }
 
 /** Desktop navigation: a pill glides to the page on screen, like the phone tab bar. */
@@ -70,13 +69,12 @@ export default function HeaderNav({
           )}
           <span className="header-nav-label">{label}</span>
           {id === "searches" && (
-            <span className="nav-count" aria-hidden="true">
-              {savedSearches}
-            </span>
-          )}
-          {id === "searches" && unreadMatches > 0 && (
-            <span className="nav-count unread" aria-hidden="true">
-              {unreadMatches}
+            <span
+              className="nav-count"
+              data-new={unreadMatches > 0 || undefined}
+              aria-hidden="true"
+            >
+              {unreadMatches > 0 ? `${unreadMatches} new` : savedSearches}
             </span>
           )}
         </Button>

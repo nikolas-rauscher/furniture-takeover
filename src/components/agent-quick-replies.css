@@ -67,6 +67,17 @@
   transform: none;
   scale: 1;
 }
+/* Keeping watch leads with a bell; once the watch runs it confirms itself in the same
+   place as a flat chip with a check. */
+.agent-quick-reply-list > .agent-quick-reply[data-kind="watch"] {
+  gap: 6px;
+}
+.agent-quick-reply-list > .agent-quick-reply-done {
+  min-height: 40px;
+  padding: 7px 15px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
 .agent-quick-replies-note {
   margin: var(--space-label) 0 0;
   color: var(--muted);

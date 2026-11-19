@@ -11,6 +11,7 @@ import {
   listingTitle,
   parsePickupDate,
   criteriaTitle,
+  isMine,
 } from "./marketplace.ts";
 
 // Calendar examples use a fixed Monday, independent of when CI runs.
@@ -377,4 +378,11 @@ test("an any-budget search is titled without a price", () => {
     criteriaTitle({ ...criteria, maxPrice: 80 }),
     "desk under CHF 80",
   );
+});
+
+test("sample listings play other students' items, so only a student's own listing is theirs", () => {
+  assert.equal(isMine({ own: true }), true);
+  assert.equal(isMine({ own: true, demo: true }), false);
+  assert.equal(isMine({ own: false }), false);
+  assert.equal(isMine({}), false);
 });

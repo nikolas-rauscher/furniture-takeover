@@ -7,7 +7,7 @@ import {
   BottomNavigationLabel,
 } from "@animate-ui/react/primitives/bottom-navigation";
 import { AnimateIcon } from "@animate-ui/react/icons";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Button } from "./components/ui/button";
 import { useMediaQuery } from "./hooks/useMediaQuery";
 import {
@@ -28,8 +28,29 @@ type MobileNavProps = {
   /** Identifies the page on screen; each page restores its own scroll position. */
   pageKey: string;
   onNavigate: (destination: MobileDestination) => void;
-  badges?: Partial<Record<MobileDestination, number>>;
+  /** New matches for saved searches, counted on the Searches tab. */
+  newMatches: number;
 };
+
+/** The count pops whenever it rises, but not when the app opens with it. */
+function MatchBadge({ count }: { count: number }) {
+  const shown = useRef(count);
+  const rose = count > shown.current;
+  useEffect(() => {
+    shown.current = count;
+  }, [count]);
+  if (!count) return null;
+  return (
+    <span
+      key={count}
+      className="mobile-nav-badge"
+      data-pop={rose || undefined}
+      aria-hidden="true"
+    >
+      {count}
+    </span>
+  );
+}
 
 const tabs = [
   { id: "browse", label: "Browse", name: "Browse", Icon: House },
@@ -44,7 +65,7 @@ export default function MobileNav({
   active,
   pageKey,
   onNavigate,
-  badges,
+  newMatches,
 }: MobileNavProps) {
   const selling = active === "sell";
   // The bar measures scrolling from where a page starts. A fresh (window) scroll root per
@@ -79,7 +100,9 @@ export default function MobileNav({
                       className="mobile-nav-item"
                       type="button"
                       aria-label={
-                        name + (badges?.[id] ? `, ${badges[id]} new` : "")
+                        id === "searches" && newMatches
+                          ? `${name}, ${newMatches} new ${newMatches === 1 ? "match" : "matches"}`
+                          : name
                       }
                     >
                       <Icon
@@ -90,11 +113,7 @@ export default function MobileNav({
                       <BottomNavigationLabel className="mobile-nav-label">
                         {label}
                       </BottomNavigationLabel>
-                      {Boolean(badges?.[id]) && (
-                        <span className="mobile-nav-badge" aria-hidden="true">
-                          {badges?.[id]}
-                        </span>
-                      )}
+                      {id === "searches" && <MatchBadge count={newMatches} />}
                     </Button>
                   </AnimateIcon>
                 </BottomNavigationItem>

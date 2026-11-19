@@ -39,6 +39,8 @@ type AgentConversationProps = {
   requestTransitionName?: string;
   /** The composer has text, so the waiting Pako listens. */
   typing?: boolean;
+  /** The photo the conversation started from; it rides in the first request bubble. */
+  startPhoto?: string;
 };
 
 export default function AgentConversation({
@@ -50,6 +52,7 @@ export default function AgentConversation({
   context,
   requestTransitionName,
   typing = false,
+  startPhoto,
 }: AgentConversationProps) {
   const headingId = useId();
   const viewport = useRef<HTMLDivElement>(null);
@@ -85,8 +88,9 @@ export default function AgentConversation({
               role="group"
               aria-label="Conversation"
             >
-              {turns.map((turn) => {
+              {turns.map((turn, index) => {
                 const archived = turn.id !== state.id;
+                const photo = index === 0 ? startPhoto : undefined;
                 const response = {
                   ...emptyAgentRunState(),
                   ...turn,
@@ -100,6 +104,12 @@ export default function AgentConversation({
                   >
                     <BubbleContent className="search-message user-message">
                       <span className="sr-only">You</span>
+                      {photo && (
+                        <figure className="user-message-photo">
+                          <img src={photo} alt="Your photo" />
+                          <figcaption>From your photo</figcaption>
+                        </figure>
+                      )}
                       <p>{requestLabel(turn.request)}</p>
                     </BubbleContent>
                   </Bubble>

@@ -8,7 +8,7 @@ import {
   Pencil,
 } from "@/components/icons";
 import { listingPhotos } from "../../shared/listingPhotos";
-import { money, type Product } from "../../shared/marketplace";
+import { isMine, money, type Product } from "../../shared/marketplace";
 import { transportGuidance } from "../transportGuidance";
 import { relatedListings } from "../../shared/relatedListings";
 import PhotoGallery from "./PhotoGallery";
@@ -77,7 +77,8 @@ export default function ListingDetailPage({
   const samplePhotoNote =
     selected.description.match(/Photo (?:illustrates|shows) [^\n]+/)?.[0] ?? "";
   const transport = transportGuidance(selected.title, selected.dimensions);
-  const mobileContact = !selected.own && selected.status === "active";
+  const mine = isMine(selected);
+  const mobileContact = !mine && selected.status === "active";
   return (
     <article
       className={`listing-detail${mobileContact ? " has-mobile-contact" : ""}`}
@@ -97,7 +98,7 @@ export default function ListingDetailPage({
               {selected.demo ? (
                 <p>
                   <strong>Sample listing.</strong> Price and pickup details are
-                  fictional{selected.own ? "." : "; this seller cannot reply."}{" "}
+                  fictional{mine ? "." : "; this seller cannot reply."}{" "}
                   {samplePhotoNote}
                 </p>
               ) : !cloud ? (
@@ -121,7 +122,7 @@ export default function ListingDetailPage({
         <div className="listing-detail-summary">
           <div className="listing-detail-card">
             <div className="listing-detail-heading">
-              {selected.own && (
+              {mine && (
                 <span className="listing-detail-owner">Your listing</span>
               )}
               <h1>{selected.title}</h1>
@@ -158,7 +159,7 @@ export default function ListingDetailPage({
                 <dd>{selected.available || "Arrange with seller"}</dd>
               </div>
             </dl>
-            {!selected.own && (
+            {!mine && (
               <div className="listing-detail-seller">
                 <span className="listing-detail-avatar" aria-hidden="true">
                   {selected.seller
@@ -176,7 +177,7 @@ export default function ListingDetailPage({
               </div>
             )}
             <div className="listing-detail-actions">
-              {selected.own ? (
+              {mine ? (
                 <div className="listing-detail-owner-actions">
                   <Button
                     className="button secondary small"
