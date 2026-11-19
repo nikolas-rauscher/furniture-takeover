@@ -17,6 +17,7 @@ import Report from "./cloud/Report";
 import { useMarketplaceListings } from "./cloud/useMarketplaceListings";
 import { useFavorites } from "./cloud/useFavorites";
 import { useAppViewport } from "./hooks/useAppViewport";
+import { useWindowScrolled } from "./hooks/useWindowScrolled";
 import AccountPage, { type AccountTab } from "./components/AccountPage";
 import ListingDetailPage from "./components/ListingDetailPage";
 import ComparePage from "./components/ComparePage";
@@ -54,6 +55,7 @@ import {
   Bookmark,
   Camera,
   ChevronDown,
+  CircleHelp,
   MapPin,
   Plus,
   Search,
@@ -165,6 +167,7 @@ export default function App({
   onboardingPaused: boolean;
 }) {
   useAppViewport();
+  const pageScrolled = useWindowScrolled();
   const signedIn = !account || !!account.session;
   const [pickupRegion, setPickupRegion] = useState("");
   useEffect(() => {
@@ -634,7 +637,11 @@ export default function App({
     if (area) setSearchArea((current) => ({ ...current, location: area }));
     if (outcome.next === "sign-in") navigate("settings");
     else if (outcome.next === "sell") startSellAt(outcome.location);
-    else if (outcome.next === "search") setQuery(outcome.query);
+    else if (outcome.next === "search") {
+      // The intro also opens from the header on other pages; the query belongs on home.
+      goHome();
+      setQuery(outcome.query);
+    }
   }
   function declineOnboarding() {
     rememberOnboarding({});
@@ -1580,7 +1587,7 @@ export default function App({
           )}
         </div>
       )}
-      <header className="app-header">
+      <header className="app-header" data-scrolled={pageScrolled || undefined}>
         <a
           className="brand"
           href="#"
@@ -1604,7 +1611,15 @@ export default function App({
             onClick={() => openDestination("sell")}
           >
             <Plus size={17} aria-hidden="true" />
-            <span className="sell-nav-label">Sell furniture</span>
+            <span className="header-action-label">Sell furniture</span>
+          </Button>
+          <Button
+            className="icon-button help-nav"
+            aria-label="How it works"
+            onClick={() => setOnboarding("open")}
+          >
+            <CircleHelp size={20} aria-hidden="true" />
+            <span className="header-action-label">How it works</span>
           </Button>
           <Button
             className={`icon-button${view === "settings" ? " active" : ""}`}
@@ -1739,16 +1754,6 @@ export default function App({
                     className={`agent-hero search-entry${hasSearchDraft ? " has-query" : ""}`}
                     aria-labelledby="agent-title"
                   >
-                    <div className="agent-modes">
-                      <span>Find something</span>
-                      <Button onClick={startSell}>Sell from a photo</Button>
-                      <Button
-                        className="agent-modes-intro"
-                        onClick={() => setOnboarding("open")}
-                      >
-                        How it works
-                      </Button>
-                    </div>
                     <HeroHeadline compact={false} />
                     <div className="agent-hero-guide">
                       <Pako
@@ -1833,12 +1838,15 @@ export default function App({
                     />
                     <div className="home-sell-card">
                       <span className="home-sell-icon" aria-hidden="true">
-                        <Camera size={22} />
+                        <Camera size={18} />
                       </span>
-                      <div>
-                        <h2>Moving out? Just take photos.</h2>
-                        <p>Pako writes the listing, you tap Publish.</p>
-                      </div>
+                      <p>
+                        <strong>Moving out?</strong>{" "}
+                        <span>
+                          Just take photos. Pako writes the listing, you tap
+                          Publish.
+                        </span>
+                      </p>
                       <Button
                         animateIcon
                         className="button quiet"
@@ -2080,18 +2088,7 @@ export default function App({
                 {searchIsHome && visibleListings.length > 0 && (
                   <>
                     <div className="section-heading">
-                      <div>
-                        <h2>
-                          {searchIsHome
-                            ? "Your local listings"
-                            : "From your local listings"}
-                        </h2>
-                        <span>
-                          {account
-                            ? "Items shared on Takeover"
-                            : "Personal browser listings & demo database"}
-                        </span>
-                      </div>
+                      <h2>Your local listings</h2>
                       <Button
                         animateIcon
                         className="button quiet"
@@ -2103,6 +2100,11 @@ export default function App({
                         Manage listings
                         <ArrowRight size={16} />
                       </Button>
+                      <p>
+                        {account
+                          ? "Items shared on Takeover"
+                          : "Personal browser listings & demo database"}
+                      </p>
                     </div>
                     <div className="product-grid">
                       {visibleListings.map((item) => productCard(item))}

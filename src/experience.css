@@ -1,4 +1,5 @@
-/* The header is a calm shelf: tactile pills, one tactile call to action. */
+/* The header is a calm shelf: tactile pills, one tactile call to action. It sits flush
+   with the page at the top and lifts off it on a soft shadow once the page scrolls. */
 .app-header {
   /* Own layer during page transitions, so sliding pages never cover the header. */
   view-transition-name: app-header;
@@ -6,8 +7,13 @@
   flex: 0 0 var(--app-header-height);
   padding: 0 max(var(--space-page), calc((100vw - 1240px) / 2));
   gap: var(--space-section);
-  border-bottom: 2px solid var(--card-line);
   background: var(--background);
+  transition: box-shadow 200ms ease;
+}
+.app-header[data-scrolled] {
+  box-shadow:
+    0 1px 0 rgb(41 41 41 / 0.06),
+    0 8px 18px -12px rgb(41 41 41 / 0.24);
 }
 .brand {
   font-size: 29px;
@@ -97,6 +103,16 @@
   background: var(--selected);
   color: var(--blue-dark);
 }
+/* How it works reopens the intro; wide windows show its label beside the icon. */
+.app-header .help-nav {
+  width: auto;
+  gap: 7px;
+  padding: 0 14px 0 10px;
+  border-radius: 999px;
+  font-size: var(--type-label);
+  font-weight: 600;
+  white-space: nowrap;
+}
 /* Narrow desktop windows keep every tab: Sell shrinks to its plus. */
 @media (min-width: 761px) and (max-width: 960px) {
   .app-header {
@@ -109,7 +125,14 @@
     width: 40px;
     padding: 0;
   }
-  .sell-nav-label {
+}
+/* Header actions give way to their icons in narrow windows and on phones. */
+@media (max-width: 960px) {
+  .app-header .help-nav {
+    width: 40px;
+    padding: 0;
+  }
+  .header-action-label {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -186,57 +209,21 @@ label > textarea {
   color: var(--blue-dark);
 }
 
-/* Home: Pako greets the visitor above one big writing card, like the intro's ask scene. */
+/* Home: Pako greets the visitor above one big writing card, like the intro's ask scene.
+   Headline, Pako's line and the cards share one gap; the next section starts further away. */
 .agent-hero {
+  --hero-gap: var(--space-field);
   max-width: 760px;
   margin: 0 auto;
-  padding: var(--space-section) 0;
+  padding: var(--space-group) 0 var(--space-section);
 }
-.agent-modes {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 6px;
-  margin-bottom: var(--space-group);
-  font-size: var(--type-label);
-}
-.agent-modes > span,
-.agent-modes > button {
-  display: inline-flex;
-  align-items: center;
-  min-height: 36px;
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-weight: 650;
-  line-height: 1.3;
-}
-.agent-modes > span {
-  background: var(--selected);
-  color: var(--blue-dark);
-}
-.agent-modes > button {
-  color: var(--muted);
-  transition:
-    background-color 160ms ease,
-    color 160ms ease;
-}
-.agent-modes > button:hover {
-  background: var(--canvas);
-  color: var(--ink);
-}
-/* Phones keep the three ways in on one row. */
-@media (max-width: 760px) {
-  .agent-modes {
-    gap: 4px 2px;
-    font-size: var(--type-support);
-  }
-  .agent-modes > span,
-  .agent-modes > button {
-    padding-inline: 10px;
+@media (min-width: 761px) {
+  .agent-hero {
+    --hero-gap: var(--space-group);
   }
 }
 .agent-hero h1 {
-  margin-bottom: var(--space-group);
+  margin-bottom: var(--hero-gap);
   font-size: var(--type-display);
   font-weight: 700;
   line-height: 1.2;
@@ -258,20 +245,25 @@ label > textarea {
   font-weight: 500;
   line-height: 1.45;
 }
+/* The search card is the page's focal point: the one card that floats above it. */
 .agent-search {
-  margin-top: var(--space-group);
+  margin-top: var(--hero-gap);
   padding: 16px 16px 14px 20px;
   border: 2px solid var(--card-line);
   border-radius: var(--radius-stage);
   background: var(--surface);
-  box-shadow: 0 4px 0 var(--lip);
+  box-shadow:
+    0 4px 0 var(--lip),
+    0 18px 34px -24px rgb(41 41 41 / 0.4);
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease;
 }
 .agent-search:focus-within {
   border-color: var(--blue);
-  box-shadow: 0 4px 0 var(--blue-dark);
+  box-shadow:
+    0 4px 0 var(--blue-dark),
+    0 18px 34px -22px rgb(52 78 181 / 0.5);
 }
 .agent-search textarea {
   display: block;
@@ -361,72 +353,85 @@ label > textarea {
   color: #797973;
 }
 
-/* Inventory is open and easy to scan, with price close to the title. */
-.section-heading {
-  margin-bottom: 28px;
-}
-.section-heading h2 {
-  font-size: var(--type-section);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-.section-heading > div > span {
-  display: block;
-  font-size: var(--type-support);
-  color: var(--muted);
-  margin-top: 4px;
-}
-/* The second way in: selling takes nothing but photos. */
+/* Selling is the second way in: a light row under the search card, the whole row a link. */
 .home-sell-card {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  position: relative;
+  display: flex;
   align-items: center;
-  gap: 4px 14px;
-  margin-top: var(--space-group);
-  padding: 14px 16px;
+  gap: 10px;
+  margin-top: var(--hero-gap);
+  padding: 6px 6px 6px 8px;
   border: 2px solid var(--card-line);
   border-radius: var(--radius-card);
   background: var(--surface);
-  box-shadow: 0 4px 0 var(--lip);
+  transition: border-color 160ms ease;
 }
-/* The link lines up with the text it belongs to; desktop gives it its own column. */
-.home-sell-card > .button {
-  grid-column: 2;
-  justify-self: start;
-  min-height: 36px;
-  padding-inline: 0;
-}
-@media (min-width: 761px) {
-  .home-sell-card {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-  }
-  .home-sell-card > .button {
-    grid-column: 3;
-    padding-inline: 4px;
-  }
-}
-.section-heading > .button.quiet {
-  padding-inline: 0;
-}
-.home-sell-card h2 {
-  font-size: var(--type-item);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-.home-sell-card p {
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: var(--type-support);
+.home-sell-card:hover {
+  border-color: var(--lip);
 }
 .home-sell-icon {
   display: grid;
   flex: none;
   place-items: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   background: var(--sand);
   color: var(--kraft-deep);
+}
+.home-sell-card > p {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+  font-size: var(--type-label);
+  line-height: 1.4;
+}
+.home-sell-card strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+.home-sell-card > .button {
+  flex: none;
+  min-height: 40px;
+  padding-inline: 8px;
+}
+.home-sell-card > .button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+@media (max-width: 760px) {
+  .home-sell-card > p > span {
+    display: none;
+  }
+}
+
+/* A section heading is compact: title and action on one row, the note right below. */
+.section-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--space-field);
+  margin: 0 0 var(--space-field);
+}
+.section-heading h2 {
+  font-size: var(--type-section);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+.section-heading > p {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: var(--type-support);
+  line-height: 1.45;
+}
+.section-heading > .button.quiet {
+  min-height: 36px;
+  margin-right: -6px;
+  padding-inline: 6px;
+  white-space: nowrap;
 }
 /* Pako keeps the page company when there is nothing to show yet. */
 .home-empty {
@@ -434,7 +439,7 @@ label > textarea {
   align-items: center;
   gap: 16px;
   max-width: 560px;
-  margin: var(--space-section) auto 0;
+  margin: 0 auto;
 }
 .home-empty h2 {
   font-size: var(--type-section);
@@ -1100,8 +1105,10 @@ label > textarea {
   .brand {
     font-size: 26px;
   }
+  /* Round icon buttons pair up; their glyphs line up with the page edge, not their hit areas. */
   .header-actions {
-    gap: 14px;
+    gap: 4px;
+    margin-right: -8px;
   }
   .focused-layout .main-content,
   .main-content {
@@ -1195,9 +1202,6 @@ label > textarea {
   }
   .agent-footnote > span {
     font-size: 11px;
-  }
-  .section-heading {
-    margin-bottom: 24px;
   }
   .market-toolbar {
     gap: 16px;
@@ -1371,11 +1375,6 @@ label > textarea {
 .query-field {
   grid-column: 1 / -1;
 }
-.view-discover > .section-heading {
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 20px;
-}
 .view-discover > .search-title {
   margin-bottom: 24px;
 }
@@ -1470,7 +1469,6 @@ label > textarea {
 .page-title { margin-bottom: var(--space-group); }
 .page-title h1 { margin-bottom: var(--space-label); min-height: var(--control-size); display: flex; align-items: center; }
 .page-title > .button { margin: 0; }
-.section-heading { margin-bottom: var(--space-group); gap: var(--space-field); }
 .results-controls { margin-bottom: 16px; }
 .search-title .back-link { margin-bottom: 8px; }
 .assistant-composer { margin-top: 20px; padding: 16px; }
@@ -1495,7 +1493,6 @@ label > textarea {
 }
 .database-status button { min-height: 44px; }
 @media (max-width: 560px) {
-  .section-heading { gap: 12px; }
   .review-layout.agent-review-layout { gap: 12px; }
   .form-grid, .modal .form-grid { gap: 16px; }
   .account-tabs { margin: 20px 0; gap: 20px; }

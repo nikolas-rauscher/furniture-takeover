@@ -372,7 +372,6 @@ textarea {
 }
 .app-header {
   height: 83px;
-  border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
   padding: 0 34px;
@@ -510,22 +509,6 @@ textarea {
 }
 .categories button:hover {
   color: var(--blue);
-}
-.section-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 17px;
-}
-.section-heading h2 {
-  font-size: var(--type-section);
-  letter-spacing: -0.7px;
-  margin-bottom: 5px;
-}
-.section-heading > div > span {
-  font-size: 11px;
-  color: #8a909c;
 }
 .sort-label select {
   border: 0;
@@ -2281,17 +2264,6 @@ textarea {
   .categories svg {
     width: 20px;
     height: 20px;
-  }
-  .section-heading {
-    align-items: flex-start;
-    gap: 5px;
-    margin-bottom: 15px;
-  }
-  .section-heading h2 {
-    letter-spacing: -0.45px;
-  }
-  .section-heading > div > span {
-    font-size: 9px;
   }
   .sort-label select {
     font-size: 9px;

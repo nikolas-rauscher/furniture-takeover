@@ -104,7 +104,6 @@
     font-size: var(--type-body);
   }
   .title-with-action,
-  .section-heading,
   .results-controls,
   .modal-actions {
     flex-wrap: wrap;
