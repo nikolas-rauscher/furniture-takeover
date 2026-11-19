@@ -1,5 +1,5 @@
 /* New matches lead the Searches page: lip cards with the listing's photo, unseen ones on sky
-   with a coral dot until opened. */
+   until opened. The heading carries their count. */
 .match-alerts {
   margin-bottom: var(--space-section);
 }
@@ -9,10 +9,15 @@
   gap: 10px;
   margin-bottom: var(--space-field);
 }
+/* The count belongs to the title, so both read as one. */
 .match-alerts-heading h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: var(--type-section);
   font-weight: 700;
   letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 .match-alerts-count {
   min-width: 24px;
@@ -27,6 +32,19 @@
 }
 .match-alerts-heading .match-alerts-seen {
   margin-left: auto;
+}
+/* Phones give Mark all as seen a row of its own, its text in line with the title's. */
+@media (max-width: 480px) {
+  .match-alerts-heading {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    row-gap: 0;
+  }
+  .match-alerts-heading .match-alerts-seen {
+    grid-column: 2;
+    justify-self: start;
+    margin: -4px 0 0 -13px;
+  }
 }
 .match-alert-list {
   display: grid;
@@ -58,7 +76,6 @@
   box-shadow: 0 1px 0 var(--lip);
 }
 .match-alert-photo {
-  position: relative;
   display: grid;
   grid-template: 100% / 100%;
   place-items: center;
@@ -73,17 +90,6 @@
   height: 100%;
   border-radius: inherit;
   object-fit: cover;
-}
-.match-alert[data-unseen] .match-alert-photo::after {
-  content: "";
-  position: absolute;
-  top: -3px;
-  left: -3px;
-  width: 12px;
-  height: 12px;
-  border: 3px solid var(--sky);
-  border-radius: 50%;
-  background: var(--coral);
 }
 .match-alert-text {
   display: grid;

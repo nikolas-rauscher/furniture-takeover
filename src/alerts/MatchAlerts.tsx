@@ -26,13 +26,15 @@ export default function MatchAlerts({
     <section className="match-alerts" aria-labelledby={headingId}>
       <div className="match-alerts-heading">
         <PakoReaction mood={unread ? "happy" : "idle"} size={40} />
-        <h2 id={headingId}>New matches</h2>
-        {unread > 0 && (
-          <span className="match-alerts-count">
-            {unread}
-            <span className="sr-only"> unseen</span>
-          </span>
-        )}
+        <h2 id={headingId}>
+          New matches
+          {unread > 0 && (
+            <span className="match-alerts-count">
+              {unread}
+              <span className="sr-only"> unseen</span>
+            </span>
+          )}
+        </h2>
         {unread > 0 && (
           <Button
             className="button quiet small match-alerts-seen"

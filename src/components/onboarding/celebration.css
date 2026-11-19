@@ -57,55 +57,64 @@
   display: inline-flex;
 }
 
-/* Desktop opt-in card. Pako peeks over its top edge. */
+/*
+ * Desktop opt-in: a compact lip card, Pako waving at its start. Tablets float it in the
+ * corner; wider screens rest it under the header's right end, beside the home headline,
+ * where it covers no listing and scrolls away with the page.
+ */
 .ob-invite {
   position: fixed;
   right: 24px;
   bottom: 24px;
   z-index: 90;
-  display: grid;
-  grid-template-columns: 72px 1fr;
-  column-gap: 14px;
-  row-gap: 4px;
-  width: min(340px, calc(100vw - 48px));
-  padding: 18px 20px 20px;
-  border-radius: 20px;
-  background: var(--surface);
-  box-shadow:
-    0 1px 2px rgb(38 49 76 / 0.06),
-    0 12px 32px -8px rgb(38 49 76 / 0.22),
-    0 28px 64px -28px rgb(38 49 76 / 0.2);
-}
-.ob-invite-pako {
-  grid-row: 1 / span 2;
-  grid-column: 1;
-  align-self: start;
-  margin-top: -46px;
-}
-.ob-invite-title {
-  grid-column: 2;
-  font-size: 1.0625rem;
-  font-weight: 700;
-  line-height: 1.3;
-  letter-spacing: -0.015em;
-}
-.ob-invite-text {
-  grid-column: 2;
-  color: var(--muted);
-  font-size: var(--type-label);
-  line-height: 1.5;
-}
-.ob-invite-actions {
-  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 14px;
+  padding: 8px 8px 8px 10px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow:
+    0 4px 0 var(--lip),
+    0 18px 36px -14px rgb(38 49 76 / 0.28);
 }
-.ob-invite-actions .button {
-  min-height: 44px;
-  padding: 10px 18px;
+.ob-invite-pako {
+  flex: none;
+  margin: -4px 0 -2px;
+}
+.ob-invite-text {
+  margin-right: 2px;
+  white-space: nowrap;
+}
+.ob-invite-title {
   font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+.ob-invite-note {
+  color: var(--muted);
+  font-size: var(--type-support);
+  line-height: 1.4;
+}
+.ob-invite .ob-invite-dismiss {
+  width: 36px;
+  height: 36px;
+  color: var(--muted);
+}
+.ob-invite .ob-invite-dismiss:hover {
+  background: var(--canvas);
+  color: var(--ink);
+}
+@media (min-width: 1024px) {
+  .ob-invite {
+    position: absolute;
+    top: calc(var(--app-header-height) + 8px);
+    right: max(var(--space-page), calc((100vw - 1240px) / 2));
+    bottom: auto;
+    /* Under the sticky header once the page scrolls. */
+    z-index: 15;
+  }
 }
 @media (max-width: 760px) {
   .ob-invite {

@@ -80,7 +80,7 @@ export function isSavedSearches(value: unknown): value is SavedSearch[] {
 }
 
 /** Human-readable request: never parse this generated prose back into the item query. */
-export function searchText(criteria: Criteria, location: string) {
+function searchText(criteria: Criteria, location: string) {
   return [
     criteria.query ||
       (criteria.category === "All" ? "furniture" : criteria.category),

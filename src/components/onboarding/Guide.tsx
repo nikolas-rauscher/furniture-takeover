@@ -1,4 +1,9 @@
-import { motion, useReducedMotion, type Transition } from "motion/react";
+import {
+  AnimatePresence,
+  motion,
+  useReducedMotion,
+  type Transition,
+} from "motion/react";
 import { Fragment, useState, type ReactNode } from "react";
 import Pako, { PAKO_OPENING } from "./Pako";
 import type { PakoMood } from "./storyTypes";
@@ -81,15 +86,31 @@ function BubbleLines({
   );
 }
 
-/** Pops in from its tail. The visible words are decoration; the sentence is read once, in full. */
+function BubbleText({ bubble }: { bubble: GuideBubble }) {
+  return (
+    <>
+      {bubble.title && <p className="ob-bubble-title">{bubble.title}</p>}
+      <p className="ob-bubble-text">{bubble.text}</p>
+    </>
+  );
+}
+
+/**
+ * Pops in from its tail. Every line Pako may say on the step sits hidden in the same
+ * place, so the bubble keeps the size of the longest one, and a reaction crossfades in
+ * where the question was. The visible words are decoration; the sentence is read once,
+ * in full.
+ */
 function Bubble({
   bubble,
+  lines,
   reduced,
   onSpoken,
 }: {
   bubble: GuideBubble;
+  lines: GuideBubble[];
   reduced: boolean;
-  onSpoken: () => void;
+  onSpoken: (id: string) => void;
 }) {
   return (
     <motion.div
@@ -102,15 +123,29 @@ function Bubble({
       <p className="sr-only">
         {bubble.title ? `${bubble.title} ${bubble.text}` : bubble.text}
       </p>
-      <div aria-hidden="true">
-        {reduced ? (
-          <>
-            {bubble.title && <p className="ob-bubble-title">{bubble.title}</p>}
-            <p className="ob-bubble-text">{bubble.text}</p>
-          </>
-        ) : (
-          <BubbleLines bubble={bubble} onSpoken={onSpoken} />
-        )}
+      <div className="ob-bubble-lines" aria-hidden="true">
+        {lines.map((line) => (
+          <div key={line.id} className="ob-bubble-sizer">
+            <BubbleText bubble={line} />
+          </div>
+        ))}
+        <AnimatePresence initial={false}>
+          <motion.div
+            key={bubble.id}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.12 } }}
+          >
+            {reduced ? (
+              <BubbleText bubble={bubble} />
+            ) : (
+              <BubbleLines
+                bubble={bubble}
+                onSpoken={() => onSpoken(bubble.id)}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </motion.div>
   );
@@ -124,17 +159,25 @@ export default function Guide({
   mood,
   layout,
   bubble,
+  lines,
   burst,
 }: {
   mood: PakoMood;
   layout: GuideLayout;
   bubble?: GuideBubble;
+  /**
+   * Every line Pako may say while this bubble stays up, such as a question and its
+   * reactions: the bubble keeps the size of the longest and pops in again only when
+   * they change. Without them, each line brings a bubble of its own size.
+   */
+  lines?: GuideBubble[];
   burst?: ReactNode;
 }) {
   const reduced = useReducedMotion() === true;
   const [spokenId, setSpokenId] = useState<string>();
   const speech = layout === "guide" ? bubble : undefined;
   const talking = Boolean(speech && !reduced && spokenId !== speech.id);
+  const footprint = speech ? (lines ?? [speech]) : [];
   return (
     <div className="ob-guide" data-layout={layout}>
       <div className="ob-guide-stage">
@@ -161,10 +204,11 @@ export default function Guide({
       <div className="ob-bubble-live" aria-live="polite">
         {speech && (
           <Bubble
-            key={speech.id}
+            key={footprint.map(({ id }) => id).join(" ")}
             bubble={speech}
+            lines={footprint}
             reduced={reduced}
-            onSpoken={() => setSpokenId(speech.id)}
+            onSpoken={setSpokenId}
           />
         )}
       </div>

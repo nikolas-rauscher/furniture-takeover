@@ -115,10 +115,12 @@ test("Pako names an intro place by its own name and any other area by its first 
   );
 });
 
-test("the intro promises what Pako does in Messages: he writes the answer, the student taps Send", () => {
-  for (const intent of ["find", "sell"] as const) {
-    const { text } = actCopy("chat", intent);
-    assert.match(text, /You\u00a0just\u00a0tap\u00a0Send\.$/);
-    assert.doesNotMatch(text, /sort it out|agree on a price/);
-  }
+test("the intro promises what Pako does in Messages: he writes the answer, the student taps Send and confirms", () => {
+  assert.match(actCopy("chat", "find").text, /You tap Send, then you both\u00a0confirm\.$/);
+  assert.match(actCopy("chat", "sell").text, /You tap Send and confirm the\u00a0sale\.$/);
+  for (const intent of ["find", "sell"] as const)
+    assert.doesNotMatch(
+      actCopy("chat", intent).text,
+      /sort it out|agree on a price/,
+    );
 });

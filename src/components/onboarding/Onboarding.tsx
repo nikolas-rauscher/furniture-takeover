@@ -3,6 +3,7 @@ import {
   AnimatePresence,
   MotionConfig,
   motion,
+  useReducedMotion,
   type Variants,
 } from "motion/react";
 import {
@@ -53,6 +54,7 @@ import {
   questions,
   stepAt,
   stepBubble,
+  stepLines,
   stepMood,
   type OnboardingOutcome,
   type QuestionStep,
@@ -142,6 +144,12 @@ const stepMotion: Variants = {
     x: direction * -32,
     transition: { duration: 0.14, ease: [0.4, 0, 1, 1] },
   }),
+};
+/** With reduced motion a step swaps in place: the old one goes at once, the new one fades in. */
+const stepFade: Variants = {
+  enter: { opacity: 0 },
+  center: { opacity: 1, transition: { duration: 0.16, ease: "easeOut" } },
+  exit: { opacity: 0, transition: { duration: 0 } },
 };
 
 type QuestionView = {
@@ -253,6 +261,7 @@ export default function Onboarding({
   onClosed,
 }: OnboardingProps) {
   const [open, setOpen] = useState(true);
+  const reduced = useReducedMotion() === true;
   useInertApp(open);
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(0);
@@ -513,6 +522,7 @@ export default function Onboarding({
                   mood={mood}
                   layout={hero ? "hero" : "guide"}
                   bubble={bubble}
+                  lines={stepLines(step, answers)}
                   burst={
                     step === "welcome" ? (
                       <WelcomeBurst />
@@ -530,7 +540,7 @@ export default function Onboarding({
                     tabIndex={-1}
                     {...stepLabel}
                     custom={direction}
-                    variants={stepMotion}
+                    variants={reduced ? stepFade : stepMotion}
                     initial="enter"
                     animate="center"
                     exit="exit"

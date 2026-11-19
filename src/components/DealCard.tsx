@@ -23,12 +23,15 @@ import { DealTermsGrid, DealTile } from "./DealTerms";
 import { Button } from "./ui/button";
 import "./deal-card.css";
 
-/** A new state settles in place of the last one, like Pako's tray. */
+/** A new state settles in place of the last one, like Pako's tray; the old one leaves at once. */
 const SWAP = {
   initial: { opacity: 0, y: 6 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -4 },
-  transition: { type: "spring", stiffness: 420, damping: 34 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 420, damping: 34 },
+  },
+  exit: { opacity: 0, y: -4, transition: { duration: 0.1 } },
 } as const;
 /** The card grows out of the strip and folds back into it. */
 const GROW = { type: "spring", stiffness: 360, damping: 34 } as const;
