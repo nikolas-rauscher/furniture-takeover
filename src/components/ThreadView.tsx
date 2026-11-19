@@ -4,14 +4,17 @@ import type { DealRole } from "../../shared/deal";
 import type { ThreadMessage } from "../pakoThread";
 import { motionBehavior } from "../uiMotion";
 import type { PakoRequest } from "./AskPakoMenu";
+import { eventChip } from "../dealWords";
 import {
   ChatComposerField,
   ChatDate,
+  ChatEvent,
   ChatMessage,
   ChatStart,
   PakoLabel,
   startsNewDay,
 } from "./ChatParts";
+import type { ThreadEvent } from "./ThreadDeal";
 import { Button } from "./ui/button";
 
 /** Close enough to the bottom of a thread to keep following new messages. */
@@ -38,6 +41,32 @@ export function threadRequests(role: DealRole): PakoRequest[] {
   ];
 }
 
+type LogEntry =
+  | { kind: "message"; message: ThreadMessage; index: number }
+  | { kind: "news"; event: ThreadEvent };
+
+/** Messages in order, with news nobody wrote (such as another buyer's deal) where it happened. */
+function logEntries(
+  messages: readonly ThreadMessage[],
+  events: readonly ThreadEvent[],
+): LogEntry[] {
+  const news = events.filter((event) => event.messageId === null);
+  const entries: LogEntry[] = [];
+  let next = 0;
+  messages.forEach((message, index) => {
+    while (
+      next < news.length &&
+      Date.parse(news[next].at) <= Date.parse(message.at)
+    )
+      entries.push({ kind: "news", event: news[next++] });
+    entries.push({ kind: "message", message, index });
+  });
+  return [
+    ...entries,
+    ...news.slice(next).map((event) => ({ kind: "news" as const, event })),
+  ];
+}
+
 /** The messages of one thread, following the newest one unless the student scrolled back. */
 export function ThreadLog({
   threadKey,
@@ -48,6 +77,7 @@ export function ThreadLog({
   drafted,
   extras,
   disclosure,
+  events = [],
 }: {
   /** Another thread starts at its newest message again. */
   threadKey: string;
@@ -61,6 +91,8 @@ export function ThreadLog({
   extras?: (message: ThreadMessage) => ReactNode;
   /** Pako's note on reading this thread. */
   disclosure?: ReactNode;
+  /** Deal changes: each under the message that carried it, news on its own. */
+  events?: readonly ThreadEvent[];
 }) {
   const pane = useRef<HTMLDivElement>(null);
   const follow = useRef(true);
@@ -103,22 +135,36 @@ export function ThreadLog({
       {loaded && !messages.length && !error && <ChatStart />}
       {loaded && (
         <AnimatePresence key={threadKey} initial={false}>
-          {messages.map((message, index) => (
-            <div className="message-entry" key={message.id}>
-              {startsNewDay(message.at, messages[index - 1]?.at) && (
-                <ChatDate createdAt={message.at} />
-              )}
-              <ChatMessage
-                mine={message.from === "me"}
-                drafted={message.from === "me" && drafted(message.id)}
-                author={message.from === "me" ? "You" : otherName}
-                createdAt={message.at}
-                text={message.text}
-              >
-                {message.from === "them" && extras?.(message)}
-              </ChatMessage>
-            </div>
-          ))}
+          {logEntries(messages, events).map((entry) =>
+            entry.kind === "news" ? (
+              <div className="message-entry" key={entry.event.id}>
+                <ChatEvent text={eventChip(entry.event)} system />
+              </div>
+            ) : (
+              <div className="message-entry" key={entry.message.id}>
+                {startsNewDay(
+                  entry.message.at,
+                  messages[entry.index - 1]?.at,
+                ) && <ChatDate createdAt={entry.message.at} />}
+                <ChatMessage
+                  mine={entry.message.from === "me"}
+                  drafted={
+                    entry.message.from === "me" && drafted(entry.message.id)
+                  }
+                  author={entry.message.from === "me" ? "You" : otherName}
+                  createdAt={entry.message.at}
+                  text={entry.message.text}
+                >
+                  {entry.message.from === "them" && extras?.(entry.message)}
+                </ChatMessage>
+                {events
+                  .filter((event) => event.messageId === entry.message.id)
+                  .map((event) => (
+                    <ChatEvent key={event.id} text={eventChip(event)} />
+                  ))}
+              </div>
+            ),
+          )}
         </AnimatePresence>
       )}
       {error && <p role="alert">{error}</p>}
@@ -157,6 +203,7 @@ export function ThreadComposer({
   error,
   pakoDrafted,
   tools,
+  terms,
   onTextChange,
   onSend,
 }: {
@@ -170,6 +217,8 @@ export function ThreadComposer({
   pakoDrafted: boolean;
   /** Asking Pako, beside the keyboard hint. */
   tools?: ReactNode;
+  /** Terms that travel with the text: they update the deal while the text states them. */
+  terms?: { states: boolean; line: string } | null;
   onTextChange: (text: string) => void;
   onSend: () => void;
 }) {
@@ -191,6 +240,15 @@ export function ThreadComposer({
         busy={busy}
         onValueChange={onTextChange}
       />
+      {terms && text.trim() && (
+        <p
+          className="composer-terms"
+          data-states={terms.states || undefined}
+          role="status"
+        >
+          {terms.line}
+        </p>
+      )}
       <div className="seller-message-meta">
         {tools}
         <small className="composer-keyboard-hint">

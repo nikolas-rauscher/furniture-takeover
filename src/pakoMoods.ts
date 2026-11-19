@@ -1,5 +1,7 @@
+import type { DealRole, DealTerms } from "../shared/deal";
 import type { AgentTaskKind } from "../shared/runs";
 import { plainAnswer } from "./components/agentAnswer.ts";
+import { agreedWords, termsSentence } from "./dealWords.ts";
 import type { PakoMood } from "./components/onboarding/storyTypes";
 import type { AgentRunState, AgentRunStep } from "./hooks/useAgentRun";
 import type { TrayPhase } from "./listingQuestions";
@@ -363,7 +365,34 @@ export type ThreadMoment =
   | { phase: "paused"; remaining: number | undefined }
   | { phase: "unavailable"; reason: "unconfigured" | "missing" }
   | { phase: "gone"; status: "reserved" | "sold" | "withdrawn" }
-  | { phase: "no_answer"; hoursWaiting: number };
+  | { phase: "no_answer"; hoursWaiting: number }
+  /** The other student's offer on the deal card: complete, or with terms still open. */
+  | { phase: "deal_offer" | "deal_partial"; terms: DealTerms }
+  /** The student's own offer waits for the other student's confirmation. */
+  | { phase: "deal_waiting" }
+  | { phase: "deal_agreed"; role: DealRole }
+  | { phase: "deal_cancelled"; by: "me" | "them" | "listing" };
+
+/** Pako cheers a deal both confirmed once, then rests. */
+const CHEER_MS = 2400;
+
+/** How long Pako's mood for a thread moment plays before he rests; null while it lasts as long as its cause. */
+export function threadReactionMs(
+  moment: ThreadMoment,
+  mood: PakoMood,
+): number | null {
+  if (moment.phase === "deal_agreed") return CHEER_MS;
+  return isReaction(mood) ? REACTION_MS[mood] : null;
+}
+
+const CANCELLED: Record<
+  Extract<ThreadMoment, { phase: "deal_cancelled" }>["by"],
+  (other: string) => string
+> = {
+  me: () => "You cancelled the deal.",
+  them: (other) => `${other} cancelled the deal.`,
+  listing: () => "The listing is available again, so this deal ended.",
+};
 
 const GONE: Record<Extract<ThreadMoment, { phase: "gone" }>["status"], string> =
   {
@@ -407,7 +436,7 @@ export function threadGuide(
     case "asleep":
       return {
         mood: "sleep",
-        line: "I'm out of answers for today. You can still reply yourself.",
+        line: "I'm out of answers for today. You can still reply yourself, and the deal card still works.",
       };
     case "offline":
       return {
@@ -431,5 +460,26 @@ export function threadGuide(
       };
     case "no_answer":
       return { mood: "idle", line: waitedFor(other, moment.hoursWaiting) };
+    case "deal_offer":
+      return {
+        mood: "listen",
+        line: `${other} offers ${termsSentence(moment.terms)}. Confirm, counter or decline?`,
+      };
+    case "deal_partial":
+      return {
+        mood: "listen",
+        line: `${other} suggests ${termsSentence(moment.terms)}. Fill in the rest, and they can confirm.`,
+      };
+    case "deal_waiting":
+      return {
+        mood: "listen",
+        line: `Now it's ${other}'s turn to confirm. I'll tell you when they answer.`,
+      };
+    case "deal_agreed": {
+      const { cheer, meaning } = agreedWords(moment.role, other, title);
+      return { mood: "cheer", line: `${cheer} ${meaning}` };
+    }
+    case "deal_cancelled":
+      return { mood: "sad", line: CANCELLED[moment.by](other) };
   }
 }

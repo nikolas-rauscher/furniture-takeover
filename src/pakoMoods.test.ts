@@ -13,6 +13,7 @@ import {
   stepsSummary,
   stepWords,
   threadGuide,
+  threadReactionMs,
   trayMood,
   turnAnnouncement,
   workingLine,
@@ -717,4 +718,44 @@ test("Pako's thread lines name the other student and never guess their pronouns"
   ];
   for (const moment of every)
     assert.doesNotMatch(line(moment), /\b(?:he|she|him|her|his|hers)\b/i);
+});
+
+test("on the deal card Pako listens while the other side decides, cheers once both confirmed and is sad when it ends", () => {
+  const names = { other: "Léa", title: "White study desk" };
+  const terms = {
+    amount: 45,
+    fulfillment: "pickup" as const,
+    pickupAt: "2026-11-20T18:30:00.000Z",
+    pickupTime: "Fri 20 Nov, 19:30",
+    pickupPoint: "FMEL Vortex · outside reception",
+  };
+  const guide = (moment: ThreadMoment) => threadGuide(moment, names);
+  assert.deepEqual(guide({ phase: "deal_offer", terms }), {
+    mood: "listen",
+    line: "Léa offers CHF 45 on Fri 20 Nov, 19:30 at FMEL Vortex · outside reception. Confirm, counter or decline?",
+  });
+  assert.equal(
+    guide({ phase: "deal_partial", terms: { ...terms, pickupAt: null, pickupTime: null, pickupPoint: null } }).line,
+    "Léa suggests CHF 45. Fill in the rest, and they can confirm.",
+  );
+  assert.equal(guide({ phase: "deal_waiting" }).mood, "listen");
+  assert.deepEqual(guide({ phase: "deal_agreed", role: "buyer" }), {
+    mood: "cheer",
+    line: "Deal! The White study desk is reserved for you.",
+  });
+  assert.equal(
+    guide({ phase: "deal_agreed", role: "seller" }).line,
+    "Deal with Léa! The White study desk is reserved until pickup.",
+  );
+  assert.equal(guide({ phase: "deal_cancelled", by: "them" }).line, "Léa cancelled the deal.");
+  assert.equal(guide({ phase: "deal_cancelled", by: "me" }).mood, "sad");
+  assert.equal(threadReactionMs({ phase: "deal_agreed", role: "buyer" }, "cheer"), 2400);
+  assert.equal(threadReactionMs({ phase: "deal_waiting" }, "listen"), null);
+  assert.equal(threadReactionMs({ phase: "error" }, "dizzy"), 2600);
+  for (const moment of [
+    { phase: "deal_waiting" },
+    { phase: "deal_partial", terms },
+    { phase: "deal_cancelled", by: "listing" },
+  ] as ThreadMoment[])
+    assert.doesNotMatch(guide(moment).line, /\b(?:he|she|him|her|his|hers)\b/i);
 });

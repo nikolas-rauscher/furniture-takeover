@@ -1,7 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { DealRole } from "../../shared/deal";
 import type { Product } from "../../shared/marketplace";
-import type { ThreadTurn } from "../../shared/threadTurn";
+import type { ThreadTurn, ThreadTurnRequest } from "../../shared/threadTurn";
 import { AgentApiError } from "../api/agent";
 import { requestThreadTurn, threadTurnRequest } from "../api/threads";
 import { pakoReadDecision, type ThreadMessage } from "../pakoThread";
@@ -16,8 +16,10 @@ export type PakoThread = {
   role: DealRole;
   listing: Product;
   messages: readonly ThreadMessage[];
-  /** The messages have loaded, so the newest one is known. */
+  /** The messages and the deal have loaded, so the newest message is known and whether it is structured. */
   loaded: boolean;
+  /** The deal as the student sees it, for Pako's reading. */
+  deal: ThreadTurnRequest["deal"];
   cache: PakoTurnCache;
 };
 
@@ -156,7 +158,7 @@ export function usePakoThread({
 
   const start = useEffectEvent(async (ask?: Ask) => {
     if (!thread) return;
-    const { key, role, listing, messages, cache } = thread;
+    const { key, role, listing, messages, deal, cache } = thread;
     const forMessageId = messages.at(-1)?.id ?? null;
     request.current?.abort();
     const controller = new AbortController();
@@ -165,7 +167,7 @@ export function usePakoThread({
     setAttempt({ key, forMessageId, asked, status: "running" });
     try {
       const { turn, allowance } = await requestThreadTurn(
-        threadTurnRequest({ role, listing, messages, ask }),
+        threadTurnRequest({ role, listing, messages, deal, ask }),
         controller.signal,
       );
       if (controller.signal.aborted) return;

@@ -28,7 +28,12 @@ test("Pako reads the listing's facts and the newest messages that fit, oldest fi
   const messages = Array.from({ length: 25 }, (_, index) =>
     message(index, index % 2 ? "them" : "me"),
   );
-  const request = threadTurnRequest({ role: "buyer", listing: desk, messages });
+  const request = threadTurnRequest({
+    role: "buyer",
+    listing: desk,
+    messages,
+    deal: null,
+  });
   assert.equal(request.trigger, "reply");
   assert.deepEqual(
     request.messages.map((item) => item.id),
@@ -46,10 +51,42 @@ test("Pako reads the listing's facts and the newest messages that fit, oldest fi
       message(2, "them", "b".repeat(4000)),
       message(3, "them", "c".repeat(100)),
     ],
+    deal: null,
   });
   assert.deepEqual(
     long.messages.map((item) => item.id),
     ["m2", "m3"],
+  );
+});
+
+test("Pako reads the deal as the student sees it and which messages carry their terms", () => {
+  const deal = {
+    status: "open" as const,
+    agreed: null,
+    proposal: {
+      by: "them" as const,
+      terms: {
+        amount: 40,
+        fulfillment: "pickup" as const,
+        pickupAt: null,
+        pickupTime: null,
+        pickupPoint: null,
+      },
+    },
+  };
+  const request = threadTurnRequest({
+    role: "buyer",
+    listing: desk,
+    messages: [
+      { ...message(1, "them"), structured: true },
+      message(2, "them"),
+    ],
+    deal,
+  });
+  assert.deepEqual(request.deal, deal);
+  assert.deepEqual(
+    request.messages.map((item) => item.structured),
+    [true, undefined],
   );
 });
 
@@ -58,6 +95,7 @@ test("asking Pako sends the instruction and the draft being written", () => {
     role: "seller",
     listing: desk,
     messages: [message(1, "them")],
+    deal: null,
     ask: { instruction: "Make it friendlier", draft: "  No.  " },
   });
   assert.equal(request.trigger, "ask");
@@ -67,6 +105,7 @@ test("asking Pako sends the instruction and the draft being written", () => {
     role: "seller",
     listing: desk,
     messages: [],
+    deal: null,
     ask: { instruction: "Ask if it's still available", draft: " " },
   });
   assert.equal("draft" in empty, false);
@@ -104,6 +143,7 @@ test("a reading is checked before it is shown, and errors keep their code", asyn
     role: "seller",
     listing: desk,
     messages: [message(1, "them")],
+    deal: null,
   });
   answering(t, 200, {
     turn: reading,

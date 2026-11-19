@@ -32,10 +32,12 @@ import NegotiationSummary, {
   MessageDraftPreview,
 } from "./components/NegotiationSummary";
 import {
+  dealTermsFromNegotiation,
   discardNegotiation,
   markNegotiationSent,
   type Negotiation,
 } from "../shared/negotiation";
+import { nearbyMeetingPoint } from "./dealOptions";
 import { draftMessage } from "../shared/dealMessages";
 import AgentConversation, {
   focusConversation,
@@ -316,6 +318,8 @@ export default function App({
       ? readRoute(window.location.hash).listingId
       : undefined,
   );
+  /** Changes on each "Draft an offer" tap, so its thread opens the offer card again. */
+  const [offerRequest, setOfferRequest] = useState<number>();
   const [modal, setModal] = useState<Dialog>(null);
   const [accountTab, setAccountTab] = useState<AccountTab>(
     readRoute(window.location.hash).accountTab,
@@ -786,6 +790,11 @@ export default function App({
     navigate("messages");
     if (listingId) replaceRoute(`#messages/${encodeURIComponent(listingId)}`);
   }
+  /** "Draft an offer": the listing's thread opens with the offer card, nothing sent yet. */
+  function openOfferCard(item: Product) {
+    openMessages(item.id);
+    setOfferRequest(Date.now());
+  }
   function goHome() {
     scrollPositions.current.delete("home");
     navigate("discover");
@@ -1200,7 +1209,7 @@ export default function App({
       const item = shown.find((listing) => listing.id === reply.listingId);
       if (!item)
         throw new Error("The offer reply names a listing Pako did not show.");
-      continueOffer(item);
+      openOfferCard(item);
     }
   }
   function proposalSummary(proposal: Negotiation, compact = false) {
@@ -1586,13 +1595,31 @@ export default function App({
     setManualListing(true);
     setSellStep(2);
   }
+  /** The one path a listing's status changes through: My listings and deals alike. */
+  async function applyListingStatus(id: string, status: Product["status"]) {
+    if (!own.some((item) => item.id === id))
+      throw new Error(`Listing ${id} is not among the listings.`);
+    return setOwn((current) =>
+      current.map((item) => (item.id === id ? { ...item, status } : item)),
+    );
+  }
+  /**
+   * A deal reserved a listing or made it available again. With accounts the
+   * server saved it in the same step, so the listings only reload; the local
+   * demo saves it here.
+   */
+  async function followDealStatus(id: string, status: "active" | "reserved") {
+    if (account) {
+      database.retry();
+      return;
+    }
+    if (!(await applyListingStatus(id, status)))
+      setToast("Could not save this status change. Please try again.");
+  }
   async function setStatus(id: string, status: Product["status"]) {
     const listing = own.find((item) => item.id === id);
     if (!listing) throw new Error(`Listing ${id} is not among your listings.`);
-    const saved = await setOwn((current) =>
-      current.map((item) => (item.id === id ? { ...item, status } : item)),
-    );
-    if (!saved) {
+    if (!(await applyListingStatus(id, status))) {
       setToast("Could not save this status change. Please try again.");
       return;
     }
@@ -1882,6 +1909,13 @@ export default function App({
                       ))
                     : undefined
                 }
+                initialTerms={
+                  messageProposal &&
+                  dealTermsFromNegotiation(messageProposal.terms, new Date())
+                }
+                offerRequest={offerRequest}
+                homePoint={nearbyMeetingPoint(location)}
+                onListingStatus={followDealStatus}
                 onBeforeSend={(listingId, role) => {
                   if (
                     !messageProposal ||
@@ -2336,7 +2370,7 @@ export default function App({
                                   listings={localMatches}
                                   ranked={turn.status === "complete"}
                                   onOpen={openProduct}
-                                  onOffer={continueOffer}
+                                  onOffer={openOfferCard}
                                 />
                               ) : undefined
                             }
@@ -2632,7 +2666,7 @@ export default function App({
                     selected &&
                     transitionPage(
                       "nav-forward",
-                      () => continueOffer(selected),
+                      () => openOfferCard(selected),
                       "fade",
                     )
                   }

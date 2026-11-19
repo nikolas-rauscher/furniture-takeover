@@ -62,16 +62,19 @@ function newestMessages(messages: readonly ThreadMessage[]) {
   return kept;
 }
 
-/** What Pako is asked to read: one thread, seen from the student who asks. */
+/** What Pako is asked to read: one thread and its deal, seen from the student who asks. */
 export function threadTurnRequest({
   role,
   listing,
   messages,
+  deal,
   ask,
 }: {
   role: ThreadTurnRequest["role"];
   listing: Product;
   messages: readonly ThreadMessage[];
+  /** The deal as the student sees it, from threadDealSnapshot. */
+  deal: ThreadTurnRequest["deal"];
   /** The student asked Pako for something, maybe about the text they are writing. */
   ask?: { instruction: string; draft: string };
 }): ThreadTurnRequest {
@@ -83,7 +86,7 @@ export function threadTurnRequest({
     ...(draft ? { draft } : {}),
     role,
     listing: readableListing(listing),
-    deal: null,
+    deal,
     messages: newestMessages(messages),
   };
 }

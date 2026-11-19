@@ -8,9 +8,8 @@ import type { ThreadOption, ThreadTurn } from "../../shared/threadTurn";
 import { useMomentPassed } from "../hooks/useMomentPassed";
 import type { PakoTrayState } from "../hooks/usePakoThread";
 import {
-  isReaction,
-  REACTION_MS,
   threadGuide,
+  threadReactionMs,
   type ThreadMoment,
 } from "../pakoMoods";
 import { theirQuotes, withName, type ThreadNotice } from "../pakoThread";
@@ -34,6 +33,8 @@ type Props = {
   state: PakoTrayState;
   /** What Pako points out while he has nothing to read. */
   notice: ThreadNotice | null;
+  /** Where the deal stands, which Pako says when there is no reply to read. */
+  dealMoment: ThreadMoment | null;
   role: DealRole;
   otherName: string;
   title: string;
@@ -51,6 +52,7 @@ type Props = {
 function trayMoment(
   state: PakoTrayState,
   notice: ThreadNotice | null,
+  dealMoment: ThreadMoment | null,
   otherName: string,
   remaining: number | undefined,
 ): ThreadMoment | null {
@@ -60,7 +62,7 @@ function trayMoment(
         return { phase: "gone", status: notice.status };
       if (notice?.kind === "no_answer")
         return { phase: "no_answer", hoursWaiting: notice.hoursWaiting };
-      return null;
+      return dealMoment;
     case "ready":
       return {
         phase: "ready",
@@ -167,6 +169,7 @@ function ReadingChips() {
 export default function PakoTray({
   state,
   notice,
+  dealMoment,
   role,
   otherName,
   title,
@@ -177,16 +180,15 @@ export default function PakoTray({
   onWrite,
   onFindSimilar,
 }: Props) {
-  const moment = trayMoment(state, notice, otherName, remaining);
+  const moment = trayMoment(state, notice, dealMoment, otherName, remaining);
   const guide = moment && threadGuide(moment, { other: otherName, title });
   const contentKey =
     state.phase === "ready"
       ? `ready-${state.turn.forMessageId}-${state.turn.summary}`
       : (moment?.phase ?? "none");
+  const reactionMs = moment && guide && threadReactionMs(moment, guide.mood);
   const reacted = useMomentPassed(
-    guide && isReaction(guide.mood)
-      ? { id: contentKey, ms: REACTION_MS[guide.mood] }
-      : null,
+    reactionMs ? { id: contentKey, ms: reactionMs } : null,
   );
   if (!moment || !guide) return null;
   const mood = !reacted
@@ -251,6 +253,19 @@ export default function PakoTray({
             Ask to be next
           </Button>
         )}
+      </div>
+    );
+  else if (moment.phase === "deal_cancelled" && role === "buyer")
+    actions = (
+      <div className="thread-tray-actions">
+        <Button
+          animateIcon
+          className="button primary small"
+          onClick={onFindSimilar}
+        >
+          <Search size={16} aria-hidden="true" />
+          Find similar
+        </Button>
       </div>
     );
   else if (moment.phase === "no_answer")
