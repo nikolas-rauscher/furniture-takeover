@@ -43,6 +43,8 @@ const isToolStep = (step: AgentRunStep): step is ToolStep =>
   step.task !== undefined;
 const isSearchTask = (task: AgentTaskKind) =>
   task === "listings" || task === "web";
+const toolRunning = (steps: readonly AgentRunStep[]) =>
+  steps.some((step) => isToolStep(step) && step.state === "running");
 
 /**
  * The tools the agent chose itself, in the order it started them. Its first
@@ -98,12 +100,36 @@ export function agentTurnPako(
   },
 ): { mood: PakoMood; talking: boolean } {
   const running = turn.status === "running";
-  const toolRunning = turn.steps.some(
-    (step) => isToolStep(step) && step.state === "running",
-  );
   const talking =
-    turn.text !== "" && (running ? !toolRunning : textShown !== turn.text);
+    turn.text !== "" &&
+    (running ? !toolRunning(turn.steps) : textShown !== turn.text);
   if (talking) return { mood: "idle", talking: true };
   if (running) return { mood: workingMood(turn.steps), talking: false };
   return { mood: typing ? "listen" : endingMood(turn), talking: false };
+}
+
+/** The intro's words for the agent's searches; any other tool keeps its own label. */
+function toolLine(step: ToolStep, place: string | undefined): string {
+  if (step.task === "web") return "Checking other second-hand sites…";
+  if (step.label.startsWith("Searching takeover listings"))
+    return place
+      ? `Searching student listings near ${place}…`
+      : "Searching student listings…";
+  if (step.label === "Selecting takeover matches")
+    return "Picking the best matches…";
+  return `${step.label}…`;
+}
+
+/**
+ * The one line Pako says while the agent works, like the steps of the intro's
+ * search: he reads the request, names the tool the agent reached for last (the
+ * one his mood follows) and writes once the answer streams in.
+ */
+export function workingLine(
+  turn: Pick<TurnFacts, "steps" | "text">,
+  place?: string,
+): string {
+  if (turn.text !== "" && !toolRunning(turn.steps)) return "Writing my answer…";
+  const latest = agentToolSteps(turn.steps).at(-1);
+  return latest ? toolLine(latest, place) : "Reading your request…";
 }

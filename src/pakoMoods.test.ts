@@ -2,16 +2,22 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import type { AgentRunStep } from "./hooks/useAgentRun.ts";
 import type { AgentTaskKind } from "../shared/runs.ts";
-import { agentTurnPako, homeGuide, isReaction } from "./pakoMoods.ts";
+import {
+  agentTurnPako,
+  homeGuide,
+  isReaction,
+  workingLine,
+} from "./pakoMoods.ts";
 
 const step = (
   id: string,
   state: AgentRunStep["state"],
   task?: AgentTaskKind,
+  label = id,
 ): AgentRunStep => ({
   type: "status",
   id,
-  label: id,
+  label,
   state,
   ...(task ? { task } : {}),
 });
@@ -183,4 +189,67 @@ test("the home guide sleeps once the allowance is used, thinks while suggestions
     mood: "sleep",
     line: "I'm out of searches for today. See you tomorrow!",
   });
+});
+
+test("Pako's working line reads the request, names the latest search in the intro's words and then writes", () => {
+  const line = (steps: AgentRunStep[], text = "") =>
+    workingLine({ steps, text }, "Vortex");
+  assert.equal(line([]), "Reading your request…");
+  assert.equal(
+    line([catalogChecked, reading]),
+    "Reading your request…",
+    "the server's catalog check is not a step the agent chose",
+  );
+  const listings = step(
+    "inventory",
+    "running",
+    "listings",
+    "Searching takeover listings: desk",
+  );
+  assert.equal(
+    line([catalogChecked, reading, listings]),
+    "Searching student listings near Vortex…",
+  );
+  assert.equal(
+    workingLine({ steps: [reading, listings], text: "" }),
+    "Searching student listings…",
+  );
+  const reviewing = [
+    catalogChecked,
+    step("step-0", "complete"),
+    { ...listings, state: "complete" as const },
+    step("step-1", "running"),
+  ];
+  assert.equal(
+    line(reviewing),
+    "Searching student listings near Vortex…",
+    "the line stays with the latest tool while the agent reviews it, like his mood",
+  );
+  assert.equal(
+    line([
+      ...reviewing,
+      step("pick", "complete", "listings", "Selecting takeover matches"),
+    ]),
+    "Picking the best matches…",
+  );
+  const web = step(
+    "web",
+    "running",
+    "web",
+    "Searching the web: bureau Lausanne",
+  );
+  assert.equal(line([...reviewing, web]), "Checking other second-hand sites…");
+  assert.equal(
+    line([
+      ...reviewing,
+      step("draft", "running", "proposal", "Preparing your draft"),
+    ]),
+    "Preparing your draft…",
+  );
+  assert.equal(line(reviewing, "Two desks"), "Writing my answer…");
+  assert.equal(
+    line([...reviewing, web], "Two desks"),
+    "Checking other second-hand sites…",
+    "a search started after the first words still names the search",
+  );
 });

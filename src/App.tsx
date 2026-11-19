@@ -132,6 +132,7 @@ import {
   readOnboarding,
   rememberOnboarding,
 } from "./components/onboarding/onboardingStorage";
+import { placeName } from "./components/onboarding/onboardingContent";
 
 type Destination = MobileDestination | "settings";
 /** Order of the mobile bar, left to right: tabs, then Sell beside them, then settings. */
@@ -2014,6 +2015,11 @@ export default function App({
                             externalComposer
                             readOnly={archived}
                             typing={followUp.trim() !== ""}
+                            place={
+                              committedSearch
+                                ? placeName(committedSearch.location)
+                                : undefined
+                            }
                             outcome={
                               turn.proposal?.draft && (
                                 <MessageDraftPreview
