@@ -89,7 +89,8 @@
 .product-card .favorite-button.favorited {
   color: var(--coral);
 }
-.product-card .favorite-button.favorited svg {
+/* It pops only right after the student saved it, not whenever a saved heart shows. */
+.product-card .favorite-button[data-just-saved] svg {
   animation: favorite-pop 440ms var(--ease-out);
 }
 @keyframes favorite-pop {
@@ -300,7 +301,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .product-card.arriving,
-  .product-card .favorite-button.favorited svg {
+  .product-card .favorite-button[data-just-saved] svg {
     animation: none;
   }
   .product-card .product-photo > img {

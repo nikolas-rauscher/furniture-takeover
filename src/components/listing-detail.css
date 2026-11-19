@@ -246,6 +246,8 @@
 }
 .listing-detail-tools > .save-toggle[aria-pressed="true"] svg {
   color: var(--coral);
+}
+.listing-detail-tools > .save-toggle[data-just-saved] svg {
   animation: listing-heart-pop 440ms var(--ease-out);
 }
 @keyframes listing-heart-pop {
@@ -406,7 +408,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .listing-detail-tools > .save-toggle[aria-pressed="true"] svg {
+  .listing-detail-tools > .save-toggle[data-just-saved] svg {
     animation: none;
   }
 }
