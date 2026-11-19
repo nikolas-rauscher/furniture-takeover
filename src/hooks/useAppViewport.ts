@@ -1,5 +1,12 @@
 import { useEffect } from "react";
 
+/** A tab bar that steps aside for the keyboard or an open thread takes no room. */
+function navigationHeight(navigation: HTMLElement) {
+  return getComputedStyle(navigation).visibility === "hidden"
+    ? 0
+    : navigation.getBoundingClientRect().height;
+}
+
 /** Keep the conversation and its composer inside the visible phone viewport. */
 export function useAppViewport() {
   useEffect(() => {
@@ -46,7 +53,7 @@ export function useAppViewport() {
         else if (!navigation.hasAttribute("data-minimized"))
           root.style.setProperty(
             "--mobile-nav-height",
-            `${navigation.getBoundingClientRect().height}px`,
+            `${navigationHeight(navigation)}px`,
           );
         if (keyboard && active instanceof HTMLElement)
           active.scrollIntoView({ block: "nearest", inline: "nearest" });
