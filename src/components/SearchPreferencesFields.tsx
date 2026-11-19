@@ -41,7 +41,7 @@ export default function SearchPreferencesFields({
         />
       </label>
       <label>
-        Distance (km)
+        Maximum listed distance (km)
         <Input
           type="number"
           required
@@ -54,6 +54,7 @@ export default function SearchPreferencesFields({
             onChange({ ...value, radius: event.target.valueAsNumber })
           }
         />
+        <small>Listings with unknown distance are also shown.</small>
       </label>
       <label>
         Pickup by

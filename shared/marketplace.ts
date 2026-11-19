@@ -314,6 +314,11 @@ export function listingTitle(notes: string): string {
     ? (first[0].toUpperCase() + first.slice(1)).slice(0, 90)
     : "Furniture for sale";
 }
+export function withinSearchRadius(distance: number | undefined, radius?: number): boolean {
+  // New and cloud listings use zero when no distance has been recorded.
+  return radius === undefined || distance === undefined || distance <= radius;
+}
+
 export function filterProducts(items: Product[], c: Criteria): Product[] {
   return items.filter(
     (p) =>
@@ -322,8 +327,7 @@ export function filterProducts(items: Product[], c: Criteria): Product[] {
         p.category === c.category ||
         queryMatches(p, c.category)) &&
       p.price <= c.maxPrice &&
-      // Legacy distances have no origin and cannot prove a radius match.
-      // Local results are displayed with an explicit unverified-distance label.
+      withinSearchRadius(p.distance, c.radius) &&
       (c.source === "All" || p.source === c.source) &&
       (c.condition === "All" || p.condition === c.condition) &&
       (!c.pickup || p.pickupBy <= c.pickup) &&

@@ -210,6 +210,7 @@ export function listingReviewSearch(item: Product): SearchSnapshot {
 export function agentSearchRequest(
   search: SearchSnapshot,
   inventory: Product[],
+  negotiating = false,
 ): AgentRunRequest {
   return {
     text: search.text,
@@ -236,6 +237,9 @@ export function agentSearchRequest(
             source: search.criteria.source,
           }),
     },
-    inventory: listingInventory(inventory).slice(0, 100),
+    inventory: listingInventory(
+      inventory,
+      negotiating || search.intent === "listing_review" ? undefined : search.criteria,
+    ).slice(0, 100),
   };
 }

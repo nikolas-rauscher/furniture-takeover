@@ -276,7 +276,13 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
               ? []
               : (request.inventory ?? [])
             ).filter((item) => !databaseIds.has(item.id)),
-            ...listingInventory(databaseRows),
+            ...listingInventory(
+              databaseRows,
+              !request.context?.negotiation &&
+                (request.context?.intent ?? "search") === "search"
+                ? request.context
+                : undefined,
+            ),
           ];
         };
 

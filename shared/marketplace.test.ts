@@ -13,15 +13,10 @@ import {
 // Calendar examples use a fixed Monday, independent of when CI runs.
 const parseSearch = (text: string, base = defaults) =>
   parseSearchAtDate(text, base, "2026-10-12");
-test("unverified legacy distances cannot exclude local offers or prove radius matches", () => {
-  const item = { ...products[0], location: "Berlin", distance: 0 };
-  const criteria = { ...defaults, radius: 1 };
-  // These are candidates requiring a pickup-distance check, not verified radius matches.
-  assert.equal(filterProducts([item], criteria).length, 1);
-  assert.equal(
-    filterProducts([{ ...item, distance: 400 }], criteria).length,
-    1,
-  );
+test("radius includes the boundary and keeps listings without a recorded distance", () => {
+  const items = [0, 1, 1.1].map((distance) => ({ ...products[0], distance }));
+  assert.deepEqual(filterProducts(items, { ...defaults, radius: 1 }), items.slice(0, 2));
+  assert.deepEqual(filterProducts(items, { ...defaults, radius: 0 }), items.slice(0, 1));
 });
 for (const text of [
   "Ich suche einen Schreibtisch bis 80 CHF, maximal 5 km entfernt, bis Friday",
