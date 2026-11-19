@@ -911,6 +911,7 @@ export default function App({
         proposal={proposal}
         compact={compact}
         title={item?.title ?? "Unavailable listing"}
+        image={item?.image}
         unavailable={!available}
         disabled={running}
         onReview={() => {

@@ -8,25 +8,33 @@ import {
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Skeleton } from "../components/ui/skeleton";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupTextarea,
-} from "../components/ui/input-group";
+import { AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Image as ImageIcon,
   Archive,
   ArchiveRestore,
   Ellipsis,
   ArrowLeft,
-  Send,
-  LoaderCircle,
-  MessageCircle,
 } from "@/components/icons";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import type { MessagesPageProps } from "../components/MessagesPage";
 import InboxEmpty from "../components/InboxEmpty";
+import {
+  ChatComposerField,
+  ChatDate,
+  ChatMessage,
+  ChatPartner,
+  ChatSegment,
+  ChatStart,
+  ChatThreadCard,
+  PakoLabel,
+  SentCelebration,
+  startsNewDay,
+  usePakoDrafts,
+  useSentCelebration,
+  type PakoDrafts,
+} from "../components/ChatParts";
+import Pako from "../components/onboarding/Pako";
 import type { Conversation, Message } from "./client";
 import { fail } from "./client";
 import { sendCloudMessage } from "./messages";
@@ -35,6 +43,11 @@ import { motionBehavior } from "../uiMotion";
 import Report from "./Report";
 import ReplySuggestions from "./ReplySuggestions";
 import { money } from "../../shared/marketplace";
+const FILTERS = [
+  ["all", "All"],
+  ["buying", "Buying"],
+  ["selling", "Selling"],
+] as const;
 export default function AccountMessages({
   account,
   listingId,
@@ -226,32 +239,11 @@ export default function AccountMessages({
   });
   const role = current?.seller_id === userId ? "seller" : "buyer";
   const text = drafts[selected] ?? "";
-  const messageInput = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => {
-    const input = messageInput.current;
-    if (!input) return;
-    const fit = () => {
-      input.style.height = "auto";
-      input.style.height = `${input.scrollHeight}px`;
-    };
-    fit();
-    let width = input.clientWidth;
-    const observer = new ResizeObserver(() => {
-      if (input.clientWidth === width) return;
-      width = input.clientWidth;
-      fit();
-    });
-    observer.observe(input);
-    return () => observer.disconnect();
-  }, [text, selected, current?.id]);
-  const thumbnail = (image?: string, title = "") =>
-    image ? (
-      <img className="chat-item-thumbnail" src={image} alt={title} />
-    ) : (
-      <span className="chat-item-thumbnail chat-item-placeholder">
-        <ImageIcon size={22} />
-      </span>
-    );
+  const otherBlocked = !!otherId && blocked.includes(otherId);
+  // A draft Pako prepared stays labelled as his until the visitor edits it.
+  const pakoDraft = Boolean(initialMessage) && text === initialMessage;
+  const pakoDrafts = usePakoDrafts();
+  const [celebration, setCelebration] = useSentCelebration();
   async function changeArchive(id: string, remove: boolean) {
     setBusy(true);
     setError("");
@@ -309,65 +301,50 @@ export default function AccountMessages({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
-            <div className="inbox-filters" aria-label="Conversation filters">
-              {(
-                [
-                  ["all", "All"],
-                  ["buying", "Buying"],
-                  ["selling", "Selling"],
-                ] as const
-              ).map(([id, label]) => (
-                <Button
-                  key={id}
-                  aria-pressed={filter === id}
-                  onClick={() => setFilter(id)}
-                >
-                  {label}
-                </Button>
-              ))}
-            </div>
+            <ChatSegment
+              label="Conversation filters"
+              options={FILTERS}
+              value={filter}
+              onChange={setFilter}
+            />
           </div>
-          {visibleThreads.map((c) => {
+          {visibleThreads.map((c, order) => {
             const item = listings.find((l) => l.id === c.listing_id),
               other = c.buyer_id === userId ? c.seller_id : c.buyer_id;
             return (
-              <Button
-                className={`chat-thread ${selected === c.id ? "active" : ""}`}
+              <ChatThreadCard
                 key={c.id}
+                order={order}
+                active={selected === c.id}
                 disabled={busy}
-                onClick={() => {
+                image={item?.image}
+                name={
+                  (item?.demo
+                    ? names[other]?.replace(/^Demo Seller — /, "")
+                    : names[other]) ||
+                  (c.buyer_id === userId ? "Seller" : "Buyer")
+                }
+                title={item?.title ?? "Listing unavailable"}
+                preview={
+                  latest[c.id] &&
+                  `${latest[c.id].sender_id === userId ? "You: " : ""}${latest[c.id].body}`
+                }
+                onSelect={() => {
                   setSelected(c.id);
                   setError("");
                 }}
-              >
-                {thumbnail(item?.image, item?.title)}
-                <span className="chat-thread-copy">
-                  <strong>
-                    {(item?.demo
-                      ? names[other]?.replace(/^Demo Seller — /, "")
-                      : names[other]) ||
-                      (c.buyer_id === userId ? "Seller" : "Buyer")}
-                  </strong>
-                  <span>{item?.title ?? "Listing unavailable"}</span>
-                  {latest[c.id] && (
-                    <small className="thread-preview">
-                      {latest[c.id].sender_id === userId ? "You: " : ""}
-                      {latest[c.id].body}
-                    </small>
-                  )}
-                </span>
-              </Button>
+              />
             );
           })}
           {selected.startsWith("new:") && product && (
-            <Button className="chat-thread active">
-              {thumbnail(product.image, product.title)}
-              <span className="chat-thread-copy">
-                <strong>{otherName}</strong>
-                <span>{product.title}</span>
-                <small>New conversation</small>
-              </span>
-            </Button>
+            <ChatThreadCard
+              order={visibleThreads.length}
+              active
+              image={product.image}
+              name={otherName}
+              title={product.title}
+              note="New conversation"
+            />
           )}
           {!loaded && !loadError && (
             <div className="inbox-loading" role="status">
@@ -407,30 +384,26 @@ export default function AccountMessages({
                   >
                     <ArrowLeft size={20} />
                   </Button>
-                  {thumbnail(product?.image, product?.title)}
-                  <div className="chat-header-copy">
-                    <strong>{otherName}</strong>
-                    <Button
-                      className="chat-listing-link"
-                      onClick={() =>
-                        onOpenListing(current?.listing_id ?? product!.id)
-                      }
-                    >
-                      {product?.title ?? "Listing unavailable"} ↗
-                    </Button>
-                    {product && (
-                      <small>
-                        {money(product.price)} ·{" "}
-                        {product.status === "active"
+                  <ChatPartner
+                    name={otherName}
+                    image={product?.image}
+                    title={product?.title ?? "Listing unavailable"}
+                    detail={
+                      product &&
+                      `${money(product.price)} · ${
+                        product.status === "active"
                           ? "Available"
                           : product.status === "withdrawn"
                             ? "Archived listing"
                             : product.status === "reserved"
                               ? "Reserved"
-                              : "Sold"}
-                      </small>
-                    )}
-                  </div>
+                              : "Sold"
+                      }`
+                    }
+                    onOpenListing={() =>
+                      onOpenListing(current?.listing_id ?? product!.id)
+                    }
+                  />
                   {(current || otherId) && (
                     <DropdownMenu>
                       <DropdownMenuTrigger
@@ -514,9 +487,13 @@ export default function AccountMessages({
                 userId={userId}
                 conversationId={current?.id}
                 otherName={otherName}
+                pakoDrafts={pakoDrafts}
                 onLatestMessage={onLatestMessage}
               />
-              {otherId && blocked.includes(otherId) && (
+              <AnimatePresence>
+                {celebration && <SentCelebration recipient={celebration} />}
+              </AnimatePresence>
+              {otherBlocked && (
                 <p className="inbox-blocked-note" role="status">
                   You blocked this user. Unblock them to send a message.
                 </p>
@@ -525,12 +502,8 @@ export default function AccountMessages({
                 className="conversation-composer"
                 onSubmit={async (e) => {
                   e.preventDefault();
-                  if (
-                    busy ||
-                    !text.trim() ||
-                    (!!otherId && blocked.includes(otherId))
-                  )
-                    return;
+                  if (busy || !text.trim() || otherBlocked) return;
+                  const fromPako = pakoDraft;
                   setBusy(true);
                   setError("");
                   const key = selected;
@@ -563,6 +536,10 @@ export default function AccountMessages({
                       body: text.trim(),
                     });
                     pending.current.acknowledge(id);
+                    if (fromPako) {
+                      pakoDrafts.remember(id);
+                      setCelebration(otherName);
+                    }
                     onSent?.(itemId, role, text.trim());
                     setDrafts((xs) => ({ ...xs, [key]: "", [thread!.id]: "" }));
                     setSelected(thread.id);
@@ -597,56 +574,25 @@ export default function AccountMessages({
                   listing={product}
                   latestMessageKey={`${latest[selected]?.id ?? ""}:${conversationLatest[selected] ?? ""}`}
                   draft={text}
-                  disabled={busy || (!!otherId && blocked.includes(otherId))}
+                  disabled={busy || otherBlocked}
                   onSelect={(reply) => {
                     if (reply.length > 4000) return;
                     setDrafts((xs) => ({ ...xs, [selected]: reply }));
                   }}
                 />
-                <InputGroup className="seller-message-input">
-                  <InputGroupTextarea
-                    ref={messageInput}
-                    aria-label="Message"
-                    placeholder="Write a message…"
-                    maxLength={4000}
-                    rows={1}
-                    value={text}
-                    disabled={busy || (!!otherId && blocked.includes(otherId))}
-                    onKeyDown={(e) => {
-                      if (
-                        e.key === "Enter" &&
-                        (e.ctrlKey || e.metaKey) &&
-                        !e.nativeEvent.isComposing
-                      ) {
-                        e.preventDefault();
-                        e.currentTarget.form?.requestSubmit();
-                      }
-                    }}
-                    onChange={(e) =>
-                      setDrafts((xs) => ({ ...xs, [selected]: e.target.value }))
-                    }
-                  />
-                  <InputGroupAddon align="inline-end">
-                    <Button
-                      animateIcon
-                      type="submit"
-                      className="button primary seller-message-send"
-                      aria-label={busy ? "Sending message" : "Send message"}
-                      disabled={
-                        busy ||
-                        !text.trim() ||
-                        (!!otherId && blocked.includes(otherId))
-                      }
-                    >
-                      {busy ? (
-                        <LoaderCircle animate size={18} aria-hidden="true" />
-                      ) : (
-                        <Send size={18} aria-hidden="true" />
-                      )}
-                      <span>{busy ? "Sending…" : "Send"}</span>
-                    </Button>
-                  </InputGroupAddon>
-                </InputGroup>
+                {pakoDraft && (
+                  <PakoLabel>
+                    Pako drafted this for you. Check it, then send.
+                  </PakoLabel>
+                )}
+                <ChatComposerField
+                  value={text}
+                  disabled={otherBlocked}
+                  busy={busy}
+                  onValueChange={(value) =>
+                    setDrafts((xs) => ({ ...xs, [selected]: value }))
+                  }
+                />
                 <div className="seller-message-meta">
                   <small className="composer-keyboard-hint">
                     Ctrl / ⌘ + Enter to send
@@ -656,7 +602,7 @@ export default function AccountMessages({
                   )}
                 </div>
                 {error && (
-                  <p className="account-chat-error" role="alert">
+                  <p className="chat-error" role="alert">
                     {error}
                   </p>
                 )}
@@ -664,7 +610,7 @@ export default function AccountMessages({
             </>
           ) : (
             <div className="inbox-empty">
-              <MessageCircle size={32} />
+              <Pako mood="idle" size={88} />
               <h2>Your conversations</h2>
               <p>Choose a conversation to discuss an item or arrange pickup.</p>
             </div>
@@ -688,16 +634,20 @@ function ConversationMessages({
   userId,
   conversationId,
   otherName,
+  pakoDrafts,
   onLatestMessage,
 }: {
   client: SupabaseClient;
   userId: string;
   conversationId?: string;
   otherName: string;
+  pakoDrafts: PakoDrafts;
   onLatestMessage: (conversationId: string, messageId: string) => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    // A new conversation has nothing to load; history arrives without an entrance.
+    [loaded, setLoaded] = useState(!conversationId);
   const pane = useRef<HTMLDivElement>(null),
     follow = useRef(true);
   useEffect(() => {
@@ -723,6 +673,7 @@ function ConversationMessages({
         }
         if (alive) {
           setMessages(rows);
+          setLoaded(true);
           onLatestMessage(conversationId!, rows.at(-1)?.id ?? "");
           setError("");
         }
@@ -779,43 +730,29 @@ function ConversationMessages({
       role="log"
       aria-live="polite"
     >
-      {!messages.length && !error && (
-        <p className="chat-start-note">
-          Ask about this item or propose a pickup time. Your message will appear
-          here once sent.
-        </p>
-      )}
-      {messages.map((m, index) => (
-        <div className="message-entry" key={m.id}>
-          {(index === 0 ||
-            new Date(messages[index - 1].created_at).toDateString() !==
-              new Date(m.created_at).toDateString()) && (
-            <div className="chat-date">
-              {new Date(m.created_at).toLocaleDateString([], {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })}
+      {loaded && !messages.length && !error && <ChatStart />}
+      {loaded && (
+        <AnimatePresence initial={false}>
+          {messages.map((m, index) => (
+            <div className="message-entry" key={m.id}>
+              {startsNewDay(m.created_at, messages[index - 1]?.created_at) && (
+                <ChatDate createdAt={m.created_at} />
+              )}
+              <ChatMessage
+                mine={m.sender_id === userId}
+                drafted={m.sender_id === userId && pakoDrafts.drafted(m.id)}
+                author={m.sender_id === userId ? "You" : otherName}
+                createdAt={m.created_at}
+                text={m.body}
+              >
+                {m.sender_id !== userId && (
+                  <Report client={client} messageId={m.id} />
+                )}
+              </ChatMessage>
             </div>
-          )}
-          <div
-            key={m.id}
-            className={`chat-bubble ${m.sender_id === userId ? "mine" : ""}`}
-          >
-            <small>{m.sender_id === userId ? "You" : otherName}</small>
-            <p>{m.body}</p>
-            <time dateTime={m.created_at}>
-              {new Date(m.created_at).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </time>
-            {m.sender_id !== userId && (
-              <Report client={client} messageId={m.id} />
-            )}
-          </div>
-        </div>
-      ))}
+          ))}
+        </AnimatePresence>
+      )}
       {error && <p role="alert">{error}</p>}
     </div>
   );

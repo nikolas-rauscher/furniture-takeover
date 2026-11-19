@@ -1642,24 +1642,12 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
 .messages-layout .messages-page > .quiet-caption { font-size: 11px; margin: 0; text-align: left; }
 .messages-layout .seller-chat-layout { flex: 1; min-height: 0; margin-top: 8px; }
 .messages-layout .seller-chat-layout nav { overflow-y: auto; min-height: 0; }
-.messages-layout .seller-chat { min-height: 0; padding: 12px; }
+.messages-layout .seller-chat { min-height: 0; }
 .messages-layout .seller-chat-messages { min-height: 0; max-height: none; overscroll-behavior: contain; }
 .messages-layout .seller-chat form { flex-shrink: 0; }
 .messages-layout .seller-chat textarea { max-height: 180px; }
-.messages-layout .seller-chat header label { flex-direction: row; align-items: center; margin: 0; }
-.messages-layout .seller-chat header select { width: auto; padding: 4px 8px; font-size: 12px; }
 @media (max-width: 760px) {
   .messages-layout:has(.messages-page.has-conversation) .main-content.view-messages { padding-top: var(--space-label); }
-  .messages-layout .seller-chat-layout { grid-template-rows: auto minmax(0, 1fr); }
-  .messages-layout .seller-chat-layout nav { padding: 6px; max-height: 70px; }
-  .messages-layout .chat-thread { padding: 6px 10px; }
-  .messages-layout .chat-thread span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-}
-@media (max-width: 760px) {
-  .messages-layout .chat-thread { align-content: center; }
-  .messages-layout .chat-thread small { display: none; }
-  .messages-layout .chat-thread strong,
-  .messages-layout .chat-thread span { flex-shrink: 0; line-height: 18px; }
 }
 
 /* The listing editor shares the stationary chat shell. Details open on demand. */

@@ -1,13 +1,16 @@
-import { MessageCircle } from "./icons";
+import Pako from "./onboarding/Pako";
 import { Button } from "./ui/button";
 
-/** The inbox before its first conversation: says where conversations start and leads there. */
+/** The inbox before its first conversation: Pako says where conversations start and leads there. */
 export default function InboxEmpty({ onBrowse }: { onBrowse: () => void }) {
   return (
-    <div className="empty-state">
-      <MessageCircle size={28} />
+    <div className="empty-state inbox-start">
+      <Pako mood="wave" size={112} />
       <h2>No conversations yet</h2>
-      <p>Open a listing and choose Message seller to start one.</p>
+      <p>
+        Open a listing and choose Message seller to start one. Pako helps you
+        agree on a price and a pickup.
+      </p>
       <Button variant="default" onClick={onBrowse}>
         Browse listings
       </Button>

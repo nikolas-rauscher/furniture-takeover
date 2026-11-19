@@ -176,7 +176,7 @@ export default function ReplySuggestions({
               ? draft.trim()
                 ? "Choose a reply to replace your draft."
                 : "Choose a reply, then make it yours."
-              : "AI uses this listing and recent messages."}
+              : "Pako uses this listing and recent messages."}
           </small>
         )}
       </div>
