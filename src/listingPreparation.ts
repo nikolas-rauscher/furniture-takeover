@@ -2,6 +2,7 @@ import type { AgentMetadata } from "../shared/agent";
 import { listingPhotos } from "../shared/listingPhotos.ts";
 import { shortDate, type Product } from "../shared/marketplace.ts";
 import type { ListingDraft } from "./components/SellFlow";
+import { undatedPickup } from "./listingQuestions.ts";
 import { validListingPickup } from "./listingValidation.ts";
 
 /** Keep grounded model facts intact when moving from photo analysis to review. */
@@ -104,7 +105,7 @@ export function listingFromDraft(
     pickupBy: draft.pickup,
     available: draft.pickup
       ? "Pickup by " + shortDate(draft.pickup)
-      : "Flexible pickup",
+      : undatedPickup(draft.description),
     status: original?.status || "active",
   };
 }
