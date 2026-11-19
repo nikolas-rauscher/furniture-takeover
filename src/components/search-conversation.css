@@ -145,14 +145,6 @@
   gap: 8px;
   font-size: var(--type-caption);
 }
-/* The allowance reads as one of the intro's chips. */
-.chat-layout .composer-status [data-slot="badge"] {
-  height: auto;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: var(--type-caption);
-  font-weight: 650;
-}
 .app-layout:is(.chat-layout, .selling-chat-layout) .chat-composer-dock {
   padding-top: 6px;
 }

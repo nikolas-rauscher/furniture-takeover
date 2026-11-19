@@ -416,7 +416,8 @@ label > textarea {
 .agent-footnote button:hover {
   color: var(--blue);
 }
-.agent-footnote > span {
+/* Status lines are quiet; the allowance chip keeps its own colours. */
+.agent-footnote > span:not([data-slot="badge"]) {
   font-size: 12px;
   color: #797973;
 }

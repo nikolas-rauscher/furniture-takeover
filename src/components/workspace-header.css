@@ -97,10 +97,13 @@
   font-size: var(--type-support);
   white-space: nowrap;
 }
-.workspace-desktop-quota [data-slot="badge"] {
+/* The allowance is one chip wherever it shows, here, by the composer and on home: muted
+   while plenty is left, red once it runs low. */
+:is(.workspace-desktop-quota, .agent-footnote) [data-slot="badge"] {
   height: auto;
   padding: 3px 9px;
   border-radius: 999px;
+  font-size: var(--type-caption);
   font-weight: 700;
 }
 .workspace-desktop-quota [data-slot="popover-trigger"]:hover {
@@ -142,10 +145,17 @@
   font-size: var(--type-caption);
   color: var(--muted);
 }
-.chat-layout .agent-footnote.quota-available,
-.selling-chat-layout .agent-footnote.quota-available,
-.selling-photo-layout .agent-footnote.quota-available {
+/* A workspace's header carries the allowance. The composer repeats it only on phones,
+   whose header has no room for it, and only once it runs low. */
+:is(.chat-layout, .selling-chat-layout, .selling-photo-layout)
+  .agent-footnote.quota-available {
   display: none;
+}
+@media (min-width: 761px) {
+  :is(.chat-layout, .selling-chat-layout, .selling-photo-layout)
+    .agent-footnote:has(> [data-slot="badge"]) {
+    display: none;
+  }
 }
 @media (max-width: 760px) {
   #root:has(
