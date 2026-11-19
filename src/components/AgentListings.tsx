@@ -43,33 +43,23 @@ export default function AgentListings({
       .join(" · ");
     return (
       <article
-        className="agent-product-card"
+        className="agent-product-card linked-card"
         style={{ "--stagger": Math.min(index, 4) } as CSSProperties}
       >
         {ranked && multiple && index === 0 && (
           <span className="agent-product-best">Best match</span>
         )}
-        <Button
-          className="agent-product-photo"
-          variant="plain"
-          aria-label={`View ${item.title}`}
-          onClick={() => onOpen(item)}
-        >
+        <span className="agent-product-photo">
           {item.image ? (
-            <img
-              src={item.image}
-              alt={item.title}
-              loading="lazy"
-              draggable={false}
-            />
+            <img src={item.image} alt="" loading="lazy" draggable={false} />
           ) : (
             <ImageIcon size={28} aria-hidden="true" />
           )}
-        </Button>
+        </span>
         <div className="agent-product-content">
           <h4>
             <Button
-              className="agent-product-title"
+              className="agent-product-title card-link"
               variant="link"
               onClick={() => onOpen(item)}
             >

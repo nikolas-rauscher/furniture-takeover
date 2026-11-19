@@ -274,7 +274,7 @@ export default function AccountPage({
         {items.map((item) => (
           <article
             className={cn(
-              "own-listing",
+              "own-listing linked-card",
               item.id === publishedId && "is-published",
             )}
             key={item.id}
@@ -290,17 +290,13 @@ export default function AccountPage({
                 <Archive size={24} />
               </div>
             ) : (
-              <Button
-                className="own-listing-image"
-                aria-label={`Open ${item.title}`}
-                onClick={() => onOpen(item)}
-              >
+              <div className="own-listing-image">
                 {item.image ? (
                   <img src={item.image} alt="" />
                 ) : (
-                  <ImageIcon size={28} />
+                  <ImageIcon size={28} aria-hidden="true" />
                 )}
-              </Button>
+              </div>
             )}
             <div className="own-listing-body">
               <div className="own-listing-heading">
@@ -309,7 +305,7 @@ export default function AccountPage({
                     item.title
                   ) : (
                     <Button
-                      className="own-listing-title"
+                      className="own-listing-title card-link"
                       onClick={() => onOpen(item)}
                     >
                       {item.title}
@@ -464,11 +460,17 @@ export default function AccountPage({
             onValueChange={(value) => setAccountTab(value as AccountTab)}
           >
             <TabsList className="account-tabs" aria-label="Your listings">
-              <TabsTrigger value="listings">
-                Listings<span>{visibleListings.length}</span>
+              <TabsTrigger
+                value="listings"
+                aria-label={`Listings (${visibleListings.length})`}
+              >
+                Listings<span aria-hidden="true">{visibleListings.length}</span>
               </TabsTrigger>
-              <TabsTrigger value="archive">
-                Archive<span>{archivedListings.length}</span>
+              <TabsTrigger
+                value="archive"
+                aria-label={`Archive (${archivedListings.length})`}
+              >
+                Archive<span aria-hidden="true">{archivedListings.length}</span>
               </TabsTrigger>
             </TabsList>
             {/* While a search or status filter is on, the matches come first. */}

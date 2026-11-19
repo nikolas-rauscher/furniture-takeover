@@ -58,6 +58,40 @@
     width: 44px;
     height: 44px;
   }
+  /* A thumb needs room: on phones every control is at least 44 pixels tall… */
+  .app-header .brand,
+  .button.small,
+  .back-link,
+  .search-area,
+  .home-sell-card > .button,
+  .section-heading > .button.quiet,
+  .listing-detail-tools > button,
+  .items-page .account-tabs button,
+  .agent-quick-reply-list > .agent-quick-reply[data-slot="button"],
+  .agent-run-question .agent-run-choices > .ai-suggestion[data-slot="button"],
+  .reply-assistance .reply-suggestions > .reply-choice[data-slot="button"],
+  .agent-sources [data-slot="trace-collapsible-trigger"],
+  .listing-checklist [data-slot="trace-collapsible-trigger"],
+  .agent-change-toggle,
+  .agent-suggestions-error > button {
+    min-height: 44px;
+  }
+  /* …and round controls are as wide as they are tall. */
+  .agent-carousel-controls [data-slot^="carousel-"],
+  .composer-field .composer-send,
+  .toast > .icon-button,
+  .compare-tray > .icon-button {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
+  /* Links beside a listing's photo and meeting point get the same reach. */
+  .listing-detail-provenance a,
+  .listing-detail-pickup-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
   :root[data-keyboard-open] {
     --mobile-nav-height: 0px;
   }
