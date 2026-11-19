@@ -18,7 +18,7 @@ const facts = (overrides: Partial<Parameters<typeof sellGuide>[0]> = {}) =>
     photoCount: 1,
     photoReading: false,
     preparing: false,
-    allowanceUsed: false,
+    saveVerb: "save",
     hasPlace: true,
     typing: false,
     insight: { status: "reading", noteOnly: false },
@@ -116,7 +116,18 @@ test("without a name or a place Pako says what he needs; a failure and the used 
   });
   assert.equal(failed.mood, "dizzy");
   assert.equal(failed.bubble.title, "Hmm, that didn't work");
-  assert.equal(facts({ allowanceUsed: true }).mood, "sleep");
+  const resting = facts({ absence: "allowance", back: "19 Nov, 18:00" });
+  assert.equal(resting.mood, "sleep");
+  assert.equal(
+    resting.bubble.text,
+    "You can still save: fill in the details yourself. I'm back after 19 Nov, 18:00.",
+  );
+  const offline = facts({ absence: "offline", saveVerb: "publish" });
+  assert.equal(offline.bubble.title, "I can't reach my tools right now");
+  assert.equal(
+    offline.bubble.text,
+    "You can still publish by filling in the details yourself.",
+  );
   assert.equal(
     facts({
       typing: true,

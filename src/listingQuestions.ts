@@ -156,23 +156,26 @@ export function niceStep(price: number): number {
 
 /** What Pako's tray above the composer shows. */
 export type TrayPhase =
-  "hidden" | "starting" | "working" | "asking" | "done" | "error";
+  "hidden" | "starting" | "working" | "asking" | "done" | "error" | "asleep";
 
 export function trayPhase({
   starting,
   status,
   asking,
+  asleep,
 }: {
   /** Pako still reads the photos before his first run starts. */
   starting: boolean;
   status: "idle" | "running" | "complete" | "error";
   /** A question waits for the student. */
   asking: boolean;
+  /** The day's allowance is used up, so a failed run will not work again today. */
+  asleep: boolean;
 }): TrayPhase {
   if (starting) return "starting";
   if (asking) return "asking";
   if (status === "running") return "working";
-  if (status === "error") return "error";
+  if (status === "error") return asleep ? "asleep" : "error";
   if (status === "complete") return "done";
   return "hidden";
 }
@@ -285,4 +288,12 @@ export function questionQueue(
       !isPickupQuestion(question),
   );
   return pickup ? [pickup, ...fromRun] : fromRun;
+}
+
+/** Pako's line when his allowance runs out while he writes the listing. */
+export function restingLine(action: string) {
+  return {
+    title: "I'm out of help for today",
+    text: `Your card keeps what I wrote so far. Fill in the rest and tap ${action}.`,
+  };
 }

@@ -6,6 +6,11 @@ import type { PhotoInsight } from "./hooks/useListingAnalysis";
 
 /** The words on the photo step's main button, which Pako's lines invite the student to tap. */
 export const WRITE_ACTION = "Write my listing";
+/** The main button's words while Pako cannot help: the student writes the listing. */
+export const FILL_IN_ACTION = "Fill in details";
+
+/** Why Pako cannot help right now: the day's allowance is used, or his tools are out of reach. */
+export type PakoAbsence = "allowance" | "offline";
 
 export type SellGuide = { mood: PakoMood; bubble: GuideBubble };
 
@@ -108,7 +113,7 @@ function insightGuide(insight: PhotoInsight): SellGuide {
         bubble: {
           id: "failed",
           title: "Hmm, that didn't work",
-          text: `I couldn't read your photos. Try again, or tap ${WRITE_ACTION} and I'll look once more.`,
+          text: "I couldn't read your photos. Try again, or fill in the details yourself.",
         },
       };
     case "unavailable":
@@ -125,15 +130,52 @@ function insightGuide(insight: PhotoInsight): SellGuide {
 }
 
 /**
+ * What Pako says while he cannot help: he rests until his allowance comes back,
+ * or says his tools are out of reach. Either way the student can still sell.
+ */
+export function absenceGuide(
+  absence: PakoAbsence,
+  {
+    saveVerb,
+    back,
+  }: {
+    /** "publish" with an account, "save" in the local demo. */
+    saveVerb: string;
+    /** When the allowance comes back. */
+    back?: string;
+  },
+): SellGuide {
+  if (absence === "allowance")
+    return {
+      mood: "sleep",
+      bubble: {
+        id: "allowance",
+        title: "I'm resting today",
+        text: `You can still ${saveVerb}: fill in the details yourself.${back ? ` I'm back after ${back}.` : ""}`,
+      },
+    };
+  return {
+    mood: "idle",
+    bubble: {
+      id: "offline",
+      title: "I can't reach my tools right now",
+      text: `You can still ${saveVerb} by filling in the details yourself.`,
+    },
+  };
+}
+
+/**
  * What Pako says beside the photos: what to do next, what he is busy with, or
- * what he recognised. He sleeps once the day's allowance is used and listens
- * while details are written.
+ * what he recognised. He rests while he cannot help and listens while details
+ * are written.
  */
 export function sellGuide({
   photoCount,
   photoReading,
   preparing,
-  allowanceUsed,
+  absence,
+  saveVerb,
+  back,
   hasPlace,
   typing,
   insight,
@@ -142,7 +184,9 @@ export function sellGuide({
   photoReading: boolean;
   /** The draft is being prepared from step 1. */
   preparing: boolean;
-  allowanceUsed: boolean;
+  absence?: PakoAbsence;
+  saveVerb: string;
+  back?: string;
   /** A pickup place is set. */
   hasPlace: boolean;
   /** The Details field has focus. */
@@ -163,15 +207,7 @@ export function sellGuide({
       mood: "work",
       bubble: { id: WORKING, text: "Loading your photo…" },
     };
-  if (allowanceUsed)
-    return {
-      mood: "sleep",
-      bubble: {
-        id: "quota",
-        title: "That's all for today",
-        text: "I've used today's writing allowance. Try again tomorrow.",
-      },
-    };
+  if (absence) return absenceGuide(absence, { saveVerb, back });
   if (photoCount === 0)
     return {
       mood: typing ? "listen" : "wave",

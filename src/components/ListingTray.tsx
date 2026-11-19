@@ -61,6 +61,8 @@ type Props = {
   onSkip: (questionId: string) => void;
   onLater: (questionId: string) => void;
   onRetry: () => void;
+  /** Goes on without Pako: the student fills in the details. */
+  onManual: () => void;
 };
 
 /** One dot per question of this turn, filled once answered. */
@@ -217,6 +219,7 @@ export default function ListingTray({
   onSkip,
   onLater,
   onRetry,
+  onManual,
 }: Props) {
   const reduced = useReducedMotion() === true;
   const headingId = useId();
@@ -372,6 +375,23 @@ export default function ListingTray({
         <div className="listing-tray-actions">
           <Button className="button secondary small" onClick={onRetry}>
             Try again
+          </Button>
+          <Button className="button quiet small" onClick={onManual}>
+            Fill in myself
+          </Button>
+        </div>
+      </>
+    );
+  } else if (phase === "asleep") {
+    content = (
+      <>
+        <p className="listing-tray-title" {...titleProps}>
+          {closing.title}
+          <span>{closing.text}</span>
+        </p>
+        <div className="listing-tray-actions">
+          <Button className="button secondary small" onClick={onManual}>
+            Fill in details
           </Button>
         </div>
       </>

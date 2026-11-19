@@ -400,12 +400,15 @@
       0 0 0 6px color-mix(in srgb, var(--blue) 18%, transparent);
   }
 }
-/* Try again sits under the bubble, beside Pako. */
-.sell-guide > .sell-guide-retry {
+/* What the student can do about Pako's line sits under his bubble. */
+.sell-guide > .sell-guide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
   margin: 8px 0 0 calc(84px + 10px);
 }
 @media (max-width: 760px) {
-  .sell-guide > .sell-guide-retry {
+  .sell-guide > .sell-guide-actions {
     margin-left: calc(60px + 10px);
   }
 }
@@ -413,4 +416,32 @@
   .sell-photo-footer .button[data-invite] {
     animation: none;
   }
+}
+
+/* Without Pako the details sit where his conversation would, under a short note from him. */
+.listing-manual {
+  display: grid;
+  align-content: start;
+  gap: var(--space-group);
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 2px var(--space-field);
+}
+.listing-manual-note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.listing-manual-note > p {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  line-height: 1.45;
+}
+.selling-chat-layout .listing-manual {
+  flex: 1 1 0;
+}
+/* The save button keeps the end of its row, also when it stands alone. */
+.listing-workspace .listing-save-form > .button[type="submit"] {
+  margin-left: auto;
 }

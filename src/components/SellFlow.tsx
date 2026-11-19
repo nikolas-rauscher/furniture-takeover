@@ -1,7 +1,5 @@
-import { SelectField } from "./ui/select-field";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
-import { Input } from "./ui/input";
 import { Field, FieldLabel } from "./ui/field";
 import { listingMeasurementField } from "../listingPreparation";
 import { PickupLocationInput } from "./PickupLocationInput";
@@ -46,7 +44,15 @@ import Guide from "./onboarding/Guide";
 import type { PhotoInsight } from "../hooks/useListingAnalysis";
 import { useMomentPassed } from "../hooks/useMomentPassed";
 import { isReaction, REACTION_MS } from "../pakoMoods";
-import { sellGuide, WRITE_ACTION } from "../sellGuide";
+import {
+  absenceGuide,
+  FILL_IN_ACTION,
+  sellGuide,
+  WRITE_ACTION,
+  type PakoAbsence,
+} from "../sellGuide";
+import ListingFields from "./ListingFields";
+import Pako from "./onboarding/Pako";
 import { listingPhotos } from "../../shared/listingPhotos";
 import "./sell-flow.css";
 
@@ -202,6 +208,12 @@ type SellFlowProps = {
   photoReading?: boolean;
   uploadError: string;
   liveAgent: boolean;
+  /** Why Pako cannot help right now; absent while he can, or while that is still being checked. */
+  pakoAbsence?: PakoAbsence;
+  /** When Pako's allowance comes back. */
+  pakoBack?: string;
+  /** The student fills in the details themselves, in place of Pako's conversation. */
+  manual: boolean;
   /** What Pako made of the photos so far. */
   photoInsight: PhotoInsight;
   agentConversation?: ReactNode;
@@ -219,6 +231,10 @@ type SellFlowProps = {
   onDraftChange: (changes: Partial<ListingDraft>) => void;
   onPhotoSelected: (files: File[]) => void;
   onCreateDraft: () => void;
+  /** Goes on to the details without Pako. */
+  onFillIn: () => void;
+  /** Checks again whether Pako's tools can be reached. */
+  onRetryPako: () => void;
   /** The student left the Details field, so what they wrote counts now. */
   onNotesDone: () => void;
   onPublish: (event: FormEvent<HTMLFormElement>) => void;
@@ -241,6 +257,9 @@ export default function SellFlow({
   photoReading = false,
   uploadError,
   liveAgent,
+  pakoAbsence,
+  pakoBack,
+  manual,
   photoInsight,
   agentConversation,
   agentTools,
@@ -251,6 +270,8 @@ export default function SellFlow({
   onDraftChange,
   onPhotoSelected,
   onCreateDraft,
+  onFillIn,
+  onRetryPako,
   onNotesDone,
   onPublish,
   onSellSeveral,
@@ -260,7 +281,18 @@ export default function SellFlow({
   const saveWords = listingSaveWords(cloud);
   const photos = listingPhotos(draft);
   const isPhotoStep = step === 1;
-  const openFields = () => setFieldsOpen(true);
+  const fieldsId = useId();
+  const fieldIds = {
+    title: `${fieldsId}-title`,
+    description: `${fieldsId}-description`,
+    price: `${fieldsId}-price`,
+    location: `${fieldsId}-location`,
+  };
+  /** Opens the details: the dialog, or the field itself while the form is on the page. */
+  const fieldOpener = (field: keyof typeof fieldIds) => () => {
+    if (manual) document.getElementById(fieldIds[field])?.focus();
+    else setFieldsOpen(true);
+  };
   const required = (ready: boolean) => (ready ? "ready" : "missing");
   const priceSet =
     draft.price.trim() !== "" &&
@@ -276,12 +308,12 @@ export default function SellFlow({
     {
       label: "Title",
       state: required(Boolean(draft.title.trim())),
-      open: openFields,
+      open: fieldOpener("title"),
     },
     {
       label: "Description",
       state: required(Boolean(draft.description.trim())),
-      open: openFields,
+      open: fieldOpener("description"),
     },
     {
       label: "Price",
@@ -290,12 +322,12 @@ export default function SellFlow({
         : suggestedPrice === undefined
           ? "missing"
           : "suggested",
-      open: !priceSet && onReviewPrice ? onReviewPrice : openFields,
+      open: !priceSet && onReviewPrice ? onReviewPrice : fieldOpener("price"),
     },
     {
       label: "Pickup area",
       state: required(Boolean(draft.location.trim())),
-      open: openFields,
+      open: fieldOpener("location"),
     },
   ];
   const missing = checks.filter((check) => check.state !== "ready");
@@ -313,13 +345,16 @@ export default function SellFlow({
   const notesId = useId();
   const notesField = useRef<HTMLTextAreaElement>(null);
   const notesFocused = useFocused(notesField);
-  const canCreateDraft =
-    liveAgent && !unavailable && photos.length > 0 && quota?.remaining !== 0;
+  const ready = !unavailable && photos.length > 0;
+  const canCreateDraft = liveAgent && ready;
+  const saveVerb = saveWords.verb.toLowerCase();
   const guide = sellGuide({
     photoCount: photos.length,
     photoReading,
     preparing: busy,
-    allowanceUsed: quota?.remaining === 0,
+    absence: pakoAbsence,
+    saveVerb,
+    back: pakoBack,
     hasPlace: Boolean(draft.location.trim()),
     typing: notesFocused,
     insight: photoInsight,
@@ -344,6 +379,30 @@ export default function SellFlow({
     />
   );
   const [fieldsOpen, setFieldsOpen] = useState(false);
+  const saveFormId = useId();
+  const manualId = useId();
+  /** Pako's note above the details the student fills in: why he steps aside, or just whose turn it is. */
+  const manualNote = pakoAbsence
+    ? absenceGuide(pakoAbsence, { saveVerb, back: pakoBack })
+    : {
+        mood: "idle" as const,
+        bubble: {
+          id: "manual",
+          title: "Over to you",
+          text: `Fill in the details, then tap ${saveActionLabel({ cloud, editing, batch })}.`,
+        },
+      };
+  const fields = (form?: string) => (
+    <ListingFields
+      draft={draft}
+      ids={fieldIds}
+      form={form}
+      pickupMin={pickupMin}
+      measurement={measurementField}
+      priceContext={insight}
+      onDraftChange={onDraftChange}
+    />
+  );
   const headingRef = useRef<HTMLHeadingElement>(null);
   // On phones the photo step scrolls above its Create draft bar; the edge fades instead of cutting.
   const photoContent = useRef<HTMLDivElement>(null);
@@ -388,11 +447,9 @@ export default function SellFlow({
         onBack={onBack}
         onAccount={onAccount}
         quota={quota}
-        actions={isPhotoStep ? undefined : agentTools}
+        actions={isPhotoStep || manual ? undefined : agentTools}
       />
-      {batch && (
-        <BatchTray batch={batch} disabled={busy || agentWorking} />
-      )}
+      {batch && <BatchTray batch={batch} disabled={busy || agentWorking} />}
 
       {isPhotoStep ? (
         <div className="sell-layout" aria-busy={unavailable}>
@@ -403,13 +460,25 @@ export default function SellFlow({
                 layout="guide"
                 bubble={guide.bubble}
               />
-              {photoInsight.status === "failed" && (
-                <Button
-                  className="button secondary small sell-guide-retry"
-                  onClick={photoInsight.retry}
-                >
-                  Try again
-                </Button>
+              {photoInsight.status === "failed" && !pakoAbsence && (
+                <div className="sell-guide-actions">
+                  <Button
+                    className="button secondary small"
+                    onClick={photoInsight.retry}
+                  >
+                    Try again
+                  </Button>
+                  <Button className="button quiet small" onClick={onFillIn}>
+                    Fill in myself
+                  </Button>
+                </div>
+              )}
+              {pakoAbsence === "offline" && (
+                <div className="sell-guide-actions">
+                  <Button className="button quiet small" onClick={onRetryPako}>
+                    Try again
+                  </Button>
+                </div>
               )}
             </div>
             <div className="photo-upload-panel">
@@ -447,7 +516,8 @@ export default function SellFlow({
               className="sell-inputs"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (canCreateDraft) onCreateDraft();
+                if (pakoAbsence ? ready : canCreateDraft)
+                  (pakoAbsence ? onFillIn : onCreateDraft)();
               }}
             >
               <Field data-disabled={unavailable || undefined}>
@@ -481,11 +551,13 @@ export default function SellFlow({
               className="button primary large full"
               type="submit"
               form={formId}
-              disabled={!canCreateDraft}
+              disabled={pakoAbsence ? !ready : !canCreateDraft}
               data-invite={(inviting && canCreateDraft) || undefined}
             >
               {unavailable ? (
                 <LoaderCircle animate size={18} aria-hidden="true" />
+              ) : pakoAbsence ? (
+                <Pencil size={18} aria-hidden="true" />
               ) : (
                 <Sparkles size={18} aria-hidden="true" />
               )}
@@ -493,7 +565,9 @@ export default function SellFlow({
                 ? "Loading photo…"
                 : busy
                   ? "Preparing draft…"
-                  : WRITE_ACTION}
+                  : pakoAbsence
+                    ? FILL_IN_ACTION
+                    : WRITE_ACTION}
             </Button>
           </div>
         </div>
@@ -516,8 +590,22 @@ export default function SellFlow({
                 </small>
               </Button>
             )}
-            {agentConversation}
+            {manual ? (
+              <section className="listing-manual" aria-labelledby={manualId}>
+                <div className="listing-manual-note">
+                  <Pako size={44} mood={manualNote.mood} />
+                  <p id={manualId}>
+                    <strong>{manualNote.bubble.title}</strong>
+                    {manualNote.bubble.text}
+                  </p>
+                </div>
+                {fields(saveFormId)}
+              </section>
+            ) : (
+              agentConversation
+            )}
             <form
+              id={saveFormId}
               onSubmit={(event) => {
                 if (missing.length) {
                   event.preventDefault();
@@ -529,136 +617,30 @@ export default function SellFlow({
               className="listing-save-form"
               onInvalidCapture={(event) => {
                 event.preventDefault();
-                setFieldsOpen(true);
+                if (!manual) setFieldsOpen(true);
                 const form = event.currentTarget;
                 window.requestAnimationFrame(() =>
                   form.querySelector<HTMLElement>(":invalid")?.focus(),
                 );
               }}
             >
-              <Button
-                type="button"
-                className="button secondary listing-edit-button"
-                aria-label="Edit listing details"
-                onClick={() => setFieldsOpen(true)}
-              >
-                <Pencil size={15} />
-                Edit details
-              </Button>
+              {!manual && (
+                <Button
+                  type="button"
+                  className="button secondary listing-edit-button"
+                  aria-label="Edit listing details"
+                  onClick={() => setFieldsOpen(true)}
+                >
+                  <Pencil size={15} />
+                  Edit details
+                </Button>
+              )}
               {fieldsOpen && (
                 <Modal
                   title="Listing details"
                   onClose={() => setFieldsOpen(false)}
                 >
-                  <div className="review-form">
-                    <label>
-                      Title
-                      <Input
-                        required
-                        maxLength={180}
-                        pattern=".*\S.*"
-                        title="Enter a title with at least one non-space character."
-                        value={draft.title}
-                        onChange={(event) =>
-                          onDraftChange({ title: event.target.value })
-                        }
-                      />
-                    </label>
-                    <label>
-                      Description
-                      <Textarea
-                        required
-                        rows={5}
-                        maxLength={4000}
-                        value={draft.description}
-                        onChange={(event) =>
-                          onDraftChange({ description: event.target.value })
-                        }
-                      />
-                    </label>
-                    <div className="form-grid">
-                      <label>
-                        Price (CHF)
-                        <Input
-                          required
-                          type="number"
-                          inputMode="decimal"
-                          step="0.01"
-                          min="0"
-                          max="10000"
-                          value={draft.price}
-                          onChange={(event) =>
-                            onDraftChange({ price: event.target.value })
-                          }
-                          placeholder="Your asking price"
-                        />
-                      </label>
-                      <label>
-                        Condition<span className="optional">Optional</span>
-                        <SelectField
-                          aria-label="Condition"
-                          value={draft.condition}
-                          onValueChange={(condition) =>
-                            onDraftChange({ condition })
-                          }
-                          options={[
-                            ...new Set([
-                              "",
-                              "Very good",
-                              "Good",
-                              "Used",
-                              draft.condition,
-                            ]),
-                          ].map((value) => ({
-                            value,
-                            label: value || "Not specified",
-                          }))}
-                        />
-                      </label>
-                      <label>
-                        {measurementField.label}
-                        <span className="optional">Optional</span>
-                        <Input
-                          value={draft.dimensions}
-                          maxLength={160}
-                          onChange={(event) =>
-                            onDraftChange({ dimensions: event.target.value })
-                          }
-                          placeholder={measurementField.placeholder}
-                        />
-                      </label>
-                    </div>
-                    {insight}
-                    <h2 className="form-section-title collection-title">
-                      Collection
-                    </h2>
-                    <div className="form-grid">
-                      <label>
-                        Pickup location
-                        <Input
-                          required
-                          maxLength={120}
-                          pattern=".*\S.*"
-                          title="Enter a pickup location with at least one non-space character."
-                          value={draft.location}
-                          onChange={(event) =>
-                            onDraftChange({ location: event.target.value })
-                          }
-                        />
-                      </label>
-                      <label>
-                        Last day to collect<span className="optional">Optional</span>
-                        <Input
-                          type="date"
-                          min={pickupMin}
-                          value={draft.pickup}
-                          onChange={(event) =>
-                            onDraftChange({ pickup: event.target.value })
-                          }
-                        />
-                      </label>
-                    </div>
-                  </div>
+                  {fields()}
                   <Button
                     animateIcon
                     type="button"

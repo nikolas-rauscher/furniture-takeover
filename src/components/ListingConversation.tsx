@@ -9,6 +9,7 @@ import {
   closingLine,
   PICKUP_QUESTION,
   priceSuggestion,
+  restingLine,
   trayPhase,
 } from "../listingQuestions";
 import { listingAnnouncement } from "../pakoMoods";
@@ -31,6 +32,10 @@ type Props = {
   saveAction: string;
   /** Pako can be reached; without him the composer rests. */
   configured: boolean;
+  /** The day's allowance is used up. */
+  asleep: boolean;
+  /** The student goes on without Pako and fills in the details. */
+  onManual: () => void;
 };
 
 /**
@@ -45,6 +50,8 @@ export default function ListingConversation({
   editing,
   saveAction,
   configured,
+  asleep,
+  onManual,
 }: Props) {
   const turn = starting ? startingListingTurn : listing.state;
   const question = listing.activeQuestion;
@@ -54,8 +61,12 @@ export default function ListingConversation({
     starting,
     status: listing.state.status,
     asking: question !== undefined,
+    asleep,
   });
-  const closing = closingLine(missingDetails(draft), saveAction);
+  const closing =
+    phase === "asleep"
+      ? restingLine(saveAction)
+      : closingLine(missingDetails(draft), saveAction);
   const announcement = listingAnnouncement(turn, {
     phase,
     question: question && {
@@ -99,6 +110,7 @@ export default function ListingConversation({
               onSkip={listing.skip}
               onLater={listing.decideLater}
               onRetry={listing.retry}
+              onManual={onManual}
             />
             <AgentComposer
               value={listing.input}

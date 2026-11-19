@@ -203,6 +203,7 @@ test("the tray reads Pako first, asks while a question waits, then closes or say
       starting: false,
       status: "complete",
       asking: false,
+      asleep: false,
       ...overrides,
     });
   assert.equal(phase({ starting: true, status: "idle" }), "starting");
@@ -215,6 +216,12 @@ test("the tray reads Pako first, asks while a question waits, then closes or say
   assert.equal(phase({ asking: true }), "asking");
   assert.equal(phase({}), "done");
   assert.equal(phase({ status: "error" }), "error");
+  assert.equal(phase({ status: "error", asleep: true }), "asleep");
+  assert.equal(
+    phase({ asking: true, asleep: true }),
+    "asking",
+    "taps still work without Pako",
+  );
   assert.equal(phase({ status: "idle" }), "hidden");
 });
 

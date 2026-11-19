@@ -107,6 +107,7 @@ import AgentRunPanel from "./components/AgentRunPanel";
 import { useAgentRun } from "./hooks/useAgentRun";
 import { useAgentAssist } from "./hooks/useAgentAssist";
 import { useListingAnalysis } from "./hooks/useListingAnalysis";
+import type { PakoAbsence } from "./sellGuide";
 import { useListingConversation } from "./hooks/useListingConversation";
 import { useSaved } from "./hooks/useSaved";
 import { useWatches } from "./alerts/useWatches";
@@ -362,6 +363,8 @@ export default function App({
   }
   const listing = useListingConversation({ draftRef, setDraft });
   const [sellStep, setSellStep] = useState(1);
+  /** The student fills in the listing's details themselves, without Pako. */
+  const [manualListing, setManualListing] = useState(false);
   const [sellMode, setSellMode] = useState<"single" | "batch">("single");
   // Set when several photos turn out to show different items.
   const [photoSplit, setPhotoSplit] = useState<{
@@ -600,6 +603,12 @@ export default function App({
     : undefined;
   const configured =
     agentHealth?.configured === true && signedIn && !quotaExhausted;
+  /** Why Pako cannot help with selling right now; nothing while that is still being checked. */
+  const pakoAbsence: PakoAbsence | undefined = quotaExhausted
+    ? "allowance"
+    : healthError || agentHealth?.configured === false
+      ? "offline"
+      : undefined;
   const normalizedFilterDraft = {
     ...filterDraft,
     category: "All",
@@ -805,6 +814,7 @@ export default function App({
     listing.resetForNewDraft();
     setDraft(newDraft(pickupLocation));
     setSellStep(1);
+    setManualListing(false);
     setSellMode("single");
     setPhotoSplit(null);
     setBatchStart(undefined);
@@ -1446,8 +1456,10 @@ export default function App({
     setUploadError("");
     setPhotoSplit(null);
     setDraft(next);
-    setSellStep(1);
-    void generateDraft({ together: true, keepTitle: true });
+    // Without Pako the next item opens as plain details for the student to fill in.
+    setManualListing(!configured);
+    setSellStep(configured ? 1 : 2);
+    if (configured) void generateDraft({ together: true, keepTitle: true });
   }
   function startBatchListings(drafts: ListingDraft[]) {
     if (!drafts.length) return;
@@ -1535,7 +1547,28 @@ export default function App({
     });
     setSellStep(2);
     setSellMode("single");
+    setManualListing(false);
     setUploadError("");
+  }
+  /** Goes on to the details without Pako, keeping what he made of the photos in step 1. */
+  function fillInDetails() {
+    const analysis =
+      sellStep === 1 && listingAnalysis.insight.status === "ready"
+        ? listingAnalysis.insight.response
+        : undefined;
+    listingRequest.current?.abort();
+    listing.cancel();
+    setDraft((current) => {
+      const prepared = analysis
+        ? prepareListingDraft(current, analysis.metadata)
+        : current;
+      return {
+        ...prepared,
+        description: prepared.description.trim() || current.raw,
+      };
+    });
+    setManualListing(true);
+    setSellStep(2);
   }
   async function setStatus(id: string, status: Product["status"]) {
     const listing = own.find((item) => item.id === id);
@@ -1621,6 +1654,8 @@ export default function App({
         batch: sellBatch,
       })}
       configured={configured}
+      asleep={quotaExhausted}
+      onManual={fillInDetails}
     />
   );
   const productCard = (item: Product, arriving = false) => (
@@ -2438,11 +2473,17 @@ export default function App({
                   uploadError={uploadError}
                   liveAgent={configured}
                   photoInsight={listingAnalysis.insight}
+                  pakoAbsence={pakoAbsence}
+                  pakoBack={quotaResets || undefined}
+                  manual={manualListing}
+                  onFillIn={fillInDetails}
+                  onRetryPako={refreshHealth}
                   onBack={() =>
                     transitionPage("nav-back", () => {
                       if (sellStep === 2 && !editingListing) {
                         listingRequest.current?.abort();
                         listing.resetConversation();
+                        setManualListing(false);
                         setSellStep(1);
                       } else if (editingListing) navigate("account");
                       else if (batchQueue) backToBatchSorting();
