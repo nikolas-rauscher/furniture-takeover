@@ -63,11 +63,25 @@
 .ob-pako-glint {
   fill: #fff;
 }
-.ob-pako-happy-eye {
+/* Ink lines: happy and closed eyes, spirals, brows and z's. */
+.ob-pako-line {
   fill: none;
   stroke: var(--ink);
   stroke-width: 4.5;
   stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ob-pako-spiral {
+  stroke-width: 2.6;
+}
+.ob-pako-brow {
+  stroke-width: 3.5;
+}
+.ob-pako-z {
+  stroke-width: 2.8;
+}
+.ob-pako-heart {
+  fill: var(--coral);
 }
 .ob-pako-cheek {
   fill: var(--cheek);
@@ -78,6 +92,50 @@
   stroke: var(--ink);
   stroke-width: 2.5;
   stroke-linejoin: round;
+}
+
+/* What a mood brings along: a thought cloud, a magnifier, a sigh, stars, a trail. */
+.ob-pako-cloud {
+  fill: #fff;
+  stroke: var(--card-line);
+  stroke-width: 2;
+}
+.ob-pako-dot {
+  fill: var(--ink);
+}
+.ob-pako-handle {
+  fill: var(--kraft-deep);
+}
+.ob-pako-collar {
+  fill: var(--ink);
+}
+.ob-pako-lens {
+  fill: var(--sky);
+  stroke: var(--ink);
+  stroke-width: 5;
+}
+.ob-pako-lens-glint {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+.ob-pako-puff {
+  fill: #fff;
+  stroke: var(--lip);
+  stroke-width: 1.8;
+}
+.ob-pako-star {
+  fill: var(--sun);
+  stroke: var(--kraft-deep);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+.ob-pako-trail {
+  stroke: var(--blue);
+  stroke-opacity: 0.45;
+  stroke-width: 4;
+  stroke-linecap: round;
 }
 
 /* Guide: hero (Pako alone, centred) or guide (Pako beside a speech bubble). */
