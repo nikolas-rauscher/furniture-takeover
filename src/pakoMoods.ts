@@ -2,6 +2,7 @@ import type { AgentTaskKind } from "../shared/runs";
 import { plainAnswer } from "./components/agentAnswer.ts";
 import type { PakoMood } from "./components/onboarding/storyTypes";
 import type { AgentRunState, AgentRunStep } from "./hooks/useAgentRun";
+import type { PhotoSearchNotice } from "./photoSearchFeedback.ts";
 
 /** How long each reaction to a moment plays before Pako rests; every other mood lasts as long as its cause. */
 export const REACTION_MS = { happy: 1400, sad: 3400, dizzy: 2600 } as const;
@@ -17,18 +18,40 @@ export type HomeGuide = {
   newMatches: boolean;
 };
 
+/** A photo search on home: dragged over the search, being read, or needing the student. */
+export type PhotoMoment = "dragging" | "reading" | PhotoSearchNotice;
+
+function photoGuide(photo: PhotoMoment): HomeGuide {
+  if (photo === "dragging")
+    return {
+      mood: "listen",
+      line: "Drop your photo here. I'll find similar things.",
+      newMatches: false,
+    };
+  if (photo === "reading")
+    return {
+      mood: "search",
+      line: "Let me look at your photo…",
+      newMatches: false,
+    };
+  return { mood: photo.mood, line: photo.line, newMatches: false };
+}
+
 /**
- * What Pako shows and says beside the search on the home page. New matches for
- * saved searches lead his line; his mood still follows the search box.
+ * What Pako shows and says beside the search on the home page. A photo search
+ * speaks first, then new matches for saved searches; his mood otherwise
+ * follows the search box.
  */
 export function homeGuide({
   allowanceUsed,
+  photo,
   unreadMatches,
   suggestionsLoading,
   typing,
   location,
 }: {
   allowanceUsed: boolean;
+  photo: PhotoMoment | null;
   unreadMatches: number;
   suggestionsLoading: boolean;
   /** The search box has focus or text. */
@@ -41,6 +64,7 @@ export function homeGuide({
       line: "I'm out of searches for today. See you tomorrow!",
       newMatches: false,
     };
+  if (photo) return photoGuide(photo);
   const newMatches = unreadMatches > 0;
   return {
     mood: suggestionsLoading

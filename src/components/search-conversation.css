@@ -42,6 +42,23 @@
   transform-origin: 100% 100%;
   animation: search-message-pop 360ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
 }
+/* A search that started from a photo shows it above the words Pako read from it. */
+.user-message-photo {
+  margin: 0 0 8px;
+}
+.user-message-photo > img {
+  display: block;
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+.user-message-photo > figcaption {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 650;
+}
 @keyframes search-message-pop {
   from {
     opacity: 0;

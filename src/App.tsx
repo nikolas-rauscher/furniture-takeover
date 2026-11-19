@@ -66,7 +66,6 @@ import {
   Camera,
   ChevronDown,
   CircleHelp,
-  Images,
   MapPin,
   Plus,
   Search,
@@ -89,7 +88,6 @@ import SellFlow, {
 } from "./components/SellFlow";
 import DeveloperSettings from "./components/DeveloperSettings";
 import { useDeveloperMode } from "./availability/useDeveloperMode";
-import PhotoSearchFeedback from "./components/PhotoSearchFeedback";
 import {
   photoSearchFailure,
   photoSearchClarification,
@@ -565,10 +563,11 @@ export default function App({
   // The inspiration photo stays attached to the search it started.
   const [photoSearch, setPhotoSearch] = useState<{
     image: string;
-    item: string;
     request: string;
   } | null>(null);
   const [photoSearchBusy, setPhotoSearchBusy] = useState(false);
+  /** A photo is dragged over the home search. */
+  const [photoDragging, setPhotoDragging] = useState(false);
   const [photoSearchNotice, setPhotoSearchNotice] =
     useState<PhotoSearchNotice | null>(null);
   const photoSearchRequest = useRef<AbortController | null>(null);
@@ -640,6 +639,11 @@ export default function App({
   );
   const heroGuide = homeGuide({
     allowanceUsed: quotaExhausted,
+    photo: photoDragging
+      ? "dragging"
+      : photoSearchBusy
+        ? "reading"
+        : photoSearchNotice,
     unreadMatches: watches.unread,
     suggestionsLoading: searchAssist.status === "loading",
     typing: searchFocused || hasSearchDraft,
@@ -792,6 +796,8 @@ export default function App({
     scrollPositions.current.delete("home");
     navigate("discover");
     agentRun.reset();
+    setPhotoSearch(null);
+    setPhotoSearchNotice(null);
     setSearching(false);
     setQuery("");
     setFollowUp("");
@@ -1154,10 +1160,11 @@ export default function App({
       if (controller.signal.aborted) return;
       if (!item) {
         setPhotoSearchNotice(photoSearchClarification());
+        searchField.current?.focus();
         return;
       }
       const request = (notes ? `${item}. ${notes}` : item).slice(0, 4000);
-      setPhotoSearch({ image, item, request });
+      setPhotoSearch({ image, request });
       setPhotoSearchBusy(false);
       await runSearch(request);
     } catch (error) {
@@ -2162,17 +2169,25 @@ export default function App({
                           event.preventDefault();
                           startSearchFromHome(query);
                         }}
+                        data-dragging={photoDragging || undefined}
                         onDragOver={(event) => {
-                          if (event.dataTransfer.types.includes("Files")) {
-                            event.preventDefault();
-                            event.currentTarget.classList.add("drag-over");
-                          }
+                          if (!event.dataTransfer.types.includes("Files"))
+                            return;
+                          event.preventDefault();
+                          setPhotoDragging(true);
                         }}
-                        onDragLeave={(event) =>
-                          event.currentTarget.classList.remove("drag-over")
-                        }
+                        onDragLeave={(event) => {
+                          const next = event.relatedTarget;
+                          if (
+                            !(
+                              next instanceof Node &&
+                              event.currentTarget.contains(next)
+                            )
+                          )
+                            setPhotoDragging(false);
+                        }}
                         onDrop={(event) => {
-                          event.currentTarget.classList.remove("drag-over");
+                          setPhotoDragging(false);
                           const file = imageFrom(event.dataTransfer);
                           if (!file) return;
                           event.preventDefault();
@@ -2232,7 +2247,10 @@ export default function App({
                             className="button primary"
                             type="submit"
                             disabled={
-                              !query.trim() || running || quotaExhausted
+                              !query.trim() ||
+                              running ||
+                              photoSearchBusy ||
+                              quotaExhausted
                             }
                           >
                             Find it
@@ -2240,8 +2258,17 @@ export default function App({
                         </div>
                       </form>
                     </PageTransitionShared>
-                    {photoSearchNotice && (
-                      <PhotoSearchFeedback notice={photoSearchNotice} />
+                    <p className="sr-only" aria-live="polite">
+                      {photoSearchBusy
+                        ? "Pako is looking at your photo."
+                        : photoSearchNotice?.kind === "clarification"
+                          ? photoSearchNotice.line
+                          : ""}
+                    </p>
+                    {photoSearchNotice?.kind === "error" && (
+                      <p className="sr-only" role="alert">
+                        {photoSearchNotice.line}
+                      </p>
                     )}
                     {connectionStatus}
                     <AgentSuggestions
@@ -2312,23 +2339,12 @@ export default function App({
                           : undefined
                       }
                     />
-                    {!reviewingListing && activePhotoSearch && (
-                      <div className="photo-search-source">
-                        <img src={activePhotoSearch.image} alt="" />
-                        <p>
-                          Similar to your photo
-                          <span>
-                            Recognised as “{activePhotoSearch.item}”. Start a
-                            new search to adjust it.
-                          </span>
-                        </p>
-                      </div>
-                    )}
                     {negotiations.error && (
                       <p role="alert">{negotiations.error}</p>
                     )}
                     <AgentConversation
                       state={agentRun.state}
+                      startPhoto={activePhotoSearch?.image}
                       announcement={turnAnnouncement(
                         agentRun.state,
                         searchPlace,
@@ -3042,12 +3058,11 @@ export default function App({
               </p>
             </div>
             <div>
-              <Images size={20} />
+              <Camera size={20} />
               <p>
-                <strong>Search by photo</strong>An inspiration photo, such as a
-                Pinterest image, is sent to the AI service to describe the
-                furniture. The search then uses that description, which you can
-                edit.
+                <strong>Search with a photo</strong>An inspiration photo, such
+                as a Pinterest image, is sent to the AI service to describe the
+                item. The search then uses that description.
               </p>
             </div>
             <div>

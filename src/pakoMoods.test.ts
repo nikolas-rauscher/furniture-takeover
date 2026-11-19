@@ -12,6 +12,10 @@ import {
   turnAnnouncement,
   workingLine,
 } from "./pakoMoods.ts";
+import {
+  photoSearchClarification,
+  photoSearchFailure,
+} from "./photoSearchFeedback.ts";
 
 const step = (
   id: string,
@@ -179,6 +183,7 @@ test("only reactions to a moment pass; states last as long as their cause", () =
 const guide = (overrides: Partial<Parameters<typeof homeGuide>[0]>) =>
   homeGuide({
     allowanceUsed: false,
+    photo: null,
     unreadMatches: 0,
     suggestionsLoading: false,
     typing: false,
@@ -221,6 +226,30 @@ test("new matches lead the home guide's line while his mood follows the search b
     false,
     "a sleeping Pako has no news",
   );
+});
+
+test("a photo search speaks first on home: Pako listens to a drag, looks at the photo, then says what he needs", () => {
+  assert.deepEqual(guide({ photo: "dragging", unreadMatches: 2 }), {
+    mood: "listen",
+    line: "Drop your photo here. I'll find similar things.",
+    newMatches: false,
+  });
+  assert.deepEqual(guide({ photo: "reading", typing: true }), {
+    mood: "search",
+    line: "Let me look at your photo…",
+    newMatches: false,
+  });
+  assert.deepEqual(guide({ photo: photoSearchClarification() }), {
+    mood: "think",
+    line: photoSearchClarification().line,
+    newMatches: false,
+  });
+  assert.equal(
+    guide({ photo: photoSearchFailure(new Error("Choose a photo of 25 MB or less.")) })
+      .line,
+    "Choose a photo of 25 MB or less.",
+  );
+  assert.equal(guide({ photo: "reading", allowanceUsed: true }).mood, "sleep");
 });
 
 test("Pako's working line reads the request, names the latest search in the intro's words and then writes", () => {

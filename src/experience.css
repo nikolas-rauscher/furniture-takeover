@@ -312,6 +312,45 @@ label > textarea {
 .agent-search-actions .button {
   flex: none;
 }
+/* The camera sits flat beside "Find it": snap it to find it, like snap it to sell it. */
+.agent-search-actions .photo-search-button {
+  gap: 6px;
+  min-width: 44px;
+  min-height: 40px;
+  margin-left: auto;
+  padding: 6px 12px;
+}
+@media (max-width: 760px) {
+  .agent-search-actions .photo-search-button {
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+  .photo-search-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+/* A photo dragged over the search makes the card a drop target. */
+.agent-search[data-dragging] {
+  border-style: dashed;
+  border-color: var(--blue);
+  background: var(--selected);
+  scale: 1.01;
+  transition:
+    scale 160ms var(--ease-out),
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent-search[data-dragging] {
+    scale: none;
+  }
+}
 /* The search area is a pill, so a long residence name truncates instead of wrapping. */
 .search-area {
   display: inline-flex;
