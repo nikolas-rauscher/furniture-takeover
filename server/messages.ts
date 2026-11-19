@@ -4,8 +4,16 @@ import { z } from "zod";
 import { AgentError } from "./errors.ts";
 import type { SellerConversation, ChatMessage } from "../shared/messages.ts";
 
+import {
+  applyDealAction,
+  dealActionSchema,
+  DealError,
+  type DealAction,
+} from "../shared/deal.ts";
+import { dealErrorMessage } from "../shared/dealErrors.ts";
 const inputSchema = z
   .object({
+    buyerKey: z.string().uuid().optional(),
     listingId: z.string().trim().min(1).max(120),
     title: z.string().trim().min(1).max(180),
     seller: z.string().trim().min(1).max(120),
@@ -39,6 +47,20 @@ export function createMessagesStore(path: string) {
   db.exec(
     "CREATE TABLE IF NOT EXISTS conversations (id TEXT PRIMARY KEY, workspace TEXT NOT NULL, listing_id TEXT NOT NULL, payload TEXT NOT NULL, UNIQUE(workspace, listing_id))",
   );
+  // Earlier installations enforced one buyer per listing. Preserve those threads as the default buyer.
+  if (
+    !db
+      .prepare("pragma table_info(conversations)")
+      .all()
+      .some((c) => c.name === "buyer_key")
+  ) {
+    db.exec(`BEGIN IMMEDIATE;
+      ALTER TABLE conversations RENAME TO old_conversations;
+      CREATE TABLE conversations(id TEXT PRIMARY KEY, workspace TEXT NOT NULL, listing_id TEXT NOT NULL,buyer_key TEXT NOT NULL DEFAULT '',payload TEXT NOT NULL, UNIQUE(workspace,listing_id,buyer_key));
+      INSERT INTO conversations(id,workspace,listing_id,payload) SELECT id,workspace,listing_id,payload FROM old_conversations;
+      DROP TABLE old_conversations;
+      COMMIT;`);
+  }
   const list = (workspace: string): SellerConversation[] =>
     db
       .prepare(
@@ -47,8 +69,168 @@ export function createMessagesStore(path: string) {
       .all(workspace)
       .map((row) => JSON.parse(String(row.payload)))
       .filter((item) => !item.deletedAt);
+  const dealInput = inputSchema.extend({
+    action: dealActionSchema,
+    expectedVersion: z.number().int().nonnegative(),
+    listingStatus: z.enum(["active", "reserved", "sold", "withdrawn"]),
+  });
+  function append(
+    workspace: string,
+    value: z.infer<typeof inputSchema>,
+    command?: {
+      action: DealAction;
+      expectedVersion: number;
+      listingStatus: z.infer<typeof dealInput>["listingStatus"];
+    },
+  ) {
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      const row = db
+        .prepare(
+          "select payload from conversations where workspace=? and listing_id=? and buyer_key=?",
+        )
+        .get(workspace, value.listingId, value.buyerKey ?? "");
+      if (
+        (!row || JSON.parse(String(row.payload)).deletedAt) &&
+        (value.sender === "seller" ||
+          (command && command.action.type !== "propose"))
+      )
+        throw new AgentError(
+          400,
+          "NO_CONVERSATION",
+          "Start a buyer conversation first.",
+        );
+      const conversation: SellerConversation = row
+        ? JSON.parse(String(row.payload))
+        : {
+            id: randomUUID(),
+            listingId: value.listingId,
+            title: value.title,
+            seller: value.seller,
+            ...(value.buyerKey ? {buyerKey:value.buyerKey} : {}),
+            messages: [],
+          };
+      if (conversation.deletedAt) {
+        conversation.messages = [];
+        delete conversation.deal;
+        delete conversation.deletedAt;
+        delete conversation.systemEvents;
+      }
+      const peers = list(workspace);
+      const duplicate = peers.find((c) =>
+        c.messages.some((m) => m.id === value.messageId),
+      );
+      let statusChange: "active" | "reserved" | undefined;
+      if (duplicate) {
+        const previous = duplicate.messages.find(
+          (m) => m.id === value.messageId,
+        )!;
+        if (
+          duplicate.id !== conversation.id ||
+          previous.sender !== value.sender ||
+          previous.text !== value.text ||
+          Boolean(previous.deal) !== Boolean(command)
+        )
+          throw new DealError("message_conflict");
+        if (command && conversation.messages.at(-1)?.id === previous.id) {
+          if (
+            previous.deal?.kind === "accepted" &&
+            conversation.deal?.status === "agreed"
+          )
+            statusChange = "reserved";
+          if (
+            previous.deal?.kind === "cancelled" &&
+            conversation.deal?.agreed &&
+            !peers.some(
+              (c) =>
+                c.listingId === value.listingId && c.deal?.status === "agreed",
+            )
+          )
+            statusChange = "active";
+        }
+      } else {
+        const now = new Date();
+        const message: ChatMessage = {
+          id: value.messageId,
+          text: value.text,
+          sender: value.sender,
+          createdAt: now.toISOString(),
+        };
+        if (command) {
+          if ((conversation.deal?.version ?? 0) !== command.expectedVersion)
+            throw new DealError("deal_changed");
+          const others = peers.filter(
+            (c) => c.listingId === value.listingId && c.id !== conversation.id,
+          );
+          const result = applyDealAction({
+            ...command,
+            deal: conversation.deal ?? null,
+            actor: value.sender,
+            body: value.text,
+            conversationId: conversation.id,
+            listingId: value.listingId,
+            messageId: value.messageId,
+            now,
+            listingStatus: others.some((c) => c.deal?.status === "agreed")
+              ? "reserved"
+              : command.listingStatus,
+          });
+          conversation.deal = result.deal;
+          message.deal = result.event;
+          statusChange = result.statusChange;
+          if (statusChange === "reserved")
+            for (const other of others) {
+              if (other.deal?.status !== "open" || !other.deal.proposal)
+                continue;
+              other.deal = {
+                ...other.deal,
+                version: other.deal.version + 1,
+                proposal: null,
+                updatedAt: message.createdAt,
+              };
+              (other.systemEvents ??= []).push({
+                kind: "superseded",
+                at: message.createdAt,
+              });
+              db.prepare("update conversations set payload=? where id=?").run(
+                JSON.stringify(other),
+                other.id,
+              );
+            }
+        }
+        if (value.image) conversation.image = value.image;
+        conversation.messages.push(message);
+        db.prepare(
+          "insert into conversations(id,workspace,listing_id,buyer_key,payload) values(?,?,?,?,?) on conflict(id) do update set payload=excluded.payload",
+        ).run(
+          conversation.id,
+          workspace,
+          value.listingId,
+          value.buyerKey ?? "",
+          JSON.stringify(conversation),
+        );
+      }
+      db.exec("COMMIT");
+      return { conversation, statusChange };
+    } catch (error) {
+      db.exec("ROLLBACK");
+      if (error instanceof DealError)
+        throw new AgentError(409, error.key, dealErrorMessage(error.key));
+      throw error;
+    }
+  }
   return {
     list,
+    act(workspace: string, input: unknown) {
+      const parsed = dealInput.safeParse(input);
+      if (!parsed.success)
+        throw new AgentError(
+          400,
+          "INVALID_DEAL",
+          "Check the offer and try again.",
+        );
+      return append(workspace, parsed.data, parsed.data);
+    },
     setDeleted(
       workspace: string,
       input: unknown,
@@ -72,6 +254,12 @@ export function createMessagesStore(path: string) {
       if (!row)
         throw new AgentError(404, "NO_CONVERSATION", "Conversation not found.");
       const conversation: SellerConversation = JSON.parse(String(row.payload));
+      if (deleted && conversation.deal?.status === "agreed")
+        throw new AgentError(
+          409,
+          "deal_agreed",
+          "Cancel the deal before deleting this conversation.",
+        );
       if (deleted) conversation.deletedAt = new Date().toISOString();
       else delete conversation.deletedAt;
       db.prepare(
@@ -98,59 +286,7 @@ export function createMessagesStore(path: string) {
               : "The listing details could not be sent. Please reopen the listing and try again.",
         );
       }
-      const value = parsed.data;
-      db.exec("BEGIN IMMEDIATE");
-      try {
-        const row = db
-          .prepare(
-            "SELECT payload FROM conversations WHERE workspace = ? AND listing_id = ?",
-          )
-          .get(workspace, value.listingId);
-        if (!row && value.sender === "seller")
-          throw new AgentError(
-            400,
-            "NO_CONVERSATION",
-            "Start a buyer conversation first.",
-          );
-        const conversation: SellerConversation = row
-          ? JSON.parse(String(row.payload))
-          : {
-              id: randomUUID(),
-              listingId: value.listingId,
-              title: value.title,
-              seller: value.seller,
-              messages: [],
-            };
-        if (conversation.deletedAt) conversation.messages = [];
-        delete conversation.deletedAt;
-        if (value.image) conversation.image = value.image;
-        if (
-          !conversation.messages.some(
-            (message) => message.id === value.messageId,
-          )
-        ) {
-          const message: ChatMessage = {
-            id: value.messageId,
-            sender: value.sender,
-            text: value.text,
-            createdAt: new Date().toISOString(),
-          };
-          conversation.messages.push(message);
-          db.prepare(
-            "INSERT INTO conversations (id, workspace, listing_id, payload) VALUES (?, ?, ?, ?) ON CONFLICT(workspace, listing_id) DO UPDATE SET payload = excluded.payload",
-          ).run(
-            conversation.id,
-            workspace,
-            value.listingId,
-            JSON.stringify(conversation),
-          );
-        }
-        db.exec("COMMIT");
-        return conversation;
-      } catch (error) {
-        db.exec("ROLLBACK");
-        throw error;
-      }
+      return append(workspace, parsed.data).conversation;
     },
     close: () => db.close(),
   };
