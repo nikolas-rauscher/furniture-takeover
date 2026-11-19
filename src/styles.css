@@ -372,7 +372,6 @@ textarea {
 }
 .app-header {
   height: 83px;
-  border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
   padding: 0 34px;
@@ -510,22 +509,6 @@ textarea {
 }
 .categories button:hover {
   color: var(--blue);
-}
-.section-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 17px;
-}
-.section-heading h2 {
-  font-size: var(--type-section);
-  letter-spacing: -0.7px;
-  margin-bottom: 5px;
-}
-.section-heading > div > span {
-  font-size: 11px;
-  color: #8a909c;
 }
 .sort-label select {
   border: 0;
@@ -867,53 +850,6 @@ textarea {
 .assistant-bottom {
   padding: 14px 16px 12px;
   background: #fcfcfe;
-}
-.assistant-composer {
-  border: 1px solid #dde2ef;
-  background: white;
-  border-radius: 10px;
-  padding: 11px;
-}
-.assistant-composer:focus-within {
-  border-color: #9cabe5;
-}
-.assistant-composer textarea {
-  border: 0;
-  padding: 0;
-  font-size: 11px;
-  resize: none;
-  width: 100%;
-  outline: none;
-  min-height: 41px;
-  line-height: 1.6;
-}
-.assistant-composer > div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 3px;
-}
-.assistant-composer > div > span {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 8px;
-  color: #adb3c0;
-}
-.assistant-composer > div > button {
-  width: 28px;
-  height: 28px;
-  background: var(--blue);
-  color: white;
-  border-radius: 7px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.assistant-composer > div > button:disabled {
-  background: #e9edf8;
-  color: #8493cb;
-  opacity: 1;
 }
 .assistant-bottom > p {
   font-size: 8px;
@@ -2049,9 +1985,6 @@ textarea {
   .suggestion-list button {
     font-size: 11px;
   }
-  .assistant-composer textarea {
-    font-size: 12px;
-  }
   .mobile-assistant-toggle {
     display: flex;
     position: fixed;
@@ -2281,17 +2214,6 @@ textarea {
   .categories svg {
     width: 20px;
     height: 20px;
-  }
-  .section-heading {
-    align-items: flex-start;
-    gap: 5px;
-    margin-bottom: 15px;
-  }
-  .section-heading h2 {
-    letter-spacing: -0.45px;
-  }
-  .section-heading > div > span {
-    font-size: 9px;
   }
   .sort-label select {
     font-size: 9px;
@@ -2672,9 +2594,6 @@ textarea {
   }
   .assistant-tip p {
     font-size: 10px;
-  }
-  .assistant-composer textarea {
-    font-size: 12px;
   }
   .assistant-bottom > p {
     font-size: 9px;

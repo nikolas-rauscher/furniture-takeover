@@ -111,20 +111,6 @@
 .ob-ask-step[data-done] {
   color: var(--ink);
 }
-.ob-ask-mark {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--selected);
-  color: var(--blue);
-}
-.ob-ask-step[data-done] .ob-ask-mark {
-  background: var(--blue);
-  color: var(--on-primary);
-}
 
 /* Ask: the offers, each a card on the intro's 3px lip */
 .ob-ask-offers {

@@ -38,6 +38,7 @@ export {
   ArchiveRestore,
   Ellipsis,
   ChevronRight,
+  CircleHelp,
   Armchair,
   GitCompareArrows,
   LocateFixed,

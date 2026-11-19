@@ -11,11 +11,12 @@
   object-fit: cover;
 }
 
+/* On home the deal card lines up with the search column above it. */
 .deal-card {
   display: grid;
   gap: 14px;
-  max-width: 640px;
-  margin: 0 0 var(--space-group);
+  max-width: 760px;
+  margin: 0 auto var(--space-section);
   padding: 16px;
   border: 2px solid var(--card-line);
   border-radius: var(--radius-stage);
@@ -62,6 +63,7 @@
 }
 .deal-card-terms > div {
   display: grid;
+  align-content: start;
   gap: 2px;
   min-width: 0;
   padding: 9px 12px;
@@ -72,14 +74,16 @@
   background: var(--selected);
 }
 .deal-card-terms dt {
-  display: inline-flex;
-  align-items: center;
+  display: flex;
+  align-items: flex-start;
   gap: 5px;
   color: var(--muted);
   font-size: var(--type-caption);
   font-weight: 600;
 }
+/* The icon sits on the label's first line, also when a long label wraps. */
 .deal-card-terms dt svg {
+  margin-top: 2px;
   color: var(--blue);
 }
 .deal-card-terms dd {
@@ -127,7 +131,11 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 10px;
+  gap: 4px 20px;
+}
+/* The text actions line up with the card's content instead of their own padding. */
+.deal-card-actions > .button.quiet {
+  padding-inline: 0;
 }
 
 /* In the agent chat the offer waits in a slim bar above the composer. */
@@ -203,12 +211,20 @@
   font-size: var(--type-caption);
 }
 
+/* Phones keep the four terms as a compact 2 × 2 grid. */
 @media (max-width: 560px) {
   .deal-card {
     padding: 14px;
   }
   .deal-card-terms {
-    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+  .deal-card-terms > div {
+    padding: 8px 10px;
+    border-radius: 12px;
+  }
+  .deal-card-actions {
+    justify-content: center;
   }
   .deal-card-actions > .button.primary {
     width: 100%;

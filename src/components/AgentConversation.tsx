@@ -39,9 +39,10 @@ export default function AgentConversation({
 }: AgentConversationProps) {
   const headingId = useId();
   const viewport = useRef<HTMLDivElement>(null);
-  // Messages dissolve into the header and the composer instead of being cut off there.
-  // No shrink or blur: a whole message still in view looked out of focus.
-  useScrollFade(viewport, { size: 32, shrink: 0, blur: 0 });
+  // Messages dissolve into the header and the composer instead of being cut off there; the
+  // jump-to-latest button rests inside the lower fade. No shrink or blur: a whole message
+  // still in view looked out of focus.
+  useScrollFade(viewport, { size: 48, shrink: 0, blur: 0 });
   const turns = state.id ? [...state.history, state] : [];
   return (
     <section

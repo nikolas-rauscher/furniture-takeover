@@ -87,23 +87,6 @@
     display: none;
   }
 }
-.agent-prompt-form {
-  width: 100%;
-  margin: 0;
-}
-.agent-prompt-form .assistant-composer {
-  height: auto;
-}
-.agent-prompt-form [data-slot="input-group-addon"] {
-  padding: 0;
-}
-.agent-prompt-form textarea {
-  width: 100%;
-  min-width: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-}
 .agent-sources {
   margin-block: var(--space-label) 0;
 }

@@ -7,7 +7,7 @@ import {
 import { ArrowRight, Square } from "@/components/icons";
 import { useLayoutEffect, useRef } from "react";
 import { fitTextarea } from "../textarea";
-import "./agent-composer.css";
+import "./composer.css";
 
 type AgentComposerProps = {
   value: string;
@@ -57,7 +57,7 @@ export default function AgentComposer({
         send();
       }}
     >
-      <InputGroup className="assistant-composer conversation-composer">
+      <InputGroup className="composer-field">
         <InputGroupTextarea
           ref={textarea}
           aria-label={label}
@@ -86,7 +86,7 @@ export default function AgentComposer({
             animateIcon
             size="icon-sm"
             variant="plain"
-            className="agent-composer-send"
+            className="composer-send"
             type={onStop ? "button" : "submit"}
             aria-label={onStop ? "Stop agent" : sendLabel}
             title={onStop ? "Stop agent" : sendLabel}
