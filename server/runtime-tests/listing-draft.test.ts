@@ -173,11 +173,7 @@ test("a researched proposal preserves citations, plain step labels and two immed
         !step.label.includes("bureau") && !step.detail?.includes("bureau"),
     ),
   );
-  assert.ok(
-    !steps.some(
-      (step) => step.state === "error",
-    ),
-  );
+  assert.ok(!steps.some((step) => step.state === "error"));
   const question = events.find((event) => event.type === "question");
   assert.equal(question?.question, "What asking price would you like?");
   assert.equal(question.input?.value, 40);
@@ -199,6 +195,7 @@ test("a proposal rejects invalid amounts, non-asking prices and insufficient dis
     [40, ["web-1", "web-1"], "CHF 50"],
     [40, ["web-1", "web-2"], "Sold for CHF 50"],
     [40, ["web-1", "web-2"], "Retail CHF 50"],
+    [40, ["web-1", "web-2"], "Shipping CHF 50"],
     [40, ["web-1", "web-2"], "Starting bid CHF 50"],
   ] as const) {
     const model = new MockLanguageModelV4({
@@ -215,6 +212,31 @@ test("a proposal rejects invalid amounts, non-asking prices and insufficient dis
       "price",
     );
   }
+});
+
+test("laptop model years and Swiss thousands separators stay distinct from asking prices", async () => {
+  const model = new MockLanguageModelV4({
+    doStream: [
+      search(),
+      propose(1250, "macbook-price"),
+      toolCall(
+        "ask_user",
+        {
+          listingField: "price",
+          question: "What asking price would you like?",
+        },
+        "decision",
+      ),
+    ],
+  });
+  const events = await runDraft(
+    model,
+    ["MacBook Pro 2020 CHF 1,300.", "MacBook Pro, CHF 1’200."],
+    "MacBook Pro",
+  );
+  const proposal = events.find((event) => event.type === "listing_patch");
+  assert.equal(proposal?.patch.price, 1250);
+  assert.match(proposal.reason, /CHF 1200–1300/);
 });
 
 test("listing inputs bound photo hints, queued questions and editable tap fields", () => {
