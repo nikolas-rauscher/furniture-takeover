@@ -2001,7 +2001,7 @@ export default function App({
                               event.preventDefault();
                               void searchByPhoto(file);
                             }}
-                            aria-label="Search furniture"
+                            aria-label="Search second-hand listings"
                             maxLength={4000}
                             value={query}
                             onChange={(event) => setQuery(event.target.value)}
