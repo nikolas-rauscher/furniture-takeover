@@ -74,6 +74,7 @@ import Toast, { type ToastAction } from "./components/Toast";
 import DatabaseStatus from "./components/DatabaseStatus";
 import Modal from "./components/Modal";
 import ProductCard from "./components/ProductCard";
+import ProductGrid from "./components/ProductGrid";
 import SearchPreferencesFields from "./components/SearchPreferencesFields";
 import SellFlow, {
   listingSaveWords,
@@ -1655,12 +1656,12 @@ export default function App({
       </AgentConversation>
     </section>
   );
-  const productCard = (item: Product, showFavorite = true) => (
+  const productCard = (item: Product, arriving = false) => (
     <ProductCard
       key={item.id}
       product={item}
+      arriving={arriving}
       favorite={favorites.includes(item.id)}
-      showFavorite={showFavorite}
       compared={compared.includes(item.id)}
       onOpen={() => openProduct(item)}
       onToggleFavorite={() => toggleFavorite(item.id)}
@@ -2280,9 +2281,10 @@ export default function App({
                           : "Saved in this browser."}
                       </p>
                     </div>
-                    <div className="product-grid">
-                      {visibleListings.map((item) => productCard(item))}
-                    </div>
+                    <ProductGrid
+                      items={visibleListings}
+                      renderProduct={productCard}
+                    />
                   </>
                 )}
                 {showHomeListings && !visibleListings.length && (

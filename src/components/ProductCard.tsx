@@ -1,3 +1,4 @@
+import { motion } from "motion/react";
 import { Button } from "./ui/button";
 import { listingPhotos } from "../../shared/listingPhotos";
 import {
@@ -11,6 +12,8 @@ import "./product-card.css";
 
 type ProductCardProps = {
   product: Product;
+  /** A listing that joins a grid already on screen rises into place; others are simply there. */
+  arriving?: boolean;
   favorite: boolean;
   showFavorite?: boolean;
   compared: boolean;
@@ -18,6 +21,8 @@ type ProductCardProps = {
   onToggleFavorite: () => void;
   onToggleCompare: () => void;
 };
+
+const RISE = { duration: 0.56, ease: [0.16, 1, 0.3, 1] } as const;
 
 /** A sticker on the photo tells what matters before the details: sold, reserved or free. */
 function productSticker(product: Product) {
@@ -28,6 +33,7 @@ function productSticker(product: Product) {
 
 export default function ProductCard({
   product,
+  arriving = false,
   favorite,
   showFavorite = true,
   compared,
@@ -50,7 +56,12 @@ export default function ProductCard({
     .slice(0, 3);
   const sticker = productSticker(product);
   return (
-    <article className="product-card linked-card">
+    <motion.article
+      className="product-card linked-card"
+      initial={arriving ? { opacity: 0, y: 16 } : false}
+      animate={{ opacity: 1, y: 0 }}
+      transition={RISE}
+    >
       <div className="product-photo">
         {product.image ? (
           <img src={product.image} alt="" loading="lazy" />
@@ -119,6 +130,6 @@ export default function ProductCard({
           {product.available}
         </p>
       </div>
-    </article>
+    </motion.article>
   );
 }

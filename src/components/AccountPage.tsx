@@ -33,6 +33,7 @@ import Confetti from "./onboarding/Confetti";
 import Pako, { PAKO_FLIGHT_MS } from "./onboarding/Pako";
 import type { PakoMood } from "./onboarding/storyTypes";
 import PakoReaction from "./PakoReaction";
+import ProductGrid from "./ProductGrid";
 
 export type AccountTab = "favorites" | "listings" | "archive";
 
@@ -172,7 +173,7 @@ type AccountPageProps = {
   onOpen(item: Product): void;
   onEdit(item: Product): void;
   onStatusChange(id: string, status: Product["status"]): void;
-  renderProduct(item: Product): ReactNode;
+  renderProduct(item: Product, arriving: boolean): ReactNode;
   /** The listing that was just published, celebrated for a few seconds. */
   publishedId: string | null;
   onCelebrationEnd(): void;
@@ -268,9 +269,7 @@ export default function AccountPage({
   );
   const content = items.length ? (
     isSaved ? (
-      <div className="product-grid">
-        {items.map((item) => renderProduct(item))}
-      </div>
+      <ProductGrid items={items} renderProduct={renderProduct} />
     ) : (
       <div className="own-listings">
         {items.map((item) => (
