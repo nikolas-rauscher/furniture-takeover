@@ -82,7 +82,7 @@ const proposalSchema = z
       .array(
         z
           .object({
-            label: z.string().trim().min(1).max(40),
+            label: z.string().trim().min(1).describe("At most 40 characters."),
             kind: z.enum(THREAD_OPTION_KINDS),
             message: z
               .string()
@@ -96,18 +96,13 @@ const proposalSchema = z
             terms: proposedTermsSchema.optional(),
           })
           .strict()
-          .refine(
-            (option) =>
-              option.message !== undefined ||
-              (option.kind === "ask" && /[?？]$/.test(option.label)),
-            {
-              message:
-                "Supply a message unless the label is the complete question.",
-            },
-          )
           .transform((option) => ({
             ...option,
-            message: option.message ?? option.label,
+            message:
+              option.message ??
+              (option.kind === "ask" && /[?？]$/.test(option.label)
+                ? option.label
+                : ""),
           })),
       )
       .min(1)
@@ -551,6 +546,20 @@ function checkedOption(
   facts: ThreadFacts,
   now: Date,
 ): ThreadTurn["options"][number] {
+  if (option.label.length > 40)
+    throw new Error("Keep the label within 40 characters.");
+  if (!option.message)
+    throw new Error(
+      "Supply a draft or use its complete question as the label.",
+    );
+  if (
+    /\bcondition\b/i.test(option.label) &&
+    /[?？]/.test(option.message) &&
+    !/[?？]|\b(?:ask|check|which|what|whether)\b/i.test(option.label)
+  )
+    throw new Error(
+      "Disclose the follow-up question in the condition label or remove it.",
+    );
   const terms = optionTerms(option, index, request, facts, now);
   checkOptionLabel(option, request, facts);
   return { ...option, id: `opt-${index + 1}`, terms };
@@ -615,10 +624,11 @@ function groundProposal(
     checkSafeText(option.message, `options[${index}].message`);
   });
   checkFacts(proposal.facts, request);
-  const distinct = new Set(
-    proposal.options.map((option) => plainText(option.message)),
-  );
-  if (distinct.size !== proposal.options.length)
+  const drafts = proposal.options
+    .map((option) => option.message)
+    .filter(Boolean);
+  const distinct = new Set(drafts.map(plainText));
+  if (distinct.size !== drafts.length)
     throw new Error("options: each option must be a different message.");
   const pickupAt = proposal.facts.pickupTime
     ? resolvePickupAt(proposal.facts.pickupTime.value, now)
@@ -840,7 +850,8 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
           if (part.type === "error") streamFailure = part.error;
           // The SDK's message would repeat the input, which quotes the students.
           if (
-            part.type === "tool-error" &&
+            part.type === "tool-call" &&
+            part.invalid &&
             InvalidToolInputError.isInstance(part.error)
           )
             failedChecks.push("the input did not match the tool's schema");

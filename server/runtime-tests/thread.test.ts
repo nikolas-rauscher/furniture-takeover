@@ -470,6 +470,11 @@ for (const [label, message, repair] of [
     "Let's meet at Café Central.",
     /day, time and place/,
   ],
+  [
+    "Describe listed condition: Good",
+    "It is in good condition. Anything you want checked?",
+    /follow-up question/,
+  ],
   ["Accept CHF 145, Friday", "Friday works.", /deal card/],
 ] as const) {
   test(`repairs "${label}" before showing "${message}"`, async (t) => {
@@ -686,4 +691,32 @@ test("a short question label is the exact composer draft when no message is supp
     terms: null,
   });
   assert.equal(model.doStreamCalls.length, 1);
+});
+
+test("an incomplete or overlong chip cannot invalidate two checked replies", async (t) => {
+  const valid = [
+    { kind: "ask", label: "Which time works?" },
+    option({
+      label: "Confirm availability",
+      message: "Yes, it's still available.",
+    }),
+  ];
+  for (const invalid of [
+    { kind: "answer", label: "Confirm availability only" },
+    option({
+      label:
+        "Confirm availability and also suggest meeting up for pickup on Friday",
+    }),
+  ]) {
+    const { model, agent } = agentReading(
+      t,
+      reading({ facts: {}, stance: "question", options: [invalid, ...valid] }),
+    );
+    const turn = await agent.turn(bike);
+    assert.deepEqual(
+      turn.options.map((item) => item.id),
+      ["opt-2", "opt-3"],
+    );
+    assert.equal(model.doStreamCalls.length, 1);
+  }
 });
