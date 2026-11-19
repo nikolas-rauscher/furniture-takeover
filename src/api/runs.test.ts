@@ -438,7 +438,11 @@ test("listing runs send the conversation so far and search runs their matches an
     listingStart: true,
     photoAnalysis: { missingDetails: ["Model year"], keywords: ["MacBook"] },
     skippedQuestions: [
-      { question: "Which chip is it?", listingField: "other" as const },
+      {
+        question: "Which chip is it?",
+        listingField: "other" as const,
+        choices: ["M1", "M2"],
+      },
     ],
     answeredQuestions: [
       { question: "How much storage does it have?", answer: "512 GB" },
@@ -468,6 +472,7 @@ test("listing runs send the conversation so far and search runs their matches an
     { photoAnalysis: { missingDetails: [""] } },
     { photoAnalysis: { notes: ["private"] } },
     { skippedQuestions: [{ question: "Which chip?", listingField: "colour" }] },
+    { skippedQuestions: [{ question: "Which chip?", choices: ["M1", ""] }] },
     { answeredQuestions: [{ question: "Storage?" }] },
     { ownListingIds: Array.from({ length: 201 }, (_, index) => `id-${index}`) },
     { previousMatchIds: [42] },

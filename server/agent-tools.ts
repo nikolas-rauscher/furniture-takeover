@@ -156,7 +156,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
               "This is the current seller-approved asking price, including any accepted price suggestion. Preserve it. Ignore older claims that the price is missing. Continue with a different useful missing detail or finish.",
           };
         }
-        const repeated = repeatedQuestion(parsedQuestion.question, request, parsedQuestion.listingField);
+        const repeated = repeatedQuestion(parsedQuestion.question, request, parsedQuestion.listingField, parsedQuestion.choices);
         if (repeated) {
           state.listingNeedsInput = false;
           return {
@@ -190,7 +190,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
         const title = listingAssist ? request.context?.currentDraft?.title : undefined;
         const formattedMain = formatQuestion(main, title);
         const queued = followUps.filter((followUp) => {
-          if (!listingAssist || repeatedQuestion(followUp.question, request, followUp.listingField)) return false;
+          if (!listingAssist || repeatedQuestion(followUp.question, request, followUp.listingField, followUp.choices)) return false;
           const field = followUp.listingField;
           if (field === "price") return false;
           return !field || field === "other" || field === "description" ||

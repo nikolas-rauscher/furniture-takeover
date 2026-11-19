@@ -376,15 +376,19 @@ function listingHistory(
       )
     )
       throw invalid();
-    history.skippedQuestions = skipped.map((item) => ({
-      question: item.question,
-      ...(item.listingField === undefined
-        ? {}
-        : {
-            listingField:
-              item.listingField as AgentListingQuestion["listingField"],
-          }),
-    }));
+    history.skippedQuestions = skipped.map((item) => {
+      const choices = optionalList(item.choices, 5, 120, invalid);
+      return {
+        question: item.question as string,
+        ...(item.listingField === undefined
+          ? {}
+          : {
+              listingField:
+                item.listingField as AgentListingQuestion["listingField"],
+            }),
+        ...(choices ? { choices } : {}),
+      };
+    });
   }
   if (value.answeredQuestions !== undefined) {
     const answered = value.answeredQuestions;

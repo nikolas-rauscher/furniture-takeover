@@ -62,7 +62,10 @@ export type AgentRunRequest = {
     currentDraft?: AgentListingDraft;
     previousQuestion?: string;
     negotiation?: Negotiation;
-    skippedQuestions?: Pick<AgentListingQuestion, "question" | "listingField">[];
+    skippedQuestions?: Pick<
+      AgentListingQuestion,
+      "question" | "listingField" | "choices"
+    >[];
     answeredQuestions?: { question: string; answer: string }[];
     recentMessages?: { role: "user" | "assistant"; text: string }[];
   };

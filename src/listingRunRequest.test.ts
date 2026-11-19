@@ -72,6 +72,7 @@ test("every answered question goes along, follow-ups, Pako's own and skipped one
   const price = question("ask-1", "What asking price would you like?");
   const fact = question("ask-1:1", "Can the desk be taken apart?");
   fact.listingField = "other";
+  fact.choices = ["Comes apart", "One piece"];
   const pickup = question("pako-pickup", "When can buyers pick it up?");
   const earlier = {
     ...emptyAgentRunState(),
@@ -91,7 +92,9 @@ test("every answered question goes along, follow-ups, Pako's own and skipped one
       answers: { "pako-pickup": "Weekday evenings" },
     },
   });
-  assert.deepEqual(request.context?.skippedQuestions, [{ question: fact.question, listingField: "other" }]);
+  assert.deepEqual(request.context?.skippedQuestions, [
+    { question: fact.question, listingField: "other", choices: fact.choices },
+  ]);
   assert.deepEqual(request.context?.answeredQuestions, [
     { question: price.question, answer: "Use CHF 40" },
     { question: fact.question, answer: "Skipped" },
