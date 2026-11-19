@@ -8,6 +8,7 @@ import {
 import type { AgentQuota, PhotoGroup } from "../../shared/agent";
 import {
   batchItem,
+  itemsCovered,
   itemsFromGroups,
   movePhoto,
   removePhoto,
@@ -54,8 +55,6 @@ type Props = {
   start?: BatchStart;
 };
 
-/** Drafting one item takes Pako two requests: reading its photos and writing the listing. */
-const REQUESTS_PER_ITEM = 2;
 /** A photo glides to the pile it was moved to. */
 const GLIDE = { type: "spring", stiffness: 420, damping: 34 } as const;
 
@@ -138,9 +137,10 @@ function batchGuide({
 
 /** How many of the piles today's AI allowance can still draft, when it cannot draft them all. */
 function allowanceNote(quota: AgentQuota | undefined, piles: number) {
-  if (!quota || quota.remaining >= piles * REQUESTS_PER_ITEM) return "";
-  const drafts = Math.floor(quota.remaining / REQUESTS_PER_ITEM);
-  return `Today's AI allowance covers about ${drafts} of ${piles} drafts. You can finish the others by hand.`;
+  const drafts = itemsCovered(quota?.remaining, piles);
+  return drafts === undefined
+    ? ""
+    : `Today's AI allowance covers about ${drafts} of ${piles} drafts. You can finish the others by hand.`;
 }
 
 export default function BatchSellFlow({

@@ -52,6 +52,8 @@ import {
   type PakoAbsence,
 } from "../sellGuide";
 import ListingFields from "./ListingFields";
+import PhotoSplitQuestion from "./PhotoSplitQuestion";
+import type { PhotoGroup } from "../../shared/agent";
 import Pako from "./onboarding/Pako";
 import { listingPhotos } from "../../shared/listingPhotos";
 import "./sell-flow.css";
@@ -216,6 +218,8 @@ type SellFlowProps = {
   manual: boolean;
   /** What Pako made of the photos so far. */
   photoInsight: PhotoInsight;
+  /** Sorting the photos did not work, so they count as one item. */
+  sortFailed: boolean;
   agentConversation?: ReactNode;
   agentTools?: ReactNode;
   agentWorking?: boolean;
@@ -233,6 +237,12 @@ type SellFlowProps = {
   onCreateDraft: () => void;
   /** Goes on to the details without Pako. */
   onFillIn: () => void;
+  /** One listing per pile; `review` opens the piles to check first. */
+  onSeparate: (groups: PhotoGroup[], review: boolean) => void;
+  /** The photos show one thing after all. */
+  onKeepTogether: () => void;
+  /** Opens the photos as one pile each, for the student to sort when Pako could not. */
+  onSortYourself: () => void;
   /** Checks again whether Pako's tools can be reached. */
   onRetryPako: () => void;
   /** The student left the Details field, so what they wrote counts now. */
@@ -261,6 +271,7 @@ export default function SellFlow({
   pakoBack,
   manual,
   photoInsight,
+  sortFailed,
   agentConversation,
   agentTools,
   agentWorking = false,
@@ -271,6 +282,9 @@ export default function SellFlow({
   onPhotoSelected,
   onCreateDraft,
   onFillIn,
+  onSeparate,
+  onKeepTogether,
+  onSortYourself,
   onRetryPako,
   onNotesDone,
   onPublish,
@@ -346,7 +360,8 @@ export default function SellFlow({
   const notesField = useRef<HTMLTextAreaElement>(null);
   const notesFocused = useFocused(notesField);
   const ready = !unavailable && photos.length > 0;
-  const canCreateDraft = liveAgent && ready;
+  const canCreateDraft =
+    liveAgent && ready && photoInsight.status !== "sorting";
   const saveVerb = saveWords.verb.toLowerCase();
   const guide = sellGuide({
     photoCount: photos.length,
@@ -358,7 +373,11 @@ export default function SellFlow({
     hasPlace: Boolean(draft.location.trim()),
     typing: notesFocused,
     insight: photoInsight,
+    sortFailed,
+    remaining: quota?.remaining,
   });
+  const piles =
+    photoInsight.status === "several" ? photoInsight.groups : undefined;
   // A reaction plays once for its moment, then Pako rests.
   const reacted = useMomentPassed(
     isReaction(guide.mood)
@@ -473,12 +492,30 @@ export default function SellFlow({
                   </Button>
                 </div>
               )}
+              {sortFailed && !editing && (
+                <div className="sell-guide-actions">
+                  <Button
+                    className="button quiet small"
+                    onClick={onSortYourself}
+                  >
+                    Several things? Sort them yourself
+                  </Button>
+                </div>
+              )}
               {pakoAbsence === "offline" && (
                 <div className="sell-guide-actions">
                   <Button className="button quiet small" onClick={onRetryPako}>
                     Try again
                   </Button>
                 </div>
+              )}
+              {piles && (
+                <PhotoSplitQuestion
+                  photos={photos}
+                  groups={piles}
+                  onTogether={onKeepTogether}
+                  onSeparate={onSeparate}
+                />
               )}
             </div>
             <div className="photo-upload-panel">
@@ -546,29 +583,45 @@ export default function SellFlow({
             </form>
           </div>
           <div className="sell-photo-footer">
-            <Button
-              animateIcon
-              className="button primary large full"
-              type="submit"
-              form={formId}
-              disabled={pakoAbsence ? !ready : !canCreateDraft}
-              data-invite={(inviting && canCreateDraft) || undefined}
-            >
-              {unavailable ? (
-                <LoaderCircle animate size={18} aria-hidden="true" />
-              ) : pakoAbsence ? (
-                <Pencil size={18} aria-hidden="true" />
-              ) : (
-                <Sparkles size={18} aria-hidden="true" />
-              )}
-              {photoReading
-                ? "Loading photo…"
-                : busy
-                  ? "Preparing draft…"
-                  : pakoAbsence
-                    ? FILL_IN_ACTION
-                    : WRITE_ACTION}
-            </Button>
+            {piles ? (
+              <>
+                <Button
+                  animateIcon
+                  className="button primary large full"
+                  onClick={() => onSeparate(piles, false)}
+                >
+                  <Images size={18} aria-hidden="true" />
+                  Make {piles.length} listings
+                </Button>
+                <Button className="button quiet" onClick={onKeepTogether}>
+                  It's one thing
+                </Button>
+              </>
+            ) : (
+              <Button
+                animateIcon
+                className="button primary large full"
+                type="submit"
+                form={formId}
+                disabled={pakoAbsence ? !ready : !canCreateDraft}
+                data-invite={(inviting && canCreateDraft) || undefined}
+              >
+                {unavailable ? (
+                  <LoaderCircle animate size={18} aria-hidden="true" />
+                ) : pakoAbsence ? (
+                  <Pencil size={18} aria-hidden="true" />
+                ) : (
+                  <Sparkles size={18} aria-hidden="true" />
+                )}
+                {photoReading
+                  ? "Loading photo…"
+                  : busy
+                    ? "Preparing draft…"
+                    : pakoAbsence
+                      ? FILL_IN_ACTION
+                      : WRITE_ACTION}
+              </Button>
+            )}
           </div>
         </div>
       ) : (

@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import type { AssistResponse } from "../../shared/agent";
+import type { AssistResponse, PhotoGroup } from "../../shared/agent";
 import { requestAgentAssist } from "../api/agent";
 import {
   analysisKey,
   analysisPlan,
   photoFingerprint,
 } from "../listingAnalysis";
+import { usePhotoSorting } from "./usePhotoSorting";
 import { useSettledText } from "./useSettledText";
 
 /** Photos count once they have stopped changing for this long. */
@@ -16,6 +17,10 @@ const NOTE_SETTLE_MS = 1500;
 /** What Pako knows about the photos of the listing being written. */
 export type PhotoInsight =
   | { status: "empty" }
+  /** He sorts several photos into one pile per item. */
+  | { status: "sorting"; photoCount: number }
+  /** The photos show several things, one pile each. */
+  | { status: "several"; groups: PhotoGroup[] }
   /** He looks at the photos, or only at a changed note. */
   | { status: "reading"; noteOnly: boolean }
   /** He looked at the photos together with this note. */
@@ -78,6 +83,14 @@ export function useListingAnalysis({
   );
   const inFlight = useRef<InFlight | null>(null);
   const settled = settledPhotos === photosKey;
+  const { sort, keepTogether } = usePhotoSorting({
+    photos,
+    photosKey,
+    settled,
+    enabled: active && available,
+  });
+  /** Pako looks at the photos as one item once sorting found one, or could not sort them. */
+  const oneItem = sort.status === "one" || sort.status === "failed";
   // While the student still types, Pako waits for the note instead of looking twice.
   const typing = note.trim() !== settledNote.trim();
   const key = analysisKey({ photos, note: settledNote, location });
@@ -138,6 +151,7 @@ export function useListingAnalysis({
 
   useEffect(() => {
     if (!active || !available || !photos.length || !settled || typing) return;
+    if (!oneItem) return;
     if (
       ready?.key === key ||
       failed?.key === key ||
@@ -146,7 +160,7 @@ export function useListingAnalysis({
       return;
     void request(key, { photos, note: settledNote, location });
     // The key stands for the photos, note and place it was made from.
-  }, [active, available, settled, typing, key, ready, failed]);
+  }, [active, available, settled, typing, oneItem, key, ready, failed]);
 
   /** The analysis of exactly these photos, note and place: finished, under way or new. */
   async function ensure(input: AnalysisInput): Promise<AssistResponse> {
@@ -169,17 +183,27 @@ export function useListingAnalysis({
     ? { status: "empty" }
     : !available
       ? { status: "unavailable" }
-      : settled && ready?.key === key
-        ? {
-            status: "ready",
-            response: ready.response,
-            note: settledNote.trim(),
-          }
-        : settled && failed?.key === key
-          ? { status: "failed", error: failed.error, retry }
-          : {
-              status: "reading",
-              noteOnly: settled && ready?.photos === photosKey,
-            };
-  return { insight, ensure, flushNote };
+      : sort.status === "sorting"
+        ? { status: "sorting", photoCount: photos.length }
+        : sort.status === "several"
+          ? { status: "several", groups: sort.groups }
+          : settled && ready?.key === key
+            ? {
+                status: "ready",
+                response: ready.response,
+                note: settledNote.trim(),
+              }
+            : settled && failed?.key === key
+              ? { status: "failed", error: failed.error, retry }
+              : {
+                  status: "reading",
+                  noteOnly: settled && ready?.photos === photosKey,
+                };
+  return {
+    insight,
+    ensure,
+    flushNote,
+    keepTogether,
+    sortFailed: sort.status === "failed",
+  };
 }

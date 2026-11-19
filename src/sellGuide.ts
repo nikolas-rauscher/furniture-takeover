@@ -1,5 +1,6 @@
 import type { AgentMetadata } from "../shared/agent";
 import { money } from "../shared/marketplace.ts";
+import { itemsCovered } from "./batchListings.ts";
 import type { GuideBubble } from "./components/onboarding/Guide";
 import type { PakoMood } from "./components/onboarding/storyTypes";
 import type { PhotoInsight } from "./hooks/useListingAnalysis";
@@ -95,14 +96,47 @@ function recognised(
   };
 }
 
-function insightGuide(insight: PhotoInsight): SellGuide {
+const things = (count: number) => (count === 1 ? "1 thing" : `${count} things`);
+
+function insightGuide(
+  insight: PhotoInsight,
+  { sortFailed, remaining }: { sortFailed: boolean; remaining?: number },
+): SellGuide {
   switch (insight.status) {
+    case "sorting":
+      return {
+        mood: "work",
+        bubble: {
+          id: WORKING,
+          text: `Looking through your ${insight.photoCount} photos…`,
+        },
+      };
+    case "several": {
+      const count = insight.groups.length;
+      const covered = itemsCovered(remaining, count);
+      return {
+        mood: "happy",
+        bubble: {
+          id: `several:${count}`,
+          title: `I spotted ${things(count)}`,
+          text:
+            `Shall I make ${count} listings, one for each?` +
+            (covered === undefined
+              ? ""
+              : ` I can write about ${covered} of them today. You can fill in the rest yourself.`),
+        },
+      };
+    }
     case "reading":
       return {
         mood: "think",
         bubble: {
           id: WORKING,
-          text: insight.noteOnly ? "Reading your note…" : "Let me have a look…",
+          text: insight.noteOnly
+            ? "Reading your note…"
+            : sortFailed
+              ? "I couldn't sort these photos, so I'll treat them as one item."
+              : "Let me have a look…",
         },
       };
     case "ready":
@@ -179,6 +213,8 @@ export function sellGuide({
   hasPlace,
   typing,
   insight,
+  sortFailed,
+  remaining,
 }: {
   photoCount: number;
   photoReading: boolean;
@@ -192,6 +228,10 @@ export function sellGuide({
   /** The Details field has focus. */
   typing: boolean;
   insight: PhotoInsight;
+  /** Sorting the photos did not work, so they count as one item. */
+  sortFailed: boolean;
+  /** Requests left in today's allowance; none in the local demo. */
+  remaining?: number;
 }): SellGuide {
   if (preparing)
     return {
@@ -226,6 +266,6 @@ export function sellGuide({
         text: `Add a place below, then tap ${WRITE_ACTION}.`,
       },
     };
-  const guide = insightGuide(insight);
+  const guide = insightGuide(insight, { sortFailed, remaining });
   return typing ? { ...guide, mood: "listen" } : guide;
 }

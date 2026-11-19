@@ -129,3 +129,16 @@ export function missingDetails(draft: ListingDraft): string[] {
     !draft.location.trim() && "pickup location",
   ].filter((value): value is string => Boolean(value));
 }
+
+/** Writing one item takes Pako two requests: looking at its photos and writing the listing. */
+export const REQUESTS_PER_ITEM = 2;
+
+/** How many of these items today's allowance still covers, when it cannot cover them all. */
+export function itemsCovered(
+  remaining: number | undefined,
+  items: number,
+): number | undefined {
+  if (remaining === undefined || remaining >= items * REQUESTS_PER_ITEM)
+    return undefined;
+  return Math.floor(remaining / REQUESTS_PER_ITEM);
+}

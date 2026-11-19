@@ -445,3 +445,6 @@
 .listing-workspace .listing-save-form > .button[type="submit"] {
   margin-left: auto;
 }
+.sell-guide > .split-question {
+  margin-top: 12px;
+}

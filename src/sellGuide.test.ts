@@ -21,6 +21,7 @@ const facts = (overrides: Partial<Parameters<typeof sellGuide>[0]> = {}) =>
     saveVerb: "save",
     hasPlace: true,
     typing: false,
+    sortFailed: false,
     insight: { status: "reading", noteOnly: false },
     ...overrides,
   });
@@ -177,4 +178,36 @@ test("the recognised line names the item and the facts its title leaves out", ()
     "IKEA desk, 120x60 cm, used",
   );
   assert.equal(recognisedLine({ title: "Lamp", price: 0 }), "Lamp for free");
+});
+
+test("several photos are sorted first, and several things become Pako's question", () => {
+  const sorting = facts({
+    photoCount: 3,
+    insight: { status: "sorting", photoCount: 3 },
+  });
+  assert.equal(sorting.mood, "work");
+  assert.equal(sorting.bubble.text, "Looking through your 3 photos…");
+  const groups = [
+    { photos: [0, 1], label: "Wooden chair" },
+    { photos: [2], label: "Yellow lamp" },
+  ];
+  const several = facts({
+    photoCount: 3,
+    insight: { status: "several", groups },
+  });
+  assert.equal(several.mood, "happy");
+  assert.equal(several.bubble.title, "I spotted 2 things");
+  assert.equal(several.bubble.text, "Shall I make 2 listings, one for each?");
+  assert.equal(
+    facts({
+      photoCount: 3,
+      remaining: 3,
+      insight: { status: "several", groups },
+    }).bubble.text,
+    "Shall I make 2 listings, one for each? I can write about 1 of them today. You can fill in the rest yourself.",
+  );
+  assert.equal(
+    facts({ photoCount: 3, sortFailed: true }).bubble.text,
+    "I couldn't sort these photos, so I'll treat them as one item.",
+  );
 });

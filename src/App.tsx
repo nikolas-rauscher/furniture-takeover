@@ -23,7 +23,7 @@ import ListingDetailPage from "./components/ListingDetailPage";
 import ComparePage from "./components/ComparePage";
 import SavedSearchesPage from "./components/SavedSearchesPage";
 import { listingPhotos, MAX_LISTING_PHOTOS } from "../shared/listingPhotos";
-import { readListingPhoto, sortListingPhotos } from "./listingPhotos";
+import { readListingPhoto } from "./listingPhotos";
 import { randomUuid } from "./randomUuid";
 import type { PhotoGroup } from "../shared/agent";
 import WorkspacePage from "./components/WorkspacePage";
@@ -101,7 +101,6 @@ import PhotoSearchButton, { imageFrom } from "./components/PhotoSearchButton";
 import BatchSellFlow, { type BatchStart } from "./components/BatchSellFlow";
 import { batchItem, itemsFromGroups } from "./batchListings";
 import { batchStepNote } from "./sellingCelebration";
-import PhotoSplitQuestion from "./components/PhotoSplitQuestion";
 import AgentSuggestions from "./components/AgentSuggestions";
 import AgentRunPanel from "./components/AgentRunPanel";
 import { useAgentRun } from "./hooks/useAgentRun";
@@ -366,11 +365,6 @@ export default function App({
   /** The student fills in the listing's details themselves, without Pako. */
   const [manualListing, setManualListing] = useState(false);
   const [sellMode, setSellMode] = useState<"single" | "batch">("single");
-  // Set when several photos turn out to show different items.
-  const [photoSplit, setPhotoSplit] = useState<{
-    photos: string[];
-    groups: PhotoGroup[];
-  } | null>(null);
   const [batchStart, setBatchStart] = useState<BatchStart | undefined>();
   // Several sorted items, created one after another with the listing agent.
   const [batchQueue, setBatchQueue] = useState<{
@@ -816,7 +810,6 @@ export default function App({
     setSellStep(1);
     setManualListing(false);
     setSellMode("single");
-    setPhotoSplit(null);
     setBatchStart(undefined);
     setBatchQueue(null);
     setEditingListing(null);
@@ -1339,11 +1332,8 @@ export default function App({
       }
     }
   }
-  /**
-   * `together` skips the different-items check after the seller chose one listing;
-   * `keepTitle` keeps a title the seller already wrote instead of the agent's.
-   */
-  async function generateDraft({ together = false, keepTitle = false } = {}) {
+  /** `keepTitle` keeps a title the seller already wrote instead of the agent's. */
+  async function generateDraft({ keepTitle = false } = {}) {
     // The ref, not state: a batch item may start right after a cancelled read.
     if (imageReader.current) {
       setUploadError("Your photo is still loading.");
@@ -1361,17 +1351,6 @@ export default function App({
     setUploadError("");
     try {
       const photos = listingPhotos(start);
-      if (!together && photos.length > 1) {
-        // Sorting is a hint: if it fails, draft one listing as before.
-        const groups = await sortListingPhotos(photos, controller.signal).catch(
-          () => null,
-        );
-        if (controller.signal.aborted) return;
-        if (groups && groups.length > 1) {
-          setPhotoSplit({ photos, groups });
-          return;
-        }
-      }
       setSellStep(2);
       const response = await listingAnalysis.ensure({
         photos,
@@ -1454,12 +1433,11 @@ export default function App({
     draftId.current = randomUuid();
     setEditingListing(null);
     setUploadError("");
-    setPhotoSplit(null);
     setDraft(next);
     // Without Pako the next item opens as plain details for the student to fill in.
     setManualListing(!configured);
     setSellStep(configured ? 1 : 2);
-    if (configured) void generateDraft({ together: true, keepTitle: true });
+    if (configured) void generateDraft({ keepTitle: true });
   }
   function startBatchListings(drafts: ListingDraft[]) {
     if (!drafts.length) return;
@@ -1549,6 +1527,20 @@ export default function App({
     setSellMode("single");
     setManualListing(false);
     setUploadError("");
+  }
+  /** Pako's piles become one listing each, or open for the student to check first. */
+  function separateItems(groups: PhotoGroup[], review: boolean) {
+    const photos = listingPhotos(draftRef.current);
+    if (!review) {
+      startBatchListings(
+        itemsFromGroups(photos, groups, draftRef.current.location).map(
+          (item) => item.draft,
+        ),
+      );
+      return;
+    }
+    setBatchStart({ photos, groups, review });
+    setSellMode("batch");
   }
   /** Goes on to the details without Pako, keeping what he made of the photos in step 1. */
   function fillInDetails() {
@@ -2526,6 +2518,18 @@ export default function App({
                   onAccount={() => navigate("settings")}
                   onPhotoSelected={upload}
                   onCreateDraft={() => void generateDraft()}
+                  sortFailed={listingAnalysis.sortFailed}
+                  onSeparate={separateItems}
+                  onKeepTogether={listingAnalysis.keepTogether}
+                  onSortYourself={() =>
+                    separateItems(
+                      listingPhotos(draftRef.current).map((_, index) => ({
+                        photos: [index],
+                        label: "",
+                      })),
+                      true,
+                    )
+                  }
                   onNotesDone={listingAnalysis.flushNote}
                   onPublish={publish}
                   batch={sellBatch}
@@ -2540,36 +2544,6 @@ export default function App({
                         }
                   }
                 />
-                {photoSplit && (
-                  <PhotoSplitQuestion
-                    photos={photoSplit.photos}
-                    groups={photoSplit.groups}
-                    onClose={() => setPhotoSplit(null)}
-                    onTogether={() => {
-                      setPhotoSplit(null);
-                      void generateDraft({ together: true });
-                    }}
-                    onSeparate={(groups, review) => {
-                      if (!review) {
-                        startBatchListings(
-                          itemsFromGroups(
-                            photoSplit.photos,
-                            groups,
-                            draft.location,
-                          ).map((item) => item.draft),
-                        );
-                        return;
-                      }
-                      setBatchStart({
-                        photos: photoSplit.photos,
-                        groups,
-                        review,
-                      });
-                      setPhotoSplit(null);
-                      setSellMode("batch");
-                    }}
-                  />
-                )}
                 {connectionStatus}
               </>
             </WorkspacePage>
