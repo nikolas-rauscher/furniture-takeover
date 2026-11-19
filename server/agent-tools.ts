@@ -15,6 +15,8 @@ import type {
 } from "../shared/runs.ts";
 import {
   questionSchema,
+  priceProposalSchema,
+  proposePrice,
   listingUpdateSchema,
   preferencesUpdateSchema,
   prepareListingAction,
@@ -24,6 +26,8 @@ import {
 // Shared by this run's tools and the runtime's tool-selection policy.
 export type AgentToolState = {
   pendingQuestion?: AgentQuestionEvent;
+  proposedPrice?: number;
+  priceReason?: string;
   listingNeedsInput: boolean;
   ownInventoryOnly: boolean;
   allowWebSearch: boolean;
@@ -182,12 +186,26 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
     }),
     ...(listingAssist
       ? {
+          propose_price: tool({
+            description: "Suggest a positive CHF price for acceptance. Select two to four comparable fixed-price offers from this search. The server quotes them.",
+            inputSchema: priceProposalSchema,
+            execute: async (input, { toolCallId }) => {
+              claimTool();
+              const action = proposePrice(input, sources, offerSourceIds, toolCallId);
+              state.proposedPrice = input.price;
+              state.priceReason = action.reason;
+              await send(action);
+              return { price: input.price, reason: action.reason };
+            },
+          }),
           update_listing: tool({
             description:
-              "Update only changed listing fields, with exact quotes from a current or earlier user-authored reply or the current draft. When adding to the description, preserve its full text verbatim and append the exact new answer on a separate line; include exact quotes for both. Omit unchanged and unspecified fields; do not submit a whole draft. For a condition answer Used: patch {condition: Used}, seller quote Used. Research can propose only a sourced CHF price for later acceptance. Does not save or publish.",
+              "Update only changed listing fields, with exact quotes from a current or earlier user-authored reply or the current draft. When adding to the description, preserve its full text verbatim and append the exact new answer on a separate line; include exact quotes for both. Omit unchanged and unspecified fields; do not submit a whole draft. For a condition answer Used: patch {condition: Used}, seller quote Used. Use propose_price for researched prices. Does not save or publish.",
             inputSchema: listingUpdateSchema,
             execute: async (input, { toolCallId }) => {
               claimTool();
+              if (input.evidence.some((item) => item.kind === "source"))
+                throw new Error("Use propose_price with comparable offer IDs for a researched price.");
               const prepared = prepareListingAction(
                 input,
                 request,

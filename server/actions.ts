@@ -244,6 +244,48 @@ function chfPrices(text: string): number[] {
     .filter((price) => Number.isFinite(price) && price >= 0 && price <= 10_000);
 }
 
+export const priceProposalSchema = z.object({
+  price: z.number().finite().positive().max(10_000),
+  sourceIds: z.array(z.string().min(1).max(160)).min(2).max(4),
+}).strict();
+
+export function proposePrice(
+  input: z.infer<typeof priceProposalSchema>,
+  sources: AgentRunSource[],
+  offerSourceIds: Set<string>,
+  id: string,
+): AgentListingPatchEvent {
+  const { price, sourceIds } = priceProposalSchema.parse(input);
+  if (new Set(sourceIds).size !== sourceIds.length)
+    fail("Choose distinct comparable offers.");
+
+  const prices: number[] = [];
+  const evidence = sourceIds.map((sourceId) => {
+    const source = sources.find((item) => item.id === sourceId);
+    if (!source || !offerSourceIds.has(sourceId))
+      fail("Choose individual offers returned by this search.");
+    const text = source.title + " " + source.snippet;
+    if (/\b(?:sold|retail|original(?:ly)?|new price|previous price|starting (?:bid|price)|auction start|startpreis|neupreis|verkauft|vendu|prix neuf|mise à prix)\b/i.test(text))
+      fail("Use fixed asking prices, excluding auction starts, retail and sold prices.");
+    const amounts = [...new Set(chfPrices(text))];
+    if (amounts.length !== 1 || amounts[0] <= 0)
+      fail("Choose an offer with one unambiguous positive CHF asking price.");
+    const quote = [source.title, source.snippet].find((part) => chfPrices(part).includes(amounts[0]));
+    if (!quote) fail("The offer must quote its price in its title or snippet.");
+    prices.push(amounts[0]);
+    return { kind: "source" as const, sourceId, quote };
+  });
+  const low = Math.min(...prices);
+  const high = Math.max(...prices);
+  if (price < low || price > high)
+    fail("Suggest a price within the observed asking-price range.");
+  const citations = sourceIds.map((sourceId) => `[${sourceId}]`).join(" ");
+  return {
+    type: "listing_patch", id, patch: { price }, requiresAcceptance: true, evidence,
+    reason: `Suggested CHF ${price} based on ${prices.length} offers asking CHF ${low}–${high}. ${citations}`,
+  };
+}
+
 function latestSellerPrice(request: AgentRunRequest): number | null {
   if (/\b(?:eur|usd|dollars?|euros?)\b|[€$]/i.test(request.text)) return null;
   if (
