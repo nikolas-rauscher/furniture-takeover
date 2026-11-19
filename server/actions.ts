@@ -497,6 +497,14 @@ export function listingAction(
                 explicitPrice(quote) === latestPrice ||
                 normalized(quote) === String(latestPrice),
             )));
+      // The carried-forward photo narrative is already in the draft. Check the
+      // addition against the full reply, even if the tool quoted only one fact.
+      const typedAddition =
+        field === "description" && typeof value === "string" &&
+        (!draft.description || value.startsWith(draft.description + " ") ||
+          value.startsWith(draft.description + "\n")) &&
+        normalized(value.slice(draft.description.length)).replace(/[.!?]+$/, "") ===
+          normalized(request.text).replace(/[.!?]+$/, "");
       if (field === "price") {
         const priceAnswer =
           /(?:price|asking|sell.*for)/i.test(
@@ -557,7 +565,7 @@ export function listingAction(
           fail(`Clearing ${field} needs an explicit request.`);
       } else if (
         typeof value !== "string" ||
-        (!knownPriceCorrection && !extractive(value, quotes)) ||
+        (!knownPriceCorrection && !typedAddition && !extractive(value, quotes)) ||
         negated(value, request.text)
       ) {
         fail(
@@ -571,6 +579,7 @@ export function listingAction(
           current &&
           value !== current &&
           !knownPriceCorrection &&
+          !typedAddition &&
           !extractive(value, [request.text, current]) &&
           // Earlier user replies may add missing details, never replace newer facts.
           !(
