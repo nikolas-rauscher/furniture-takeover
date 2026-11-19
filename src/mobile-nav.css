@@ -244,17 +244,40 @@
     opacity: 0;
   }
 }
-.mobile-nav-item { position: relative; }
+/* New matches: a coral count at the icon's top right, ringed so it reads on the glass bar.
+   It pops when the count rises. */
+.mobile-nav-item {
+  position: relative;
+}
 .mobile-nav-badge {
   position: absolute;
-  top: 2px;
-  left: calc(50% + 6px);
-  min-width: 16px;
-  padding: 0 4px;
+  top: 3px;
+  left: calc(50% + 4px);
+  min-width: 18px;
+  padding: 0 5px;
+  border: 2px solid var(--surface);
   border-radius: 999px;
-  background: var(--blue);
-  color: #fff;
+  background: var(--coral);
+  color: var(--on-primary);
   font-size: 10px;
-  line-height: 16px;
+  font-weight: 750;
+  line-height: 14px;
   text-align: center;
+  pointer-events: none;
+}
+.mobile-nav-badge[data-pop] {
+  animation: mobile-nav-badge-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes mobile-nav-badge-pop {
+  0% {
+    scale: 0.6;
+  }
+  55% {
+    scale: 1.15;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mobile-nav-badge[data-pop] {
+    animation: none;
+  }
 }

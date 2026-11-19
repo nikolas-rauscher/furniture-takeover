@@ -14,7 +14,14 @@ export type QuickReply =
   /** Opens Pako's offer draft for the best match he showed. */
   | { kind: "offer"; text: string; listingId: string }
   /** Puts the two best matches side by side on the comparison page. */
-  | { kind: "compare"; text: string; listingIds: [string, string] };
+  | { kind: "compare"; text: string; listingIds: [string, string] }
+  /** Starts the watch Pako offered; the tap creates it, never the agent. */
+  | { kind: "watch"; text: string; query: string; maxPrice?: number }
+  /** The offered watch is on already: a confirmation, not a button. */
+  | { kind: "watching"; text: string };
+
+/** The replies the student can tap; a running watch only confirms itself. */
+export type TappableReply = Exclude<QuickReply, { kind: "watching" }>;
 
 /** A listing Pako showed in the turn, best match first. */
 export type ShownListing = {
@@ -35,7 +42,10 @@ export type QuickRepliesInput = {
     | "questions"
     | "answers"
     | "proposal"
+    | "watchSuggestion"
   >;
+  /** The watch Pako offered in this turn is on already. */
+  watching: boolean;
   /** The turn is the newest one in the conversation. */
   latest: boolean;
   /** The search the conversation runs on, if any. */
@@ -61,6 +71,9 @@ const MAX_NEXT_STEPS = 4;
 const MAX_BROADER_SEARCHES = 3;
 const NOTHING_FOUND_LINE =
   "Nothing turned up this time. Shall I look a little wider?";
+const WATCH_OFFER_LINE =
+  "Nothing yet. Shall I keep an eye out for you, or look a little wider?";
+const WATCHING_LINE = "Nothing yet, but I'm keeping an eye out for you.";
 /** "Any budget" is stored as this maximum price. */
 const ANY_BUDGET = 1_000_000;
 /** The largest radius a search area accepts. */
@@ -70,33 +83,68 @@ const FREE_ONLY = "Free items only (CHF 0)";
 const COLLECT_BY_SUNDAY = "Collect by Sunday";
 
 /**
- * What the student can tap after Pako's latest finished answer: acting on the
- * best matches or narrowing the search after results, broadening it after an
- * empty search. Every reply comes from the turn and the search's own criteria.
+ * What the student can tap after Pako's latest finished answer: keeping watch
+ * when nothing fits yet, acting on the best matches or narrowing the search
+ * after results, broadening it after an empty search. Every reply comes from
+ * the turn and the search's own criteria.
  */
 export function quickReplies(input: QuickRepliesInput): QuickReplies {
   const { turn, search } = input;
   if (!search || search.intent === "listing_review" || !awaitsReply(input))
     return NO_REPLIES;
   const budget = chosenBudget(search);
+  const watch = watchReply(input);
   if (foundNothing(turn)) {
-    const replies = broaderSearches(search.criteria, budget).slice(
-      0,
-      MAX_BROADER_SEARCHES,
-    );
-    return replies.length ? { line: NOTHING_FOUND_LINE, replies } : NO_REPLIES;
+    const broader = broaderSearches(search.criteria, budget);
+    if (!watch)
+      return broader.length
+        ? {
+            line: NOTHING_FOUND_LINE,
+            replies: broader.slice(0, MAX_BROADER_SEARCHES),
+          }
+        : NO_REPLIES;
+    return {
+      line: watch.kind === "watching" ? WATCHING_LINE : WATCH_OFFER_LINE,
+      replies: [watch, ...broader].slice(0, MAX_BROADER_SEARCHES),
+    };
   }
   return {
     line: null,
     replies: [
+      ...(watch ? [watch] : []),
       ...listingActions(input.listings),
       ...narrowerSearches(search.criteria, budget, input.today),
     ].slice(0, MAX_NEXT_STEPS),
   };
 }
 
-/** Every reply except the comparison asks Pako, so it needs the daily allowance. */
-export const usesAllowance = (reply: QuickReply) => reply.kind !== "compare";
+/** Replies that ask Pako need the daily allowance; comparing and keeping watch do not. */
+export const usesAllowance = (reply: QuickReply) =>
+  reply.kind === "ask" || reply.kind === "offer";
+
+/**
+ * Pako's offer to keep watch, first among the replies. With web results on
+ * screen it names student listings, since only those can be watched.
+ */
+function watchReply({
+  turn,
+  watching,
+}: QuickRepliesInput): QuickReply | undefined {
+  const suggestion = turn.watchSuggestion;
+  if (!suggestion) return;
+  if (watching)
+    return { kind: "watching", text: `Watching for “${suggestion.query}”` };
+  return {
+    kind: "watch",
+    text: foundNothing(turn)
+      ? "Tell me when one is listed"
+      : "Tell me about new student listings",
+    query: suggestion.query,
+    ...(suggestion.maxPrice === undefined
+      ? {}
+      : { maxPrice: suggestion.maxPrice }),
+  };
+}
 
 /** Only the newest finished turn waits for a reply; a question or an offer draft has its own. */
 function awaitsReply({ turn, latest, negotiating }: QuickRepliesInput) {

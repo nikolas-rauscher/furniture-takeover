@@ -65,7 +65,7 @@ export function currentMatches(
 }
 
 /** Facts from the listing only; never claims more than the seller stated. */
-export function matchReason(item: Product, criteria: Criteria): string {
+export function matchFacts(item: Product, criteria: Criteria): string[] {
   const wanted =
     criteria.query || (criteria.category !== "All" ? criteria.category : "");
   return [
@@ -75,10 +75,11 @@ export function matchReason(item: Product, criteria: Criteria): string {
       : money(item.price),
     item.condition,
     item.pickupPoint?.name ?? item.location,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  ].filter(Boolean);
 }
+
+export const matchReason = (item: Product, criteria: Criteria) =>
+  matchFacts(item, criteria).join(" · ");
 
 /**
  * Compares each saved search with the listings visible now. A search's first

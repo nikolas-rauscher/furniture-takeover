@@ -10,29 +10,57 @@ type Reaction = keyof typeof REACTION_MS;
 export const isReaction = (mood: PakoMood): mood is Reaction =>
   mood in REACTION_MS;
 
-/** What Pako shows and says beside the search on the home page. */
+export type HomeGuide = {
+  mood: PakoMood;
+  line: string;
+  /** The line announces new matches, so the hero offers a way to see them. */
+  newMatches: boolean;
+};
+
+/**
+ * What Pako shows and says beside the search on the home page. New matches for
+ * saved searches lead his line; his mood still follows the search box.
+ */
 export function homeGuide({
   allowanceUsed,
+  unreadMatches,
   suggestionsLoading,
   typing,
   location,
 }: {
   allowanceUsed: boolean;
+  unreadMatches: number;
   suggestionsLoading: boolean;
   /** The search box has focus or text. */
   typing: boolean;
   location: string;
-}): { mood: PakoMood; line: string } {
+}): HomeGuide {
   if (allowanceUsed)
     return {
       mood: "sleep",
       line: "I'm out of searches for today. See you tomorrow!",
+      newMatches: false,
     };
+  const newMatches = unreadMatches > 0;
   return {
-    mood: suggestionsLoading ? "think" : typing ? "listen" : "wave",
-    line: `Tell me what you need. I'll search around ${location}.`,
+    mood: suggestionsLoading
+      ? "think"
+      : typing
+        ? "listen"
+        : newMatches
+          ? "happy"
+          : "wave",
+    line: newMatches
+      ? newMatchesLine(unreadMatches)
+      : `Tell me what you need. I'll search around ${location}.`,
+    newMatches,
   };
 }
+
+const newMatchesLine = (count: number) =>
+  count === 1
+    ? "I found a new match for your saved searches."
+    : `I found ${count} new matches for your saved searches.`;
 
 type ToolStep = AgentRunStep & { task: AgentTaskKind };
 type TurnFacts = Pick<
@@ -150,6 +178,8 @@ export function stepWords(step: AgentRunStep, place?: string): string {
       : "Searching student listings";
   if (step.label === "Selecting takeover matches")
     return "Picking the best matches";
+  if (step.label === "Offering to watch for this item")
+    return "Offering to keep watch";
   return step.label;
 }
 

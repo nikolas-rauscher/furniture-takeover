@@ -44,7 +44,7 @@ import AgentConversation, {
 import AgentListings, { canOffer } from "./components/AgentListings";
 import AgentComposer from "./components/AgentComposer";
 import AgentQuickReplies from "./components/AgentQuickReplies";
-import { quickReplies, type QuickReply } from "./quickReplies";
+import { quickReplies, type TappableReply } from "./quickReplies";
 import {
   listingDraftReady,
   listingFromDraft,
@@ -104,12 +104,9 @@ import AgentRunPanel from "./components/AgentRunPanel";
 import { useAgentRun } from "./hooks/useAgentRun";
 import { useAgentAssist } from "./hooks/useAgentAssist";
 import { useSaved } from "./hooks/useSaved";
-import { useAlerts } from "./alerts/useAlerts";
+import { useWatches } from "./alerts/useWatches";
 import { demandLadder, similarListings } from "./alerts/matching";
-import { activateWatch, findWatch, watchSearch } from "./alerts/watch";
 import SellerInsight from "./alerts/SellerInsight";
-import MatchAlerts from "./alerts/MatchAlerts";
-import WatchPrompt from "./alerts/WatchPrompt";
 import {
   agentSearchRequest,
   isSavedSearches,
@@ -165,6 +162,7 @@ import Onboarding, {
 } from "./components/onboarding/Onboarding";
 import OnboardingInvite from "./components/onboarding/OnboardingInvite";
 import Pako from "./components/onboarding/Pako";
+import PakoReaction from "./components/PakoReaction";
 import type { PakoMood } from "./components/onboarding/storyTypes";
 import {
   firstVisitMode,
@@ -447,25 +445,14 @@ export default function App({
   );
   const editingItem = own.find((item) => item.id === editingListing);
   const savedSearches = jobs.filter((job) => job.id !== "seed-search");
-  const alerts = useAlerts(savedSearches, visibleListings, database.ready);
-  const alertListings = new Map(visibleListings.map((item) => [item.id, item]));
-  // A match is only useful while its listing can still be opened.
-  const shownAlerts = alerts.alerts.filter(
-    (alert) => alertListings.get(alert.listingId)?.status === "active",
-  );
-  const matchAlerts = (items: typeof shownAlerts, markAll = false) => (
-    <MatchAlerts
-      alerts={items}
-      searchTitle={(id) => jobs.find((job) => job.id === id)?.title}
-      onOpen={(alert) => {
-        const item = alertListings.get(alert.listingId);
-        alerts.markRead(alert.id);
-        if (item) openProduct(item);
-      }}
-      onDismiss={(alert) => alerts.dismiss(alert.id)}
-      onMarkAllRead={markAll ? alerts.markAllRead : undefined}
-    />
-  );
+  const watches = useWatches({
+    jobs,
+    setJobs,
+    watched: savedSearches,
+    listings: visibleListings,
+    ready: database.ready,
+    location,
+  });
   const savedListings = visibleListings.filter((item) =>
     favorites.includes(item.id),
   );
@@ -653,6 +640,7 @@ export default function App({
   );
   const heroGuide = homeGuide({
     allowanceUsed: quotaExhausted,
+    unreadMatches: watches.unread,
     suggestionsLoading: searchAssist.status === "loading",
     typing: searchFocused || hasSearchDraft,
     location,
@@ -1202,9 +1190,10 @@ export default function App({
     openComparison();
   }
   /** A tapped quick reply takes the same path as typing it or using the listing's own button. */
-  function chooseQuickReply(reply: QuickReply, shown: Product[]) {
+  function chooseQuickReply(reply: TappableReply, shown: Product[]) {
     if (reply.kind === "ask") void runSearch(reply.text, criteria, true);
     else if (reply.kind === "compare") compareListings(reply.listingIds);
+    else if (reply.kind === "watch") keepWatch(reply.query, reply.maxPrice);
     else {
       const item = shown.find((listing) => listing.id === reply.listingId);
       if (!item)
@@ -1430,20 +1419,27 @@ export default function App({
     void runListing(answer, question.question);
     return true;
   }
-  function isWatching(query: string, maxPrice?: number) {
-    const search = watchSearch(query, location, maxPrice);
-    return !!search && findWatch(jobs, search)?.paused === false;
-  }
-  function addWatch(query: string, maxPrice?: number) {
-    const search = watchSearch(query, location, maxPrice);
-    if (!search) return;
-    if (findWatch(jobs, search)?.paused === false) {
-      setToast("You are already watching for this.");
+  /** Pako keeps watch for an item, or says the watch is running already. */
+  function keepWatch(query: string, maxPrice?: number) {
+    if (!watches.watch(query, maxPrice)) {
+      setToastNotice({
+        message: `I'm already keeping an eye out for “${query}”.`,
+        mood: "search",
+      });
       return;
     }
-    const id = crypto.randomUUID();
-    setJobs((current) => activateWatch(current, search, id));
-    setToast("Watching. You'll be notified in the app when a match appears.");
+    setToastNotice({
+      message: `I'll keep an eye out for “${query}”. New matches show up in Searches.`,
+      mood: "search",
+      action:
+        view === "searches"
+          ? undefined
+          : {
+              label: "View",
+              description: "View your saved searches",
+              onClick: () => openDestination("searches"),
+            },
+    });
   }
   function saveSearch() {
     const existing = editingJob
@@ -1966,7 +1962,7 @@ export default function App({
         <HeaderNav
           active={headerDestination(currentDestination)}
           savedSearches={savedSearches.length}
-          unreadMatches={alerts.unread}
+          unreadMatches={watches.unread}
           onNavigate={openDestination}
         />
         <div className="header-actions">
@@ -2140,13 +2136,23 @@ export default function App({
                   >
                     <HeroHeadline compact={false} />
                     <div className="agent-hero-guide">
-                      <Pako
+                      <PakoReaction
                         className="agent-hero-pako"
                         mood={heroGuide.mood}
                         size={64}
                       />
                       <p className="ob-bubble agent-hero-bubble">
                         {heroGuide.line}
+                        {heroGuide.newMatches && (
+                          <Button
+                            animateIcon
+                            className="button quiet small agent-hero-matches"
+                            onClick={() => openDestination("searches")}
+                          >
+                            See them
+                            <ArrowRight size={15} aria-hidden="true" />
+                          </Button>
+                        )}
                       </p>
                     </div>
                     <PageTransitionShared name="agent-composer">
@@ -2414,6 +2420,12 @@ export default function App({
                           latest: !archived,
                           search: committedSearch,
                           negotiating: Boolean(negotiations.active),
+                          watching:
+                            turn.watchSuggestion !== undefined &&
+                            watches.isWatching(
+                              turn.watchSuggestion.query,
+                              turn.watchSuggestion.maxPrice,
+                            ),
                           listings: localMatches.map((item) => ({
                             id: item.id,
                             title: item.title,
@@ -2441,64 +2453,46 @@ export default function App({
                               )
                             }
                             outcome={
-                              <>
-                                {turn.proposal?.draft && (
-                                  <MessageDraftPreview
-                                    proposal={turn.proposal}
-                                    sent={negotiations.items.some(
+                              turn.proposal?.draft && (
+                                <MessageDraftPreview
+                                  proposal={turn.proposal}
+                                  sent={negotiations.items.some(
+                                    (proposal) =>
+                                      proposal.id === turn.proposal?.id &&
+                                      proposal.status === "sent",
+                                  )}
+                                  title={
+                                    own.find(
+                                      (item) =>
+                                        item.id === turn.proposal?.listingId,
+                                    )?.title ?? "Listing"
+                                  }
+                                  onReview={
+                                    negotiations.items.some(
                                       (proposal) =>
                                         proposal.id === turn.proposal?.id &&
-                                        proposal.status === "sent",
-                                    )}
-                                    title={
-                                      own.find(
-                                        (item) =>
-                                          item.id === turn.proposal?.listingId,
-                                      )?.title ?? "Listing"
-                                    }
-                                    onReview={
-                                      negotiations.items.some(
-                                        (proposal) =>
-                                          proposal.id === turn.proposal?.id &&
-                                          proposal.version ===
-                                            turn.proposal.version &&
-                                          proposal.status === "draft",
-                                      ) &&
-                                      own.some(
-                                        (item) =>
-                                          item.id === turn.proposal?.listingId &&
-                                          item.status === "active",
-                                      )
-                                        ? () => {
-                                            negotiations.activate(
-                                              turn.proposal!.id,
-                                            );
-                                            openMessages(
-                                              turn.proposal!.listingId,
-                                              turn.proposal,
-                                            );
-                                          }
-                                        : undefined
-                                    }
-                                  />
-                                )}
-                                {!reviewingListing && turn.watchSuggestion && (
-                                  <WatchPrompt
-                                    query={turn.watchSuggestion.query}
-                                    maxPrice={turn.watchSuggestion.maxPrice}
-                                    watching={isWatching(
-                                      turn.watchSuggestion.query,
-                                      turn.watchSuggestion.maxPrice,
-                                    )}
-                                    onWatch={() =>
-                                      addWatch(
-                                        turn.watchSuggestion!.query,
-                                        turn.watchSuggestion!.maxPrice,
-                                      )
-                                    }
-                                  />
-                                )}
-                              </>
+                                        proposal.version ===
+                                          turn.proposal.version &&
+                                        proposal.status === "draft",
+                                    ) &&
+                                    own.some(
+                                      (item) =>
+                                        item.id === turn.proposal?.listingId &&
+                                        item.status === "active",
+                                    )
+                                      ? () => {
+                                          negotiations.activate(
+                                            turn.proposal!.id,
+                                          );
+                                          openMessages(
+                                            turn.proposal!.listingId,
+                                            turn.proposal,
+                                          );
+                                        }
+                                      : undefined
+                                  }
+                                />
+                              )
                             }
                             className={`${reviewingListing ? "" : "search-agent-message"} ${archived ? "archived-agent-response" : ""}`}
                             showHistory={false}
@@ -2603,17 +2597,15 @@ export default function App({
                 <SavedSearchesPage
                   searches={savedSearches}
                   location={location}
-                  alerts={matchAlerts(shownAlerts, true)}
-                  onTogglePause={(job) =>
-                    setJobs((current) =>
-                      current.map((item) =>
-                        item.id === job.id
-                          ? { ...item, paused: !item.paused }
-                          : item,
-                      ),
-                    )
-                  }
-                  onWatch={addWatch}
+                  matches={watches.matches}
+                  onOpenMatch={({ alert, listing }) => {
+                    watches.markRead(alert.id);
+                    openProduct(listing);
+                  }}
+                  onDismissMatch={({ alert }) => watches.dismiss(alert.id)}
+                  onMarkAllSeen={watches.markAllRead}
+                  onTogglePause={watches.togglePause}
+                  onWatch={keepWatch}
                   onFind={goHome}
                   onRun={(job) => {
                     const search = restoreSearch(job, location);
@@ -2878,7 +2870,7 @@ export default function App({
         active={currentDestination === "settings" ? null : currentDestination}
         pageKey={pageKey}
         onNavigate={openDestination}
-        badges={{ searches: alerts.unread }}
+        newMatches={watches.unread}
       />
       <CompareTray
         count={comparison.length}
@@ -3069,9 +3061,9 @@ export default function App({
             <div>
               <Bookmark size={20} />
               <p>
-                <strong>Keep</strong>Listings and saved searches are stored
-                locally. Nothing is sent to a seller or published to another
-                marketplace.
+                <strong>Keep</strong>Listings, saved searches and their
+                alerts are stored in this browser. Nothing is sent to a seller
+                or published to another marketplace.
               </p>
             </div>
           </div>
@@ -3094,7 +3086,7 @@ export default function App({
                 setOwn([]);
                 setFavorites([]);
                 setJobs([]);
-                alerts.clear();
+                watches.clear();
                 setCompared([]);
                 setSearchArea({
                   location: "Lausanne",

@@ -79,6 +79,11 @@
   background: var(--surface);
   color: var(--blue-dark);
 }
+/* New matches turn the count into a coral "2 new". */
+.app-header .nav-count[data-new] {
+  background: var(--coral);
+  color: var(--on-primary);
+}
 .header-actions {
   gap: 12px;
 }
@@ -250,6 +255,11 @@ label > textarea {
   font-size: var(--type-body);
   font-weight: 500;
   line-height: 1.45;
+}
+/* New matches end Pako's line with a way to see them. */
+.agent-hero-bubble > .agent-hero-matches {
+  display: flex;
+  margin: 2px 0 -6px -13px;
 }
 /* The search card is the page's focal point: the one card that floats above it. */
 .agent-search {

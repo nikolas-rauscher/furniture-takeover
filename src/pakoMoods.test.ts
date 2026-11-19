@@ -176,25 +176,51 @@ test("only reactions to a moment pass; states last as long as their cause", () =
   );
 });
 
+const guide = (overrides: Partial<Parameters<typeof homeGuide>[0]>) =>
+  homeGuide({
+    allowanceUsed: false,
+    unreadMatches: 0,
+    suggestionsLoading: false,
+    typing: false,
+    location: "EPFL, Ecublens",
+    ...overrides,
+  });
+
 test("the home guide sleeps once the allowance is used, thinks while suggestions load and listens while typing", () => {
-  const guide = (overrides: Partial<Parameters<typeof homeGuide>[0]>) =>
-    homeGuide({
-      allowanceUsed: false,
-      suggestionsLoading: false,
-      typing: false,
-      location: "EPFL, Ecublens",
-      ...overrides,
-    });
   assert.deepEqual(guide({}), {
     mood: "wave",
     line: "Tell me what you need. I'll search around EPFL, Ecublens.",
+    newMatches: false,
   });
   assert.equal(guide({ typing: true }).mood, "listen");
   assert.equal(guide({ typing: true, suggestionsLoading: true }).mood, "think");
   assert.deepEqual(guide({ allowanceUsed: true, typing: true }), {
     mood: "sleep",
     line: "I'm out of searches for today. See you tomorrow!",
+    newMatches: false,
   });
+});
+
+test("new matches lead the home guide's line while his mood follows the search box", () => {
+  assert.deepEqual(guide({ unreadMatches: 2 }), {
+    mood: "happy",
+    line: "I found 2 new matches for your saved searches.",
+    newMatches: true,
+  });
+  assert.equal(
+    guide({ unreadMatches: 1 }).line,
+    "I found a new match for your saved searches.",
+  );
+  assert.deepEqual(guide({ unreadMatches: 2, typing: true }), {
+    mood: "listen",
+    line: "I found 2 new matches for your saved searches.",
+    newMatches: true,
+  });
+  assert.equal(
+    guide({ unreadMatches: 2, allowanceUsed: true }).newMatches,
+    false,
+    "a sleeping Pako has no news",
+  );
 });
 
 test("Pako's working line reads the request, names the latest search in the intro's words and then writes", () => {
@@ -396,5 +422,11 @@ test("the activity list names each step in the intro's words, without raw querie
   assert.equal(
     stepWords(step("draft", "running", "proposal", "Preparing your draft")),
     "Preparing your draft",
+  );
+  assert.equal(
+    stepWords(
+      step("watch", "complete", "listings", "Offering to watch for this item"),
+    ),
+    "Offering to keep watch",
   );
 });

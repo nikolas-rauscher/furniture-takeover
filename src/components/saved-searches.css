@@ -45,6 +45,26 @@
   gap: 8px;
   margin-top: 12px;
 }
+/* Alerts switch on and off per search; a paused search fades back behind its controls. */
+.job-alerts {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  font-size: var(--type-support);
+  font-weight: 650;
+  cursor: pointer;
+}
+.job-paused {
+  padding: 4px 10px;
+  background: var(--canvas);
+  color: var(--muted);
+  font-size: var(--type-caption);
+}
+.search-job[data-paused] :is(.job-icon, .job-main > h2, .job-main > p) {
+  opacity: 0.72;
+}
 .job-controls {
   display: flex;
   gap: 2px;
@@ -56,6 +76,23 @@
 }
 .job-controls .icon-button:hover {
   color: var(--ink);
+}
+
+/* The watch card unfolds above the saved searches; its frame clips it while it grows. */
+.watch-card-frame {
+  overflow: hidden;
+  margin: 0 -6px;
+  padding: 0 6px 8px;
+}
+.watch-card-frame + .search-jobs {
+  margin-top: 6px;
+}
+.saved-searches-empty + .watch-card-frame {
+  max-width: 560px;
+  margin-inline: auto;
+}
+.watch-open {
+  margin-bottom: var(--space-group);
 }
 
 /* No saved searches: Pako explains how to keep one. */
@@ -85,7 +122,8 @@
     display: none;
   }
   .job-controls .icon-button,
-  .job-actions > button {
+  .job-actions > button,
+  .job-alerts {
     min-width: 44px;
     min-height: 44px;
   }
