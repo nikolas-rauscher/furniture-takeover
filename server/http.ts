@@ -44,7 +44,7 @@ function readBody(
           new AgentError(
             413,
             "BODY_TOO_LARGE",
-            "This request is too large. Use a photo smaller than 2 MB.",
+            "This request is too large. Reduce the size of the request.",
           ),
         );
         return;
@@ -503,7 +503,7 @@ export function createAgentServer(
         throw new AgentError(
           413,
           "BODY_TOO_LARGE",
-          "This request is too large. Use a photo smaller than 2 MB.",
+          "This request is too large. Reduce the size of the request.",
         );
       if (active >= maxConcurrent) {
         response.setHeader("Retry-After", "1");

@@ -123,7 +123,7 @@ export default function PhotoGallery({
             <EmptyContent>
               {addControl("Add photos")}
               <span id={hintId} className="file-hint">
-                Up to {MAX_LISTING_PHOTOS} photos · JPG, PNG or WebP · 2 MB each
+                Up to {MAX_LISTING_PHOTOS} photos · JPG, PNG or WebP · 25 MB each
               </span>
             </EmptyContent>
           </Empty>

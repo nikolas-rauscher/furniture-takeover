@@ -1,6 +1,6 @@
 import {
   MAX_LISTING_PHOTOS,
-  MAX_UPLOAD_PHOTO_BYTES,
+  MAX_STORED_PHOTO_BYTES,
 } from "../shared/listingPhotos.ts";
 import type {
   AgentMetadata,
@@ -118,11 +118,11 @@ export function validateRequest(value: unknown): AssistRequest {
     const match = value.image.match(
       /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/,
     );
-    if (!match || match[2].length % 4 !== 0 || match[2].length > 2_796_204)
+    if (!match || match[2].length % 4 !== 0 || match[2].length > 4 * Math.ceil(MAX_STORED_PHOTO_BYTES / 3))
       throw new AgentError(
         400,
         "INVALID_IMAGE",
-        "Use a JPG, PNG or WebP photo up to 2 MB.",
+        "Use a JPG, PNG or WebP photo up to 256 KB after resizing.",
       );
     const bytes = Buffer.from(match[2], "base64");
     const signatureMatches =
@@ -134,11 +134,11 @@ export function validateRequest(value: unknown): AssistRequest {
               .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
           : bytes.subarray(0, 4).toString() === "RIFF" &&
             bytes.subarray(8, 12).toString() === "WEBP";
-    if (!signatureMatches || bytes.length > 2 * 1024 * 1024)
+    if (!signatureMatches || bytes.length > MAX_STORED_PHOTO_BYTES)
       throw new AgentError(
         400,
         "INVALID_IMAGE",
-        "Use a JPG, PNG or WebP photo up to 2 MB.",
+        "Use a JPG, PNG or WebP photo up to 256 KB after resizing.",
       );
     result.image = value.image;
   }
@@ -164,14 +164,7 @@ export function validateRequest(value: unknown): AssistRequest {
     const allImages = [
       ...new Set([...(result.image ? [result.image] : []), ...result.images]),
     ];
-    if (
-      allImages.length > MAX_LISTING_PHOTOS ||
-      allImages.reduce(
-        (size, image) =>
-          size + Buffer.from(image.split(",")[1], "base64").length,
-        0,
-      ) > MAX_UPLOAD_PHOTO_BYTES
-    )
+    if (allImages.length > MAX_LISTING_PHOTOS)
       throw new AgentError(
         400,
         "INVALID_IMAGE",

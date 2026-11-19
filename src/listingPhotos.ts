@@ -1,7 +1,7 @@
 import {
   MAX_STORED_PHOTO_BYTES,
-  MAX_UPLOAD_PHOTO_BYTES,
-} from "../shared/listingPhotos";
+  MAX_ORIGINAL_PHOTO_BYTES,
+} from "../shared/listingPhotos.ts";
 
 /** Bound gallery storage and request sizes while retaining a useful listing preview. */
 export async function readListingPhoto(
@@ -10,8 +10,8 @@ export async function readListingPhoto(
 ): Promise<string> {
   if (!["image/jpeg", "image/png", "image/webp"].includes(file.type))
     throw new Error("Choose JPG, PNG or WebP photos.");
-  if (file.size > MAX_UPLOAD_PHOTO_BYTES)
-    throw new Error("Each photo must be smaller than 2 MB.");
+  if (file.size > MAX_ORIGINAL_PHOTO_BYTES)
+    throw new Error("Choose a photo of 25 MB or less.");
   signal.throwIfAborted();
   const url = URL.createObjectURL(file);
   try {
@@ -36,7 +36,10 @@ export async function readListingPhoto(
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
       const data = canvas.toDataURL("image/jpeg", 0.82);
       if (
-        ((data.length - data.indexOf(",") - 1) * 3) / 4 <=
+        data.startsWith("data:image/jpeg;base64,") &&
+        data.length - "data:image/jpeg;base64,".length > 0 &&
+        ((data.length - "data:image/jpeg;base64,".length) * 3) / 4 -
+          (data.endsWith("==") ? 2 : data.endsWith("=") ? 1 : 0) <=
         MAX_STORED_PHOTO_BYTES
       )
         return data;
