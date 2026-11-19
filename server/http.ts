@@ -14,8 +14,12 @@ import { localOrigins } from "./config.ts";
 import { unavailableKeyStatus, type AccountKeyStore } from "./account-keys.ts";
 import type { AgentRuntime } from "./runtime.ts";
 import { serveFrontend } from "./frontend.ts";
+import { validateThreadTurnRequest, type ThreadAgent } from "./thread-agent.ts";
 
 export const MAX_BODY_BYTES = 3 * 1024 * 1024;
+/** A reading sends at most 20 messages of one thread. */
+export const THREAD_BODY_BYTES = 64 * 1024;
+type Allowance = AgentQuota & { allowed: boolean };
 
 function send(response: ServerResponse, status: number, body: unknown) {
   if (response.destroyed || response.writableEnded) return;
@@ -26,6 +30,10 @@ function send(response: ServerResponse, status: number, body: unknown) {
   });
   response.end(JSON.stringify(body));
 }
+
+/** Seconds until an allowance resets, for Retry-After. */
+const secondsUntil = (resetAt: string) =>
+  Math.max(1, Math.ceil((Date.parse(resetAt) - Date.now()) / 1000));
 
 function readBody(
   request: IncomingMessage,
@@ -99,16 +107,20 @@ export function createAgentServer(
     cloud?: {
       config: { supabaseUrl: string; supabaseKey: string };
       authorize(header: string | undefined, charge?: boolean): Promise<string>;
-      quota(
-        authorization: string,
-        spend?: boolean,
-      ): Promise<AgentQuota & { allowed: boolean }>;
+      /** The daily allowance for searches and listings. */
+      quota(authorization: string, spend?: boolean): Promise<Allowance>;
+      /** Reading replies has its own, larger daily allowance; each call spends one. */
+      spendReplyReading(authorization: string): Promise<Allowance>;
     };
     accountKeys?: AccountKeyStore;
     forAccount?: (
       owner: string,
       authorization: string,
-    ) => Promise<{ service: AgentService; runtime: AgentRuntime }>;
+    ) => Promise<{
+      service: AgentService;
+      runtime: AgentRuntime;
+      threads: ThreadAgent;
+    }>;
     maxConcurrent?: number;
     staticDirectory?: string;
     allowedOrigins?: readonly string[];
@@ -122,6 +134,7 @@ export function createAgentServer(
         signal: AbortSignal,
       ) => Promise<void>;
     };
+    threads?: ThreadAgent;
   } = {},
 ) {
   let active = 0;
@@ -484,9 +497,12 @@ export function createAgentServer(
       if (
         pathname !== "/api/agent/assist" &&
         pathname !== "/api/agent/run" &&
-        pathname !== "/api/agent/group-photos"
+        pathname !== "/api/agent/group-photos" &&
+        pathname !== "/api/agent/thread"
       )
         throw new AgentError(404, "NOT_FOUND", "This endpoint does not exist.");
+      const threadTurn = pathname === "/api/agent/thread";
+      const bodyLimit = threadTurn ? THREAD_BODY_BYTES : MAX_BODY_BYTES;
       if (request.method !== "POST")
         throw new AgentError(
           405,
@@ -503,7 +519,7 @@ export function createAgentServer(
           "UNSUPPORTED_MEDIA_TYPE",
           "Send the request as application/json.",
         );
-      if (Number(request.headers["content-length"] ?? 0) > MAX_BODY_BYTES)
+      if (Number(request.headers["content-length"] ?? 0) > bodyLimit)
         throw new AgentError(
           413,
           "BODY_TOO_LARGE",
@@ -519,27 +535,61 @@ export function createAgentServer(
       }
       active++;
       try {
-        const body = await readBody(request);
+        const body = await readBody(request, bodyLimit);
+        const authorization = request.headers.authorization;
         const agents =
-          actor && request.headers.authorization && options.forAccount
-            ? await options.forAccount(actor, request.headers.authorization)
-            : { service, runtime: options.runtime };
-        if (actor && request.headers.authorization && options.cloud) {
-          const quota = await options.cloud.quota(
-            request.headers.authorization,
-            true,
+          actor && authorization && options.forAccount
+            ? await options.forAccount(actor, authorization)
+            : {
+                service,
+                runtime: options.runtime,
+                threads: options.threads,
+              };
+        if (threadTurn) {
+          // Only a reading that can run spends one of the student's readings.
+          const reading = validateThreadTurnRequest(body);
+          if (!agents.threads?.configured)
+            throw new AgentError(
+              503,
+              "AGENT_NOT_CONFIGURED",
+              "Pako can't read replies on this server.",
+            );
+          const allowance =
+            actor && authorization && options.cloud
+              ? await options.cloud.spendReplyReading(authorization)
+              : undefined;
+          if (allowance && !allowance.allowed) {
+            response.setHeader("Retry-After", secondsUntil(allowance.resetAt));
+            throw new AgentError(
+              429,
+              "THREAD_QUOTA_EXCEEDED",
+              "Pako has read all the replies he can for today. You can still reply yourself.",
+            );
+          }
+          const turn = await agents.threads.turn(reading, controller.signal);
+          send(
+            response,
+            200,
+            allowance
+              ? {
+                  turn,
+                  allowance: {
+                    limit: allowance.limit,
+                    remaining: allowance.remaining,
+                    resetAt: allowance.resetAt,
+                  },
+                }
+              : { turn },
           );
+          return;
+        }
+        if (actor && authorization && options.cloud) {
+          const quota = await options.cloud.quota(authorization, true);
           response.setHeader("X-AI-Quota-Limit", quota.limit);
           response.setHeader("X-AI-Quota-Remaining", quota.remaining);
           response.setHeader("X-AI-Quota-Reset", quota.resetAt);
           if (!quota.allowed) {
-            response.setHeader(
-              "Retry-After",
-              Math.max(
-                1,
-                Math.ceil((Date.parse(quota.resetAt) - Date.now()) / 1000),
-              ),
-            );
+            response.setHeader("Retry-After", secondsUntil(quota.resetAt));
             throw new AgentError(
               429,
               "AI_QUOTA_EXCEEDED",
