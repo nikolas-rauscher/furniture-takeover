@@ -15,31 +15,37 @@ export type ToastAction = {
 type ToastProps = {
   /** An empty message hides the toast. */
   message: string;
+  /** Pages with a composer or main action at the bottom take notes under the header. */
+  placement: "top" | "bottom";
   /** How Pako brings the note: calm by default, in love when a favourite is saved. */
   mood?: PakoMood;
   action?: ToastAction;
   onDismiss: () => void;
 };
 
-/** Pako brings a short note that springs up above the page and leaves on its own. */
+/** Pako brings a short note that springs in over the page and leaves on its own. */
 export default function Toast({
   message,
+  placement,
   mood = "idle",
   action,
   onDismiss,
 }: ToastProps) {
+  // It springs in from the edge it rests against and leaves the same way.
+  const away = placement === "top" ? -1 : 1;
   return (
     <AnimatePresence>
       {message && (
         <motion.div
           key={message}
           className="toast"
+          data-placement={placement}
           role="status"
-          initial={{ opacity: 0, y: 24, scale: 0.96 }}
+          initial={{ opacity: 0, y: 24 * away, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{
             opacity: 0,
-            y: 12,
+            y: 12 * away,
             scale: 0.98,
             transition: { duration: 0.16 },
           }}
