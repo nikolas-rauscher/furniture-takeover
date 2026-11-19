@@ -78,7 +78,11 @@ export function listingRunRequest({
         .flatMap((turn) =>
           turn.questions
             .filter((item) => turn.answers[item.id] === "Skipped")
-            .map(({ question, listingField }) => ({ question, listingField })),
+            .map(({ question, listingField, choices }) => ({
+              question,
+              listingField,
+              ...(choices ? { choices } : {}),
+            })),
         )
         .slice(-MAX_ANSWERED),
       recentMessages: recentMessages(turns),

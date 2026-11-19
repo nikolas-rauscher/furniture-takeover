@@ -83,7 +83,14 @@ const requestSchema = z.object({
       currentDraft: listingDraftSchema.optional(),
       previousQuestion: z.string().max(500).optional(),
       negotiation: negotiationSchema.optional(),
-      skippedQuestions: z.array(questionSchema.pick({ question: true, listingField: true })).max(30).optional(),
+      skippedQuestions: z
+        .array(
+          questionSchema
+            .pick({ question: true, listingField: true })
+            .extend({ choices: z.array(z.string().trim().min(1).max(120)).max(5).optional() }),
+        )
+        .max(30)
+        .optional(),
       answeredQuestions: z
         .array(
           z

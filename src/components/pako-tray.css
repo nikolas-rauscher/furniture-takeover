@@ -188,6 +188,10 @@
     padding-left: 42px;
     font-size: var(--type-label);
   }
+  /* The composer needs the room: the other student's words keep one line. */
+  .thread-tray-quotes {
+    -webkit-line-clamp: 1;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .thread-tray .thread-tray-choice,

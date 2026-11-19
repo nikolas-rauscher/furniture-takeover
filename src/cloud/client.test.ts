@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readAuthRedirect } from "./client.ts";
+import { missingFromSchema, readAuthRedirect } from "./client.ts";
 import {
   configureCloud,
   getCloudClient,
@@ -295,4 +295,11 @@ test("ordinary sign-ins and failed recovery links never request password setup",
     requiresPasswordSetup((await client.auth.getSession()).data.session),
     false,
   );
+});
+
+test("only a missing table, column or function counts as an update the server still needs", () => {
+  for (const code of ["PGRST202", "PGRST204", "PGRST205", "42P01", "42703"])
+    assert.equal(missingFromSchema({ code }), true, code);
+  assert.equal(missingFromSchema({ code: "42501" }), false);
+  assert.equal(missingFromSchema(null), false);
 });

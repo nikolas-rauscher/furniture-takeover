@@ -1072,7 +1072,10 @@ export default function App({
     await agentRun.run(request, {
       preserveHistory,
       onNegotiation: (event) => {
-        if (token === searchRunToken.current) negotiations.commit(event);
+        if (token !== searchRunToken.current) return;
+        negotiations.commit(event);
+        if (event.negotiation.status === "discarded")
+          forgetMessageDraft(event.negotiation.listingId);
       },
       onAction: (action) => {
         if (
@@ -1227,11 +1230,21 @@ export default function App({
               previousVersion: proposal.version,
               negotiation: discardNegotiation(proposal, proposal.version),
             });
+            forgetMessageDraft(proposal.listingId);
           } catch {
             /* repository exposes the error */
           }
         }}
       />
+    );
+  }
+  /** A discarded offer leaves no unsent conversation waiting in Messages. */
+  function forgetMessageDraft(listingId: string) {
+    setMessageProposal((current) =>
+      current?.listingId === listingId ? undefined : current,
+    );
+    setMessageListingId((current) =>
+      current === listingId ? undefined : current,
     );
   }
   function answerSearchQuestion(id: string, answer: string) {
@@ -2001,7 +2014,7 @@ export default function App({
                               event.preventDefault();
                               void searchByPhoto(file);
                             }}
-                            aria-label="Search furniture"
+                            aria-label="Search second-hand listings"
                             maxLength={4000}
                             value={query}
                             onChange={(event) => setQuery(event.target.value)}
@@ -2615,6 +2628,17 @@ export default function App({
                     transitionPage("nav-back", () => navigate(detailOrigin))
                   }
                   onMessage={() => selected && openMessages(selected.id)}
+                  onOffer={() =>
+                    selected &&
+                    transitionPage(
+                      "nav-forward",
+                      () => continueOffer(selected),
+                      "fade",
+                    )
+                  }
+                  onFindSimilar={() =>
+                    selected && startSearchFromHome(selected.title)
+                  }
                   onEdit={() => selected && editListing(selected)}
                   onAskAgent={() => {
                     if (!selected) return;

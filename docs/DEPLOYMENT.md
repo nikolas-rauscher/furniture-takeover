@@ -77,7 +77,7 @@ Do not forward 8000, 8787, 5432, 6543, 3000 or 4000. Limit port 8787 to the ngin
 
 ## Step 2. Create the database tables (once)
 
-Run the five migrations **once, in filename order**. They run through Docker, so do it on the Supabase machine. Copy the folder there first, from the machine that has the repository:
+Run the migrations **once, in filename order**. They run through Docker, so do it on the Supabase machine. Copy the folder there first, from the machine that has the repository:
 
 ```sh
 scp -r supabase <your user>@192.168.1.46:~/

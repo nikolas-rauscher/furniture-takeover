@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { fail, missingFromSchema } from "./client";
 import type { AccountUser } from "./useAccountInbox";
 
-export type AccountAutoRead =
+type AccountAutoRead =
   | { status: "loading" }
   | { status: "missing" }
   | { status: "error"; message: string }

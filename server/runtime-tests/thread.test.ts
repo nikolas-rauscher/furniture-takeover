@@ -160,7 +160,7 @@ test("a counter-offer stays between the two sides' latest amounts", async (t) =>
     });
   const { model, agent } = agentReading(t, counter(30), counter(43));
   const turn = await agent.turn(request);
-  assert.match(promptOf(model, 1), /terms\.amount: use an amount/);
+  assert.match(promptOf(model, 1), /terms\.amount: nobody named that amount/);
   assert.equal(turn.options[0].terms?.amount, 43);
 });
 
@@ -376,4 +376,67 @@ test("requests are checked before Pako reads, and he needs a key to read", async
   await assert.rejects(createThreadAgent({ apiKey: "", now }).turn(request), {
     code: "AGENT_NOT_CONFIGURED",
   });
+});
+
+test("a known meeting point may be quoted by the name students use for it", async (t) => {
+  const named = (value: string) =>
+    reading({
+      facts: { pickupPoint: { value, quote: "at the Vortex", from: "them" } },
+      options: [option({})],
+    });
+  const { model, agent } = agentReading(t, named("Vortex Hall"), named(vortex));
+  const turn = await agent.turn({
+    ...request,
+    messages: [
+      request.messages[0],
+      {
+        ...request.messages[1],
+        text: "45 and it's yours, I can meet at the Vortex.",
+      },
+    ],
+  });
+  assert.match(
+    promptOf(model, 1),
+    /facts\.pickupPoint: the quote must name this place/,
+  );
+  assert.equal(turn.facts.pickupPoint?.value, vortex);
+});
+
+test("an option's time may join a day and a clock time named in different words, but never a new time", async (t) => {
+  const counter = (pickupTime: string, clock: string) =>
+    reading({
+      options: [
+        option({
+          kind: "counter",
+          message: `Could we do CHF 45 on Thursday at ${clock}?`,
+          terms: { amount: 45, pickupTime },
+        }),
+      ],
+    });
+  const { model, agent } = agentReading(
+    t,
+    counter("Thursday at 19:30", "19:30"),
+    counter("Thursday 19:00", "19:00"),
+  );
+  const turn = await agent.turn(request);
+  assert.match(promptOf(model, 1), /terms\.pickupTime: nobody named that time/);
+  assert.equal(turn.options[0].terms?.pickupAt, "2026-11-19T18:00:00.000Z");
+});
+
+test("only offers and acceptances record terms; a question only talks about them", async (t) => {
+  const { model, agent } = agentReading(
+    t,
+    reading({
+      options: [
+        option({
+          kind: "ask",
+          message: "Which day after 19:00 suits you?",
+          terms: { amount: 45, pickupTime: "only after 19:00" },
+        }),
+      ],
+    }),
+  );
+  const turn = await agent.turn(request);
+  assert.equal(model.doStreamCalls.length, 1);
+  assert.equal(turn.options[0].terms, null);
 });

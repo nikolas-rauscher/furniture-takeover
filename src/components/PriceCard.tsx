@@ -3,24 +3,17 @@ import { ChevronDown, Minus, Plus } from "@/components/icons";
 import { money } from "../../shared/marketplace";
 import type { AgentRunSource } from "../../shared/runs";
 import { niceStep, type PriceSuggestion } from "../listingQuestions";
+import { plainPrice, priceText } from "../priceText";
 import { answerParts } from "./AgentAnswerContent";
 import { plainAnswer } from "./agentAnswer";
 import { Button } from "./ui/button";
 
 const MAX_PRICE = 10_000;
-/** "1,250", "1'250" or "1 250": thousands written with a separator, as the app writes them. */
-const GROUPED = /^\d{1,3}(?:[,'’ ]\d{3})+(?:\.\d{1,2})?$/;
-
-/** The amount as the rest of the app writes it, such as 1,250. */
-const amountText = (price: number) => price.toLocaleString("en-GB");
 
 /** The amount in the field, or nothing while it is empty or not a valid price. */
 function typedPrice(text: string): number | undefined {
-  const typed = text.trim();
-  if (!typed) return undefined;
-  const value = Number(
-    GROUPED.test(typed) ? typed.replace(/[,'’ ]/g, "") : typed.replace(",", "."),
-  );
+  if (!text.trim()) return undefined;
+  const value = Number(plainPrice(text));
   return Number.isFinite(value) && value >= 0 && value <= MAX_PRICE
     ? value
     : undefined;
@@ -72,7 +65,7 @@ export default function PriceCard({
   onLater: () => void;
 }) {
   const [text, setText] = useState(
-    start === undefined ? "" : amountText(start),
+    start === undefined ? "" : priceText(start),
   );
   const [whyOpen, setWhyOpen] = useState(false);
   const fieldId = useId();
@@ -95,7 +88,7 @@ export default function PriceCard({
           className="button secondary icon-button price-card-step"
           aria-label={`Lower the price to ${money(lower)}`}
           disabled={disabled || current <= 0}
-          onClick={() => setText(amountText(lower))}
+          onClick={() => setText(priceText(lower))}
         >
           <Minus size={18} aria-hidden="true" />
         </Button>
@@ -111,7 +104,7 @@ export default function PriceCard({
             value={text}
             disabled={disabled}
             onChange={(event) => setText(event.target.value)}
-            onBlur={() => price !== undefined && setText(amountText(price))}
+            onBlur={() => price !== undefined && setText(priceText(price))}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
@@ -124,7 +117,7 @@ export default function PriceCard({
           className="button secondary icon-button price-card-step"
           aria-label={`Raise the price to ${money(raise)}`}
           disabled={disabled || current >= MAX_PRICE}
-          onClick={() => setText(amountText(raise))}
+          onClick={() => setText(priceText(raise))}
         >
           <Plus size={18} aria-hidden="true" />
         </Button>

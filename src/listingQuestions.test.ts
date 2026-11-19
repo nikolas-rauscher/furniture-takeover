@@ -340,6 +340,13 @@ test("Pako's pickup question comes first while he researches, and the run leaves
     "once answered, his question stays in its place",
   );
   assert.deepEqual(
+    questionQueue([...fromRun, PICKUP_QUESTION], undefined).map(
+      (question) => question.id,
+    ),
+    ["pako-pickup", "ask-1", "ask-1:1"],
+    "an answer adds his question to the turn's end, yet it stays first",
+  );
+  assert.deepEqual(
     questionQueue(fromRun, undefined).map((question) => question.id),
     ["ask-1", "ask-1:1", "ask-1:2"],
     "without his question the run may ask about pickup",

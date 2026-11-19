@@ -39,7 +39,6 @@ const threadMessageSchema = z
     structured: z.boolean().optional(),
   })
   .strict();
-export type ThreadTurnMessage = z.infer<typeof threadMessageSchema>;
 
 /** The listing facts Pako may use; never photos or the seller's identity. */
 const threadListingSchema = z
@@ -133,7 +132,7 @@ export const threadFactsSchema = z
   .strict();
 export type ThreadFacts = z.infer<typeof threadFactsSchema>;
 
-export const threadOptionSchema = z
+const threadOptionSchema = z
   .object({
     id: z.string().regex(/^opt-[1-3]$/),
     label: z.string().trim().min(1).max(40),

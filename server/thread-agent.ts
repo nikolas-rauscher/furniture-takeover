@@ -1,5 +1,11 @@
 import { createDeepSeek } from "@ai-sdk/deepseek";
-import { stepCountIs, tool, ToolLoopAgent, type LanguageModel } from "ai";
+import {
+  InvalidToolInputError,
+  stepCountIs,
+  tool,
+  ToolLoopAgent,
+  type LanguageModel,
+} from "ai";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { campusPickupPoints } from "../shared/campusPickupPoints.ts";
@@ -22,7 +28,9 @@ import {
 } from "../shared/threadTurn.ts";
 import { AgentError } from "./errors.ts";
 import {
+  containsQuote,
   messageAmounts,
+  namesTime,
   quoteNumbers,
   quoteSupportsHandover,
 } from "./quotes.ts";
@@ -100,8 +108,6 @@ export function validateThreadTurnRequest(input: unknown): ThreadTurnRequest {
 }
 
 const isText = (text: string | undefined): text is string => Boolean(text);
-const includesWords = (text: string, words: string) =>
-  text.toLowerCase().includes(words.toLowerCase());
 const messageTexts = (request: ThreadTurnRequest) =>
   request.messages.map((message) => message.text);
 const listingTexts = ({ listing }: ThreadTurnRequest) =>
@@ -134,6 +140,13 @@ function checkSafeText(text: string, where: string) {
     );
 }
 
+/** Where a fact's quote must come from, in the words the repair hint uses. */
+const QUOTE_SOURCES: Record<QuotedFact["from"], string> = {
+  me: 'one of the messages from "me"',
+  them: 'one of the messages from "them"',
+  listing: "the listing's text",
+};
+
 function checkQuote(
   where: string,
   fact: QuotedFact,
@@ -145,9 +158,9 @@ function checkQuote(
       : request.messages
           .filter((message) => message.from === fact.from)
           .map((message) => message.text);
-  if (!sources.some((text) => text.includes(fact.quote)))
+  if (!sources.some((text) => containsQuote(text, fact.quote)))
     throw new Error(
-      `${where}: copy the quote exactly from one message of "${fact.from}" or from the listing.`,
+      `${where}: copy the quote exactly from ${QUOTE_SOURCES[fact.from]}, or leave this fact out.`,
     );
 }
 
@@ -167,17 +180,22 @@ function checkFacts(facts: ThreadFacts, request: ThreadTurnRequest) {
     checkQuote("facts.fulfillment", fulfillment, request);
     if (!quoteSupportsHandover(fulfillment.quote, fulfillment.value))
       throw new Error(
-        "facts.fulfillment: the quote must say pickup or shipping.",
+        "facts.fulfillment: quote the words that say pickup or shipping, or leave fulfillment out; a pickup time or place already means pickup.",
       );
   }
-  for (const [field, fact] of [
-    ["pickupTime", pickupTime],
-    ["pickupPoint", pickupPoint],
-  ] as const) {
-    if (!fact) continue;
-    checkQuote(`facts.${field}`, fact, request);
-    if (!fact.quote.includes(fact.value))
-      throw new Error(`facts.${field}: the value must appear in its quote.`);
+  if (pickupTime) {
+    checkQuote("facts.pickupTime", pickupTime, request);
+    if (!namesTime([pickupTime.quote], pickupTime.value))
+      throw new Error(
+        "facts.pickupTime: use only the day and time words its quote names.",
+      );
+  }
+  if (pickupPoint) {
+    checkQuote("facts.pickupPoint", pickupPoint, request);
+    if (!namesPlace(pickupPoint.quote, pickupPoint.value, request))
+      throw new Error(
+        "facts.pickupPoint: the quote must name this place; copy the place's words from it.",
+      );
   }
 }
 
@@ -223,6 +241,40 @@ function amountAllowed(
 const campusPointNames = campusPickupPoints.map((point) =>
   point.name.toLowerCase(),
 );
+/** Words every meeting point shares, which name none of them. */
+const GENERIC_PLACE_WORDS = new Set([
+  "fmel",
+  "outside",
+  "inside",
+  "entrance",
+  "reception",
+  "center",
+  "centre",
+  "front",
+]);
+
+/**
+ * Whether a quote names a meeting point: the point's words stand in the quote,
+ * or the point is the listing's or a campus meeting point and the quote names
+ * it by one of its own words, as in "at the Vortex" for "FMEL Vortex · outside
+ * reception".
+ */
+function namesPlace(quote: string, point: string, request: ThreadTurnRequest) {
+  if (containsQuote(quote, point)) return true;
+  const known =
+    campusPointNames.includes(point.toLowerCase()) ||
+    point.toLowerCase() === request.listing.pickupPoint?.toLowerCase();
+  return (
+    known &&
+    point
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter(
+        (word) =>
+          word.length >= 4 && !GENERIC_PLACE_WORDS.has(word.toLowerCase()),
+      )
+      .some((word) => containsQuote(quote, word))
+  );
+}
 
 function pointAllowed(point: string, request: ThreadTurnRequest) {
   const places = [
@@ -231,25 +283,22 @@ function pointAllowed(point: string, request: ThreadTurnRequest) {
     request.listing.location,
   ].filter(isText);
   return (
-    places.some((text) => includesWords(text, point)) ||
+    places.some((text) => containsQuote(text, point)) ||
     campusPointNames.includes(point.toLowerCase())
   );
 }
 
-const sameWords = (a: string, b: string | undefined) =>
-  b !== undefined && a.toLowerCase() === b.toLowerCase();
-
-/** Accepting takes the terms as the conversation states them, never other ones. */
-function checkAccepted(terms: DealTerms, facts: ThreadFacts, where: string) {
-  if (
-    (terms.amount !== null && terms.amount !== facts.amount?.value) ||
-    (terms.pickupTime !== null &&
-      !sameWords(terms.pickupTime, facts.pickupTime?.value)) ||
-    (terms.pickupPoint !== null &&
-      !sameWords(terms.pickupPoint, facts.pickupPoint?.value))
-  )
+/** Accepting takes the price as it stands: the one last named, or else the asking price. */
+function checkAccepted(
+  terms: DealTerms,
+  facts: ThreadFacts,
+  request: ThreadTurnRequest,
+  where: string,
+) {
+  const standing = facts.amount?.value ?? request.listing.price;
+  if (terms.amount !== null && terms.amount !== standing)
     throw new Error(
-      `${where}: an accept option accepts the terms exactly as facts state them.`,
+      `${where}.terms.amount: an accept option keeps the amount as it stands, CHF ${standing}.`,
     );
 }
 
@@ -263,27 +312,30 @@ function optionTerms(
 ): DealTerms | null {
   const where = `options[${index}]`;
   const proposed = option.terms;
+  // Only an offer or an acceptance records terms; asking or answering just talks about them.
+  if (option.kind !== "accept" && option.kind !== "counter") return null;
   if (!proposed || Object.keys(proposed).length === 0) return null;
   if (
     proposed.amount !== undefined &&
     !amountAllowed(proposed.amount, option.kind, request)
   )
     throw new Error(
-      `${where}.terms.amount: use an amount from the conversation or the listing${option.kind === "counter" ? ", or a whole number between the two sides' latest amounts" : ""}.`,
+      `${where}.terms.amount: nobody named that amount. Use one from the conversation or the listing${option.kind === "counter" ? ", or a whole number between the two sides' latest amounts" : ""}, or leave the amount out.`,
     );
   const pickupTime = proposed.pickupTime;
   if (
     pickupTime &&
-    ![...messageTexts(request), request.listing.pickup]
-      .filter(isText)
-      .some((text) => includesWords(text, pickupTime))
+    !namesTime(
+      [...messageTexts(request), request.listing.pickup].filter(isText),
+      pickupTime,
+    )
   )
     throw new Error(
-      `${where}.terms.pickupTime: copy the time words from a message or the listing.`,
+      `${where}.terms.pickupTime: nobody named that time. Copy time words from a message or the listing, or leave the time out and ask for one.`,
     );
   if (proposed.pickupPoint && !pointAllowed(proposed.pickupPoint, request))
     throw new Error(
-      `${where}.terms.pickupPoint: use a meeting point from the conversation, the listing or campusMeetingPoints.`,
+      `${where}.terms.pickupPoint: nobody named that place. Use a meeting point from the conversation, the listing or campusMeetingPoints, or leave it out.`,
     );
   const meeting =
     pickupTime !== undefined || proposed.pickupPoint !== undefined;
@@ -304,7 +356,7 @@ function optionTerms(
     throw new Error(
       `${where}.message: state its ${stated.missing.join(", ")} (the amount as CHF <number>, the time as HH:MM, the meeting point as written).`,
     );
-  if (option.kind === "accept") checkAccepted(terms, facts, where);
+  if (option.kind === "accept") checkAccepted(terms, facts, request, where);
   return terms;
 }
 
@@ -452,6 +504,8 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
       const now = clock();
       let reading: ThreadTurn | undefined;
       let streamFailure: unknown;
+      /** The checks the model's attempts failed; fixed wording, never what the students wrote. */
+      const failedChecks: string[] = [];
       let stage = "Reading the conversation";
       try {
         const provider = createDeepSeek({
@@ -468,7 +522,14 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
                 "Save your reading of the conversation: the summary, the facts with their quotes, the stance and 1 to 3 messages the student could send next. Nothing is sent.",
               inputSchema: proposalSchema,
               execute: async (proposal) => {
-                reading = groundProposal(proposal, request, now);
+                try {
+                  reading = groundProposal(proposal, request, now);
+                } catch (error) {
+                  failedChecks.push(
+                    error instanceof Error ? error.message : "check failed",
+                  );
+                  throw error;
+                }
                 return { saved: true };
               },
             }),
@@ -503,8 +564,15 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
           }),
           abortSignal: signal,
         });
-        for await (const part of result.fullStream)
+        for await (const part of result.fullStream) {
           if (part.type === "error") streamFailure = part.error;
+          // The SDK's message would repeat the input, which quotes the students.
+          if (
+            part.type === "tool-error" &&
+            InvalidToolInputError.isInstance(part.error)
+          )
+            failedChecks.push("the input did not match the tool's schema");
+        }
         signal.throwIfAborted();
         if (reading) return reading;
         if (streamFailure) throw streamFailure;
@@ -525,6 +593,7 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
             stage,
             elapsedMs: Date.now() - startedAt,
             ...(Number.isInteger(status) ? { providerStatus: status } : {}),
+            ...(failedChecks.length ? { failedChecks } : {}),
           }),
         );
         throw safe;
