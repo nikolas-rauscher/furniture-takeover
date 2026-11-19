@@ -29,7 +29,7 @@ import type {
 import { WebSearchError } from "./web-search.ts";
 import { marketplaceDomains } from "./marketplace-policy.ts";
 import { MAX_REASONING_CHARS, MAX_REASONING_PARTS } from "../shared/runs.ts";
-import { dateSchema, listingDraftSchema } from "./actions.ts";
+import { dateSchema, listingDraftSchema, questionSchema } from "./actions.ts";
 
 export type AgentRuntimeConfig = {
   apiKey: string;
@@ -82,6 +82,7 @@ const requestSchema = z.object({
       currentDraft: listingDraftSchema.optional(),
       previousQuestion: z.string().max(500).optional(),
       negotiation: negotiationSchema.optional(),
+      skippedQuestions: z.array(questionSchema.pick({ question: true, listingField: true })).optional(),
       answeredQuestions: z
         .array(
           z
@@ -391,7 +392,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
           Boolean(request.context?.negotiation);
         const ownOnly = request.context?.source?.toLowerCase() === "takeover";
         const state: AgentToolState = {
-          firstDraft: listingAssist && request.context?.currentDraft?.price === null &&
+          firstDraft: listingAssist && !request.context?.skippedQuestions?.length && request.context?.currentDraft?.price === null &&
             (request.context.listingStart === true ||
               (!request.context.previousQuestion && !request.context.previousAnswer &&
                !request.context.answeredQuestions?.length && !request.context.recentMessages?.length)),

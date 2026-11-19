@@ -1,9 +1,3 @@
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "./components/ui/dropdown-menu";
 import { Button } from "./components/ui/button";
 import { Badge } from "./components/ui/badge";
 import { Textarea } from "./components/ui/textarea";
@@ -90,6 +84,7 @@ import SellFlow, {
   type ListingDraft,
 } from "./components/SellFlow";
 import ListingConversation from "./components/ListingConversation";
+import AskPakoMenu from "./components/AskPakoMenu";
 import DeveloperSettings from "./components/DeveloperSettings";
 import { useDeveloperMode } from "./availability/useDeveloperMode";
 import {
@@ -1587,41 +1582,10 @@ export default function App({
     });
   }
   const listingTools = (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={<Button variant="outline" size="sm" />}
-        disabled={!configured || listing.running}
-      >
-        Agent tools <ChevronDown size={14} />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="agent-tools-menu">
-        {[
-          [
-            "Research this item",
-            "Research comparable individual secondhand offers for this item.",
-          ],
-          [
-            "Suggest a price",
-            "Research comparable asking prices and suggest a price for this listing.",
-          ],
-          [
-            "Check listing",
-            "Check my listing for missing condition, dimensions and pickup details.",
-          ],
-          [
-            "Improve description",
-            "Improve my description using the photos and details I provided. Keep it concise and natural.",
-          ],
-        ].map(([label, request]) => (
-          <DropdownMenuItem
-            key={label}
-            onClick={() => void listing.send(request, {}, true)}
-          >
-            {label}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <AskPakoMenu
+      disabled={!configured || listing.running}
+      onAsk={(request) => void listing.send(request, {}, true)}
+    />
   );
   /** Pako still reads the photos in step 2, before his first run of the listing starts. */
   const listingStarting = busy && sellStep === 2 && !listing.state.id;

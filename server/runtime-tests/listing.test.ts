@@ -647,3 +647,30 @@ test("seller may explicitly revise an already saved asking price", async () => {
   );
   assert.ok(events.some((event) => event.type === "question"));
 });
+
+test("description additions can use the typed reply alongside the photo-derived draft", async () => {
+  const photo = "Silver laptop with a black keyboard.";
+  const reply = "14 inch, small scratch on the lid";
+  for (const [addition, accepted] of [
+    [reply, true],
+    ["14 inch, small scratch on the lid. Includes charger.", false],
+  ] as const) {
+    const description = photo + "\n" + addition;
+    const model = new MockLanguageModelV4({
+      doStream: [
+        toolCall("update_listing", {
+          patch: { description },
+          evidence: [{ kind: "seller", quote: "14 inch" }],
+          reason: "Add the seller's details.",
+        }, "add-facts"),
+        accepted ? answer("Ready.") : toolCall("ask_user", { question: "Anything to add?" }, "ask"),
+      ],
+    });
+    const events = await eventsFor(createAgentRuntime({ apiKey: "test", modelImpl: model }), {
+      text: reply,
+      context: { intent: "listing_assist", currentDraft: { ...blankDraft, description: photo, price: 40 } },
+    });
+    assert.equal(events.find((event) => event.type === "listing_patch")?.patch.description,
+      accepted ? description : undefined);
+  }
+});

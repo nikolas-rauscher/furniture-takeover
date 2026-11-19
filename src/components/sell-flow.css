@@ -448,3 +448,9 @@
 .sell-guide > .split-question {
   margin-top: 12px;
 }
+/* On phones Ask Pako is his sparkles; the menu names what he can do. */
+@media (max-width: 760px) {
+  .ask-pako > .ask-pako-label {
+    display: none;
+  }
+}

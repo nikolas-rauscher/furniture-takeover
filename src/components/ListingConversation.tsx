@@ -16,6 +16,7 @@ import { listingAnnouncement } from "../pakoMoods";
 import AgentComposer from "./AgentComposer";
 import AgentConversation from "./AgentConversation";
 import AgentRunPanel from "./AgentRunPanel";
+import { POLISH_DESCRIPTION } from "./AskPakoMenu";
 import { plainAnswer } from "./agentAnswer";
 import ListingTray from "./ListingTray";
 import PhotoBubble from "./PhotoBubble";
@@ -111,6 +112,12 @@ export default function ListingConversation({
               onLater={listing.decideLater}
               onRetry={listing.retry}
               onManual={onManual}
+              onPolish={
+                configured
+                  ? () =>
+                      void listing.send(POLISH_DESCRIPTION.request, {}, true)
+                  : undefined
+              }
             />
             <AgentComposer
               value={listing.input}

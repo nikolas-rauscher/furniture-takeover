@@ -155,7 +155,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
               "This is the current seller-approved asking price, including any accepted price suggestion. Preserve it. Ignore older claims that the price is missing. Continue with a different useful missing detail or finish.",
           };
         }
-        const repeated = repeatedQuestion(parsedQuestion.question, request);
+        const repeated = repeatedQuestion(parsedQuestion.question, request, parsedQuestion.listingField);
         if (repeated) {
           state.listingNeedsInput = false;
           return {
@@ -163,7 +163,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
             question: repeated.question,
             answer: repeated.answer,
             nextStep:
-              "Use this existing answer. Do not ask this question again. Update the draft if needed, then finish or ask only a different missing fact.",
+              "Leave skipped details unspecified. Do not ask this question again. Update the draft if needed, then finish or ask only a different missing fact.",
           };
         }
         // Model tools may attach an irrelevant control. Only an asking-price
@@ -186,18 +186,20 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
           throw new Error("Use the validated proposal or saved price, or omit the slider.");
         const { followUps = [], ...main } = parsedQuestion;
         const needsPrice = state.firstDraft && savedPrice == null;
+        const title = listingAssist ? request.context?.currentDraft?.title : undefined;
+        const formattedMain = formatQuestion(main, title);
         const queued = followUps.filter((followUp) => {
-          if (!listingAssist || repeatedQuestion(followUp.question, request)) return false;
+          if (!listingAssist || repeatedQuestion(followUp.question, request, followUp.listingField)) return false;
           const field = followUp.listingField;
           if (field === "price") return false;
           return !field || field === "other" || field === "description" ||
             !request.context?.currentDraft?.[field];
-        }).map(formatQuestion);
+        }).map((question) => formatQuestion(question, title));
         let question: AgentQuestionEvent = {
-          type: "question", id: toolCallId, ...formatQuestion(main),
+          type: "question", id: toolCallId, ...formattedMain,
         };
         if (needsPrice || (priceQuestion && state.proposedPrice !== undefined)) {
-          if (!priceQuestion) queued.unshift(formatQuestion(main));
+          if (!priceQuestion) queued.unshift(formattedMain);
           question = askingPriceQuestion(toolCallId, state.proposedPrice);
           if (priceQuestion) question.question = main.question;
         }

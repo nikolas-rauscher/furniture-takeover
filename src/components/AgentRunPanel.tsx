@@ -382,7 +382,8 @@ export default function AgentRunPanel({
           </div>
         </>
       )}
-      {!splitSearchResults && (
+      {/* While Pako researches for a listing, the tray says so; the turn keeps what he found. */}
+      {!splitSearchResults && !(questionsInTray && running) && (
         <AgentWebResults
           sources={safeSources}
           searches={webSearches}

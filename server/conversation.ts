@@ -1,3 +1,4 @@
+import type { AgentListingQuestion } from "../shared/actions.ts";
 import type { AgentRunRequest } from "../shared/runs.ts";
 
 /** Classify the actual question, ignoring confirmations preceding it. */
@@ -26,6 +27,7 @@ export function questionTopic(text: string): string | undefined {
     )
       return "fulfillment";
   }
+  if (/\b(?:charger|charging (?:brick|cable|adapter)|power (?:adapter|supply|brick))\b/.test(question)) return "charger";
   if (/\b(?:budget|spend|price limit|ausgeben)\b/.test(question))
     return "budget";
   if (/\b(?:condition|zustand|etat)\b/.test(question)) return "condition";
@@ -33,7 +35,7 @@ export function questionTopic(text: string): string | undefined {
 }
 
 export function isSkippedAnswer(text: string): boolean {
-  return /^(?:skip(?: for now)?|i don.t know(?:[.!].*)?|not sure|leave this detail unspecified.*|keine angabe.*|uberspringen|weiß ich nicht.*|weiss ich nicht.*)$/i.test(
+  return /^(?:skip(?:ped| for now)?|i don.t know(?:[.!].*)?|not sure|leave this detail unspecified.*|keine angabe.*|uberspringen|weiß ich nicht.*|weiss ich nicht.*)$/i.test(
     text.trim(),
   );
 }
@@ -67,11 +69,23 @@ export function answeredQuestions(request: AgentRunRequest) {
   return answered;
 }
 
-export function repeatedQuestion(question: string, request: AgentRunRequest) {
+export function repeatedQuestion(
+  question: string,
+  request: AgentRunRequest,
+  listingField?: AgentListingQuestion["listingField"],
+) {
   // Seller history is reset when opening a different draft. Buyer history spans
   // multiple listings, so topic matches cannot establish that a proposal's fact
   // is known. Let the buyer agent use the current structured negotiation instead.
   if (request.context?.intent !== "listing_assist") return undefined;
+  const topic = questionTopic(question);
+  const skipped = request.context.skippedQuestions?.find((item) =>
+    question.toLowerCase() === item.question.toLowerCase() ||
+    (topic && topic === questionTopic(item.question)) ||
+    (listingField && listingField !== "other" && listingField !== "description" &&
+      listingField === item.listingField),
+  );
+  if (skipped) return { question: skipped.question, answer: "Skipped" };
   // A user may deliberately revise a fact; allow clarification in that case.
   if (
     /\b(?:actually|change|correct|instead|different|correction)\b/i.test(
@@ -79,7 +93,6 @@ export function repeatedQuestion(question: string, request: AgentRunRequest) {
     )
   )
     return undefined;
-  const topic = questionTopic(question);
   const normalize = (text: string) =>
     text
       .toLowerCase()

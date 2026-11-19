@@ -9,7 +9,7 @@ import {
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { AutoHeight } from "@animate-ui/react/primitives/effects/auto-height";
 import type { AgentQuestionEvent } from "../../shared/actions";
-import { Check, LoaderCircle } from "@/components/icons";
+import { Check, LoaderCircle, Sparkles } from "@/components/icons";
 import { TODAY } from "../../shared/marketplace";
 import type { AgentRunState } from "../hooks/useAgentRun";
 import { useMomentPassed } from "../hooks/useMomentPassed";
@@ -21,6 +21,7 @@ import {
 } from "../listingQuestions";
 import { REACTION_MS, trayMood, workingLine } from "../pakoMoods";
 import { answerParts } from "./AgentAnswerContent";
+import { POLISH_DESCRIPTION } from "./AskPakoMenu";
 import PakoReaction from "./PakoReaction";
 import PriceCard from "./PriceCard";
 import { Button } from "./ui/button";
@@ -63,6 +64,8 @@ type Props = {
   onRetry: () => void;
   /** Goes on without Pako: the student fills in the details. */
   onManual: () => void;
+  /** Asks Pako to polish the description once he has asked everything; absent while he cannot help. */
+  onPolish?: () => void;
 };
 
 /** One dot per question of this turn, filled once answered. */
@@ -220,12 +223,15 @@ export default function ListingTray({
   onLater,
   onRetry,
   onManual,
+  onPolish,
 }: Props) {
   const reduced = useReducedMotion() === true;
   const headingId = useId();
   const tray = useRef<HTMLElement>(null);
   const titleNode = useRef<HTMLElement | null>(null);
   const focusNext = useRef(false);
+  /** The element in the tray that had focus last. */
+  const lastFocused = useRef<Element | null>(null);
   const [chosen, setChosen] = useState<string>();
   const answered = queue.filter((item) => turn.answers[item.id]).length;
   const cheering =
@@ -251,11 +257,16 @@ export default function ListingTray({
   }, [focusRequest]);
 
   if (phase === "hidden") return null;
+  /** Focus was in the tray, on something that went away with the content before. */
+  const focusLost = () =>
+    document.activeElement === document.body &&
+    lastFocused.current !== null &&
+    !lastFocused.current.isConnected;
   /** Each content's title takes focus as it arrives, when focus was in the tray before. */
   const title = (node: HTMLElement | null) => {
     if (!node) return;
     titleNode.current = node;
-    if (!focusNext.current) return;
+    if (!focusNext.current && !focusLost()) return;
     focusNext.current = false;
     node.focus({ preventScroll: true });
   };
@@ -398,10 +409,20 @@ export default function ListingTray({
     );
   } else if (phase === "done") {
     content = (
-      <p className="listing-tray-title" {...titleProps}>
-        {closing.title}
-        <span>{closing.text}</span>
-      </p>
+      <>
+        <p className="listing-tray-title" {...titleProps}>
+          {closing.title}
+          <span>{closing.text}</span>
+        </p>
+        {onPolish && (
+          <div className="listing-tray-choices">
+            <Button className="listing-tray-choice" onClick={onPolish}>
+              <Sparkles size={15} aria-hidden="true" />
+              {POLISH_DESCRIPTION.label}
+            </Button>
+          </div>
+        )}
+      </>
     );
   } else content = <WorkingLine turn={turn} titleProps={titleProps} />;
 
@@ -410,6 +431,9 @@ export default function ListingTray({
       ref={tray}
       className="listing-tray"
       data-phase={phase}
+      onFocus={(event) => {
+        lastFocused.current = event.target;
+      }}
       aria-labelledby={phase === "asking" ? headingId : undefined}
       aria-label={phase === "asking" ? undefined : "Pako"}
     >
