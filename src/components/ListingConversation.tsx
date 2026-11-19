@@ -7,6 +7,7 @@ import {
 import {
   asksPrice,
   closingLine,
+  PICKUP_QUESTION,
   priceSuggestion,
   trayPhase,
 } from "../listingQuestions";
@@ -47,7 +48,8 @@ export default function ListingConversation({
 }: Props) {
   const turn = starting ? startingListingTurn : listing.state;
   const question = listing.activeQuestion;
-  const queue = listing.state.questions;
+  const queue = listing.queue;
+  const fromRun = queue.filter((item) => item.id !== PICKUP_QUESTION.id);
   const phase = trayPhase({
     starting,
     status: listing.state.status,
@@ -58,7 +60,8 @@ export default function ListingConversation({
     phase,
     question: question && {
       text: plainAnswer(question.question),
-      first: queue[0]?.id === question.id,
+      // His explanation is read with the first question his run asks.
+      first: fromRun[0]?.id === question.id,
     },
     closing: `${closing.title} ${closing.text}`,
   });
@@ -87,6 +90,10 @@ export default function ListingConversation({
                   : undefined
               }
               focusRequest={listing.priceReviews}
+              waiting={listing.running && !listing.askingOwnQuestion}
+              onPickupDate={
+                listing.askingOwnQuestion ? listing.choosePickupDate : undefined
+              }
               onChoose={listing.choose}
               onPrice={listing.choosePrice}
               onSkip={listing.skip}

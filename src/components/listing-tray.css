@@ -185,6 +185,32 @@
   opacity: 0.55;
   cursor: default;
 }
+.listing-tray-date {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.listing-tray-date > input {
+  width: auto;
+  min-height: 44px;
+}
+/* What Pako's run is doing while he asks his own question. */
+.listing-tray-meanwhile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding-top: 8px;
+  border-top: 2px solid var(--canvas);
+  color: var(--muted);
+  font-size: var(--type-support);
+  font-weight: 600;
+}
+.listing-tray-meanwhile > .button {
+  margin-left: auto;
+}
 .listing-tray-skip {
   justify-self: start;
   margin-left: -13px;

@@ -1,4 +1,4 @@
-import { useRef, useState, type SetStateAction } from "react";
+import { useEffect, useRef, useState, type SetStateAction } from "react";
 import type {
   AgentListingPatchEvent,
   AgentQuestionEvent,
@@ -12,11 +12,14 @@ import {
   type ListingChanges,
 } from "../agentActions";
 import type { ListingDraft } from "../components/SellFlow";
-import { money } from "../../shared/marketplace";
+import { money, shortDate } from "../../shared/marketplace";
 import {
   asksPrice,
   DescriptionFullError,
+  handoverQuestion,
   nextQuestion,
+  PICKUP_QUESTION,
+  questionQueue,
   resolvedByDraft,
   tapAction,
   tapOutcome,
@@ -30,6 +33,10 @@ import { emptyAgentRunState, useAgentRun } from "./useAgentRun";
 
 /** What the student asks Pako when he starts writing a new listing. */
 const LISTING_START = "Write my listing from my photos.";
+
+type TapChange = Pick<AgentTapAnswer, "label" | "patch" | "appendDescription">;
+/** A tap made while Pako still works; it applies once his run has ended. */
+type HeldTap = { question: AgentQuestionEvent; change: TapChange };
 
 /** The listing's first turn while Pako still reads the photos, before his run starts. */
 export const startingListingTurn = {
@@ -81,11 +88,25 @@ export function useListingConversation({
   const tapCount = useRef(0);
   /** Counts the times the student asked to decide the price, so the tray can bring it into focus. */
   const [priceReviews, setPriceReviews] = useState(0);
-  const activeQuestion = nextQuestion(
-    run.state.questions,
-    run.state.answers,
-    deferred,
-  );
+  const [heldTaps, setHeldTaps] = useState<HeldTap[]>([]);
+  const running = run.state.status === "running";
+  const firstTurn = run.state.history[0] ?? run.state;
+  // In a listing he started writing, Pako asks pickup times himself once its basics are in.
+  const ownPickup =
+    run.state.id &&
+    firstTurn.request === LISTING_START &&
+    !run.state.questions.some((question) => question.id === PICKUP_QUESTION.id)
+      ? handoverQuestion(draftRef.current, run.state.history)
+      : undefined;
+  const queue = questionQueue(run.state.questions, ownPickup);
+  const activeQuestion = nextQuestion(queue, run.state.answers, deferred);
+
+  // His run's changes come first; a tap made meanwhile then applies on top of them.
+  useEffect(() => {
+    if (running || !heldTaps.length) return;
+    setHeldTaps([]);
+    for (const tap of heldTaps) releaseTap(tap);
+  }, [running, heldTaps]);
 
   function resetConversation() {
     runToken.current += 1;
@@ -98,6 +119,7 @@ export function useListingConversation({
     setUndone([]);
     setDeferred([]);
     setAnswerActions({});
+    setHeldTaps([]);
     setTapError(null);
     setInput("");
     lastRequest.current = null;
@@ -209,7 +231,7 @@ export function useListingConversation({
       !question && !explicitRequest ? activeQuestion : undefined;
     if (unanswered) {
       question = unanswered.question;
-      run.markQuestionAnswered(unanswered.id, text);
+      recordAnswer(unanswered, text);
     }
     const token = ++runToken.current;
     const baseline = { ...revisions.current };
@@ -249,28 +271,46 @@ export function useListingConversation({
     return true;
   }
   const waitingQuestion = (id: string) =>
-    run.state.questions.find(
-      (question) => question.id === id && !run.state.answers[id],
-    );
-  function recordAnswer(questionId: string, reply: string, actionId?: string) {
-    run.markQuestionAnswered(questionId, reply);
+    queue.find((question) => question.id === id && !run.state.answers[id]);
+  /** Pako's own questions join the turn with their first answer. */
+  function recordAnswer(
+    question: AgentQuestionEvent,
+    reply: string,
+    actionId?: string,
+  ) {
+    if (run.state.questions.some((item) => item.id === question.id))
+      run.markQuestionAnswered(question.id, reply);
+    else run.answerOwnQuestion(question, reply);
     if (actionId)
-      setAnswerActions((value) => ({ ...value, [questionId]: actionId }));
+      setAnswerActions((value) => ({ ...value, [question.id]: actionId }));
     setTapError(null);
   }
-  function applyTap(
-    question: AgentQuestionEvent,
-    answer: Pick<AgentTapAnswer, "label" | "patch" | "appendDescription">,
-  ) {
+  function applyTap(question: AgentQuestionEvent, change: TapChange) {
     tapCount.current += 1;
     const action = tapAction(
-      answer,
+      change,
       draftRef.current,
       `tap-${question.id}-${tapCount.current}`,
     );
     // The tap is the student's newest intent, so it applies over every earlier edit.
     applyPatch(action, { ...revisions.current }, true);
     return action.id;
+  }
+  /** Applies a tap now, or holds it until Pako's run has ended. */
+  function tap(question: AgentQuestionEvent, change: TapChange) {
+    if (!running) return applyTap(question, change);
+    setHeldTaps((value) => [...value, { question, change }]);
+    return undefined;
+  }
+  function releaseTap({ question, change }: HeldTap) {
+    try {
+      const actionId = applyTap(question, change);
+      setAnswerActions((value) => ({ ...value, [question.id]: actionId }));
+    } catch (error) {
+      if (!(error instanceof DescriptionFullError)) throw error;
+      run.unanswerQuestion(question.id);
+      setTapError({ questionId: question.id, message: error.message });
+    }
   }
   function acceptProposal(
     question: AgentQuestionEvent,
@@ -300,9 +340,9 @@ export function useListingConversation({
         outcome.kind === "accept-proposal"
           ? acceptProposal(question, outcome.answer)
           : outcome.kind === "patch"
-            ? applyTap(question, outcome.answer)
+            ? tap(question, outcome.answer)
             : undefined;
-      recordAnswer(questionId, label, actionId);
+      recordAnswer(question, label, actionId);
       return true;
     } catch (error) {
       if (!(error instanceof DescriptionFullError)) throw error;
@@ -319,17 +359,30 @@ export function useListingConversation({
       (item) => item.acceptsProposal && item.patch?.price === price,
     );
     recordAnswer(
-      questionId,
+      question,
       label,
       suggested
         ? acceptProposal(question, suggested)
-        : applyTap(question, { label, patch: { price } }),
+        : tap(question, { label, patch: { price } }),
+    );
+    return true;
+  }
+  /** The last day buyers can collect the item, set from Pako's pickup question. */
+  function choosePickupDate(questionId: string, date: string): boolean {
+    const question = waitingQuestion(questionId);
+    if (!question) return false;
+    const label = `Collect by ${shortDate(date)}`;
+    recordAnswer(
+      question,
+      label,
+      tap(question, { label, patch: { pickup: date } }),
     );
     return true;
   }
   function skip(questionId: string): boolean {
-    if (!waitingQuestion(questionId)) return false;
-    recordAnswer(questionId, "Skipped");
+    const question = waitingQuestion(questionId);
+    if (!question) return false;
+    recordAnswer(question, "Skipped");
     return true;
   }
   function decideLater(questionId: string) {
@@ -352,6 +405,9 @@ export function useListingConversation({
   function undoAnswer(questionId: string) {
     const actionId = answerActions[questionId];
     if (actionId) undo(actionId);
+    setHeldTaps((value) =>
+      value.filter((held) => held.question.id !== questionId),
+    );
     run.unanswerQuestion(questionId);
     setAnswerActions((value) =>
       Object.fromEntries(
@@ -362,13 +418,16 @@ export function useListingConversation({
 
   return {
     state: run.state,
-    running: run.state.status === "running",
+    running,
     input,
     setInput,
     appliedIds: Object.keys(changes),
     undoneIds: undone,
     notices,
+    queue,
     activeQuestion,
+    /** The question now is Pako's own, which he asks while he still works. */
+    askingOwnQuestion: activeQuestion?.id === PICKUP_QUESTION.id,
     tapError,
     priceReviews,
     decidingPrice: waitingPriceQuestion !== undefined,
@@ -383,6 +442,7 @@ export function useListingConversation({
     retry,
     choose,
     choosePrice,
+    choosePickupDate,
     skip,
     decideLater,
     reviewPrice,

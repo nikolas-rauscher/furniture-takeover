@@ -6,6 +6,10 @@ import {
   appendToDescription,
   asksPrice,
   closingLine,
+  handoverQuestion,
+  isPickupQuestion,
+  PICKUP_QUESTION,
+  questionQueue,
   niceStep,
   trayPhase,
   DescriptionFullError,
@@ -259,5 +263,77 @@ test("a question keeps the asked sentence as its heading and what Pako wrote aft
       ask: "Recent listings ask CHF 40. What would you like to ask?",
       aside: "",
     },
+  );
+});
+
+test("Pako asks for pickup times once, unless the listing already says how it is handed over", () => {
+  assert.equal(handoverQuestion(draft, []), PICKUP_QUESTION);
+  assert.equal(
+    handoverQuestion({ ...draft, pickup: "2026-12-01" }, []),
+    undefined,
+  );
+  assert.equal(
+    handoverQuestion(
+      { ...draft, description: "Desk. Pickup only on weekends." },
+      [],
+    ),
+    undefined,
+  );
+  assert.equal(
+    handoverQuestion({ ...draft, description: "Desk. Shipping possible." }, []),
+    undefined,
+  );
+  assert.equal(
+    handoverQuestion(
+      { ...draft, description: "Desk. Pickup in Ecublens (EPFL area)." },
+      [],
+    ),
+    PICKUP_QUESTION,
+    "where to pick it up is not when",
+  );
+  assert.equal(
+    handoverQuestion(draft, [{ questions: [PICKUP_QUESTION] }]),
+    undefined,
+    "an earlier turn asked it already, answered or skipped",
+  );
+  const handover = {
+    type: "question" as const,
+    id: "ask-2",
+    listingField: "pickup" as const,
+    question: "How will buyers get it?",
+  };
+  assert.equal(handoverQuestion(draft, [{ questions: [handover] }]), undefined);
+  assert.equal(isPickupQuestion(handover), true);
+  assert.equal(isPickupQuestion({ question: "Is shipping possible?" }), true);
+  assert.equal(isPickupQuestion(factQuestion), false);
+});
+
+test("Pako's pickup question comes first while he researches, and the run leaves pickup to him", () => {
+  const handover = {
+    type: "question" as const,
+    id: "ask-1:2",
+    listingField: "pickup" as const,
+    question: "How will buyers get it?",
+  };
+  const fromRun = [priceQuestion, factQuestion, handover];
+  assert.deepEqual(
+    questionQueue([], PICKUP_QUESTION).map((question) => question.id),
+    ["pako-pickup"],
+  );
+  assert.deepEqual(
+    questionQueue(fromRun, PICKUP_QUESTION).map((question) => question.id),
+    ["pako-pickup", "ask-1", "ask-1:1"],
+  );
+  assert.deepEqual(
+    questionQueue([PICKUP_QUESTION, ...fromRun], undefined).map(
+      (question) => question.id,
+    ),
+    ["pako-pickup", "ask-1", "ask-1:1"],
+    "once answered, his question stays in its place",
+  );
+  assert.deepEqual(
+    questionQueue(fromRun, undefined).map((question) => question.id),
+    ["ask-1", "ask-1:1", "ask-1:2"],
+    "without his question the run may ask about pickup",
   );
 });

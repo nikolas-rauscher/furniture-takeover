@@ -9,7 +9,8 @@ import {
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { AutoHeight } from "@animate-ui/react/primitives/effects/auto-height";
 import type { AgentQuestionEvent } from "../../shared/actions";
-import { Check } from "@/components/icons";
+import { Check, LoaderCircle } from "@/components/icons";
+import { TODAY } from "../../shared/marketplace";
 import type { AgentRunState } from "../hooks/useAgentRun";
 import { useMomentPassed } from "../hooks/useMomentPassed";
 import {
@@ -23,6 +24,7 @@ import { answerParts } from "./AgentAnswerContent";
 import PakoReaction from "./PakoReaction";
 import PriceCard from "./PriceCard";
 import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 import "./listing-tray.css";
 
 /** The tray's content settles in place of the last one, like the listing card's details. */
@@ -49,6 +51,10 @@ type Props = {
   tapError?: string;
   /** Grows when the student asks to decide the price, which then takes focus. */
   focusRequest: number;
+  /** The answers wait for Pako's run to end; his own questions can be answered meanwhile. */
+  waiting: boolean;
+  /** Offered with Pako's pickup question: the last day buyers can collect the item. */
+  onPickupDate?: (questionId: string, date: string) => boolean;
   /** Whether the tap applied; one that could not keeps its question. */
   onChoose: (questionId: string, label: string) => boolean;
   onPrice: (questionId: string, price: number) => void;
@@ -97,6 +103,77 @@ type TitleProps = {
   "data-content": string;
 };
 
+/** "Last day to collect…" opens a date field; its date becomes the listing's last pickup day. */
+function PickupDate({
+  disabled,
+  onSet,
+}: {
+  disabled: boolean;
+  onSet: (date: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [date, setDate] = useState("");
+  const fieldId = useId();
+  if (!open)
+    return (
+      <Button
+        className="listing-tray-choice"
+        disabled={disabled}
+        onClick={() => setOpen(true)}
+      >
+        Last day to collect…
+      </Button>
+    );
+  return (
+    <span className="listing-tray-date">
+      <label htmlFor={fieldId} className="sr-only">
+        Last day to collect
+      </label>
+      <Input
+        id={fieldId}
+        type="date"
+        min={TODAY}
+        value={date}
+        autoFocus
+        onChange={(event) => setDate(event.target.value)}
+      />
+      <Button
+        className="button primary small"
+        disabled={disabled || !date}
+        onClick={() => onSet(date)}
+      >
+        Set
+      </Button>
+    </span>
+  );
+}
+
+/** While Pako asks his own question, the tray still says what his run is doing. */
+function Meanwhile({
+  turn,
+  onRetry,
+}: {
+  turn: AgentRunState;
+  onRetry: () => void;
+}) {
+  if (turn.status === "running")
+    return (
+      <p className="listing-tray-meanwhile">
+        <LoaderCircle size={14} animate aria-hidden="true" />
+        {workingLine(turn, undefined, "listing")}
+      </p>
+    );
+  if (turn.status !== "error") return null;
+  return (
+    <p className="listing-tray-meanwhile" role="alert">
+      I got stuck checking prices. {turn.error}
+      <Button className="button quiet small" onClick={onRetry}>
+        Try again
+      </Button>
+    </p>
+  );
+}
+
 /** The live step line, with what the step looks at on a quieter line below it. */
 function WorkingLine({
   turn,
@@ -133,6 +210,8 @@ export default function ListingTray({
   closing,
   tapError,
   focusRequest,
+  waiting,
+  onPickupDate,
   onChoose,
   onPrice,
   onSkip,
@@ -158,8 +237,6 @@ export default function ListingTray({
       : phase === "starting"
         ? "working"
         : phase;
-  // A question that is not Pako's own arrives as his run ends; it waits for that end.
-  const waiting = turn.status === "running";
 
   useEffect(() => setChosen(undefined), [contentKey]);
   useEffect(() => {
@@ -259,6 +336,14 @@ export default function ListingTray({
                     {choice}
                   </Button>
                 ))}
+              {onPickupDate && (
+                <PickupDate
+                  disabled={waiting}
+                  onSet={(date) =>
+                    answering(() => onPickupDate(question.id, date))
+                  }
+                />
+              )}
             </div>
             <Button
               className="button quiet small listing-tray-skip"
@@ -274,6 +359,7 @@ export default function ListingTray({
             {tapError}
           </p>
         )}
+        <Meanwhile turn={turn} onRetry={onRetry} />
       </>
     );
   } else if (phase === "error") {

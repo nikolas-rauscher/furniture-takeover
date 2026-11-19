@@ -207,3 +207,82 @@ export function splitQuestion(text: string): { ask: string; aside: string } {
     aside: text.slice(end + 1).trim(),
   };
 }
+
+/** Pako's own question about pickup times, asked without a run. */
+export const PICKUP_QUESTION: AgentQuestionEvent = {
+  type: "question",
+  id: "pako-pickup",
+  listingField: "pickup",
+  question: "When can buyers pick it up?",
+  choices: ["Weekday evenings", "Weekends"],
+  choiceActions: [
+    {
+      label: "Weekday evenings",
+      appendDescription: "Pickup on weekday evenings.",
+    },
+    { label: "Weekends", appendDescription: "Pickup on weekends." },
+  ],
+};
+
+const HANDOVER_WORDS =
+  /\b(?:pick(?:ing)?[ -]?up|collect(?:ed|ion)?|hand(?:ed|ing)?[ -]?over|shipping|ship|deliver(?:y|ed)?|postage)\b/i;
+const HANDOVER_METHOD =
+  /\b(?:shipping|ship|deliver(?:y|ed)?|postage|hand(?:ed|ing)?[ -]?over)\b/i;
+const PICKUP_WORD = /\b(?:pick(?:ing)?[ -]?up|collect(?:ed|ion)?)\b/i;
+const TIME_WORD =
+  /\b(?:evenings?|mornings?|afternoons?|weekends?|weekdays?|(?:mon|tues|wednes|thurs|fri|satur|sun)days?|any ?time|appointment|only|until|flexible)\b/i;
+
+/** The description already says how or when buyers get the item, not only where. */
+function saysHandover(description: string) {
+  return description
+    .split(/[.!?\n]/)
+    .some(
+      (sentence) =>
+        HANDOVER_METHOD.test(sentence) ||
+        (PICKUP_WORD.test(sentence) && TIME_WORD.test(sentence)),
+    );
+}
+
+/** A question about how or when buyers get the item. */
+export const isPickupQuestion = (
+  question: Pick<AgentQuestionEvent, "listingField" | "question">,
+) =>
+  question.listingField === "pickup" || HANDOVER_WORDS.test(question.question);
+
+/**
+ * Pako asks for pickup times himself, once per listing, unless the listing
+ * already says how it is handed over or an earlier turn asked about it.
+ */
+export function handoverQuestion(
+  draft: Pick<ListingDraft, "pickup" | "description">,
+  earlierTurns: readonly { questions: readonly AgentQuestionEvent[] }[],
+): AgentQuestionEvent | undefined {
+  if (draft.pickup || saysHandover(draft.description)) return undefined;
+  const asked = earlierTurns.flatMap((turn) => turn.questions);
+  return asked.some(
+    (question) =>
+      question.id === PICKUP_QUESTION.id || isPickupQuestion(question),
+  )
+    ? undefined
+    : PICKUP_QUESTION;
+}
+
+/**
+ * The questions of this turn in the order Pako asks them: his own pickup question
+ * first while he researches, then the run's, which leave pickup to him.
+ */
+export function questionQueue(
+  questions: readonly AgentQuestionEvent[],
+  pickup: AgentQuestionEvent | undefined,
+): AgentQuestionEvent[] {
+  const ownPickup =
+    pickup !== undefined ||
+    questions.some((question) => question.id === PICKUP_QUESTION.id);
+  const fromRun = questions.filter(
+    (question) =>
+      !ownPickup ||
+      question.id === PICKUP_QUESTION.id ||
+      !isPickupQuestion(question),
+  );
+  return pickup ? [pickup, ...fromRun] : fromRun;
+}
