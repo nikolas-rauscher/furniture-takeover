@@ -1,4 +1,5 @@
-/* Saved searches are lip cards with a search tile, like the intro's answer cards. */
+/* Saved searches are lip cards with a search tile, like the intro's answer cards. Their
+   chips and actions run the card's width under the title. */
 .search-jobs {
   display: grid;
   gap: 14px;
@@ -7,7 +8,7 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: start;
-  gap: 14px;
+  gap: 10px 14px;
   padding: 16px;
   border: 2px solid var(--card-line);
   border-radius: var(--radius-card);
@@ -16,6 +17,7 @@
 }
 .job-icon {
   display: grid;
+  grid-row: span 2;
   place-items: center;
   width: 44px;
   height: 44px;
@@ -39,11 +41,37 @@
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
+/* Budget, reach and alert state as evenly spaced chips under the title. */
+.job-chips {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 2 / -1;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.job-chips .chip {
+  padding: 3px 10px;
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: var(--type-caption);
+  font-weight: 650;
+}
+.job-chips .job-alert-status {
+  background: var(--selected);
+  color: var(--blue-dark);
+}
+.search-job[data-paused] .job-chips .job-alert-status {
+  background: var(--canvas);
+  color: var(--muted);
+}
 .job-actions {
   display: flex;
   flex-wrap: wrap;
+  grid-column: 2 / -1;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 2px;
 }
 /* Alerts switch on and off per search; a paused search fades back behind its controls. */
 .job-alerts {
@@ -55,12 +83,6 @@
   font-size: var(--type-support);
   font-weight: 650;
   cursor: pointer;
-}
-.job-paused {
-  padding: 4px 10px;
-  background: var(--canvas);
-  color: var(--muted);
-  font-size: var(--type-caption);
 }
 .search-job[data-paused] :is(.job-icon, .job-main > h2, .job-main > p) {
   opacity: 0.72;
@@ -120,6 +142,10 @@
   }
   .job-icon {
     display: none;
+  }
+  .job-chips,
+  .job-actions {
+    grid-column: 1 / -1;
   }
   .job-controls .icon-button,
   .job-actions > button,

@@ -10,19 +10,33 @@ import {
   Search,
   Trash2,
 } from "@/components/icons";
-import { searchText, type SavedSearch } from "../searchRequest";
+import type { SavedSearch } from "../searchRequest";
+import { money } from "../../shared/marketplace";
 import Pako from "./onboarding/Pako";
 import MatchAlerts from "../alerts/MatchAlerts";
+import { NO_BUDGET } from "../alerts/matching";
 import WatchForm from "../alerts/WatchForm";
 import type { WatchMatch } from "../alerts/useWatches";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import "./saved-searches.css";
 
-/** What the card says under the title: the request, or its criteria when the title is the request. */
-function searchDetails(job: SavedSearch, location: string) {
+/** The student's own words, where the title does not repeat them. */
+function searchRequest(job: SavedSearch) {
   return job.request && job.request.trim() !== job.title.trim()
     ? job.request
-    : searchText(job.criteria, job.location || location);
+    : undefined;
+}
+
+/** The budget and reach of a saved search, short enough for a chip each. */
+function searchLimits({ criteria }: SavedSearch, place: string) {
+  return [
+    criteria.maxPrice >= NO_BUDGET
+      ? "Any budget"
+      : criteria.maxPrice === 0
+        ? "Free only"
+        : `Up to ${money(criteria.maxPrice)}`,
+    `${criteria.radius} km of ${place}`,
+  ];
 }
 
 /** The watch card unfolds in place, like a sheet sliding up. */
@@ -121,7 +135,8 @@ export default function SavedSearchesPage({
                   <SearchCard
                     key={job.id}
                     job={job}
-                    details={searchDetails(job, location)}
+                    request={searchRequest(job)}
+                    limits={searchLimits(job, job.location || location)}
                     onRun={() => onRun(job)}
                     onEdit={() => onEdit(job)}
                     onDelete={() => onDelete(job)}
@@ -163,14 +178,16 @@ export default function SavedSearchesPage({
 
 function SearchCard({
   job,
-  details,
+  request,
+  limits,
   onRun,
   onEdit,
   onDelete,
   onTogglePause,
 }: {
   job: SavedSearch;
-  details: string;
+  request?: string;
+  limits: string[];
   onRun(): void;
   onEdit(): void;
   onDelete(): void;
@@ -183,27 +200,7 @@ function SearchCard({
       </div>
       <div className="job-main">
         <h2>{job.title}</h2>
-        <p>{details}</p>
-        <div className="job-actions">
-          <Button className="button secondary small" onClick={onRun}>
-            Run search
-            <ArrowRight size={14} />
-          </Button>
-          <label className="job-alerts">
-            <Switch
-              checked={!job.paused}
-              aria-label={`Alerts for ${job.title}`}
-              onCheckedChange={onTogglePause}
-            />
-            Alerts
-          </label>
-          {job.paused && (
-            <span className="chip job-paused">
-              <BellOff size={14} aria-hidden="true" />
-              Paused
-            </span>
-          )}
-        </div>
+        {request && <p>{request}</p>}
       </div>
       <div className="job-controls">
         <Button
@@ -220,6 +217,35 @@ function SearchCard({
         >
           <Trash2 size={16} />
         </Button>
+      </div>
+      <ul className="job-chips" aria-label="Search limits and alerts">
+        {limits.map((limit) => (
+          <li key={limit} className="chip">
+            {limit}
+          </li>
+        ))}
+        <li className="chip job-alert-status">
+          {job.paused ? (
+            <BellOff size={14} aria-hidden="true" />
+          ) : (
+            <Bell size={14} aria-hidden="true" />
+          )}
+          {job.paused ? "Alerts paused" : "Alerts on"}
+        </li>
+      </ul>
+      <div className="job-actions">
+        <Button className="button secondary small" onClick={onRun}>
+          Run search
+          <ArrowRight size={14} />
+        </Button>
+        <label className="job-alerts">
+          <Switch
+            checked={!job.paused}
+            aria-label={`Alerts for ${job.title}`}
+            onCheckedChange={onTogglePause}
+          />
+          Alerts
+        </label>
       </div>
     </article>
   );
