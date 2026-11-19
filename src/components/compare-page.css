@@ -3,17 +3,29 @@
   max-width: 100%;
   overflow-wrap: anywhere;
 }
-/* Cards stay card-sized on wide screens, so the facts are in view next to the photos. */
+/*
+ * Compared listings sit side by side wherever each card keeps a readable width, up to
+ * card size on wide screens; on tablets three share the row, or two once they no
+ * longer fit. Each card spans five shared rows (heading, three facts, actions), so a
+ * fact reads straight across the cards.
+ */
 .compare-page .comparison-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 360px));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  gap: 20px 16px;
+  max-width: calc(
+    var(--compare-count) * 360px + (var(--compare-count) - 1) * 16px
+  );
   margin: 0;
   padding: 0;
   overflow: visible;
 }
-/* Each compared listing is a lip card; the facts line up across cards. */
+/* Each compared listing is a lip card. */
 .compare-page .comparison-card {
+  display: grid;
+  grid-row: span 5;
+  grid-template-rows: subgrid;
+  row-gap: 0;
   min-width: 0;
   max-width: 100%;
   padding: 12px 12px 14px;
@@ -65,7 +77,12 @@
   font-size: var(--type-caption);
   font-weight: 650;
 }
+/* The three facts take the card's middle rows. */
 .comparison-facts {
+  display: grid;
+  grid-row: span 3;
+  grid-template-rows: subgrid;
+  row-gap: 0;
   margin: 16px 0 0;
 }
 .compare-page .compare-fact {
@@ -90,14 +107,18 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 14px;
+  align-self: end;
+  gap: 4px 14px;
   margin-top: 10px;
 }
+/* A small secondary button at its usual size, with Remove beside it even in narrow cards. */
 .compare-page .comparison-card-actions > .button {
-  flex: 1 1 140px;
+  flex: 1 1 110px;
   min-width: 0;
   width: auto;
   margin: 0;
+  padding: 6px 13px;
+  font-size: var(--type-support);
   white-space: normal;
 }
 .comparison-card-actions > .text-button {
@@ -105,6 +126,12 @@
   padding: 8px 2px;
   font-size: 12px;
 }
+
+/* The facts side by side, shown on phones above the cards. */
+.comparison-table {
+  display: none;
+}
+
 @media (max-width: 600px) {
   .compare-page .page-title {
     margin-bottom: 24px;
@@ -112,8 +139,81 @@
   .compare-page .page-title h1 {
     font-size: 26px;
   }
+  /*
+   * A lip card with one column per listing. The names stay pinned under the header while
+   * the facts scroll past them; the cards below keep the photos and the way to each one.
+   */
+  .comparison-table {
+    display: table;
+    width: 100%;
+    margin-bottom: var(--space-group);
+    border: 2px solid var(--card-line);
+    border-radius: var(--radius-card);
+    border-spacing: 0;
+    background: var(--surface);
+    box-shadow: 0 4px 0 var(--lip);
+    table-layout: fixed;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .comparison-table thead :is(th, td) {
+    position: sticky;
+    top: var(--app-header-height);
+    z-index: 1;
+    padding: 12px 6px 10px;
+    background: var(--surface);
+    box-shadow: inset 0 -2px 0 var(--canvas);
+    vertical-align: top;
+  }
+  .comparison-table thead td {
+    width: 86px;
+    border-top-left-radius: var(--radius-card);
+  }
+  .comparison-table thead th:last-child {
+    border-top-right-radius: var(--radius-card);
+  }
+  .comparison-table thead th {
+    font-size: var(--type-caption);
+    font-weight: 700;
+    line-height: 1.3;
+    text-align: left;
+  }
+  .comparison-table-thumb {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    margin-bottom: 6px;
+    overflow: hidden;
+    border-radius: 10px;
+    background: var(--canvas);
+    color: var(--muted);
+  }
+  .comparison-table-thumb > img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .comparison-table tbody :is(th, td) {
+    padding: 10px 6px;
+    vertical-align: top;
+  }
+  .comparison-table tbody tr + tr :is(th, td) {
+    border-top: 2px solid var(--canvas);
+  }
+  .comparison-table tbody th {
+    padding-left: 12px;
+    color: var(--muted);
+    font-size: var(--type-caption);
+    font-weight: 650;
+    text-align: left;
+    overflow-wrap: normal;
+  }
+  .comparison-table tbody tr:first-child td {
+    font-size: var(--type-label);
+    font-weight: 750;
+  }
   .compare-page .comparison-grid {
-    grid-template-columns: minmax(0, 1fr);
     gap: 16px;
   }
   .compare-page .comparison-card {
