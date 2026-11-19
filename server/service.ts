@@ -9,7 +9,7 @@ import {
   groupPhotosWithDeepSeek,
   type ProviderConfig,
 } from "./deepseek.ts";
-import { explicitPrice } from "./facts.ts";
+import { appPrices, explicitPrice } from "./facts.ts";
 import { validatePhotoGroupRequest, validateRequest } from "./validation.ts";
 import { AgentError, invalidOutput } from "./errors.ts";
 import {
@@ -162,7 +162,13 @@ function groundListing(
 ): AssistResponse {
   if (request.intent !== "listing") return response;
   if (!response.metadata.title?.trim()) throw invalidOutput();
-  const metadata = { ...response.metadata };
+  const metadata = {
+    ...response.metadata,
+    title: appPrices(response.metadata.title),
+    ...(response.metadata.description
+      ? { description: appPrices(response.metadata.description) }
+      : {}),
+  };
   const notes = normalized(request.text);
   const providedPrice = explicitPrice(request.text);
   // These details must come from the seller, even when a photo is supplied.

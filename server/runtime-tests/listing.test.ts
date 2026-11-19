@@ -674,3 +674,25 @@ test("description additions can use the typed reply alongside the photo-derived 
       accepted ? description : undefined);
   }
 });
+
+test("listing text Pako writes shows four-digit prices like the app's price cards", async () => {
+  const note = "MacBook Pro, 16 GB RAM. Asking CHF 1250.";
+  const model = new MockLanguageModelV4({
+    doStream: [
+      toolCall("update_listing", {
+        patch: { description: note },
+        evidence: [{ kind: "seller", quote: note }],
+        reason: "Use the seller's note.",
+      }, "note"),
+      answer("Ready."),
+    ],
+  });
+  const events = await eventsFor(createAgentRuntime({ apiKey: "test", modelImpl: model }), {
+    text: note,
+    context: { intent: "listing_assist", currentDraft: { ...blankDraft, price: 1250 } },
+  });
+  assert.equal(
+    events.find((event) => event.type === "listing_patch")?.patch.description,
+    "MacBook Pro, 16 GB RAM. Asking CHF 1,250.",
+  );
+});
