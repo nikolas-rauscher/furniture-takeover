@@ -263,7 +263,7 @@
 }
 
 /* Short phones keep Pako's line and the scene on one screen. */
-@media (max-width: 760px) and (max-height: 700px) {
+@media (max-width: 760px) and (max-height: 760px) {
   .ob-guide[data-layout="guide"] .ob-pako {
     width: 68px;
     height: 68px;

@@ -116,12 +116,36 @@
   color: var(--ink);
 }
 
-/* Body: Pako, then the step. It scrolls on short screens. */
+/*
+ * Body: Pako, then the step. It scrolls on short screens, and while more of the step
+ * waits below, its lower edge fades out above the footer.
+ */
+@property --ob-body-fade {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
 .ob-body {
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: var(--lip) transparent;
+  mask-image: linear-gradient(
+    to bottom,
+    #000 calc(100% - var(--ob-body-fade)),
+    transparent
+  );
+  animation: ob-body-fade linear both;
+  animation-timeline: scroll(self);
+}
+@keyframes ob-body-fade {
+  0%,
+  85% {
+    --ob-body-fade: 40px;
+  }
+  100% {
+    --ob-body-fade: 0px;
+  }
 }
 .ob-body-inner {
   display: flex;
@@ -349,6 +373,30 @@
   position: absolute;
   top: 10px;
   right: 10px;
+}
+
+/* Short phones keep all eight answers above Continue: the cards draw closer, their
+   icons shrink and the step sits nearer to Pako. */
+@media (max-width: 760px) and (max-height: 760px) {
+  .ob-body-inner {
+    gap: 14px;
+  }
+  .ob-choices-grid {
+    gap: 8px;
+  }
+  .ob-choices-grid .ob-choice {
+    gap: 6px;
+    padding: 10px 12px;
+  }
+  .ob-choices-grid .ob-choice-tile {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+  }
+  .ob-choices-grid .ob-choice-mark {
+    top: 8px;
+    right: 8px;
+  }
 }
 
 @media (min-width: 761px) {
