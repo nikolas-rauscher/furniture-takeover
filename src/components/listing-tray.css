@@ -239,7 +239,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  width: 104px;
+  width: 7.5rem;
   min-height: 44px;
   padding: 4px 12px;
   border: 2px solid var(--card-line);
@@ -259,7 +259,7 @@
   padding: 0;
   background: none;
   color: var(--ink);
-  font-size: var(--type-section);
+  font-size: var(--type-item);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   outline: none;
