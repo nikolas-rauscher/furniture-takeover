@@ -291,6 +291,10 @@ export function listingTitle(notes: string): string {
     ? (first[0].toUpperCase() + first.slice(1)).slice(0, 90)
     : "Furniture for sale";
 }
+/** A listing the student wrote; sample listings play other students' items. */
+export const isMine = (item: Pick<Product, "own" | "demo">) =>
+  Boolean(item.own) && !item.demo;
+
 export function withinSearchRadius(distance: number | undefined, radius?: number): boolean {
   // New and cloud listings use zero when no distance has been recorded.
   return radius === undefined || distance === undefined || distance <= radius;

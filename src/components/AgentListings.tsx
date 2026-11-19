@@ -1,4 +1,4 @@
-import { money, type Product } from "../../shared/marketplace";
+import { isMine, money, type Product } from "../../shared/marketplace";
 import { Image as ImageIcon } from "./icons";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -17,7 +17,7 @@ import "./agent-listings.css";
 
 /** Pako can draft an offer only for someone else's listing that is still active. */
 export const canOffer = (item: Product) =>
-  !item.own && item.status === "active";
+  !isMine(item) && item.status === "active";
 
 type AgentProductCardProps = {
   item: Product;

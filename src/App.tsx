@@ -148,6 +148,7 @@ import {
   TODAY,
   defaults,
   criteriaTitle,
+  isMine,
   money,
   shortDate,
   type Criteria,
@@ -1720,7 +1721,7 @@ export default function App({
     setSellMode("batch");
   }
   function editListing(item: Product) {
-    if (account && !item.own) return;
+    if (!isMine(item)) return;
     if (item.status === "withdrawn") return;
     hasSellingDraft.current = true;
     navigate("sell");
@@ -2855,18 +2856,10 @@ export default function App({
                         : "#listings",
                   );
                 }}
-                visibleListings={
-                  account
-                    ? visibleListings.filter((item) => item.own)
-                    : visibleListings
-                }
+                visibleListings={visibleListings.filter(isMine)}
                 cloud={!!account}
                 savedListings={savedListings}
-                archivedListings={
-                  account
-                    ? archivedListings.filter((item) => item.own)
-                    : archivedListings
-                }
+                archivedListings={archivedListings.filter(isMine)}
                 onSell={startSell}
                 onBrowse={openBrowse}
                 onOpen={openProduct}
