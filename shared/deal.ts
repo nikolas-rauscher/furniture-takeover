@@ -269,3 +269,38 @@ export function dealPhase({
   return turn ? "your_turn" : "reading";
 }
 export type DealPhase = ReturnType<typeof dealPhase>;
+
+/** The terms as they stand now: what the latest messages say, then what both already agreed. */
+export function turnTerms(
+  turn: Pick<ThreadTurn, "facts" | "pickupAt">,
+  agreed: DealTerms | null,
+): DealTerms {
+  const { facts, pickupAt } = turn;
+  const meeting =
+    facts.pickupTime !== undefined || facts.pickupPoint !== undefined;
+  return {
+    amount: facts.amount?.value ?? agreed?.amount ?? null,
+    fulfillment:
+      facts.fulfillment?.value ??
+      (meeting ? "pickup" : (agreed?.fulfillment ?? null)),
+    pickupAt: facts.pickupTime ? pickupAt : (agreed?.pickupAt ?? null),
+    pickupTime: facts.pickupTime?.value ?? agreed?.pickupTime ?? null,
+    pickupPoint: facts.pickupPoint?.value ?? agreed?.pickupPoint ?? null,
+  };
+}
+
+/** Role-relative terms for Pako's thread prompt, without account or message identifiers. */
+export function threadDealSnapshot(
+  deal: Deal | null,
+  role: DealRole,
+): ThreadTurnRequest["deal"] {
+  if (!deal) return null;
+  return {
+    status: deal.status,
+    agreed: deal.agreed?.terms ?? null,
+    proposal: deal.proposal && {
+      terms: deal.proposal.terms,
+      by: deal.proposal.by === role ? "me" : "them",
+    },
+  };
+}

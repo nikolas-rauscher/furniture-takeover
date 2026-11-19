@@ -54,6 +54,7 @@ export function useDemoInbox({
   }, [enabled, open, refresh]);
   return {
     conversations,
+    refresh,
     loaded,
     error,
     /** Shows a conversation the server returned after a change, on top. */

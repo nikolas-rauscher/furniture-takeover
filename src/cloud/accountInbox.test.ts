@@ -91,3 +91,11 @@ test("with the update the inbox carries each read marker, and other failures sta
     /permission denied/,
   );
 });
+
+test("a missing deal migration leaves ordinary conversations readable",async()=>{
+ const rows=tables({data:[]});
+ rows.deals={error:{code:"PGRST205",message:"Table deals is missing"}};
+ const inbox=await loadInbox(clientWith(rows));
+ assert.equal(inbox.deals,null);
+ assert.equal(inbox.latest.c1.body,"Hi!");
+});

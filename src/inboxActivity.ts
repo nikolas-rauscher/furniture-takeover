@@ -1,3 +1,5 @@
+import type { Deal, DealRole } from "../shared/deal.ts";
+import type { Product } from "../shared/marketplace.ts";
 import type { SellerConversation } from "../shared/messages.ts";
 
 /** A conversation in the inbox, reduced to who wrote last and when. */
@@ -64,4 +66,22 @@ export function accountInboxThread(
       at: latest.created_at,
     },
   };
+}
+
+/** An agreed deal reserves the listing even while its local status write is pending. */
+export function effectiveStatus(
+  listing: Pick<Product, "id" | "status">,
+  deals: readonly Deal[],
+): Product["status"] {
+  return listing.status === "active" &&
+    deals.some((d) => d.listingId === listing.id && d.status === "agreed")
+    ? "reserved"
+    : listing.status;
+}
+export function dealActivity(deal: Deal | undefined | null, role: DealRole) {
+  if (deal?.status === "agreed") return "Pickup booked";
+  if (deal?.status === "completed") return "Completed";
+  if (deal?.status === "cancelled") return "Cancelled";
+  if (deal?.proposal)
+    return deal.proposal.by === role ? "Waiting" : "Your turn";
 }

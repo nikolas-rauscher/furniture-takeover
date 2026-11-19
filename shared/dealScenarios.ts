@@ -48,6 +48,7 @@ export const dealScenarios: { name: string; steps: Step[] }[] = [
         kind: "cancelled",
         statusChange: "active",
       },
+      { ...offer, error: "deal_closed" },
     ],
   },
   {
@@ -86,4 +87,35 @@ export const dealScenarios: { name: string; steps: Step[] }[] = [
     name: "A message must state the terms",
     steps: [{ ...offer, body: "Okay", error: "terms_not_stated" }],
   },
+  ...[
+    {
+      name: "Partial proposals need more terms before confirmation",
+      terms: { ...terms, fulfillment: null },
+      error: "terms_incomplete",
+    },
+    {
+      name: "Pickup confirmation needs a future pickup",
+      terms: {
+        ...terms,
+        fulfillment: "pickup" as const,
+        pickupTime: "12:00",
+        pickupAt: "2000-11-20T11:00:00Z",
+        pickupPoint: "Atrium",
+      },
+      error: "pickup_time_past",
+    },
+  ].map((example) => {
+    const step: Step = {
+      ...offer,
+      action: { type: "propose", terms: example.terms },
+      body: "CHF 30, 12:00, Atrium",
+    };
+    return {
+      name: example.name,
+      steps: [
+        step,
+        { ...step, actor: "seller" as const, error: example.error },
+      ],
+    };
+  }),
 ];

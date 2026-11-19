@@ -17,16 +17,20 @@ export function useDemoDeal(
     async act(action: DealAction, text: string, messageId?: string) {
       if (!listing || !inbox.loaded)
         throw new Error("Wait for the conversation to load.");
-      const { conversation, statusChange } = await sendDemoDeal(
-        listing,
-        role,
-        action,
-        text,
-        deal?.version ?? 0,
-        messageId,
-      );
-      inbox.put(conversation);
-      return { deal: conversation.deal!, statusChange };
+      try {
+        const { conversation, statusChange } = await sendDemoDeal(
+          listing,
+          role,
+          action,
+          text,
+          deal?.version ?? 0,
+          messageId,
+        );
+        inbox.put(conversation);
+        return { deal: conversation.deal!, statusChange };
+      } finally {
+        void inbox.refresh();
+      }
     },
   };
 }
