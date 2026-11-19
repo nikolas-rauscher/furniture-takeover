@@ -22,12 +22,16 @@ export default function Auth({
   if (mode === "complete")
     return (
       <section className="account-auth">
-        <h1>Password updated</h1>
-        <p role="status">
-          Your new password has been saved. You can now use it with your account
-          email to sign in on your other devices.
+        <Pako mood="cheer" size={80} className="account-auth-pako" />
+        <h1>Password saved!</h1>
+        <p className="quiet-caption" role="status">
+          Use it with your email to sign in on your other devices.
         </p>
-        <Button className="button primary" onClick={onDone}>
+        <Button
+          animateIcon
+          className="button primary large full"
+          onClick={onDone}
+        >
           Continue
         </Button>
       </section>
