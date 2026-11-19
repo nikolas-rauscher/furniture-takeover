@@ -1,4 +1,3 @@
-import { presentSampleListing } from "../../shared/sampleListingPresentation";
 import {
   useCallback,
   useEffect,
@@ -21,7 +20,7 @@ export function toProduct(
   name = "Seller",
 ): Product {
   const clientImages = row.images; // converted to public URLs by the loader
-  return presentSampleListing({
+  return {
     id: row.id,
     title: row.title,
     description: row.description,
@@ -42,7 +41,7 @@ export function toProduct(
     pickupBy: row.pickup_by ?? "",
     available: row.pickup || "Flexible pickup",
     status: row.status,
-  });
+  };
 }
 export async function loadProducts(client: SupabaseClient, userId?: string) {
   const rows: Listing[] = [];

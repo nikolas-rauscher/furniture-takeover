@@ -33,7 +33,11 @@ test("expanded catalog adds varied objects to an existing database without repla
     legacyDatabase.exec("DELETE FROM listings WHERE id LIKE 'demo-v2-%'");
     legacyDatabase.close();
     store = createListingsStore(filename);
-    assert.equal(store.listDemo().length, 12);
+    assert.equal(
+      store.listDemo().length,
+      demoListings.filter((listing) => !listing.id.startsWith("demo-v2-"))
+        .length,
+    );
     const upgraded = store.seedDemo();
     assert.equal(upgraded.length, demoListings.length);
     assert.deepEqual(
@@ -127,7 +131,7 @@ test("campus address migration preserves edits and never replaces a custom locat
   }
 });
 
-test("stock photo migration preserves listing edits and restores verified photo provenance", () => {
+test("stock photo migration swaps in the illustration and keeps listing edits", () => {
   const directory = mkdtempSync(join(tmpdir(), "takeover-photo-migration-"));
   const filename = join(directory, "marketplace.sqlite");
   const database = new DatabaseSync(filename);
@@ -140,9 +144,12 @@ test("stock photo migration preserves listing edits and restores verified photo 
     title: "Keep my title",
     price: 23,
     status: "reserved",
-    image: "/images/catalog-bike.jpg",
+    seller: "Demo seller",
+    initials: "D",
+    description: "Fictional demo listing for testing. Photo referenced from an actual marketplace listing.",
+    image: "https://img.ricardostatic.ch/images/old/t_1000x750/fahrrad",
+    photoSourceUrl: "https://www.ricardo.ch/de/a/fahrrad-1/",
   };
-  delete legacy.photoSourceUrl;
   database
     .prepare("INSERT INTO listings VALUES (?, 1, ?)")
     .run(seed.id, JSON.stringify(legacy));
@@ -154,21 +161,18 @@ test("stock photo migration preserves listing edits and restores verified photo 
     assert.equal(migrated.price, 23);
     assert.equal(migrated.status, "reserved");
     assert.equal(migrated.image, seed.image);
-    assert.equal(migrated.photoSourceUrl, seed.photoSourceUrl);
+    assert.equal(migrated.seller, seed.seller);
+    assert.equal(migrated.description, seed.description);
+    assert.equal("photoSourceUrl" in migrated, false);
     assert.deepEqual(
       store.seedDemo().find((item) => item.id === seed.id),
       migrated,
     );
     const updated = store
-      .updateDemo([
-        {
-          ...migrated,
-          price: 24,
-          photoSourceUrl: "https://untrusted.example/",
-        },
-      ])
+      .updateDemo([{ ...migrated, price: 24 }])
       .find((item) => item.id === seed.id)!;
-    assert.equal(updated.photoSourceUrl, seed.photoSourceUrl);
+    assert.equal(updated.price, 24);
+    assert.equal(updated.image, seed.image);
   } finally {
     store.close();
     rmSync(directory, { recursive: true, force: true });
@@ -195,23 +199,18 @@ test("SQLite demo seed survives restart and never overwrites edited or withdrawn
     assert.deepEqual(store.listDemo(), saved);
     assert.deepEqual(store.seedDemo(), saved);
     assert.equal(store.listDemo().length, demoListings.length);
-    assert.equal(
-      store.listDemo().filter((item) => item.status === "sold").length,
-      1,
-    );
-    assert.equal(
-      store.listDemo().filter((item) => item.status === "reserved").length,
-      1,
-    );
+    for (const status of ["sold", "reserved"] as const)
+      assert.equal(
+        store.listDemo().filter((item) => item.status === status).length,
+        demoListings.filter((item) => item.status === status).length,
+      );
     assert.ok(
       store
         .listDemo()
         .every((item) => item.demo && item.own && item.source === "takeover"),
     );
     assert.ok(
-      store
-        .listDemo()
-        .every((item) => item.description.includes("Fictional demo listing")),
+      store.listDemo().every((item) => item.image.startsWith("/samples/")),
     );
     assert.equal(addDemoListings(saved).length, demoListings.length);
   } finally {

@@ -84,8 +84,7 @@
     height: 44px;
     min-height: 44px;
   }
-  /* Links beside a listing's photo and meeting point get the same reach. */
-  .listing-detail-provenance a,
+  /* Links beside a listing's meeting point get the same reach. */
   .listing-detail-pickup-links a {
     display: inline-flex;
     align-items: center;

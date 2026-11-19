@@ -607,7 +607,6 @@ function DemoMessagesPage({
                 text={text}
                 busy={busy}
                 disabled={false}
-                sendBlocked={false}
                 error={sendError || error}
                 pakoDrafted={appDraft || assistant.draftedByPako}
                 tools={assistant.askMenu}

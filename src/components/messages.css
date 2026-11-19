@@ -613,8 +613,8 @@
   color: var(--danger);
   font-size: var(--type-support);
 }
-/* A sample listing's seller never answers: the student can still write a draft. */
-.chat-sample-note {
+/* A quiet note under a thread, such as why the deal card could not change. */
+.chat-note {
   margin: 8px 0 0;
   padding: 10px 12px;
   border-radius: 12px;

@@ -9,7 +9,6 @@ import {
   MapPin,
   MessageCircle,
   Pencil,
-  Search,
   Sparkles,
   Truck,
 } from "@/components/icons";
@@ -96,7 +95,6 @@ export default function ListingDetailPage({
   onOffer,
   deal,
   onOpenChat,
-  onFindSimilar,
   onEdit,
   onAskAgent,
   availabilityPanel,
@@ -114,17 +112,8 @@ export default function ListingDetailPage({
       </div>
     );
   const similar = renderProduct ? relatedListings(selected, catalog) : [];
-  const description = selected.demo
-    ? selected.description
-        .split(/\n\n(?:Sample listing for testing|SYNTHETIC DEMO)/i)[0]
-        .trim()
-    : selected.description;
-  const samplePhotoNote =
-    selected.description.match(/Photo (?:illustrates|shows) [^\n]+/)?.[0] ?? "";
   const transport = transportGuidance(selected.title, selected.dimensions);
   const mine = isMine(selected);
-  // A marketplace sample has no seller to reply, so it leads to real listings instead.
-  const sample = cloud && Boolean(selected.demo) && !mine;
   /** Leads the main action's label where it docks at the bottom of a phone screen. */
   const dockPrice = (
     <span className="listing-detail-dock-price">
@@ -143,29 +132,12 @@ export default function ListingDetailPage({
             images={listingPhotos(selected)}
             title={selected.title}
           />
-          {(selected.demo || selected.photoSourceUrl || !cloud) && (
+          {!cloud && !selected.demo && (
             <div className="listing-detail-provenance">
-              {selected.demo ? (
-                <p>
-                  <strong>Sample listing.</strong> Price and pickup details are
-                  fictional{mine ? "." : "; this seller cannot reply."}{" "}
-                  {samplePhotoNote}
-                </p>
-              ) : !cloud ? (
-                <p>
-                  Saved in this browser. Not published to an external
-                  marketplace.
-                </p>
-              ) : null}
-              {selected.photoSourceUrl && (
-                <a
-                  href={selected.photoSourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Original photo listing
-                </a>
-              )}
+              <p>
+                Saved in this browser. Not published to an external
+                marketplace.
+              </p>
             </div>
           )}
         </div>
@@ -270,23 +242,6 @@ export default function ListingDetailPage({
                     Ask Pako to improve this listing
                   </Button>
                 </div>
-              ) : sample ? (
-                <div className="listing-detail-dock">
-                  <Button
-                    animateIcon
-                    className="button primary full"
-                    type="button"
-                    onClick={onFindSimilar}
-                  >
-                    <Search size={17} />
-                    <span>
-                      <span className="listing-detail-dock-price">
-                        Sample ·{" "}
-                      </span>
-                      Find real ones with Pako
-                    </span>
-                  </Button>
-                </div>
               ) : (
                 <>
                   {deal && <ListingDeal view={deal} />}
@@ -361,10 +316,10 @@ export default function ListingDetailPage({
               <div className="listing-detail-report">{reportAction}</div>
             )}
           </div>
-          {description && (
+          {selected.description && (
             <section className="listing-detail-description">
               <h2>About this item</h2>
-              <p>{description}</p>
+              <p>{selected.description}</p>
             </section>
           )}
           {selected.pickupPoint && (
@@ -394,9 +349,7 @@ export default function ListingDetailPage({
                   </a>
                 </div>
                 <p className="listing-detail-pickup-note">
-                  {selected.demo
-                    ? "Real meeting point; this sample item is not stored here."
-                    : "Confirm the meeting point with the seller before travelling."}
+                  Confirm the meeting point with the seller before travelling.
                 </p>
               </div>
             </section>

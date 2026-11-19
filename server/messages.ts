@@ -27,7 +27,7 @@ const inputSchema = z
       .max(750000)
       .refine((image) => {
         if (
-          /^(?:data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+|\/images\/[A-Za-z0-9_.-]+)$/.test(
+          /^(?:data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+|\/(?:images|samples)\/[A-Za-z0-9_.-]+)$/.test(
             image,
           )
         )

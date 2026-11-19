@@ -94,7 +94,7 @@ done
 
 `supabase-db` is the default container name (`docker ps` shows yours). If you prefer, paste each file into Studio's SQL Editor, in order.
 
-Optional demo listings: review `supabase/seed-demo.sql`, then run it the same way. It adds three fictional sellers who cannot log in.
+Optional demo listings: review `supabase/seed-demo.sql`, then run it the same way. It adds six students who cannot log in and their 40 listings, the same ones the local demo shows; their pictures are the illustrations in `public/samples`, which the app serves. Messages to them are not answered. Regenerate the file with `node --experimental-strip-types scripts/render-demo-seed.ts > supabase/seed-demo.sql` after changing `shared/demoListings.ts`.
 
 ## Step 3. App machine
 

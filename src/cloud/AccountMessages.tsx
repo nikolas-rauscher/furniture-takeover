@@ -210,8 +210,8 @@ export default function AccountMessages({
   const setText = (value: string) =>
     setDrafts((xs) => ({ ...xs, [selected]: value }));
   const otherBlocked = !!otherId && blocked.includes(otherId);
-  /** Sample listings belong to seeded sellers who never reply. */
-  const sampleSeller = Boolean(product?.demo);
+  /** The demo listings belong to seeded sellers, who never reply. */
+  const seededSeller = Boolean(product?.demo);
   // A message the app prepared, the opening offer or a follow-up, stays labelled as Pako's until the student edits it.
   const appDraft = [initialMessage, threadRequest?.draft].some(
     (draft) => draft !== undefined && text === draft,
@@ -272,7 +272,7 @@ export default function AccountMessages({
     visible,
     text,
     onText: setText,
-    canNudge: !sampleSeller,
+    canNudge: !seededSeller,
     agreedWith: agreedElsewhere && (names[agreedElsewhere.buyer_id] || "Buyer"),
   });
   /** A first offer starts the conversation, then records the offer with its message. */
@@ -309,7 +309,7 @@ export default function AccountMessages({
     messages,
     events,
     turn: assistant.turn,
-    enabled: !otherBlocked && !sampleSeller,
+    enabled: !otherBlocked && !seededSeller,
     visible,
     homePoint,
     onStatusChange: onListingStatus,
@@ -715,7 +715,7 @@ export default function AccountMessages({
                     {cardInConversation && threadDeal.card}
                     <AnimatePresence>{threadDeal.celebration}</AnimatePresence>
                     {!otherBlocked &&
-                      !sampleSeller &&
+                      !seededSeller &&
                       !threadDeal.celebrating &&
                       assistant.tray(threadDeal.trayMoment)}
                   </>
@@ -726,14 +726,8 @@ export default function AccountMessages({
                   You blocked this user. Unblock them to send a message.
                 </p>
               )}
-              {sampleSeller && (
-                <p className="chat-sample-note" role="status">
-                  Sample listing: its seller can't reply, so your message stays
-                  a draft here.
-                </p>
-              )}
-              {!otherBlocked && !sampleSeller && deal.error && (
-                <p className="chat-sample-note" role="status">
+              {!otherBlocked && !seededSeller && deal.error && (
+                <p className="chat-note" role="status">
                   {deal.error}
                 </p>
               )}
@@ -741,10 +735,9 @@ export default function AccountMessages({
                 text={text}
                 busy={busy}
                 disabled={otherBlocked}
-                sendBlocked={sampleSeller}
                 error={error}
                 pakoDrafted={appDraft || assistant.draftedByPako}
-                tools={!otherBlocked && !sampleSeller && assistant.askMenu}
+                tools={!otherBlocked && !seededSeller && assistant.askMenu}
                 terms={termsNote}
                 onTextChange={setText}
                 onSend={() => void send()}

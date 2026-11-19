@@ -304,7 +304,6 @@ export function ThreadComposer({
   text,
   busy,
   disabled,
-  sendBlocked,
   error,
   pakoDrafted,
   tools,
@@ -315,8 +314,6 @@ export function ThreadComposer({
   text: string;
   busy: boolean;
   disabled: boolean;
-  /** The text can be written but not sent, such as to a sample seller. */
-  sendBlocked: boolean;
   error: string;
   /** The text is still the draft Pako prepared, so it carries his label. */
   pakoDrafted: boolean;
@@ -333,7 +330,7 @@ export function ThreadComposer({
       className="conversation-composer"
       onSubmit={(event) => {
         event.preventDefault();
-        if (!busy && !disabled && !sendBlocked && text.trim()) onSend();
+        if (!busy && !disabled && text.trim()) onSend();
       }}
     >
       {pakoDrafted && (
@@ -355,7 +352,6 @@ export function ThreadComposer({
         <ChatComposerField
           value={text}
           disabled={disabled}
-          sendBlocked={sendBlocked}
           busy={busy}
           onValueChange={onTextChange}
         />

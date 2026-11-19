@@ -100,8 +100,6 @@ export function listingFromDraft(
       draft.location.trim() === original?.location
         ? original?.pickupPoint
         : undefined,
-    photoSourceUrl:
-      draft.image === original?.image ? original?.photoSourceUrl : undefined,
     pickupBy: draft.pickup,
     available: draft.pickup
       ? "Pickup by " + shortDate(draft.pickup)

@@ -45,8 +45,7 @@ test("uses arbitrary free-form text and tags, never categories or known product 
 });
 
 test("same prices, locations and generic descriptions do not fill recommendations", () => {
-  const notice =
-    "Sample listing for testing; price and pickup details are fictional. This seller cannot reply.";
+  const notice = "Pickup details on request. Price is fixed.";
   const target = product("target", "Microscope", {
     description: notice,
     tags: ["Demo"],
@@ -101,10 +100,10 @@ test("normalizes case, accents and simple plurals and does not mutate the catalo
   assert.equal(candidate.title, "Café table");
 });
 
-test("supports description evidence while excluding shared provenance", () => {
+test("supports description evidence while ignoring links", () => {
   const target = product("target", "Model Alpha", {
     description:
-      "Adjustable microscope with optical lenses.\n\nSample listing for testing; fictional.",
+      "Adjustable microscope with optical lenses. https://example.com/microscope",
   });
   const candidate = product("other", "Model Beta", {
     description: "Optical lenses for microscope.",

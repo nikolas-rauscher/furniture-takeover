@@ -1,4 +1,4 @@
-import { presentSampleListing } from "../shared/sampleListingPresentation.ts";
+import { isDemoIllustration } from "../shared/listingPhotos.ts";
 import { isIPv4 } from "node:net";
 import { createClient } from "@supabase/supabase-js";
 import { AgentError } from "./errors.ts";
@@ -89,7 +89,9 @@ export function createCloud(
   const requests = new Map<string, { count: number; reset: number }>();
   // Built from the public URL: photo links must work for browsers, not just here.
   const photoUrl = (path: string) =>
-    `${publicUrl}/storage/v1/object/public/listing-photos/${encodeURI(path)}`;
+    isDemoIllustration(path)
+      ? path
+      : `${publicUrl}/storage/v1/object/public/listing-photos/${encodeURI(path)}`;
   const testUntil = Date.parse(env.LOCAL_AI_TEST_UNTIL ?? "");
   const testEmail = env.LOCAL_AI_TEST_EMAIL?.trim().toLowerCase();
   const testEnabled =
@@ -219,30 +221,28 @@ export function createCloud(
         .eq("status", "active")
         .limit(200);
       if (error) throw new Error("The marketplace inventory is unavailable.");
-      return (data ?? []).map((row) =>
-        presentSampleListing({
-          id: row.id,
-          title: row.title,
-          description: row.description,
-          price: Number(row.price),
-          location: row.location,
-          condition: row.condition,
-          dimensions: row.dimensions,
-          status: row.status,
-          image: row.images[0] ? photoUrl(row.images[0]) : "",
-          images: row.images.map(photoUrl),
-          seller: "Seller",
-          initials: "S",
-          category: "",
-          source: "takeover" as const,
-          distance: 0,
-          available: row.pickup,
-          pickupBy: row.pickup_by ?? "",
-          tags: row.tags ?? [],
-          own: false,
-          demo: row.tags?.includes("Demo") ?? false,
-        }),
-      );
+      return (data ?? []).map((row) => ({
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        price: Number(row.price),
+        location: row.location,
+        condition: row.condition,
+        dimensions: row.dimensions,
+        status: row.status,
+        image: row.images[0] ? photoUrl(row.images[0]) : "",
+        images: row.images.map(photoUrl),
+        seller: "Seller",
+        initials: "S",
+        category: "",
+        source: "takeover" as const,
+        distance: 0,
+        available: row.pickup,
+        pickupBy: row.pickup_by ?? "",
+        tags: row.tags ?? [],
+        own: false,
+        demo: row.tags?.includes("Demo") ?? false,
+      }));
     },
   };
 }

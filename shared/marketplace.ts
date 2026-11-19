@@ -11,8 +11,6 @@ export type Product = {
   category: Category;
   image: string;
   images?: string[];
-  /** Provenance of an externally hosted seller photograph. */
-  photoSourceUrl?: string;
   pickupPoint?: {
     name: string;
     address: string;

@@ -92,15 +92,8 @@ function ComparisonCard({
         <div className="comparison-card-title">
           <h2>{item.title}</h2>
           <strong className="compare-price">{money(item.price)}</strong>
-          {(item.demo || item.status !== "active") && (
-            <p className="comparison-status">
-              {[
-                item.demo ? "Sample listing" : "",
-                item.status !== "active" ? item.status : "",
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
+          {item.status !== "active" && (
+            <p className="comparison-status">{item.status}</p>
           )}
         </div>
       </div>

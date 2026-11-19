@@ -1,5 +1,6 @@
 import type { Deal, DealRole, LateMinutes, PickupSignals } from "../../shared/deal";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { isDemoIllustration } from "../../shared/listingPhotos.ts";
 export type CloudConfig = { supabaseUrl: string; supabaseKey: string };
 /** Supabase dashboard invitations use a token fragment, rather than a PKCE code. */
 export function readAuthRedirect(url: URL) {
@@ -63,8 +64,9 @@ export type Message = {
   created_at: string;
 };
 export function photoUrl(client: SupabaseClient, path: string) {
-  return client.storage.from("listing-photos").getPublicUrl(path).data
-    .publicUrl;
+  return isDemoIllustration(path)
+    ? path
+    : client.storage.from("listing-photos").getPublicUrl(path).data.publicUrl;
 }
 export function fail(error: { message: string } | null) {
   if (error) throw new Error(error.message);

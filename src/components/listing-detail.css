@@ -45,9 +45,6 @@
 .listing-detail-provenance p {
   margin: 0 0 4px;
 }
-.listing-detail-provenance strong {
-  font-weight: 650;
-}
 .listing-detail a {
   color: var(--blue);
   text-decoration: underline;

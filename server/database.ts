@@ -123,9 +123,6 @@ function validateDemoListing(value: unknown): Product {
     category: text(value.category, 120),
     image,
     ...(images ? { images } : {}),
-    ...(image === seed?.image && seed?.photoSourceUrl
-      ? { photoSourceUrl: seed.photoSourceUrl }
-      : {}),
     location: text(value.location, 120, true),
     ...(value.location === seed?.location && seed?.pickupPoint
       ? { pickupPoint: seed.pickupPoint }
@@ -143,6 +140,33 @@ function validateDemoListing(value: unknown): Product {
     own: true,
     demo: true,
   };
+}
+
+const legacyStockPhoto =
+  /^(?:\/images\/(?:catalog-)?[a-zA-Z0-9_-]+\.jpg|https:\/\/img\.ricardostatic\.ch\/.+)$/;
+const legacyDescriptionStart = "Fictional demo listing for testing.";
+
+/** Rows saved before the illustrations still hold a stock photo and the first test wording; edits stay. */
+function refreshLegacyStock(
+  existing: Product,
+  listing: Product,
+): Product | undefined {
+  const legacyPhoto = legacyStockPhoto.test(existing.image);
+  const legacyText = existing.description.startsWith(legacyDescriptionStart);
+  if (!legacyPhoto && !legacyText) return undefined;
+  const refreshed: Product & { photoSourceUrl?: string } = {
+    ...existing,
+    ...(legacyPhoto ? { image: listing.image } : {}),
+    ...(legacyText
+      ? {
+          description: listing.description,
+          seller: listing.seller,
+          initials: listing.initials,
+        }
+      : {}),
+  };
+  delete refreshed.photoSourceUrl;
+  return refreshed;
 }
 
 export function createListingsStore(filename: string): ListingsStore {
@@ -215,21 +239,8 @@ export function createListingsStore(filename: string): ListingsStore {
               existing.pickupPoint = listing.pickupPoint;
               update.run(JSON.stringify(existing), listing.id);
             }
-            if (
-              /^\/images\/(?:catalog-)?[a-zA-Z0-9_-]+\.jpg$/.test(
-                existing.image,
-              ) &&
-              listing.photoSourceUrl
-            ) {
-              update.run(
-                JSON.stringify({
-                  ...existing,
-                  image: listing.image,
-                  photoSourceUrl: listing.photoSourceUrl,
-                }),
-                listing.id,
-              );
-            }
+            const refreshed = refreshLegacyStock(existing, listing);
+            if (refreshed) update.run(JSON.stringify(refreshed), listing.id);
           }
         }
       });

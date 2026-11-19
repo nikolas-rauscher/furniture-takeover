@@ -2,21 +2,20 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { createMessagesStore } from "./messages.ts";
-import { listingPhotoSources } from "../shared/listingPhotoSources.ts";
 import { pickupScenarios, type PickupStep } from "../shared/dealScenarios.ts";
 import { acceptMessage, offerMessage } from "../shared/dealMessages.ts";
 import { formatPickup } from "../shared/pickupTime.ts";
 import type { DealTerms } from "../shared/deal.ts";
 
-test("messages preserve marketplace photo URLs without rejecting a short draft", () => {
+test("messages keep a listing's illustration without rejecting a short draft", () => {
   const store = createMessagesStore(":memory:");
   try {
     const workspace = randomUUID();
-    const image = listingPhotoSources.bike.image;
+    const image = "/samples/city-bicycle.svg";
     const conversation = store.send(workspace, {
       listingId: "demo-v2-1",
       title: "City bicycle",
-      seller: "Demo seller",
+      seller: "Arjun",
       image,
       text: "Hi, is the City bicycle still available?",
       sender: "buyer",

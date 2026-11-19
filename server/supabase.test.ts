@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
+import { demoListings } from "../shared/demoListings.ts";
+import { demoSellers } from "../shared/demoSellers.ts";
 
 test("AI quotas persist, isolate users, enforce the project cap and cannot be refunded by deleting an account", async () => {
   const db = new PGlite();
@@ -529,6 +531,15 @@ test("Supabase migration enforces listing ownership, private chats and photo own
       add column email_confirmed_at timestamptz, add column banned_until timestamptz,
       add column raw_app_meta_data jsonb, add column raw_user_meta_data jsonb,
       add column created_at timestamptz, add column updated_at timestamptz;`);
+    const retiredSeller = "df5ead21-cb17-52ad-af2d-b6b167100001";
+    await db.query(
+      "insert into auth.users(id,raw_app_meta_data) values($1,'{\"demo_seed\":\"takeover-ebay-v1\"}')",
+      [retiredSeller],
+    );
+    await db.query(
+      "insert into public.listings(owner_id,title,price,location) values($1,'[Demo] Old desk',45,'Lausanne')",
+      [retiredSeller],
+    );
     const seed = await readFile(
       new URL("../supabase/seed-demo.sql", import.meta.url),
       "utf8",
@@ -537,35 +548,53 @@ test("Supabase migration enforces listing ownership, private chats and photo own
     assert.equal(
       (
         await db.query(
-          "select * from auth.users where raw_app_meta_data->>'demo_seed'='takeover-ebay-v1' and encrypted_password is null and email_confirmed_at is null and banned_until='infinity'::timestamptz",
+          "select * from auth.users where raw_app_meta_data->>'demo_seed'='takeover-demo-v2' and encrypted_password is null and email_confirmed_at is null and banned_until='infinity'::timestamptz",
         )
       ).rows.length,
-      3,
+      demoSellers.length,
     );
-    await db.exec(
-      "update public.listings set price=99,status='withdrawn' where title='[Demo] White study desk'",
+    assert.equal(
+      (
+        await db.query(
+          "select * from auth.users where raw_app_meta_data->>'demo_seed'='takeover-ebay-v1'",
+        )
+      ).rows.length,
+      0,
     );
+    // An administrator's edit: the photo check only knows uploads, not the bundled illustrations.
+    await db.exec(`alter table public.listings disable trigger validate_listing_photos;
+      update public.listings set price=99,status='withdrawn' where title='White work desk';
+      alter table public.listings enable trigger validate_listing_photos;`);
     await db.exec(seed);
     assert.equal(
       (await db.query("select * from public.listings")).rows.length,
-      6,
+      demoListings.length,
     );
-    assert.equal((await db.query("select * from auth.users")).rows.length, 4);
+    assert.equal(
+      (await db.query("select * from auth.users")).rows.length,
+      1 + demoSellers.length,
+    );
     const preserved = (
       await db.query<{ price: string; status: string }>(
-        "select price,status from public.listings where title='[Demo] White study desk'",
+        "select price,status from public.listings where title='White work desk'",
       )
     ).rows[0];
     assert.equal(Number(preserved.price), 99);
     assert.equal(preserved.status, "withdrawn");
+    const pictured = await db.query(
+      "select * from public.listings where images[1] like '/samples/%.svg' and tags @> array['Demo']",
+    );
+    assert.equal(pictured.rows.length, demoListings.length);
     await as(null);
     assert.equal(
       (await db.query("select * from public.listings")).rows.length,
-      5,
+      demoListings.filter(
+        (listing) => listing.status === "active" || listing.status === "reserved",
+      ).length - 1,
     );
     await db.exec("reset role");
     await db.exec(
-      "update auth.users set encrypted_password='collision-test' where id='df5ead21-cb17-52ad-af2d-b6b167100001'",
+      `update auth.users set encrypted_password='collision-test' where id='${demoSellers[0].id}'`,
     );
     await assert.rejects(db.exec(seed), /Reserved demo owner/);
     await db.exec("rollback");

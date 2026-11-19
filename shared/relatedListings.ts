@@ -29,12 +29,7 @@ function features(item: Product) {
   const primary = new Set(
     terms(`${item.title} ${(item.tags ?? []).join(" ")}`),
   );
-  // Presentation notices and provenance must not create artificial similarity.
-  const description = item.description
-    .split(
-      /\n\n(?:Sample listing for testing|SYNTHETIC DEMO)|Photo referenced from an actual marketplace listing/i,
-    )[0]
-    .replace(/https?:\/\/\S+/g, "");
+  const description = item.description.replace(/https?:\/\/\S+/g, "");
   for (const [text, weight] of [
     [item.title, 3],
     [(item.tags ?? []).join(" "), 3],
