@@ -19,9 +19,7 @@ async function request(init?: RequestInit, path = "/api/messages") {
   });
   const body = await response.json();
   if (!response.ok)
-    throw new Error(
-      body.error?.message ?? "Messages are unavailable. Please try again.",
-    );
+    throw Object.assign(new Error(body.error?.message ?? "Messages are unavailable. Please try again."),{key:body.error?.code});
   return body;
 }
 export async function listMessages(): Promise<SellerConversation[]> {

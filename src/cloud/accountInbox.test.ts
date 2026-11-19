@@ -20,6 +20,7 @@ function query(result: Result) {
 
 const me = "11111111-1111-4111-8111-111111111111";
 const tables = (reads: Result): Record<string, Result> => ({
+  deals:{data:[]},
   conversations: {
     data: [
       {
