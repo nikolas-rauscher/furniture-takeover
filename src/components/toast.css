@@ -25,6 +25,7 @@
   box-shadow:
     0 4px 0 var(--lip),
     0 18px 36px -14px rgb(41 41 41 / 0.28);
+  transform-origin: 50% 100%;
   pointer-events: none;
 }
 .toast button {
@@ -38,17 +39,18 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+/* The note's way on, such as View or Undo: a flat button in the card. */
 .toast-action {
   flex: none;
-  padding: 6px 8px;
-  border-radius: 10px;
-  color: var(--blue);
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: var(--selected);
+  color: var(--blue-dark);
   font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 .toast-action:hover {
-  background: var(--selected);
+  background: #e2e7fb;
 }
 .toast > .icon-button {
   width: 32px;
@@ -68,11 +70,26 @@ body:has(.compare-tray) .toast {
 .toast[data-placement="top"] {
   top: calc(var(--app-header-height) + 12px);
   bottom: auto;
+  transform-origin: 50% 0;
+}
+/* In a conversation they rest just above its composer instead, so the latest request and
+   Pako's reply above stay readable while the composer stays free. */
+.chat-composer-dock {
+  anchor-name: --chat-composer;
+}
+body:has(.chat-composer-dock) .toast[data-placement="top"] {
+  position-anchor: --chat-composer;
+  top: auto;
+  bottom: calc(anchor(top) + 10px);
+  transform-origin: 50% 100%;
 }
 
 @media (max-width: 760px) {
   .toast {
     bottom: calc(var(--mobile-nav-height) + 16px);
+  }
+  .toast-action {
+    min-height: 44px;
   }
   body:has(.compare-tray) .toast {
     bottom: calc(var(--mobile-nav-height) + 84px);
