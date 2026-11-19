@@ -18,6 +18,17 @@ function typedPrice(text: string): number | undefined {
     : undefined;
 }
 
+/** Why Pako suggests no price, and what helps him find one. */
+function withoutSuggestion(offersCompared: number) {
+  const compared =
+    offersCompared === 0
+      ? ""
+      : offersCompared === 1
+        ? "The one offer I compared showed no clear asking price. "
+        : `None of the ${offersCompared} offers I compared showed a clear asking price. `;
+  return `${compared}Set your own, or add the brand, model or size and choose Suggest a price under Ask Pako.`;
+}
+
 /** One stepper step up or down, landing on the step's grid: 43 goes to 45 or 40. */
 function stepped(price: number, direction: 1 | -1) {
   const step = niceStep(price);
@@ -66,6 +77,9 @@ export default function PriceCard({
   const suggested = suggestion?.patch.price;
   return (
     <div className="price-card">
+      {start === undefined && (
+        <p className="price-card-note">{withoutSuggestion(sources.length)}</p>
+      )}
       <div className="price-card-amount">
         <Button
           className="button secondary icon-button price-card-step"
@@ -84,7 +98,6 @@ export default function PriceCard({
             id={fieldId}
             inputMode="decimal"
             autoComplete="off"
-            placeholder="0"
             value={text}
             disabled={disabled}
             onChange={(event) => setText(event.target.value)}
