@@ -23,6 +23,7 @@ function DialogContent({
       <DialogPrimitive.Viewport className="modal-backdrop fixed inset-0 z-[100] flex items-center justify-center p-6">
         <DialogPrimitive.Popup
           data-slot="dialog-content"
+          aria-modal="true"
           className={cn("modal", className)}
           transition={{ type: "spring", stiffness: 320, damping: 32 }}
           exitTransition={{ duration: 0.15 }}

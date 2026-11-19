@@ -29,6 +29,8 @@ export function focusConversation(from: Element) {
 
 type AgentConversationProps = {
   state: AgentRunState;
+  /** What the latest turn tells a screen reader; the messages themselves stay quiet. */
+  announcement: string;
   requestLabel?: (request: string) => string;
   children: (turn: AgentRunState, archived: boolean) => ReactNode;
   footer?: ReactNode;
@@ -41,6 +43,7 @@ type AgentConversationProps = {
 
 export default function AgentConversation({
   state,
+  announcement,
   requestLabel = (request) => request,
   children,
   footer,
@@ -63,6 +66,10 @@ export default function AgentConversation({
       <h2 id={headingId} className="sr-only">
         Your conversation
       </h2>
+      {/* One polite voice for the whole conversation: streamed words are not read one by one. */}
+      <p className="sr-only" aria-live="polite">
+        {announcement}
+      </p>
       {context && <div className="chat-context">{context}</div>}
       {/* The question stays anchored while the answer grows below it; following the
           stream as well made the view jump down and back up. */}
@@ -75,6 +82,7 @@ export default function AgentConversation({
           >
             <MessageScrollerContent
               className="search-conversation-messages"
+              role="group"
               aria-label="Conversation"
             >
               {turns.map((turn) => {

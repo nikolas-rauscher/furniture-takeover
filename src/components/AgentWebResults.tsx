@@ -57,7 +57,7 @@ export default function AgentWebResults({
       </h3>
       {(!failed || sources.length > 0) && children}
       {(searching || reviewing) && (
-        <p className="agent-web-progress" role="status">
+        <p className="agent-web-progress">
           <LoaderCircle size={14} animate aria-hidden="true" />
           {searching ? "Searching the web…" : "Reviewing web results…"}
         </p>

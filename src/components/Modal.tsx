@@ -8,6 +8,8 @@ import {
 import { Dialog, DialogContent, DialogTitle, DialogClose } from "./ui/dialog";
 import { X } from "@/components/icons";
 import { fitTextarea } from "../textarea";
+import { useInertApp } from "../hooks/useInertApp";
+import { wrapTabInDialog } from "../dialogFocus";
 
 type ModalProps = {
   title: string;
@@ -23,6 +25,7 @@ export default function Modal({
   wide = false,
 }: ModalProps) {
   const [open, setOpen] = useState(true);
+  useInertApp(open);
   const dialogRef = useRef<HTMLDivElement>(null);
   const fitFields = useCallback(() => {
     if (window.matchMedia("(max-width: 760px)").matches)
@@ -63,6 +66,7 @@ export default function Modal({
         className={wide ? "wide" : ""}
         ref={observeDialog}
         initialFocus={dialogRef}
+        onKeyDown={wrapTabInDialog}
         onInputCapture={(event) => {
           if (
             event.target instanceof HTMLTextAreaElement &&

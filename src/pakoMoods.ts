@@ -1,4 +1,5 @@
 import type { AgentTaskKind } from "../shared/runs";
+import { plainAnswer } from "./components/agentAnswer.ts";
 import type { PakoMood } from "./components/onboarding/storyTypes";
 import type { AgentRunState, AgentRunStep } from "./hooks/useAgentRun";
 
@@ -143,4 +144,29 @@ export function workingLine(
   if (turn.text !== "" && !toolRunning(turn.steps)) return "Writing my answer…";
   const latest = agentToolSteps(turn.steps).at(-1);
   return latest ? toolLine(latest, place) : "Reading your request…";
+}
+
+/**
+ * What a turn tells a screen reader, once per change: each step while Pako works, then his
+ * whole answer and any question he is waiting on. A failure is announced by its own alert.
+ */
+export function turnAnnouncement(
+  turn: Pick<
+    AgentRunState,
+    "id" | "status" | "steps" | "text" | "questions" | "answers"
+  >,
+  place?: string,
+): string {
+  if (turn.status === "running") return workingLine(turn, place);
+  if (turn.status === "error") return "";
+  if (turn.status === "idle") return turn.id ? "Pako stopped." : "";
+  const answer = plainAnswer(turn.text);
+  const question = turn.questions.find(
+    (item) => !turn.answers[item.id],
+  )?.question;
+  const spoken =
+    question && !answer.includes(question.trim())
+      ? `${answer} ${question}`.trim()
+      : answer;
+  return spoken ? `Pako: ${spoken}` : "";
 }

@@ -114,7 +114,7 @@ import type {
 import { useAgentHealth } from "./hooks/useAgentHealth";
 import { useFocused } from "./hooks/useFocused";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
-import { homeGuide, showedResults } from "./pakoMoods";
+import { homeGuide, showedResults, turnAnnouncement } from "./pakoMoods";
 import {
   TODAY,
   defaults,
@@ -259,6 +259,9 @@ export default function App({
   const [query, setQuery] = useState("");
   const searchField = useRef<HTMLTextAreaElement>(null);
   const searchFocused = useFocused(searchField);
+  /** "New search" leads to home ready to type: the search box takes focus once it is there. */
+  const focusSearchOnHome = useRef(false);
+  const helpButton = useRef<HTMLButtonElement>(null);
   const [followUp, setFollowUp] = useState("");
 
   /** A search asked for in the step that also moved the search area; it runs once the area is in state. */
@@ -430,7 +433,10 @@ export default function App({
       left: 0,
     };
     if (changed) window.scrollTo({ ...position, behavior: "instant" });
-    if (changed && document.activeElement === document.body)
+    if (changed && pageKey === "home" && focusSearchOnHome.current) {
+      focusSearchOnHome.current = false;
+      searchField.current?.focus({ preventScroll: true });
+    } else if (changed && document.activeElement === document.body)
       mainContent.current?.focus({ preventScroll: true });
     const remember = () =>
       scrollPositions.current.set(pageKey, {
@@ -443,6 +449,10 @@ export default function App({
   const reviewingListing =
     !isHome && committedSearch?.intent === "listing_review";
   const resultCriteria = committedSearch?.criteria ?? criteria;
+  /** The search area as Pako names it while he searches. */
+  const searchPlace = committedSearch
+    ? placeName(committedSearch.location)
+    : undefined;
   const budgetLabel =
     resultCriteria.maxPrice >= 1_000_000
       ? "Any budget"
@@ -717,6 +727,17 @@ export default function App({
       setQuery(outcome.query);
       setPendingSearch(outcome.query);
     }
+  }
+  /** After the intro, focus returns to its help button, or moves to the page the intro opened. */
+  function introFocus(outcome: OnboardingOutcome) {
+    return outcome.next === "dismiss" || outcome.next === "explore"
+      ? helpButton.current
+      : mainContent.current;
+  }
+  /** Clears the chat and leaves the search box ready for the next request. */
+  function startNewSearch() {
+    focusSearchOnHome.current = true;
+    transitionPage("nav-back", goHome, "fade");
   }
   function declineOnboarding() {
     rememberOnboarding({});
@@ -1558,6 +1579,7 @@ export default function App({
     <section className="listing-conversation" aria-label="Listing agent">
       <AgentConversation
         state={listingRun.state}
+        announcement={turnAnnouncement(listingRun.state)}
         typing={listingInput.trim() !== ""}
         footer={
           <AgentComposer
@@ -1731,6 +1753,7 @@ export default function App({
             <span className="header-action-label">Sell furniture</span>
           </Button>
           <Button
+            ref={helpButton}
             className="icon-button help-nav"
             aria-label="How it works"
             onClick={() => setOnboarding("open")}
@@ -1977,7 +2000,7 @@ export default function App({
                       }
                       backLabel="New search"
                       backIcon={<SquarePen size={20} aria-hidden="true" />}
-                      onBack={() => transitionPage("nav-back", goHome, "fade")}
+                      onBack={startNewSearch}
                       onAccount={() => navigate("settings")}
                       quota={agentHealth?.quota}
                       preferences={
@@ -2014,6 +2037,10 @@ export default function App({
                     )}
                     <AgentConversation
                       state={agentRun.state}
+                      announcement={turnAnnouncement(
+                        agentRun.state,
+                        searchPlace,
+                      )}
                       requestTransitionName="agent-query"
                       typing={followUp.trim() !== ""}
                       context={
@@ -2113,11 +2140,7 @@ export default function App({
                             externalComposer
                             readOnly={archived}
                             typing={followUp.trim() !== ""}
-                            place={
-                              committedSearch
-                                ? placeName(committedSearch.location)
-                                : undefined
-                            }
+                            place={searchPlace}
                             quickReplies={
                               nextReplies.replies.length > 0 && (
                                 <AgentQuickReplies
@@ -2668,6 +2691,7 @@ export default function App({
         <Onboarding
           accountAction={!signedIn}
           onComplete={completeOnboarding}
+          finalFocus={introFocus}
           onClosed={() => setOnboarding("closed")}
         />
       )}

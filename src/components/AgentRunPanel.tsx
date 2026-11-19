@@ -184,7 +184,6 @@ export default function AgentRunPanel({
               ? "sr-only"
               : "agent-run-header-status"
           }
-          role="status"
         >
           {statusLabel}
         </span>
@@ -228,7 +227,7 @@ export default function AgentRunPanel({
         <div className="agent-run-identity">
           {avatar}
           <span className="agent-run-name">Pako</span>
-          <span className="agent-run-status" role="status">
+          <span className="agent-run-status">
             <span key={statusLabel} className="agent-run-status-text">
               {statusLabel}
             </span>
@@ -478,21 +477,9 @@ export default function AgentRunPanel({
       )}
     </section>
   );
-  // Announced from outside the panel: assistive technology holds back live
-  // updates inside a region that is marked busy while the agent works.
-  const announcement = pakoLine !== undefined && (
-    <p className="sr-only" aria-live="polite">
-      {pakoLine}
-    </p>
-  );
-  return (
-    <>
-      {compact ? (
-        panel
-      ) : (
-        <AutoHeight className="auto-height">{panel}</AutoHeight>
-      )}
-      {announcement}
-    </>
+  return compact ? (
+    panel
+  ) : (
+    <AutoHeight className="auto-height">{panel}</AutoHeight>
   );
 }

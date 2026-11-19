@@ -8,6 +8,7 @@ import {
   homeGuide,
   isReaction,
   showedResults,
+  turnAnnouncement,
   workingLine,
 } from "./pakoMoods.ts";
 
@@ -289,4 +290,56 @@ test("a turn found nothing only after searching, and showed results once it ende
     false,
     "results only count once the turn has ended",
   );
+});
+
+test("a turn is announced step by step while Pako works, then once with his answer", () => {
+  const announced = (
+    overrides: Partial<Parameters<typeof turnAnnouncement>[0]>,
+  ) =>
+    turnAnnouncement(
+      {
+        id: "run-1",
+        status: "complete",
+        steps: [],
+        text: "",
+        questions: [],
+        answers: {},
+        ...overrides,
+      },
+      "EPFL",
+    );
+  assert.equal(
+    announced({ status: "running", steps: [reading] }),
+    "Reading your request…",
+  );
+  assert.equal(
+    announced({ text: "Two desks fit [web-1]." }),
+    "Pako: Two desks fit.",
+  );
+  const question = {
+    type: "question" as const,
+    id: "q1",
+    question: "Is a 27-inch monitor wide enough?",
+  };
+  assert.equal(
+    announced({ text: question.question, questions: [question] }),
+    "Pako: Is a 27-inch monitor wide enough?",
+    "a question that is the whole answer is said once",
+  );
+  assert.equal(
+    announced({ text: "I found two desks.", questions: [question] }),
+    "Pako: I found two desks. Is a 27-inch monitor wide enough?",
+  );
+  assert.equal(
+    announced({ text: "Okay.", questions: [question], answers: { q1: "Yes" } }),
+    "Pako: Okay.",
+    "an answered question is not asked again",
+  );
+  assert.equal(
+    announced({ status: "error" }),
+    "",
+    "its alert says what failed",
+  );
+  assert.equal(announced({ status: "idle" }), "Pako stopped.");
+  assert.equal(announced({ status: "idle", id: null }), "");
 });
