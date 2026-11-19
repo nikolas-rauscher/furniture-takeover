@@ -126,12 +126,18 @@
     padding: 0;
   }
 }
-/* Header actions give way to their icons in narrow windows and on phones. */
-@media (max-width: 960px) {
+/* How it works, the quieter header action, gives way to its icon first. */
+@media (max-width: 1080px) {
   .app-header .help-nav {
     width: 40px;
     padding: 0;
   }
+  .help-nav > .header-action-label {
+    display: none;
+  }
+}
+/* Narrower still, Sell keeps only its plus; its label stays for screen readers. */
+@media (max-width: 960px) {
   .header-action-label {
     position: absolute;
     width: 1px;
