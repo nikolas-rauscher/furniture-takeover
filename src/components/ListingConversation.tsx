@@ -90,6 +90,7 @@ export default function ListingConversation({
               turn={turn}
               question={question}
               queue={queue}
+              answeredBefore={listing.answeredBefore}
               suggestion={
                 question && asksPrice(question)
                   ? priceSuggestion(listing.state.actions)

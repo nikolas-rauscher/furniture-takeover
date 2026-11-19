@@ -100,6 +100,11 @@ export function useListingConversation({
       : undefined;
   const queue = questionQueue(run.state.questions, ownPickup);
   const activeQuestion = nextQuestion(queue, run.state.answers, deferred);
+  const answeredBefore = run.state.history.reduce(
+    (count, turn) =>
+      count + turn.questions.filter((item) => turn.answers[item.id]).length,
+    0,
+  );
 
   // His run's changes come first; a tap made meanwhile then applies on top of them.
   useEffect(() => {
@@ -426,6 +431,8 @@ export function useListingConversation({
     notices,
     queue,
     activeQuestion,
+    /** Questions answered or skipped in earlier turns, which the tray's count goes on from. */
+    answeredBefore,
     /** The question now is Pako's own, which he asks while he still works. */
     askingOwnQuestion: activeQuestion?.id === PICKUP_QUESTION.id,
     tapError,
