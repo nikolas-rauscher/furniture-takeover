@@ -35,7 +35,8 @@ type EffectAnimation = {
 };
 
 // Pages move like the intro's steps: a short glide in the direction of travel on
-// the intro's spring, while the old page steps aside quickly.
+// the intro's spring, while the old page steps aside quickly. The new page waits
+// until the old one has nearly faded, so the text of the two never overlaps.
 const SLIDE = 48;
 const SLIDE_AWAY = 32;
 const STEP_SPRING = {
@@ -44,6 +45,8 @@ const STEP_SPRING = {
   damping: 36,
   mass: 0.8,
 } as const;
+const STEP_AWAY = { duration: 0.1, ease: ease.leave };
+const STEP_IN = { ...STEP_SPRING, delay: 0.08 };
 // Starts moving on the tap and settles softly, like a native push; Animate UI's default eases in first.
 const PUSH_TRANSITION = { duration: 0.42, ease: ease.out };
 const BANDS = 5;
@@ -143,12 +146,12 @@ const EFFECTS: Record<
       enter: {
         opacity: [0, 1],
         transform: [`translateX(${direction * SLIDE}px)`, "none"],
-        transition: STEP_SPRING,
+        transition: STEP_IN,
       },
       exit: {
         opacity: [1, 0],
         transform: ["none", `translateX(${-direction * SLIDE_AWAY}px)`],
-        transition: { duration: 0.14, ease: ease.in },
+        transition: STEP_AWAY,
       },
     };
   },
@@ -287,12 +290,19 @@ type PageAnimations = {
   exit: (types: string[]) => TargetAndTransition;
 };
 
-/** Web Animations timing for a page effect; springs become a `linear()` curve. */
+/**
+ * Web Animations timing for a page effect; springs become a `linear()` curve,
+ * and during a delay the page holds its first frame.
+ */
 function pageTiming(transition: TargetAndTransition["transition"]) {
   if (!transition) throw new Error("A page effect needs a transition.");
   if (transition.type !== "spring" && typeof transition.duration !== "number")
     throw new Error("A page effect needs a duration or a spring.");
-  return { ...toCssTiming(transition), fill: "both" as const };
+  return {
+    ...toCssTiming(transition),
+    delay: (transition.delay ?? 0) * 1000,
+    fill: "both" as const,
+  };
 }
 
 /**
