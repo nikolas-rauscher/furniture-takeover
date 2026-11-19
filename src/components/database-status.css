@@ -25,7 +25,10 @@
   font-weight: 600;
   text-align: center;
   box-shadow: 0 10px 22px -14px rgb(41 41 41 / 0.32);
+  /* It floats over the page's controls, so only its own button takes taps. */
+  pointer-events: none;
 }
 .database-status button {
   min-height: 44px;
+  pointer-events: auto;
 }
