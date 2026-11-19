@@ -31,15 +31,6 @@
   flex-wrap: wrap;
   margin-top: 16px;
 }
-.account-report > button {
-  font: inherit;
-  color: var(--ink);
-  padding: 9px 12px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: #fff;
-  cursor: pointer;
-}
 /* Each settings section is a card; the danger zone is tinted. */
 .account-settings {
   display: grid;
@@ -92,41 +83,6 @@
   border-radius: 12px;
   background: var(--selected);
   color: var(--blue-dark);
-}
-.account-report {
-  font-size: 13px;
-  margin-top: 14px;
-}
-.account-report > button {
-  background: none;
-  border: 0;
-  padding: 0;
-  color: var(--muted);
-}
-.account-report textarea {
-  width: 100%;
-  min-height: 70px;
-  margin: 10px 0;
-}
-.account-report form {
-  display: grid;
-  gap: 8px;
-}
-.account-message-tools {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.account-chat-error {
-  font-size: 13px;
-  color: #a42c36;
-  margin: 8px 0;
-}
-.account-inbox-notice {
-  display: flex;
-  gap: 12px;
-  align-items: center;
 }
 .account-settings input,
 .account-settings select,

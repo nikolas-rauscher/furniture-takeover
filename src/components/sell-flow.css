@@ -4,6 +4,18 @@
   min-width: 0;
 }
 
+/* The photo step's gallery fills its column; the strip shows covers, not letterboxes. */
+.selling-photo-layout .photo-upload-panel {
+  display: flex;
+  min-height: 0;
+}
+.selling-photo-layout .photo-upload-panel > .photo-gallery {
+  flex: 1 1 0;
+}
+.selling-photo-layout .photo-gallery-thumbnails img {
+  object-fit: cover;
+}
+
 /* The empty photo step is a viewfinder onto a room, with one big shutter. */
 .snap-target {
   --snap-floor: 72%;
@@ -130,6 +142,37 @@
   }
 }
 
+/* The draft card's photo opens the gallery and shows how many photos there are. */
+.listing-preview-photos {
+  position: relative;
+  display: block;
+  border: 0;
+  padding: 0;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+.listing-preview-photos > img {
+  width: 100%;
+  display: block;
+}
+.listing-preview-photos > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: white;
+  border-radius: 12px;
+  padding: 3px 8px;
+  font-size: 11px;
+}
+.selling-chat-layout .listing-preview-photos > img {
+  max-height: 24dvh;
+  object-fit: contain;
+}
+
 /* The draft reads like the intro's listing card while Pako fills it in. */
 .listing-preview-status {
   display: flex;
@@ -181,8 +224,25 @@
     height: 60px;
   }
   .selling-chat-layout .listing-preview-facts,
-  .selling-chat-layout .listing-preview-status {
+  .selling-chat-layout .listing-preview-status,
+  .selling-chat-layout .listing-preview-photo-caption {
     display: none;
+  }
+  /* In the chat the draft shrinks to a thumbnail with a tiny photo count. */
+  .selling-chat-layout .listing-preview-photos {
+    width: 40px;
+    height: 44px;
+  }
+  .selling-chat-layout .listing-preview-photos > img {
+    width: 40px;
+    height: 44px;
+    object-fit: cover;
+  }
+  .selling-chat-layout .listing-preview-photos > span {
+    font-size: 8px;
+    padding: 1px 2px;
+    bottom: 0;
+    right: 0;
   }
 }
 

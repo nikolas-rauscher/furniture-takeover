@@ -83,7 +83,7 @@
     > .main-content {
     padding-bottom: calc(var(--mobile-nav-height) + 24px);
   }
-  .main-content :is(h1, h2, h3, p, .product-tags, .status) {
+  .main-content :is(h1, h2, h3, p, .product-tags) {
     overflow-wrap: anywhere;
   }
   .main-content .button,
@@ -225,7 +225,6 @@
   :root[data-compact-viewport]
     .messages-page.has-conversation
     > :is(.page-title, .quiet-caption),
-  :root[data-compact-viewport] .chat-layout .search-title,
   :root[data-compact-viewport] .chat-layout .results-controls,
   :root[data-compact-viewport] .selling-chat-layout .listing-preview,
   :root[data-compact-viewport] .selling-chat-layout .page-title {
@@ -258,6 +257,3 @@
     min-height: 44px;
   }
 }
-
-/* Two-column phone grid: every card has the same rhythm, so neighbours line up row by row. */
-
