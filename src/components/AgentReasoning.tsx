@@ -7,7 +7,6 @@ import {
   TraceCollapsible,
   TraceCollapsibleContent,
   TraceCollapsibleTrigger,
-  TraceDescription,
   TraceLine,
   TraceTitle,
 } from "./ui/trace";
@@ -31,10 +30,6 @@ export default function AgentReasoning({
     (part) =>
       part.status === "stopped" || (!running && part.status === "streaming"),
   );
-  const durationMs = parts.reduce(
-    (total, part) => total + (part.durationMs ?? 0),
-    0,
-  );
   const visibleText = useStreamingText(text, "reasoning", streaming);
   if (!streaming && !text) return null;
 
@@ -42,13 +37,12 @@ export default function AgentReasoning({
     <TraceLine status={streaming ? "running" : undefined}>
       <StepMark state={streaming ? "running" : stopped ? "paused" : "done"} />
       <TraceTitle>
-        {streaming ? "Thinking…" : stopped ? "Reasoning stopped" : "Reasoning"}
+        {streaming
+          ? "Thinking…"
+          : stopped
+            ? "Stopped thinking"
+            : "Pako's thoughts"}
       </TraceTitle>
-      {!streaming && !stopped && durationMs > 0 && (
-        <TraceDescription>
-          {durationMs < 1000 ? "<1s" : `${Math.round(durationMs / 1000)}s`}
-        </TraceDescription>
-      )}
     </TraceLine>
   );
 

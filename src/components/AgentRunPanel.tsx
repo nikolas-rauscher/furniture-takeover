@@ -175,12 +175,9 @@ export default function AgentRunPanel({
         <span
           className={
             detailsShowStatus ||
-            [
-              "Finished",
-              "Working",
-              "Starting your request",
-              "Waiting for your answer",
-            ].includes(statusLabel)
+            ["Finished", "Working", "Starting your request"].includes(
+              statusLabel,
+            )
               ? "sr-only"
               : "agent-run-header-status"
           }
@@ -239,6 +236,7 @@ export default function AgentRunPanel({
           key={`details-${state.turnKey || state.id}`}
           reasoning={state.reasoning}
           steps={state.steps}
+          place={place}
           workingLine={pakoLine}
           heading={heading}
           actions={actions}
@@ -301,6 +299,7 @@ export default function AgentRunPanel({
           key={`details-${state.turnKey || state.id}`}
           reasoning={state.reasoning}
           steps={state.steps}
+          place={place}
           workingLine={pakoLine}
         />
       )}

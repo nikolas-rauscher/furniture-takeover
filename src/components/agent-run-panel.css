@@ -767,25 +767,20 @@
   min-width: 0;
 }
 
-/* A long question keeps its width: Skip for now sits on its first line, or below it on phones. */
 .agent-question-heading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  column-gap: var(--space-field);
   margin-bottom: var(--space-label);
 }
 .agent-run-panel .agent-run-question .agent-question-heading > h3 {
-  flex: 1 1 20rem;
   min-width: 0;
   margin: 0;
 }
-.agent-question-heading > .question-skip {
-  flex-shrink: 0;
+/* Skipping is the last of the answers, right below the suggested ones. */
+.agent-run-question .question-skip {
+  align-self: flex-start;
   min-height: var(--control-size);
   margin: 0;
-  padding: var(--space-label) 0;
-  font-size: var(--type-caption);
+  padding: 0 2px;
+  font-size: var(--type-label);
   color: var(--muted);
 }
 .agent-run-panel.conversation-agent .agent-run-choices {

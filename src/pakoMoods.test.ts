@@ -8,6 +8,7 @@ import {
   homeGuide,
   isReaction,
   showedResults,
+  stepWords,
   turnAnnouncement,
   workingLine,
 } from "./pakoMoods.ts";
@@ -37,6 +38,8 @@ const turn = (
   text: "",
   inventoryMatchIds: null,
   sources: [],
+  questions: [],
+  answers: {},
   ...overrides,
 });
 const quiet = { textShown: "", typing: false };
@@ -342,4 +345,56 @@ test("a turn is announced step by step while Pako works, then once with his answ
   );
   assert.equal(announced({ status: "idle" }), "Pako stopped.");
   assert.equal(announced({ status: "idle", id: null }), "");
+});
+
+test("Pako listens while his question waits for an answer", () => {
+  const question = {
+    type: "question" as const,
+    id: "q1",
+    question: "Is a 27-inch monitor wide enough?",
+  };
+  const asked = turn({
+    status: "complete",
+    steps: [reading, step("ask", "complete", "request")],
+    text: question.question,
+    questions: [question],
+  });
+  assert.deepEqual(
+    agentTurnPako(asked, { textShown: asked.text, typing: false }),
+    {
+      mood: "listen",
+      talking: false,
+    },
+  );
+  const answered = { ...asked, answers: { q1: "Yes" } };
+  assert.notEqual(
+    agentTurnPako(answered, { textShown: asked.text, typing: false }).mood,
+    "listen",
+  );
+});
+
+test("the activity list names each step in the intro's words, without raw queries", () => {
+  assert.equal(stepWords(catalogChecked, "EPFL"), "Checking student listings");
+  assert.equal(
+    stepWords(
+      step(
+        "inventory",
+        "complete",
+        "listings",
+        "Searching takeover listings: desk",
+      ),
+      "EPFL",
+    ),
+    "Searching student listings near EPFL",
+  );
+  assert.equal(
+    stepWords(
+      step("web", "complete", "web", "Searching the web: bureau d'occasion"),
+    ),
+    "Checking other second-hand sites",
+  );
+  assert.equal(
+    stepWords(step("draft", "running", "proposal", "Preparing your draft")),
+    "Preparing your draft",
+  );
 });

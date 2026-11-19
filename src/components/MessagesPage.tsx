@@ -330,7 +330,11 @@ function DemoMessagesPage({
                           pakoDrafts.drafted(message.id)
                         }
                         author={
-                          message.sender === "buyer" ? "Buyer" : current.seller
+                          message.sender === role
+                            ? "You"
+                            : message.sender === "buyer"
+                              ? "Buyer"
+                              : current.seller
                         }
                         createdAt={message.createdAt}
                         text={message.text}

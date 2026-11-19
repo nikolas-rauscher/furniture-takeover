@@ -489,6 +489,10 @@ export default function App({
         ].join(" · ")
       : "";
   const running = agentRun.state.status === "running";
+  /** Pako asked something and waits; the composer can answer it too. */
+  const awaitingAnswer =
+    !running &&
+    agentRun.state.questions.some((item) => !agentRun.state.answers[item.id]);
   const hasSearchDraft = query.trim().length > 0;
   const searchHeading = "Your search";
   /** The page on screen as the browser tab names it; home keeps the app's own title. */
@@ -2099,10 +2103,12 @@ export default function App({
                               placeholder={
                                 reviewingListing
                                   ? "Ask about your listing…"
-                                  : !negotiations.active &&
-                                      showedResults(agentRun.state)
-                                    ? "Cheaper, closer or bigger?"
-                                    : "Ask a follow-up…"
+                                  : awaitingAnswer
+                                    ? "Or type your answer…"
+                                    : !negotiations.active &&
+                                        showedResults(agentRun.state)
+                                      ? "Cheaper, closer or bigger?"
+                                      : "Ask a follow-up…"
                               }
                               sendLabel="Send to Pako"
                               disabled={running || quotaExhausted}
