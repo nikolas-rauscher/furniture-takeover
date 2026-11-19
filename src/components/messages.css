@@ -477,6 +477,15 @@
   color: var(--danger);
   font-size: var(--type-support);
 }
+/* A sample listing's seller never answers: the student can still write a draft. */
+.chat-sample-note {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--canvas);
+  color: var(--muted);
+  font-size: var(--type-support);
+}
 .chat-error {
   margin: 0;
   color: var(--danger);

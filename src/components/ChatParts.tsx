@@ -333,11 +333,14 @@ export function SentCelebration({ recipient }: { recipient: string }) {
 export function ChatComposerField({
   value,
   disabled,
+  sendBlocked,
   busy,
   onValueChange,
 }: {
   value: string;
   disabled: boolean;
+  /** The text can be written but not sent. */
+  sendBlocked: boolean;
   busy: boolean;
   onValueChange: (value: string) => void;
 }) {
@@ -355,7 +358,8 @@ export function ChatComposerField({
     observer.observe(input);
     return () => observer.disconnect();
   }, [value]);
-  const sendable = !disabled && !busy && value.trim().length > 0;
+  const sendable =
+    !disabled && !sendBlocked && !busy && value.trim().length > 0;
   const sendLabel = busy ? "Sending message" : "Send message";
   return (
     <InputGroup className="composer-field">

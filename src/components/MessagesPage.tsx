@@ -426,6 +426,7 @@ function DemoMessagesPage({
                 text={text}
                 busy={busy}
                 disabled={false}
+                sendBlocked={false}
                 error={sendError}
                 pakoDrafted={offerDraft || assistant.draftedByPako}
                 tools={assistant.askMenu}

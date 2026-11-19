@@ -149,6 +149,8 @@ export default function AccountMessages({
   const otherName = product?.demo
     ? rawOtherName.replace(/^Demo Seller — /, "")
     : rawOtherName;
+  const inQuery = (words: string) =>
+    words.toLowerCase().includes(query.trim().toLowerCase());
   const visibleThreads = threads.filter((c) => {
     const item = listings.find((p) => p.id === c.listing_id);
     const other = c.buyer_id === userId ? c.seller_id : c.buyer_id;
@@ -158,16 +160,23 @@ export default function AccountMessages({
         (filter === "buying"
           ? c.buyer_id === userId
           : c.seller_id === userId)) &&
-      `${names[other] ?? ""} ${item?.title ?? ""}`
-        .toLowerCase()
-        .includes(query.trim().toLowerCase())
+      inQuery(`${names[other] ?? ""} ${item?.title ?? ""}`)
     );
   });
   const role = current?.seller_id === userId ? "seller" : "buyer";
+  /** A conversation about to start is one of the student's purchases. */
+  const newThreadShown =
+    selected.startsWith("new:") &&
+    product !== undefined &&
+    !showArchived &&
+    filter !== "selling" &&
+    inQuery(`${otherName} ${product.title}`);
   const text = drafts[selected] ?? "";
   const setText = (value: string) =>
     setDrafts((xs) => ({ ...xs, [selected]: value }));
   const otherBlocked = !!otherId && blocked.includes(otherId);
+  /** Sample listings belong to seeded sellers who never reply. */
+  const sampleSeller = Boolean(product?.demo);
   // The opening offer Pako prepared stays labelled as his until the student edits it.
   const offerDraft = Boolean(initialMessage) && text === initialMessage;
   const pakoDrafts = usePakoDrafts();
@@ -198,8 +207,7 @@ export default function AccountMessages({
     visible,
     text,
     onText: setText,
-    // Sample sellers never reply, so nudging them helps nobody.
-    canNudge: !product?.demo,
+    canNudge: !sampleSeller,
   });
   const latestTheirs = [...messages]
     .reverse()
@@ -417,7 +425,7 @@ export default function AccountMessages({
               />
             );
           })}
-          {selected.startsWith("new:") && product && (
+          {newThreadShown && product && (
             <ChatThreadCard
               order={visibleThreads.length}
               active
@@ -439,7 +447,7 @@ export default function AccountMessages({
           )}
           {rows &&
             !visibleThreads.length &&
-            !selected.startsWith("new:") &&
+            !newThreadShown &&
             (query || filter !== "all" || showArchived ? (
               <p>
                 {query || filter !== "all"
@@ -551,14 +559,21 @@ export default function AccountMessages({
                   You blocked this user. Unblock them to send a message.
                 </p>
               )}
-              {!otherBlocked && assistant.tray}
+              {sampleSeller && (
+                <p className="chat-sample-note" role="status">
+                  Sample listing: its seller can't reply, so your message stays
+                  a draft here.
+                </p>
+              )}
+              {!otherBlocked && !sampleSeller && assistant.tray}
               <ThreadComposer
                 text={text}
                 busy={busy}
                 disabled={otherBlocked}
+                sendBlocked={sampleSeller}
                 error={error}
                 pakoDrafted={offerDraft || assistant.draftedByPako}
-                tools={!otherBlocked && assistant.askMenu}
+                tools={!otherBlocked && !sampleSeller && assistant.askMenu}
                 onTextChange={setText}
                 onSend={() => void send()}
               />
