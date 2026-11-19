@@ -49,7 +49,7 @@ export const intentOptions: IntentOption[] = [
     id: "both",
     title: "A bit of both",
     detail: "Swapping rooms or upgrading",
-    reaction: "The full takeover. I like it.",
+    reaction: "I can help you find and sell things.",
   },
 ];
 
@@ -88,10 +88,10 @@ export const places: Place[] = [
   {
     id: "vortex",
     name: "Vortex",
-    area: "FMEL · Chavannes",
+    area: "FMEL · Chavannes-près-Renens",
     kind: "residence",
     searchArea: "FMEL Vortex, Chavannes-près-Renens",
-    meetingPoint: "Vortex reception",
+    meetingPoint: "FMEL Vortex · outside reception",
     meetingPhrase: "the Vortex reception",
   },
   {
@@ -115,7 +115,7 @@ export const places: Place[] = [
   {
     id: "ochettes",
     name: "Ochettes",
-    area: "FMEL · Chavannes",
+    area: "FMEL · Chavannes-près-Renens",
     kind: "residence",
     searchArea: "FMEL Ochettes, Chavannes-près-Renens",
     meetingPoint: "Ochettes entrance",
@@ -333,32 +333,32 @@ export function actCopy(act: Act, intent: Intent): ActCopy {
   if (act === "snap")
     return selling
       ? {
-          title: "Just take photos",
+          title: "Start with a photo",
           // The last sentence moves to a new line as a whole rather than breaking mid-phrase.
-          text: "Snap what's left in your room. I write the title, description and price. You\u00a0only\u00a0tap\u00a0Publish.",
+          text: "I'll draft your listing and look for similar asking prices. You\u00a0check\u00a0it\u00a0and\u00a0publish.",
         }
       : {
           title: "And when you move out…",
-          text: "…just take a photo. I write the listing and suggest a price. You\u00a0only\u00a0tap\u00a0Publish.",
+          text: "…start with a photo. I'll draft the listing. You\u00a0check\u00a0it\u00a0and\u00a0publish.",
         };
   if (act === "ask")
     return selling
       ? {
           title: "And when you need something…",
-          text: "…just tell me in your own words. I search student listings and other second-hand sites, then show you the best offers.",
+          text: "…just tell me in your own words. I'll check student listings and look on other sites when I can.",
         }
       : {
           title: "Just say what you need",
-          text: "Write it like a message to a friend. I search student listings and other second-hand sites and compare them for you.",
+          text: "Write it like a message to a friend. I'll show what fits and what to check.",
         };
   return selling
     ? {
-        title: "I answer the buyers",
-        text: "When someone wants your things, I read their message and write your answer. You tap Send and confirm the\u00a0sale.",
+        title: "I draft replies",
+        text: "I read buyers' messages and suggest what to say. You choose what to send. A deal needs both\u00a0students\u00a0to\u00a0confirm.",
       }
     : {
-        title: "I handle the messages",
-        text: "I read every reply and write your answer: price, pickup time, meeting point. You tap Send, then you both\u00a0confirm.",
+        title: "I help with messages",
+        text: "I read replies and suggest what to say. You choose what to send. A deal needs both\u00a0students\u00a0to\u00a0confirm.",
       };
 }
 
@@ -377,9 +377,9 @@ export function exampleSearch(selected: ItemId[]): string {
 
 export function searchSteps(placeId: PlaceId): string[] {
   return [
-    `Searching student listings near ${placeById(placeId).name}`,
+    `Looking for listings around ${placeById(placeId).name}`,
     "Checking other second-hand sites",
-    "Comparing price, condition and distance",
+    "Checking price, condition and distance",
   ];
 }
 
@@ -440,7 +440,19 @@ export type ChatScene = {
   };
 };
 
-export const PICKUP_TIME = "Thu, 18:00";
+/** The tour's pickup: next Thursday at 18:00, dated as a confirmed deal shows it. */
+function nextThursdayPickup(today: Date) {
+  const thursday = new Date(today);
+  thursday.setDate(today.getDate() + ((11 - today.getDay()) % 7 || 7));
+  const day = new Intl.DateTimeFormat("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).format(thursday);
+  return `${day.replace(",", "")}, 18:00`;
+}
+
+export const PICKUP_TIME = nextThursdayPickup(new Date());
 
 export function chatScene(
   intent: Intent,
@@ -466,8 +478,8 @@ export function chatScene(
           from: "partner",
           text: `Hi! Is your ${thing} still available? Could I get it for CHF ${offer}?`,
         },
-        { from: "pako", text: `Hi Sam! It is. CHF ${deal} and it's yours.` },
-        { from: "partner", text: "Deal! When can I pick it up?" },
+        { from: "pako", text: `Hi Sam! It is. Would CHF ${deal} work?` },
+        { from: "partner", text: "Yes! When can I pick it up?" },
         { from: "pako", text: `How about ${pickup}?` },
         { from: "partner", text: "Perfect, see you then!" },
       ],
@@ -488,7 +500,7 @@ export function chatScene(
       { from: "partner", text: `Hi! Yes, it is. I could do CHF ${deal}.` },
       {
         from: "pako",
-        text: `Deal, CHF ${deal}. Could you do ${pickup}?`,
+        text: `CHF ${deal} works for me. Could you do ${pickup}?`,
       },
       { from: "partner", text: "Perfect, see you Thursday!" },
     ],
@@ -503,10 +515,10 @@ export function doneCopy(answers: CompleteAnswers): DoneCopy {
   return answers.intent === "sell"
     ? {
         title: "You're all set!",
-        text: `Let's list your first thing at ${place.name}. All it takes is a photo.`,
+        text: `Let's list your first item at ${place.name}. Add a photo to start your draft.`,
       }
     : {
         title: "You're all set!",
-        text: `Your first search is ready. I'll start looking around ${place.name}.`,
+        text: `Choose Start my first search and I'll look around ${place.name}.`,
       };
 }

@@ -49,7 +49,7 @@ export default function NegotiationSummary({
     return (
       <motion.section
         className="deal-bar"
-        aria-label={`Offer proposal for ${title}`}
+        aria-label={`Offer draft for ${title}`}
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={SLIDE_UP}
@@ -64,7 +64,7 @@ export default function NegotiationSummary({
                   proposal.terms.amount === null
                     ? "Offer draft"
                     : termPrice(proposal.terms.amount),
-                  proposal.draft ? "Message ready" : "Draft in progress",
+                  proposal.draft ? "Draft ready" : "Draft in progress",
                 ].join(" · ")}
           </span>
         </div>
@@ -74,14 +74,14 @@ export default function NegotiationSummary({
           disabled={disabled || unavailable}
           onClick={onReview}
         >
-          Open chat
+          Open in Messages
         </Button>
         <Button
           type="button"
           className="icon-button deal-bar-dismiss"
           disabled={disabled}
           onClick={onDiscard}
-          aria-label="Discard proposal"
+          aria-label="Discard draft"
         >
           <X size={16} />
         </Button>
@@ -91,7 +91,7 @@ export default function NegotiationSummary({
     <motion.section
       className="deal-card offer-proposal"
       data-unavailable={unavailable || undefined}
-      aria-label={`Offer proposal for ${title}`}
+      aria-label={`Offer draft for ${title}`}
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={SLIDE_UP}
@@ -101,7 +101,7 @@ export default function NegotiationSummary({
         <div className="deal-card-heading">
           <strong>{title}</strong>
           <span>
-            <PakoLabel>Pako for you</PakoLabel>
+            <PakoLabel>Drafted with Pako</PakoLabel>
             <span
               className="chip deal-card-status"
               data-tone={unavailable ? "danger" : undefined}
@@ -114,14 +114,14 @@ export default function NegotiationSummary({
       <DealTermsGrid terms={proposal.terms} unknown={UNDECIDED} />
       {proposal.draft && (
         <div className="deal-card-message" aria-label="Message draft">
-          <strong>Message to seller</strong>
+          <strong>Message draft</strong>
           <p className="deal-card-bubble">{proposal.draft.message}</p>
         </div>
       )}
       <p className="deal-card-note">
         {unavailable
-          ? "This listing is no longer available. You can discard the proposal."
-          : "Not sent · Review and send in seller chat"}
+          ? "This listing is no longer available. You can discard the draft."
+          : "Not sent · Review and send in Messages"}
       </p>
       <div className="deal-card-actions">
         <Button
@@ -130,7 +130,7 @@ export default function NegotiationSummary({
           disabled={disabled || unavailable}
           onClick={onReview}
         >
-          Open seller chat
+          Open in Messages
         </Button>
         {onContinue && (
           <Button
@@ -146,7 +146,7 @@ export default function NegotiationSummary({
           disabled={disabled}
           onClick={onDiscard}
         >
-          Discard proposal
+          Discard draft
         </Button>
       </div>
     </motion.section>
@@ -173,13 +173,13 @@ export function MessageDraftPreview({
       aria-label={`Message draft for ${title}`}
     >
       <ItemHeader className="pako-draft-heading">
-        <PakoLabel>Pako for you</PakoLabel>
+        <PakoLabel>Drafted with Pako</PakoLabel>
         <Badge variant="secondary">
           {sent ? "Sent" : onReview ? "Ready for review" : "Earlier draft"}
         </Badge>
       </ItemHeader>
       <ItemContent className="pako-draft-content">
-        <strong>Message to seller</strong>
+        <strong>Message draft</strong>
         <p className="pako-draft-bubble">{proposal.draft.message}</p>
       </ItemContent>
       {onReview && (
@@ -190,7 +190,7 @@ export function MessageDraftPreview({
             className="button primary small"
             onClick={onReview}
           >
-            Open seller chat
+            Open in Messages
           </Button>
         </ItemActions>
       )}

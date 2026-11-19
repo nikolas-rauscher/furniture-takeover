@@ -260,14 +260,19 @@ test("a deal that needs the student, or a booked pickup, comes before new matche
 });
 
 test("a photo search speaks first on home: Pako listens to a drag, looks at the photo, then says what he needs", () => {
+  assert.deepEqual(guide({ photo: "hint" }), {
+    mood: "listen",
+    line: "Search by photo: choose one and I'll look for similar items.",
+    newMatches: false,
+  });
   assert.deepEqual(guide({ photo: "dragging", unreadMatches: 2 }), {
     mood: "listen",
-    line: "Drop your photo here. I'll find similar things.",
+    line: "Drop a photo and I'll look for similar items.",
     newMatches: false,
   });
   assert.deepEqual(guide({ photo: "reading", typing: true }), {
     mood: "search",
-    line: "Let me look at your photo…",
+    line: "I'm looking at your photo…",
     newMatches: false,
   });
   assert.deepEqual(guide({ photo: photoSearchClarification() }), {

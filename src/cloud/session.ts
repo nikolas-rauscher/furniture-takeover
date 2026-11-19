@@ -90,7 +90,7 @@ export function restoreAccountSession() {
     return {
       session: result.data.session,
       error: result.error
-        ? "Could not open this sign-in link or restore your session. Sign in below, or request a new link."
+        ? "Couldn't open this sign-in link or restore your session. Sign in below, or ask for a new link."
         : "",
       invited: Boolean(
         redirect?.invitation && result.data.session && !result.error,
@@ -107,6 +107,6 @@ export function accountStorageKey(key: string) {
 export async function accountAccessToken() {
   if (!client) return undefined;
   const { data, error } = await client.auth.getSession();
-  if (error || !data.session) throw new Error("Sign in to use the assistant.");
+  if (error || !data.session) throw new Error("Sign in to ask Pako.");
   return data.session.access_token;
 }

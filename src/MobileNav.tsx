@@ -59,7 +59,7 @@ const tabs = [
   { id: "searches", label: "Searches", name: "Searches", Icon: Search },
   { id: "favorites", label: "Saved", name: "Saved", Icon: Heart },
   { id: "messages", label: "Messages", name: "Messages", Icon: MessageCircle },
-  { id: "account", label: "Listings", name: "My listings", Icon: List },
+  { id: "account", label: "Listings", name: "Listings", Icon: List },
 ] as const;
 
 /** Floating tab bar: the highlight glides between tabs; Sell sits beside it as the primary action. */

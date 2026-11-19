@@ -139,8 +139,6 @@ type LineContext = {
   now: Date;
 };
 
-const PERCENT = " %";
-
 function priceSentence(
   { amount, reasons }: OfferProposal,
   { mode, otherName }: LineContext,
@@ -151,7 +149,7 @@ function priceSentence(
     case "free":
       return "It's free, so there's only the pickup to plan.";
     case "under_asking":
-      return `I'd offer ${price}, about ${reason.percent}${PERCENT} under the asking price, so there's room to meet in the middle.`;
+      return `I'd offer ${price}, about ${reason.percent}% under the asking price, so there's room to meet in the middle.`;
     case "asking":
       return mode === "offer"
         ? `I'd offer the asking price of ${price}, since there's little room under it.`

@@ -24,8 +24,8 @@ export default function SellerInsight({ similar, ladder }: SellerInsightProps) {
       {similar && (
         <p className="seller-insight-range">
           {similar.count === 1
-            ? "1 similar listing on Takeover: "
-            : `${similar.count} similar on Takeover: `}
+            ? "1 similar listing on takeover: "
+            : `${similar.count} similar on takeover: `}
           <strong>{priceRange(similar)}</strong>
         </p>
       )}

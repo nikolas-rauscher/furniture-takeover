@@ -49,7 +49,7 @@ test("as a buyer, Pako writes to the seller and agrees on price and pickup", () 
     title: "White study desk",
     price: 35,
     time: PICKUP_TIME,
-    meetingPoint: "Vortex reception",
+    meetingPoint: "FMEL Vortex · outside reception",
   });
 });
 
@@ -115,12 +115,11 @@ test("Pako names an intro place by its own name and any other area by its first 
   );
 });
 
-test("the intro promises what Pako does in Messages: he writes the answer, the student taps Send and confirms", () => {
-  assert.match(actCopy("chat", "find").text, /You tap Send, then you both\u00a0confirm\.$/);
-  assert.match(actCopy("chat", "sell").text, /You tap Send and confirm the\u00a0sale\.$/);
-  for (const intent of ["find", "sell"] as const)
-    assert.doesNotMatch(
-      actCopy("chat", intent).text,
-      /sort it out|agree on a price/,
-    );
+test("the intro promises what Pako does in Messages: he suggests, the student sends and both confirm", () => {
+  for (const intent of ["find", "sell"] as const) {
+    const { text } = actCopy("chat", intent);
+    assert.match(text, /You choose what to send\./);
+    assert.match(text, /A deal needs both\u00a0students\u00a0to\u00a0confirm\.$/);
+    assert.doesNotMatch(text, /sort it out|agree on a price|write your answer/);
+  }
 });

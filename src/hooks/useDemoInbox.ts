@@ -38,7 +38,7 @@ export function useDemoInbox({
       setError(
         failure instanceof Error
           ? failure.message
-          : "Messages are unavailable. Please try again.",
+          : "Messages are unavailable. Try again.",
       );
     }
   }, []);

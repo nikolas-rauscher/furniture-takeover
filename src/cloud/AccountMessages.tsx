@@ -1,3 +1,4 @@
+import { cardImageFor } from "../../shared/listingPhotos";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -629,7 +630,7 @@ export default function AccountMessages({
                 order={order}
                 active={selected === c.id}
                 disabled={busy}
-                image={item?.image}
+                image={item && cardImageFor(item)}
                 name={
                   (item?.demo
                     ? names[other]?.replace(/^Demo Seller — /, "")
@@ -665,7 +666,7 @@ export default function AccountMessages({
             <ChatThreadCard
               order={visibleThreads.length}
               active
-              image={product.image}
+              image={cardImageFor(product)}
               name={otherName}
               title={product.title}
               note="New conversation"
@@ -709,7 +710,7 @@ export default function AccountMessages({
                   </Button>
                   <ChatPartner
                     name={otherName}
-                    image={product?.image}
+                    image={product && cardImageFor(product)}
                     title={product?.title ?? "Listing unavailable"}
                     detail={
                       product &&

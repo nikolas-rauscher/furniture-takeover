@@ -44,7 +44,7 @@ export function useNegotiations() {
       setError("");
     } catch {
       setError(
-        "Saved proposals could not be read. They have been kept unchanged.",
+        "I couldn't open your saved offer drafts. Reload to try again.",
       );
     }
   }
@@ -93,7 +93,9 @@ export function useNegotiations() {
       );
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Could not save the proposal.";
+        error instanceof Error
+          ? error.message
+          : "I couldn't save your offer draft. Try again.";
       setError(message);
       throw new Error(message);
     }
@@ -117,7 +119,9 @@ export function useNegotiations() {
       return value;
     } catch (error) {
       setError(
-        error instanceof Error ? error.message : "Could not open the proposal.",
+        error instanceof Error
+          ? error.message
+          : "I couldn't open your offer draft. Try again.",
       );
       return undefined;
     }

@@ -20,6 +20,10 @@ const stringFields = (value: Record<string, unknown>, names: string[]) =>
   names.every((name) => typeof value[name] === "string");
 const oneOf = (value: unknown, options: string[]) =>
   typeof value === "string" && options.includes(value);
+const isPhotoList = (value: unknown) =>
+  Array.isArray(value) &&
+  value.length <= MAX_LISTING_PHOTOS &&
+  value.every((image) => typeof image === "string" && image.length > 0);
 const LISTING_STATUSES = ["active", "reserved", "sold", "withdrawn"];
 
 export const isFavoriteIds: SavedValueValidator<string[]> = (
@@ -73,12 +77,8 @@ export const isProducts: SavedValueValidator<Product[]> = (
         "available",
         "pickupBy",
       ]) &&
-      (item.images === undefined ||
-        (Array.isArray(item.images) &&
-          item.images.length <= MAX_LISTING_PHOTOS &&
-          item.images.every(
-            (image) => typeof image === "string" && image.length > 0,
-          ))) &&
+      (item.images === undefined || isPhotoList(item.images)) &&
+      (item.cardImages === undefined || isPhotoList(item.cardImages)) &&
       (item.pickupPoint === undefined ||
         (record(item.pickupPoint) &&
           stringFields(item.pickupPoint, [

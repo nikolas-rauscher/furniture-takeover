@@ -88,8 +88,8 @@ export default function AgentComposer({
             variant="plain"
             className="composer-send"
             type={onStop ? "button" : "submit"}
-            aria-label={onStop ? "Stop agent" : sendLabel}
-            title={onStop ? "Stop agent" : sendLabel}
+            aria-label={onStop ? "Stop request" : sendLabel}
+            title={onStop ? "Stop request" : sendLabel}
             disabled={!onStop && (disabled || !value.trim())}
             onClick={
               onStop

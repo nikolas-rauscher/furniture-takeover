@@ -1,3 +1,4 @@
+import { cardImageFor } from "../../shared/listingPhotos";
 import { useId } from "react";
 import { Image as ImageIcon, X } from "@/components/icons";
 import { Button } from "../components/ui/button";
@@ -74,7 +75,7 @@ function MatchCard({
     >
       <span className="match-alert-photo">
         {listing.image ? (
-          <img src={listing.image} alt="" loading="lazy" />
+          <img src={cardImageFor(listing)} alt="" loading="lazy" decoding="async" />
         ) : (
           <ImageIcon size={20} aria-hidden="true" />
         )}

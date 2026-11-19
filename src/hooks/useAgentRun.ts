@@ -347,7 +347,7 @@ export function useAgentRun() {
             error:
               error instanceof Error
                 ? error.message
-                : "The agent stopped unexpectedly. Please try again.",
+                : "I stopped before I finished. Try again.",
           }));
       } finally {
         if (active.current === controller) active.current = null;

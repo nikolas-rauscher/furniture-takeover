@@ -30,7 +30,7 @@ export function useAgentHealth() {
           ? "The connection check timed out."
           : failure instanceof Error
             ? failure.message
-            : "The AI service is unavailable.",
+            : "Pako is unavailable right now.",
       );
       if (attempt < 3)
         retry.current = setTimeout(

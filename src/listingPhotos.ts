@@ -1,10 +1,65 @@
 import type { PhotoGroup } from "../shared/agent";
 import { requestPhotoGroups } from "./api/agent.ts";
 import {
+  CARD_PHOTO_SIDE,
+  MAX_CARD_PHOTO_BYTES,
   MAX_ORIGINAL_PHOTO_BYTES,
   MAX_PHOTO_PREVIEW_BYTES,
   MAX_STORED_PHOTO_BYTES,
 } from "../shared/listingPhotos.ts";
+
+type JpegTarget = {
+  longestSide: number;
+  quality: number;
+  maxBytes: number;
+  attempts: number;
+  tooLarge: string;
+};
+
+const JPEG_PREFIX = "data:image/jpeg;base64,";
+
+/** Decoded size of a base64 data URL. */
+const dataUrlBytes = (data: string) => {
+  const encoded = data.length - data.indexOf(",") - 1;
+  const padding = data.endsWith("==") ? 2 : data.endsWith("=") ? 1 : 0;
+  return (encoded * 3) / 4 - padding;
+};
+
+async function decodedImage(source: string) {
+  const image = new Image();
+  image.src = source;
+  await image.decode();
+  return image;
+}
+
+/**
+ * Re-encode as JPEG on white, shrinking by a quarter until it fits. Every browser can encode
+ * JPEG from a canvas, and drawing a decoded image applies its EXIF orientation.
+ */
+function encodeJpeg(image: HTMLImageElement, target: JpegTarget): string {
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Could not prepare this photo.");
+  const naturalSide = Math.max(image.naturalWidth, image.naturalHeight);
+  let longestSide = Math.min(target.longestSide, naturalSide);
+  for (let attempt = 0; attempt < target.attempts; attempt++) {
+    const scale = longestSide / naturalSide;
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    context.fillStyle = "#fff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const data = canvas.toDataURL("image/jpeg", target.quality);
+    if (
+      data.startsWith(JPEG_PREFIX) &&
+      data.length > JPEG_PREFIX.length &&
+      dataUrlBytes(data) <= target.maxBytes
+    )
+      return data;
+    longestSide = Math.round(longestSide * 0.75);
+  }
+  throw new Error(target.tooLarge);
+}
 
 /** Bound gallery storage and request sizes while retaining a useful listing preview. */
 export async function readListingPhoto(
@@ -18,39 +73,15 @@ export async function readListingPhoto(
   signal.throwIfAborted();
   const url = URL.createObjectURL(file);
   try {
-    const image = new Image();
-    image.src = url;
-    await image.decode();
+    const image = await decodedImage(url);
     signal.throwIfAborted();
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-    if (!context) throw new Error("Could not prepare this photo.");
-    let longestSide = Math.min(
-      1600,
-      Math.max(image.naturalWidth, image.naturalHeight),
-    );
-    for (let attempt = 0; attempt < 6; attempt++) {
-      const scale =
-        longestSide / Math.max(image.naturalWidth, image.naturalHeight);
-      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-      context.fillStyle = "#fff";
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      const data = canvas.toDataURL("image/jpeg", 0.82);
-      if (
-        data.startsWith("data:image/jpeg;base64,") &&
-        data.length - "data:image/jpeg;base64,".length > 0 &&
-        ((data.length - "data:image/jpeg;base64,".length) * 3) / 4 -
-          (data.endsWith("==") ? 2 : data.endsWith("=") ? 1 : 0) <=
-        MAX_STORED_PHOTO_BYTES
-      )
-        return data;
-      longestSide = Math.round(longestSide * 0.75);
-    }
-    throw new Error(
-      "This photo is too large to prepare. Try a smaller version.",
-    );
+    return encodeJpeg(image, {
+      longestSide: 1600,
+      quality: 0.82,
+      maxBytes: MAX_STORED_PHOTO_BYTES,
+      attempts: 6,
+      tooLarge: "This photo is too large to prepare. Try a smaller version.",
+    });
   } catch (error) {
     if (signal.aborted) throw error;
     throw new Error(
@@ -63,34 +94,33 @@ export async function readListingPhoto(
   }
 }
 
-const base64Bytes = (data: string) =>
-  ((data.length - data.indexOf(",") - 1) * 3) / 4;
+const CARD_PHOTO_FAILED =
+  "Couldn't prepare the small version of a photo. Try saving again.";
+
+/** The small copy that grids and thumbnails load instead of the full listing photo. */
+export async function createCardPhoto(photo: string): Promise<string> {
+  const image = await decodedImage(photo).catch(() => {
+    throw new Error(CARD_PHOTO_FAILED);
+  });
+  return encodeJpeg(image, {
+    longestSide: CARD_PHOTO_SIDE,
+    quality: 0.8,
+    maxBytes: MAX_CARD_PHOTO_BYTES,
+    attempts: 4,
+    tooLarge: CARD_PHOTO_FAILED,
+  });
+}
 
 /** A smaller copy for sorting many photos at once within one request budget. */
 export async function photoPreview(photo: string): Promise<string> {
-  if (base64Bytes(photo) <= MAX_PHOTO_PREVIEW_BYTES) return photo;
-  const image = new Image();
-  image.src = photo;
-  await image.decode();
-  const canvas = document.createElement("canvas");
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("Could not prepare this photo.");
-  let longestSide = 640;
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const scale = Math.min(
-      1,
-      longestSide / Math.max(image.naturalWidth, image.naturalHeight),
-    );
-    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-    context.fillStyle = "#fff";
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(image, 0, 0, canvas.width, canvas.height);
-    const data = canvas.toDataURL("image/jpeg", 0.7);
-    if (base64Bytes(data) <= MAX_PHOTO_PREVIEW_BYTES) return data;
-    longestSide = Math.round(longestSide * 0.75);
-  }
-  throw new Error("Could not prepare these photos. Try fewer photos.");
+  if (dataUrlBytes(photo) <= MAX_PHOTO_PREVIEW_BYTES) return photo;
+  return encodeJpeg(await decodedImage(photo), {
+    longestSide: 640,
+    quality: 0.7,
+    maxBytes: MAX_PHOTO_PREVIEW_BYTES,
+    attempts: 5,
+    tooLarge: "Could not prepare these photos. Try fewer photos.",
+  });
 }
 
 /**

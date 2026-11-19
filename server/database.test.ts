@@ -365,3 +365,33 @@ test("listing galleries persist cover order across reloads and reject malformed 
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test("uploaded demo photos keep one card copy each, and drawings keep none", () => {
+  const store = createListingsStore(":memory:");
+  try {
+    const item = store.seedDemo()[0];
+    const jpeg = (fill: number) =>
+      "data:image/jpeg;base64," +
+      Buffer.from([0xff, 0xd8, 0xff, fill, 0, 0]).toString("base64");
+    const images = [jpeg(1), jpeg(2)];
+    const cardImages = [jpeg(3), jpeg(4)];
+    store.updateDemo([{ ...item, image: images[0], images, cardImages }]);
+    const saved = store.listDemo().find((row) => row.id === item.id)!;
+    assert.deepEqual(saved.cardImages, cardImages);
+    for (const badCards of [
+      [jpeg(3)],
+      [jpeg(3), "/images/desk.jpg"],
+      [jpeg(3), "not an image"],
+    ])
+      assert.throws(() =>
+        store.updateDemo([{ ...saved, cardImages: badCards }]),
+      );
+    store.updateDemo([{ ...item, cardImages: [] }]);
+    assert.equal(
+      store.listDemo().find((row) => row.id === item.id)!.cardImages,
+      undefined,
+    );
+  } finally {
+    store.close();
+  }
+});

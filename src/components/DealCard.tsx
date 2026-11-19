@@ -1,3 +1,4 @@
+import { cardImageFor } from "../../shared/listingPhotos";
 import { AnimatePresence, motion } from "motion/react";
 import { AutoHeight } from "@animate-ui/react/primitives/effects/auto-height";
 import { useId, useState } from "react";
@@ -429,7 +430,7 @@ export default function DealCard(props: Props) {
         transition={GROW}
       >
         <div className="deal-strip">
-          <DealTile image={listing.image} />
+          <DealTile image={cardImageFor(listing)} />
           <StripWords view={view} />
           {primary && (
             <Button
@@ -479,7 +480,7 @@ export default function DealCard(props: Props) {
         aria-controls={bodyId}
         onClick={onToggle}
       >
-        <DealTile image={listing.image} />
+        <DealTile image={cardImageFor(listing)} />
         <StripWords view={view} />
         {view.status && <span className="deal-strip-status">{view.status}</span>}
         <ChevronDown

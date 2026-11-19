@@ -44,6 +44,7 @@ export type Listing = {
   dimensions: string;
   pickup: string;
   images: string[];
+  card_images: string[];
   status: "active" | "reserved" | "sold" | "withdrawn";
   created_at: string;
   pickup_by?: string | null;

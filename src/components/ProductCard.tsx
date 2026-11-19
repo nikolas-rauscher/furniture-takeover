@@ -1,5 +1,5 @@
 import { Button } from "./ui/button";
-import { listingPhotos } from "../../shared/listingPhotos";
+import { cardImageFor, listingPhotos } from "../../shared/listingPhotos";
 import {
   Clock,
   GitCompareArrows,
@@ -78,7 +78,14 @@ export default function ProductCard({
     >
       <div className="product-photo">
         {product.image ? (
-          <img src={product.image} alt="" loading="lazy" />
+          <img
+            src={cardImageFor(product)}
+            alt=""
+            width={640}
+            height={480}
+            loading="lazy"
+            decoding="async"
+          />
         ) : (
           <span className="listing-no-photo">
             <ImageIcon size={32} aria-hidden="true" />

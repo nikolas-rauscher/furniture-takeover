@@ -111,7 +111,7 @@ export function useMessagesInbox({
     /** Why the reading setting cannot change yet. */
     autoReadUnavailable:
       account && accountAutoRead.state.status === "missing"
-        ? "Available once this server has its reply reading update."
+        ? "I can't read replies here yet. You can still write your own."
         : accountAutoRead.state.status === "error"
           ? accountAutoRead.state.message
           : undefined,

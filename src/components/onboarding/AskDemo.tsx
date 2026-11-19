@@ -72,14 +72,14 @@ export default function AskDemo({ answers, onMood, onDone }: SceneProps) {
   }
 
   function status() {
-    if (picked !== null) return `You picked ${offers[picked].title}.`;
+    if (picked !== null) return `You chose ${offers[picked].title}.`;
     if (showResults) {
       const best = bestOffer(offers);
-      return `Found ${offers.length} offers. Best match: ${best.title}, ${money(best.price)}, ${best.distanceKm} km away. Pick one to continue.`;
+      return `${offers.length} example listings. Top example match: ${best.title}, ${money(best.price)}, ${best.distanceKm} km away. Choose a listing to continue.`;
     }
-    if (beat > steps.length) return "Search finished.";
+    if (beat > steps.length) return "Example search finished.";
     if (beat > 1) return `${steps[beat - 1]}…`;
-    if (sent) return `Request sent: ${request}. ${steps[0]}…`;
+    if (sent) return `Example search: ${request}. ${steps[0]}…`;
     return "";
   }
 
@@ -115,7 +115,7 @@ export default function AskDemo({ answers, onMood, onDone }: SceneProps) {
             transition={{ duration: 0.2 }}
           >
             <StepMark state="done" />
-            Found {offers.length} offers
+            {offers.length} example listings
           </motion.p>
         ) : (
           <SearchSteps
@@ -134,7 +134,7 @@ export default function AskDemo({ answers, onMood, onDone }: SceneProps) {
       )}
       {showResults && picked === null && (
         <p className="ob-tap-caption" aria-hidden="true">
-          Tap an offer to pick it
+          Choose a listing
         </p>
       )}
       <p className="sr-only" aria-live="polite">
@@ -257,7 +257,7 @@ function OfferCard({
     <Button
       className={cn("ob-ask-offer", hinted && "ob-tap-hint")}
       aria-pressed={selected}
-      aria-label={`Pick ${offer.title}, ${money(offer.price)}, ${offer.distanceKm} km away`}
+      aria-label={`Choose ${offer.title}, ${money(offer.price)}, ${offer.distanceKm} km away`}
       onClick={onPick}
     >
       {offer.best && <span className="ob-ask-best">Best match</span>}

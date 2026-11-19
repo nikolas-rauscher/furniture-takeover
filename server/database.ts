@@ -56,6 +56,35 @@ function number(value: unknown, max: number): number {
   return value;
 }
 
+function photoList(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length > MAX_LISTING_PHOTOS)
+    throw invalidListing();
+  return value.map((photo) => text(photo, 2_796_240, true));
+}
+
+/** Uploaded photos use the same bounded raster validation as the upload endpoint. */
+function validUpload(photo: string): string {
+  try {
+    validateRequest({ intent: "listing", text: "", image: photo });
+  } catch {
+    throw invalidListing();
+  }
+  return photo;
+}
+
+function validPhoto(photo: string): string {
+  return adminIllustrations.includes(photo) ||
+    /^\/images\/[a-zA-Z0-9_-]+\.(?:jpe?g|png|webp)$/.test(photo)
+    ? photo
+    : validUpload(photo);
+}
+
+/** Card copies exist only for uploaded photos; drawings and bundled photos have none. */
+function validCardPhoto(photo: string): string {
+  if (!photo.startsWith("data:image/")) throw invalidListing();
+  return validUpload(photo);
+}
+
 function validateDemoListing(value: unknown, existing: Product): Product {
   if (
     !record(value) ||
@@ -78,48 +107,22 @@ function validateDemoListing(value: unknown, existing: Product): Product {
     !["active", "reserved", "sold", "withdrawn"].includes(String(value.status))
   )
     throw invalidListing();
-  const image = text(value.image, 2_796_240, true);
-  if (
-    !adminIllustrations.includes(image) &&
-    !/^\/images\/[a-zA-Z0-9_-]+\.(?:jpe?g|png|webp)$/.test(image)
-  ) {
-    // Reuse the same bounded raster-photo validation as the upload endpoint.
-    try {
-      validateRequest({ intent: "listing", text: "", image });
-    } catch {
-      throw invalidListing();
-    }
-  }
+  const image = validPhoto(text(value.image, 2_796_240, true));
   let images: string[] | undefined;
   if (value.images !== undefined) {
-    if (
-      !Array.isArray(value.images) ||
-      value.images.length > MAX_LISTING_PHOTOS
-    )
-      throw invalidListing();
     images = listingPhotos({
       image,
-      images: value.images.map((photo) => {
-        const candidate = text(photo, 2_796_240, true);
-        if (
-          !adminIllustrations.includes(candidate) &&
-          !/^\/images\/[a-zA-Z0-9_-]+\.(?:jpe?g|png|webp)$/.test(candidate)
-        ) {
-          try {
-            validateRequest({ intent: "listing", text: "", image: candidate });
-          } catch {
-            throw invalidListing();
-          }
-        }
-        return candidate;
-      }),
+      images: photoList(value.images).map(validPhoto),
     });
-    if (
-      images.length > MAX_LISTING_PHOTOS ||
-      JSON.stringify({ image, images }).length > 2_900_000
-    )
-      throw invalidListing();
+    if (images.length > MAX_LISTING_PHOTOS) throw invalidListing();
   }
+  const cardImages = photoList(value.cardImages ?? []).map(validCardPhoto);
+  if (
+    (cardImages.length &&
+      cardImages.length !== listingPhotos({ image, images }).length) ||
+    JSON.stringify({ image, images, cardImages }).length > 2_900_000
+  )
+    throw invalidListing();
   return {
     id: value.id,
     title: text(value.title, 180, true),
@@ -130,6 +133,7 @@ function validateDemoListing(value: unknown, existing: Product): Product {
     category: text(value.category, 120),
     image,
     ...(images ? { images } : {}),
+    ...(cardImages.length ? { cardImages } : {}),
     location: text(value.location, 180, true),
     ...(value.location === existing.location && existing.pickupPoint
       ? { pickupPoint: existing.pickupPoint }

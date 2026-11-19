@@ -136,7 +136,7 @@ test("invitation sessions are verified with Supabase once and invalid sessions d
   assert.equal(rejected.session, null);
   assert.equal(rejected.invited, false);
   assert.equal(requiresPasswordSetup(rejected.session), false);
-  assert.match(rejected.error, /Could not open/);
+  assert.match(rejected.error, /Couldn't open/);
 });
 
 test("password recovery survives a late UI listener and only completes after saving", async (t) => {

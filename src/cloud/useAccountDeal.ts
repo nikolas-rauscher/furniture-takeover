@@ -46,7 +46,9 @@ export function useAccountDeal(
             pickupEvents: [],
             version: deal?.version,
             error:
-              e instanceof Error ? e.message : "Could not load deal history.",
+              e instanceof Error
+                ? e.message
+                : "Couldn't load the deal history. Try again.",
           });
       }
     };

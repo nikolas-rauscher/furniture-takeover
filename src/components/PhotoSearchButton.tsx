@@ -8,6 +8,8 @@ type PhotoSearchButtonProps = {
   busy: boolean;
   disabled: boolean;
   onFile: (file: File) => void;
+  /** The button gained or lost keyboard focus, so Pako can explain it. */
+  onKeyboardFocus: (focused: boolean) => void;
 };
 
 /** Opens the camera or photo library to find something like the photo, e.g. a saved Pinterest image. */
@@ -15,6 +17,7 @@ export default function PhotoSearchButton({
   busy,
   disabled,
   onFile,
+  onKeyboardFocus,
 }: PhotoSearchButtonProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   return (
@@ -22,9 +25,13 @@ export default function PhotoSearchButton({
       <Button
         type="button"
         className="button secondary small photo-search-button"
-        aria-label={busy ? "Reading your photo" : "Search with a photo"}
-        title="Show me a photo, I'll find similar things"
+        aria-label={busy ? "Photo search: reading your photo" : undefined}
+        title="Search with a photo"
         disabled={disabled || busy}
+        onFocus={(event) =>
+          onKeyboardFocus(event.currentTarget.matches(":focus-visible"))
+        }
+        onBlur={() => onKeyboardFocus(false)}
         onClick={() => fileInput.current?.click()}
       >
         {busy ? (
@@ -32,7 +39,7 @@ export default function PhotoSearchButton({
         ) : (
           <Camera size={18} aria-hidden="true" />
         )}
-        <span className="photo-search-label">Photo</span>
+        <span className="photo-search-label">Photo search</span>
       </Button>
       <Input
         ref={fileInput}

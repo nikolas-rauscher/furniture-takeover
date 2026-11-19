@@ -10,7 +10,7 @@ import { pickupDays, reservationRequestMessage } from "./format";
 const failure = (error: unknown) =>
   error instanceof Error
     ? error.message
-    : "Could not send the message. Nothing was changed.";
+    : "Couldn't send the message. Nothing was changed. Try again.";
 
 export function RequestModal({
   listing,

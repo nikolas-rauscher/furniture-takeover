@@ -1,3 +1,4 @@
+import { cardImageFor } from "../../shared/listingPhotos";
 import {
   useEffect,
   useEffectEvent,
@@ -521,7 +522,12 @@ export default function AccountPage({
                 )}
               >
                 {item.image ? (
-                  <img src={item.image} alt="" />
+                  <img
+                    src={cardImageFor(item)}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                  />
                 ) : (
                   <ImageIcon size={28} aria-hidden="true" />
                 )}

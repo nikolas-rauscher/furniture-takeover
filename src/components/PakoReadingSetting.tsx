@@ -27,7 +27,7 @@ export default function PakoReadingSetting({
       setError(
         reason instanceof Error
           ? reason.message
-          : "Could not save this setting. Try again.",
+          : "Couldn't save this setting. Try again.",
       );
     } finally {
       setBusy(false);
@@ -40,10 +40,10 @@ export default function PakoReadingSetting({
           <MessageCircle size={22} />
         </span>
         <span className="settings-row-text">
-          <strong id={titleId}>Let Pako read new replies</strong>
+          <strong id={titleId}>Read new replies automatically</strong>
           <small id={detailId}>
             {unavailable ??
-              "In Messages, Pako reads the other student's new message and suggests answers. Only you see them, and nothing is sent without your tap."}
+              "When you open a conversation, I can read new replies and suggest private drafts. You choose what to send."}
           </small>
         </span>
         <Switch

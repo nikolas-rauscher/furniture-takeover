@@ -179,11 +179,10 @@ function WelcomeContent() {
     <div className="ob-welcome">
       <p className="ob-wordmark">takeover</p>
       <h2 id={WELCOME_HEADING} className="ob-title">
-        Second-hand from students, for students.
+        Second-hand finds from students.
       </h2>
       <p className="ob-lead">
-        Pass on what you don't need and find what you do, around EPFL, UNIL and
-        the FMEL houses.
+        Buy and sell around EPFL, UNIL and the FMEL residences.
       </p>
       <p className="ob-caption">
         <Clock size={15} aria-hidden="true" />
@@ -214,7 +213,7 @@ function StepFooter({
     return (
       <>
         <Button className="button primary large" onClick={onNext}>
-          Get started
+          Meet Pako
         </Button>
         <Button
           className="button quiet large"
@@ -241,7 +240,7 @@ function StepFooter({
           className="button quiet large"
           onClick={() => onFinish(exploreOutcome(complete))}
         >
-          Look around first
+          Browse listings
         </Button>
       </>
     );
@@ -385,7 +384,7 @@ export default function Onboarding({
       case "intro":
         return (
           <p className="ob-note">
-            Three quick questions, then I'll show you how it works.
+            Answer three questions to personalise your tour.
           </p>
         );
       case "done":
@@ -513,7 +512,7 @@ export default function Onboarding({
                 inert={step === "done"}
                 onClick={() => finish({ next: "dismiss" })}
               >
-                Skip
+                Skip intro
               </Button>
             </header>
             <div className="ob-body" ref={body}>

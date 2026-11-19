@@ -11,6 +11,8 @@ export type Product = {
   category: Category;
   image: string;
   images?: string[];
+  /** Card-size copies of `images`, by position; empty for demo drawings and older listings. */
+  cardImages?: string[];
   pickupPoint?: {
     name: string;
     address: string;

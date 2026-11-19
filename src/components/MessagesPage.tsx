@@ -1,3 +1,4 @@
+import { cardImageFor } from "../../shared/listingPhotos";
 import { Button } from "./ui/button";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { lazyScreen } from "../lazyScreen";
@@ -262,8 +263,10 @@ function DemoMessagesPage({
   const [deleted, setDeleted] = useState<SellerConversation>();
   const [dismissedListing, setDismissedListing] = useState("");
   const productFor = (id: string) => listings.find((item) => item.id === id);
-  const imageFor = (item: { listingId: string; image?: string }) =>
-    productFor(item.listingId)?.image ?? item.image;
+  const imageFor = (item: { listingId: string; image?: string }) => {
+    const product = productFor(item.listingId);
+    return product ? cardImageFor(product) : item.image;
+  };
   const changeDeleted = async (item: SellerConversation, remove: boolean) => {
     setBusy(true);
     setError("");
@@ -309,7 +312,7 @@ function DemoMessagesPage({
           id: `new-${listing.id}`,
           listingId: listing.id,
           title: listing.title,
-          image: listing.image,
+          image: cardImageFor(listing),
           seller: listing.seller === "You" ? "Seller" : listing.seller,
           messages: [],
         }
@@ -582,7 +585,7 @@ function DemoMessagesPage({
                 order={conversations.length}
                 active
                 disabled={busy}
-                image={listing.image}
+                image={cardImageFor(listing)}
                 name={listing.seller === "You" ? "Seller" : listing.seller}
                 title={listing.title}
                 note="New conversation"

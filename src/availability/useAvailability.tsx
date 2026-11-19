@@ -199,7 +199,7 @@ export function useAvailability(options: Options) {
     optionsRef.current.setToast(
       error instanceof Error
         ? error.message
-        : "Could not send the message. Nothing was changed.",
+        : "Couldn't send the message. Nothing was changed. Try again.",
     );
 
   async function reset(source: AvailabilityState, forget: boolean) {
@@ -228,7 +228,7 @@ export function useAvailability(options: Options) {
           await setConversationDeleted(conversation.id, true);
     } catch {
       optionsRef.current.setToast(
-        "Demo listings were restored, but some demo messages could not be deleted.",
+        "Demo listings were restored, but some demo messages couldn't be deleted. Reset again to retry.",
       );
     }
   }

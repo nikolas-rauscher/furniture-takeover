@@ -99,7 +99,7 @@ export async function requestJson(
   } catch (error) {
     if (options.signal?.aborted) throw error;
     throw new AgentApiError(
-      "The assistant is unavailable. You can keep writing and try again.",
+      "I lost the connection. You can keep writing and try again.",
       "NETWORK_ERROR",
     );
   }
@@ -117,8 +117,8 @@ export async function requestJson(
       typeof error?.message === "string"
         ? error.message
         : response.status >= 500
-          ? "The AI service is temporarily unavailable. Retry in a moment."
-          : "The assistant could not complete that request. Try again.",
+          ? "Pako is unavailable right now. Try again in a moment."
+          : "I couldn't finish. Try again.",
       typeof error?.code === "string" ? error.code : "REQUEST_FAILED",
       response.status,
     );
@@ -143,7 +143,7 @@ export async function getAgentHealth({
     typeof data.model !== "string"
   ) {
     throw new AgentApiError(
-      "The assistant returned an unreadable response. Try again.",
+      "I couldn't finish. Try again.",
       "INVALID_RESPONSE",
     );
   }
@@ -174,7 +174,7 @@ export async function requestAgentAssist(
     !isMetadata(data.metadata)
   ) {
     throw new AgentApiError(
-      "The assistant returned an unreadable response. Try again.",
+      "I couldn't finish. Try again.",
       "INVALID_RESPONSE",
     );
   }
@@ -217,7 +217,7 @@ export async function requestPhotoGroups(
     )
   ) {
     throw new AgentApiError(
-      "The assistant returned an unreadable response. Try again.",
+      "I couldn't finish. Try again.",
       "INVALID_RESPONSE",
     );
   }

@@ -93,10 +93,10 @@ function phaseOf(
 
 function statusText(phase: Phase, thing: string) {
   if (phase === "camera")
-    return `Camera ready. Tap the shutter to photograph the ${thing}.`;
-  if (phase === "review") return "Your listing is ready. Tap Publish.";
-  if (phase === "live") return "Your listing is live.";
-  return `Photo taken. ${GUIDE_NAME} is writing your listing…`;
+    return `Try the example photo of the ${thing}.`;
+  if (phase === "review") return "Example draft ready. Check it, then publish.";
+  if (phase === "live") return "Example listing published.";
+  return `Example photo added. ${GUIDE_NAME} is drafting the listing…`;
 }
 
 /** The same snapshot is drawn in the viewfinder and in the listing, so it can travel. */
@@ -164,7 +164,7 @@ function CameraView({
       <div className="ob-snap-controls">
         <Button
           className={`ob-snap-shutter${shot ? "" : " ob-tap-hint"}`}
-          aria-label="Take a photo"
+          aria-label="Use example photo"
           disabled={shot}
           onClick={onShoot}
         >
@@ -173,7 +173,7 @@ function CameraView({
           </span>
         </Button>
         <span className="ob-tap-caption" aria-hidden="true">
-          Tap to snap
+          Use example photo
         </span>
       </div>
     </div>
@@ -251,7 +251,7 @@ function Stamp() {
       }}
     >
       <Check size={18} strokeWidth={3} animate aria-hidden="true" />
-      Live
+      Published
     </motion.div>
   );
 }
@@ -281,7 +281,7 @@ function PublishControl({
         transition={{ duration: 0.3, delay: 0.15 }}
       >
         <BadgeCheck size={20} aria-hidden="true" />
-        Live on takeover. Students nearby can see it.
+        In takeover, publishing shows your listing to other students.
       </motion.p>
     );
   const ready = phase === "review";
@@ -293,11 +293,11 @@ function PublishControl({
       onClick={onPublish}
     >
       {ready ? (
-        "Publish"
+        "Publish example"
       ) : (
         <>
           <LoaderCircle size={18} animate aria-hidden="true" />
-          Writing your listing…
+          Drafting the listing…
         </>
       )}
     </Button>
@@ -393,7 +393,7 @@ function ListingView({
   );
 }
 
-/** "Just take photos": one shot becomes a written listing that goes live with one tap. */
+/** "Start with a photo": an example photo becomes a drafted listing the visitor checks and publishes. */
 export default function SnapDemo({ answers, onMood, onDone }: SceneProps) {
   const itemId = answers.items[0];
   const { listing } = itemById(itemId);

@@ -13,6 +13,7 @@ import { listingPhotos } from "../../shared/listingPhotos";
 import { useListings } from "../hooks/useListings";
 import { fail, photoUrl, type Listing } from "./client";
 import { listingPhotoBlob } from "./listingPhoto";
+import { withCardImages } from "../cardPhotos";
 import { randomUuid } from "../randomUuid";
 import type { AccountConnection } from "./AccountSession";
 
@@ -23,6 +24,7 @@ export function toProduct(
 ): Product {
   const pickupPoint = campusPickupPoints.find(({ name }) => name === row.demo_meeting_point);
   const clientImages = row.images; // converted to public URLs by the loader
+  const cardImages = row.card_images;
   return {
     id: row.id,
     title: row.title,
@@ -37,6 +39,7 @@ export function toProduct(
     source: "takeover",
     image: clientImages[0] ?? "",
     images: clientImages,
+    ...(cardImages.length ? { cardImages } : {}),
     seller: row.owner_id === userId ? "You" : name,
     initials: row.owner_id === userId ? "Y" : name.slice(0, 2).toUpperCase(),
     own: row.owner_id === userId,
@@ -71,12 +74,52 @@ export async function loadProducts(client: SupabaseClient, userId?: string) {
   }
   return rows.map((row) =>
     toProduct(
-      { ...row, images: row.images.map((path) => photoUrl(client, path)) },
+      {
+        ...row,
+        images: row.images.map((path) => photoUrl(client, path)),
+        card_images: row.card_images.map((path) => photoUrl(client, path)),
+      },
       userId,
       names[row.owner_id] || "Seller",
     ),
   );
 }
+/** Where a seller's photos go; each new photo is uploaded once per browser session. */
+type PhotoStorage = {
+  client: SupabaseClient;
+  owner: string;
+  uploaded: Map<string, string>;
+};
+
+async function storedPhotoPath(storage: PhotoStorage, photo: string) {
+  const { client, owner, uploaded } = storage;
+  const ownPrefix = photoUrl(client, `${owner}/`);
+  if (photo.startsWith(ownPrefix))
+    return `${owner}/${decodeURIComponent(photo.slice(ownPrefix.length))}`;
+  if (!photo.startsWith("data:image/"))
+    throw Error("Use photos uploaded with your account.");
+  const known = uploaded.get(photo);
+  if (known) return known;
+  const blob = listingPhotoBlob(photo);
+  const extension = blob.type === "image/jpeg" ? "jpg" : blob.type.slice(6);
+  const path = `${owner}/${randomUuid()}.${extension}`;
+  fail(
+    (
+      await client.storage
+        .from("listing-photos")
+        .upload(path, blob, { contentType: blob.type })
+    ).error,
+  );
+  uploaded.set(photo, path);
+  return path;
+}
+
+async function storedPhotoPaths(storage: PhotoStorage, photos: string[]) {
+  const paths: string[] = [];
+  for (const photo of photos) paths.push(await storedPhotoPath(storage, photo));
+  return paths;
+}
+
 export function useMarketplaceListings(account?: AccountConnection) {
   const demo = useListings(!account);
   const [listings, setListingsState] = useState<Product[]>([]),
@@ -143,34 +186,13 @@ export function useMarketplaceListings(account?: AccountConnection) {
         if (JSON.stringify(item) === JSON.stringify(old)) continue;
         if (!item.own || (old && !old.own))
           throw Error("You can only change your own listings.");
-        const images: string[] = [];
-        for (const image of listingPhotos(item)) {
-          const prefix = photoUrl(client, `${userId}/`);
-          if (image.startsWith(prefix)) {
-            images.push(
-              `${userId}/${decodeURIComponent(image.slice(prefix.length))}`,
-            );
-            continue;
-          }
-          if (!image.startsWith("data:image/"))
-            throw Error("Use photos uploaded with your account.");
-          let path = uploads.current.get(image);
-          if (!path) {
-            const blob = listingPhotoBlob(image);
-            const extension =
-              blob.type === "image/jpeg" ? "jpg" : blob.type.slice(6);
-            path = `${userId}/${randomUuid()}.${extension}`;
-            fail(
-              (
-                await client.storage
-                  .from("listing-photos")
-                  .upload(path, blob, { contentType: blob.type })
-              ).error,
-            );
-            uploads.current.set(image, path);
-          }
-          images.push(path);
-        }
+        const prepared = await withCardImages(item, old);
+        const storage = { client, owner: userId, uploaded: uploads.current };
+        const images = await storedPhotoPaths(storage, listingPhotos(prepared));
+        const cardImages = await storedPhotoPaths(
+          storage,
+          prepared.cardImages ?? [],
+        );
         const values = {
           title: item.title,
           description: item.description,
@@ -182,6 +204,7 @@ export function useMarketplaceListings(account?: AccountConnection) {
           pickup_by: item.pickupBy || null,
           tags: item.tags ?? [],
           images,
+          card_images: cardImages,
           status: item.status,
         };
         let result = old

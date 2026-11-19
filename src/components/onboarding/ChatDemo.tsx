@@ -34,7 +34,15 @@ function conversationBeats(lines: ChatLine[]) {
   ];
 }
 
-/** The "chat" scene: Pako agrees on price and pickup, the visitor confirms. */
+/** How long the other student takes to confirm the example terms. */
+const PARTNER_CONFIRM_MS = 1100;
+
+type Confirmation = "open" | "waiting" | "booked";
+
+/**
+ * The "chat" scene teaches consent in order: Pako drafts, the visitor sends,
+ * the visitor sends the terms for confirmation and the other student confirms.
+ */
 export default function ChatDemo({ answers, onMood, onDone }: SceneProps) {
   const [firstItem] = answers.items;
   const scene = useMemo(
@@ -43,7 +51,17 @@ export default function ChatDemo({ answers, onMood, onDone }: SceneProps) {
   );
   const beats = useMemo(() => conversationBeats(scene.lines), [scene]);
   const beat = useTimeline(beats);
-  const [booked, setBooked] = useState(false);
+  const [confirmation, setConfirmation] = useState<Confirmation>("open");
+  const finish = useEffectEvent(onDone);
+
+  useEffect(() => {
+    if (confirmation !== "waiting") return;
+    const timer = window.setTimeout(() => {
+      setConfirmation("booked");
+      finish();
+    }, PARTNER_CONFIRM_MS);
+    return () => window.clearTimeout(timer);
+  }, [confirmation]);
 
   const exchange = beat - 1;
   const shown = exchange < 0 ? 0 : Math.ceil(exchange / 2);
@@ -51,21 +69,20 @@ export default function ChatDemo({ answers, onMood, onDone }: SceneProps) {
     exchange >= 0 && exchange % 2 === 0 && shown < scene.lines.length
       ? scene.lines[shown].from
       : null;
-  const agreed = beat >= beats.length;
-  const mood: PakoMood = booked ? "cheer" : agreed ? "happy" : "work";
+  const talked = beat >= beats.length;
+  const mood: PakoMood =
+    confirmation === "booked" ? "cheer" : talked ? "happy" : "work";
   const announceMood = useEffectEvent(onMood);
   useEffect(() => announceMood(mood), [mood]);
 
-  function confirm() {
-    setBooked(true);
-    onDone();
-  }
-
   function status() {
-    if (booked) return "Pickup booked.";
-    if (!agreed) return "";
-    const { deal } = scene;
-    return `Agreed: ${deal.title} for ${money(deal.price)}, ${deal.time} at ${deal.meetingPoint}. Confirm to book the pickup.`;
+    const { deal, partner } = scene;
+    if (confirmation === "booked")
+      return `${partner.name} confirmed. Example pickup booked.`;
+    if (confirmation === "waiting")
+      return `Waiting for ${partner.name} to confirm.`;
+    if (!talked) return "";
+    return `Example terms: ${deal.title} for ${money(deal.price)}, ${deal.time} at ${deal.meetingPoint}. Send them for confirmation.`;
   }
 
   return (
@@ -96,12 +113,12 @@ export default function ChatDemo({ answers, onMood, onDone }: SceneProps) {
           {typing && <TypingIndicator key={exchange} from={typing} />}
         </AnimatePresence>
       </div>
-      {agreed && (
+      {talked && (
         <DealCard
           scene={scene}
           Icon={itemIcons[firstItem]}
-          booked={booked}
-          onConfirm={confirm}
+          confirmation={confirmation}
+          onSend={() => setConfirmation("waiting")}
         />
       )}
       <p className="sr-only" aria-live="polite">
@@ -128,7 +145,7 @@ function ChatMessage({
       transition={MESSAGE_SPRING}
     >
       {line.from === "pako" ? (
-        <span className="ob-chat-label">{GUIDE_NAME} for you</span>
+        <span className="ob-chat-label">You · drafted with {GUIDE_NAME}</span>
       ) : (
         <span className="sr-only">{partnerName}: </span>
       )}
@@ -167,21 +184,21 @@ function TypingIndicator({
 function DealCard({
   scene,
   Icon,
-  booked,
-  onConfirm,
+  confirmation,
+  onSend,
 }: {
   scene: ChatScene;
   Icon: IntroIcon;
-  booked: boolean;
-  onConfirm: () => void;
+  confirmation: Confirmation;
+  onSend: () => void;
 }) {
-  const { deal } = scene;
+  const { deal, partner } = scene;
   const card = useRevealOnMount<HTMLElement>();
   return (
     <motion.section
       ref={card}
       className="ob-chat-deal"
-      aria-label="Agreed deal"
+      aria-label="Example terms"
       initial={{ opacity: 0, y: 28 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 380, damping: 32 }}
@@ -203,14 +220,19 @@ function DealCard({
           {deal.meetingPoint}
         </span>
       </p>
-      {booked ? (
-        <BookedBanner />
+      {confirmation === "booked" ? (
+        <BookedBanner detail={`${partner.name} confirmed too`}>
+          Example pickup booked
+        </BookedBanner>
       ) : (
         <Button
           className="button primary large ob-chat-confirm ob-tap-hint"
-          onClick={onConfirm}
+          aria-disabled={confirmation === "waiting"}
+          onClick={confirmation === "open" ? onSend : undefined}
         >
-          {scene.role === "buyer" ? "Confirm pickup" : "Confirm sale"}
+          {confirmation === "waiting"
+            ? `Waiting for ${partner.name}…`
+            : "Send for confirmation"}
         </Button>
       )}
     </motion.section>

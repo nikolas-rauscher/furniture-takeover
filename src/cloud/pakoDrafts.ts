@@ -24,7 +24,7 @@ export function accountTurnCache(
         parsed.data.forMessageId !== result.data.for_message_id
       )
         throw new Error(
-          "Pako's last reading of this conversation could not be opened.",
+          "I couldn't load my earlier suggestions. Read the reply again to get new ones.",
         );
       return parsed.data;
     },

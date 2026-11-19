@@ -167,7 +167,7 @@ test("a proxy outage during a health check reports service connectivity, not a f
     assert.equal(error.status, 502);
     assert.equal(
       error.message,
-      "The AI service is temporarily unavailable. Retry in a moment.",
+      "Pako is unavailable right now. Try again in a moment.",
     );
     return true;
   });
@@ -239,7 +239,7 @@ test("network errors explain that writing can continue", async (context) => {
     {
       code: "NETWORK_ERROR",
       message:
-        "The assistant is unavailable. You can keep writing and try again.",
+        "I lost the connection. You can keep writing and try again.",
     },
   );
 });

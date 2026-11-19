@@ -76,7 +76,7 @@ export default function AgentWebResults({
           <p role="status">
             {sources.length > 0 && "Some results are ready. "}
             {latest.failure?.message ??
-              "Web search could not finish. Try again shortly."}
+              "I couldn't finish checking other sites. Try again or stick with takeover listings."}
           </p>
           {!running && latest.failure?.retryable !== false && onRetry && (
             <Button size="sm" variant="outline" onClick={onRetry}>

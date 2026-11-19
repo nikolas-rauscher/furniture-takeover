@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode, type Ref } from "react";
 import type { AgentQuota } from "../../shared/agent";
+import { formatPickup } from "../../shared/pickupTime";
 import {
   ArrowLeft,
   Bookmark,
@@ -47,18 +48,11 @@ function QuotaDetails({ quota }: { quota: AgentQuota }) {
         <strong>
           {quota.remaining} of {quota.limit}
         </strong>{" "}
-        AI requests left today
+        Pako requests left today
       </p>
       <p className="workspace-quota-reset">
         Resets{" "}
-        <time dateTime={quota.resetAt}>
-          {new Date(quota.resetAt).toLocaleString([], {
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </time>
+        <time dateTime={quota.resetAt}>{formatPickup(quota.resetAt)}</time>
       </p>
     </div>
   );
@@ -115,7 +109,7 @@ export default function WorkspaceHeader({
             <Popover open={quotaOpen} onOpenChange={setQuotaOpen}>
               <PopoverTrigger
                 render={<Button variant="ghost" />}
-                aria-label={`AI allowance: ${quota.remaining} of ${quota.limit} requests left today`}
+                aria-label={`${quota.remaining} of ${quota.limit} Pako requests left today`}
               >
                 <Pako size={24} mood="idle" still />
                 <Badge
@@ -126,7 +120,7 @@ export default function WorkspaceHeader({
               </PopoverTrigger>
               <PopoverContent align="end" className="workspace-quota-popover">
                 <PopoverHeader>
-                  <PopoverTitle>Daily AI allowance</PopoverTitle>
+                  <PopoverTitle>Pako requests today</PopoverTitle>
                 </PopoverHeader>
                 <QuotaDetails quota={quota} />
               </PopoverContent>
@@ -148,7 +142,7 @@ export default function WorkspaceHeader({
           <DropdownMenu>
             <DropdownMenuTrigger
               render={<Button variant="ghost" size="icon" />}
-              aria-label="Workspace options"
+              aria-label="Search options"
             >
               <Ellipsis size={20} aria-hidden="true" />
             </DropdownMenuTrigger>
@@ -158,7 +152,7 @@ export default function WorkspaceHeader({
                   disabled={save.disabled}
                   onClick={save.onSave}
                 >
-                  <Bookmark size={16} aria-hidden="true" /> Save this search
+                  <Bookmark size={16} aria-hidden="true" /> Save search
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={onAccount}>
@@ -168,7 +162,7 @@ export default function WorkspaceHeader({
                 <>
                   <DropdownMenuSeparator />
                   <div className="workspace-quota-menu" role="status">
-                    <strong>Daily AI allowance</strong>
+                    <strong>Pako requests today</strong>
                     <QuotaDetails quota={quota} />
                   </div>
                 </>

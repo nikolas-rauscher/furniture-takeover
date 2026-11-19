@@ -69,12 +69,12 @@ export const questions = {
   place: {
     id: "place",
     title: "Where do you live or study?",
-    text: "I'll search and suggest pickups around there.",
+    text: "I'll start searches around that area.",
   },
   sellItems: {
     id: "items-sell",
-    title: "What's still in your room?",
-    text: "Pick everything you want to pass on.",
+    title: "What are you selling?",
+    text: "Choose anything you'd like to sell.",
   },
   findItems: {
     id: "items-find",
@@ -101,7 +101,7 @@ const intentReaction = (intent: Intent): GuideBubble => ({
 const placeReaction = (place: PlaceId): GuideBubble => ({
   id: `place-${place}`,
   title: `${placeById(place).name} it is!`,
-  text: "I'll look around there first.",
+  text: "I'll use it as your starting area.",
 });
 
 /** What Pako says on a step: the question, or a reaction once it is answered. */
@@ -114,7 +114,7 @@ export function stepBubble(
     return {
       id: "intro",
       title: `Hi, I'm ${GUIDE_NAME}!`,
-      text: "I'm your moving box with superpowers. I list your things, find what you need and sort out the details with other students.",
+      text: "I'm your moving box. I find listings, draft yours and help with messages. You choose what to send.",
     };
   if (step === "intent")
     return answers.intent ? intentReaction(answers.intent) : questions.intent;
@@ -167,7 +167,7 @@ export function finalAction(
     };
   if (answers.intent === "sell")
     return {
-      label: "Take my first photo",
+      label: "Add a listing photo",
       outcome: { next: "sell", location },
     };
   return {

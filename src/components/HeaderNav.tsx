@@ -7,7 +7,7 @@ export type HeaderDestination =
 
 /** The phone tab bar's destinations, named as on the pages they open. */
 const items: { id: HeaderDestination; label: string }[] = [
-  { id: "browse", label: "Find" },
+  { id: "browse", label: "Browse" },
   { id: "searches", label: "Searches" },
   { id: "favorites", label: "Saved" },
   { id: "messages", label: "Messages" },

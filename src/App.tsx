@@ -3,6 +3,7 @@ import { Badge } from "./components/ui/badge";
 import { Textarea } from "./components/ui/textarea";
 import { Input } from "./components/ui/input";
 import { historyPosition, readRoute, type View } from "./navigation";
+import { formatPickup } from "../shared/pickupTime";
 import type { AccountConnection } from "./cloud/AccountSession";
 import { useMarketplaceListings } from "./cloud/useMarketplaceListings";
 import { useFavorites } from "./cloud/useFavorites";
@@ -262,11 +263,20 @@ function newDraft(location: string): ListingDraft {
 }
 /** What changing a listing's status tells the seller. */
 const STATUS_NOTICES: Record<Product["status"], string> = {
-  active: "Listing is active again.",
+  active: "Listing is available again.",
   reserved: "Marked as reserved.",
   sold: "Marked as sold.",
   withdrawn: "Listing archived. You can restore it from Archive.",
 };
+/** What a failed status change tells the seller, naming the change that did not save. */
+const STATUS_FAILURES: Record<Product["status"], string> = {
+  active: "Couldn't make the listing available.",
+  reserved: "Couldn't mark the listing as reserved.",
+  sold: "Couldn't mark the listing as sold.",
+  withdrawn: "Couldn't archive the listing.",
+};
+const statusFailure = (status: Product["status"]) =>
+  `${STATUS_FAILURES[status]} Check your browser storage and try again.`;
 
 export default function App({
   account,
@@ -747,6 +757,8 @@ export default function App({
   const [photoSearchBusy, setPhotoSearchBusy] = useState(false);
   /** A photo is dragged over the home search. */
   const [photoDragging, setPhotoDragging] = useState(false);
+  /** The photo search button has keyboard focus, so Pako explains it. */
+  const [photoHint, setPhotoHint] = useState(false);
   const [photoSearchNotice, setPhotoSearchNotice] =
     useState<PhotoSearchNotice | null>(null);
   const photoSearchRequest = useRef<AbortController | null>(null);
@@ -755,7 +767,7 @@ export default function App({
       ? photoSearch
       : null;
   const hasSearchDraft = query.trim().length > 0;
-  const searchHeading = "Your search";
+  const searchHeading = "Search with Pako";
   /** The page on screen as the browser tab names it; home keeps the app's own title. */
   function pageName(): string | null {
     switch (view) {
@@ -776,7 +788,7 @@ export default function App({
       case "compare":
         return "Compare listings";
       case "settings":
-        if (!account) return "Workspace settings";
+        if (!account) return "Browser settings";
         return signedIn ? "Account settings" : "Sign in";
       case "admin":
         return "Admin";
@@ -785,12 +797,7 @@ export default function App({
   useDocumentTitle(pageName());
   const quotaExhausted = agentHealth?.quota?.remaining === 0;
   const quotaResets = agentHealth?.quota
-    ? new Date(agentHealth.quota.resetAt).toLocaleString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-        day: "numeric",
-        month: "short",
-      })
+    ? formatPickup(agentHealth.quota.resetAt)
     : "";
   /** Why quick replies that ask Pako are paused; the footer under them says when they reset. */
   const allowancePause = quotaExhausted
@@ -830,7 +837,7 @@ export default function App({
       ? "dragging"
       : photoSearchBusy
         ? "reading"
-        : photoSearchNotice,
+        : (photoSearchNotice ?? (photoHint ? "hint" : null)),
     deal:
       firstHomeDeal &&
       homeDealNews({
@@ -1018,7 +1025,7 @@ export default function App({
       message: `${cheer} ${meaning}`,
       mood: "cheer",
       action: {
-        label: "Open chat",
+        label: "Open conversation",
         description: `Open the conversation about ${listing.title}`,
         onClick: () => openDealThread(item),
       },
@@ -1033,7 +1040,7 @@ export default function App({
       message: `${pickupCountdown(day)}: the ${listing.title} with ${item.otherName}.`,
       mood: "wave",
       action: {
-        label: "Open chat",
+        label: "Open conversation",
         description: `Open the conversation about ${listing.title}`,
         onClick: () => openDealThread(item),
       },
@@ -1426,7 +1433,7 @@ export default function App({
     if (!proposal) return;
     negotiations.activate(proposal.id);
     const search = newSearch(
-      `Help me prepare an offer for ${item.title} and arrange handover. Ask me for any missing details. Keep everything as a draft for review.${!existing && committedSearchRef.current ? " My earlier request: " + committedSearchRef.current.originalRequest : ""}`.slice(
+      `Help me prepare an offer for ${item.title} and arrange pickup or shipping. Ask me for any missing details. Keep everything as a draft for review.${!existing && committedSearchRef.current ? " My earlier request: " + committedSearchRef.current.originalRequest : ""}`.slice(
         0,
         4000,
       ),
@@ -1857,7 +1864,7 @@ export default function App({
     if (before && !Object.hasOwn(dealStatusBefore, id))
       setDealStatusBefore((current) => ({ ...current, [id]: before }));
     if (!(await applyListingStatus(id, status)))
-      setToast("Could not save this status change. Please try again.");
+      setToast(statusFailure(status));
   }
   /**
    * Clears this browser's workspace: the student's listings and choices, then
@@ -1891,13 +1898,13 @@ export default function App({
     setCriteria({ ...defaults });
     resetMessageWorkspace();
     await messages.demoInbox.reset();
-    setToast("Local workspace cleared.");
+    setToast("Browser data cleared.");
   }
   async function setStatus(id: string, status: Product["status"]) {
     const listing = own.find((item) => item.id === id);
     if (!listing) throw new Error(`Listing ${id} is not among your listings.`);
     if (!(await applyListingStatus(id, status))) {
-      setToast("Could not save this status change. Please try again.");
+      setToast(statusFailure(status));
       return;
     }
     if (status === "withdrawn")
@@ -2052,7 +2059,7 @@ export default function App({
             event.preventDefault();
             transitionPage("nav-back", goHome);
           }}
-          aria-label="takeover home"
+          aria-label="Browse takeover listings"
         >
           takeover
         </a>
@@ -2092,7 +2099,7 @@ export default function App({
                 ? signedIn
                   ? "Open account settings"
                   : "Sign in"
-                : "Open workspace settings"
+                : "Open browser settings"
             }
             onClick={() => openDestination("settings")}
           >
@@ -2243,7 +2250,7 @@ export default function App({
                         current.version !== messageProposal.version
                       )
                         throw new Error(
-                          "This proposal has changed. Reopen its latest message from the agent chat.",
+                          "This offer draft changed. Open the latest draft in your conversation with Pako.",
                         );
                     }}
                     onSent={(listingId, role, message) => {
@@ -2371,7 +2378,7 @@ export default function App({
                             value={query}
                             onChange={(event) => setQuery(event.target.value)}
                             rows={1}
-                            placeholder="Desk under CHF 80 near EPFL"
+                            placeholder="e.g. a desk under CHF 80 near EPFL"
                             onKeyDown={(event) => {
                               if (
                                 event.key === "Enter" &&
@@ -2405,6 +2412,7 @@ export default function App({
                             busy={photoSearchBusy}
                             disabled={running || !configured || quotaExhausted}
                             onFile={(file) => void searchByPhoto(file)}
+                            onKeyboardFocus={setPhotoHint}
                           />
                           <Button
                             animateIcon
@@ -2985,7 +2993,7 @@ export default function App({
                   backLabel={
                     detailOrigin === "discover"
                       ? searching
-                        ? "Back to chat"
+                        ? "Back to search"
                         : "Back to browse"
                       : detailOrigin === "account"
                         ? accountTab === "favorites"
@@ -3251,48 +3259,52 @@ export default function App({
         </Modal>
       )}
       {modal === "help" && (
-        <Modal title="How the agent works" onClose={() => setModal(null)}>
+        <Modal title="How Pako helps" onClose={() => setModal(null)}>
           <div className="help-list">
             <div>
               <Search size={20} />
               <p>
-                <strong>Find</strong>The agent searches real web sources and
-                your active local listings. Open a source to check its current
-                availability.
+                <strong>Search</strong>Pako checks takeover listings and can
+                search other sites. Check external prices and availability on
+                the original page.
               </p>
             </div>
             <div>
               <Camera size={20} />
               <p>
-                <strong>Search with a photo</strong>An inspiration photo, such
-                as a Pinterest image, is sent to the AI service to describe the
-                item. The search then uses that description.
+                <strong>Search with a photo</strong>When you search with a
+                photo, we send it to the AI service to identify the item. The
+                search then uses that description.
               </p>
             </div>
             <div>
               <Camera size={20} />
               <p>
-                <strong>Sell</strong>Your uploaded photo and notes are sent to
-                the AI service when you create a draft. Review the details
-                before saving.
+                <strong>Sell</strong>When Pako looks at your photos or drafts a
+                listing, we send your photos and notes to the AI service. Check
+                the details before publishing.
               </p>
             </div>
             <div>
               <Bookmark size={20} />
               <p>
-                <strong>Keep</strong>Listings, saved searches and their
-                alerts are stored in this browser. Nothing is sent to a seller
-                or published to another marketplace.
+                <strong>Keep</strong>Saved searches and alerts stay in this
+                browser. Nothing reaches another student until you publish a
+                listing or send a message.
               </p>
             </div>
           </div>
         </Modal>
       )}
       {modal === "clear" && (
-        <Modal title="Clear local workspace?" onClose={() => setModal(null)}>
+        <Modal
+          title="Clear browser data for takeover?"
+          onClose={() => setModal(null)}
+        >
           <p className="modal-intro">
-            This removes your listings, favourites, saved searches,
-            conversations and demo deals from this browser.
+            This clears your listings, saved items, saved searches, alerts,
+            conversations and demo deals from this browser. Shared sample
+            listings stay available.
           </p>
           <div className="modal-actions">
             <Button className="button secondary" onClick={() => setModal(null)}>
@@ -3303,7 +3315,7 @@ export default function App({
               className="button danger"
               onClick={() => void clearWorkspace()}
             >
-              Clear workspace
+              Clear browser data
             </Button>
           </div>
         </Modal>

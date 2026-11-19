@@ -40,7 +40,9 @@ export function useAccountInbox(connection: AccountUser | null, open: boolean) {
     } catch (error) {
       if (generation.current !== token) return;
       setLoadError(
-        error instanceof Error ? error.message : "Could not load messages.",
+        error instanceof Error
+          ? error.message
+          : "Couldn't load your messages. Try again.",
       );
     } finally {
       if (inFlight.current === request) inFlight.current = null;
@@ -105,9 +107,10 @@ export function useAccountInbox(connection: AccountUser | null, open: boolean) {
         user_id: userId,
         last_read_at: next,
       });
+      if (result.error) console.error(result.error);
       setReadError(
         result.error
-          ? `Could not mark this conversation as read: ${result.error.message}`
+          ? "Couldn't mark this conversation as read. Open it again to retry."
           : "",
       );
     },

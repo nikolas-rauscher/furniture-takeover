@@ -10,6 +10,7 @@ import { AutoHeight } from "@animate-ui/react/primitives/effects/auto-height";
 import { useStreamingText } from "../hooks/useStreamingText";
 import { useId, type ReactNode } from "react";
 import AgentRunDetails from "./AgentRunDetails";
+import { useDeveloperMode } from "../availability/useDeveloperMode";
 import AgentSources from "./AgentSources";
 import AgentWebResults from "./AgentWebResults";
 import { Ellipsis } from "./icons";
@@ -119,6 +120,8 @@ export default function AgentRunPanel({
   const steps = settledSteps(state.steps);
   // Pako ran out of activities mid-comparison: the student taps to let him go on.
   const unfinished = state.diagnostic?.code === "STEP_LIMIT";
+  // Run IDs and provider codes help a developer, not a student.
+  const { developerMode } = useDeveloperMode();
   // Queued questions wait their turn: only the next one shows beside the answered ones.
   const nextQuestion = state.questions.find(
     (question) => !state.answers[question.id],
@@ -140,9 +143,9 @@ export default function AgentRunPanel({
       : stopped
         ? "Stopped"
         : state.status === "error"
-          ? "Could not finish"
+          ? "Couldn't finish"
           : steps.some((step) => step.state === "error")
-            ? "Partly completed"
+            ? "Some results are ready"
             : steps.some((step) => step.state === "needs_input")
               ? "Some changes need more details"
               : "Finished";
@@ -184,7 +187,7 @@ export default function AgentRunPanel({
             : running
               ? "Working on your request…"
               : stopped
-                ? "Run stopped"
+                ? "Search stopped"
                 : state.status === "error"
                   ? "Let’s try that again"
                   : state.proposal?.draft
@@ -220,13 +223,13 @@ export default function AgentRunPanel({
       <DropdownMenu>
         <DropdownMenuTrigger
           render={<Button size="icon-sm" className="agent-run-more" />}
-          aria-label="Response actions"
+          aria-label="Pako reply options"
         >
           <Ellipsis size={18} aria-hidden="true" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {!running && !state.error && (
-            <DropdownMenuItem onClick={onRetry}>Run again</DropdownMenuItem>
+            <DropdownMenuItem onClick={onRetry}>Search again</DropdownMenuItem>
           )}
           <DropdownMenuItem onClick={onReset}>
             Clear conversation
@@ -462,7 +465,8 @@ export default function AgentRunPanel({
               <strong>{state.error}</strong>
             ) : (
               <>
-                <strong>Sorry, I got stuck there.</strong> {state.error}
+                <strong>I couldn't finish this request.</strong>{" "}
+                {state.error}
               </>
             )}
           </p>
@@ -473,7 +477,7 @@ export default function AgentRunPanel({
           )}
         </div>
       )}
-      {!running && state.status !== "idle" && state.diagnostic && (
+      {developerMode && !running && state.status !== "idle" && state.diagnostic && (
         <details className="agent-run-debug">
           <summary>Error details</summary>
           <p>{state.diagnostic.hint}</p>

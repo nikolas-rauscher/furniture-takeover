@@ -59,14 +59,14 @@ function propose({
   return { proposal, line };
 }
 
-test("a first offer starts 10 % under the asking price at the earliest weekend slot and the listing's point", () => {
+test("a first offer starts 10% under the asking price at the earliest weekend slot and the listing's point", () => {
   const { proposal, line } = propose({});
   assert.equal(proposal.amount, 180);
   assert.equal(proposal.slot?.pickupAt, "2026-11-21T10:00:00.000Z");
   assert.equal(proposal.place, OCHETTES);
   assert.equal(
     line(),
-    "I'd offer CHF 180, about 10 % under the asking price, so there's room to meet in the middle. Saturday 11:00 fits the seller's weekend pickup, at FMEL Ochettes, the listing's meeting point.",
+    "I'd offer CHF 180, about 10% under the asking price, so there's room to meet in the middle. Saturday 11:00 fits the seller's weekend pickup, at FMEL Ochettes, the listing's meeting point.",
   );
 });
 

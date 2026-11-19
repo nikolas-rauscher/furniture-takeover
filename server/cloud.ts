@@ -232,6 +232,7 @@ export function createCloud(
         status: row.status,
         image: row.images[0] ? photoUrl(row.images[0]) : "",
         images: row.images.map(photoUrl),
+        cardImages: row.card_images.map(photoUrl),
         seller: "Seller",
         initials: "S",
         category: "",

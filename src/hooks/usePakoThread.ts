@@ -61,7 +61,7 @@ type Cached = { key: string } & (
   | { status: "broken"; message: string }
 );
 
-const UNREAD = "Sorry, I couldn't read that one.";
+const UNREAD = "I couldn't read this reply. Try again or write your own.";
 
 /** A failed reading in the tray's words: out of readings, not set up here, or a plain failure. */
 function failedTray(attempt: Extract<Attempt, { status: "failed" }>): PakoTrayState {

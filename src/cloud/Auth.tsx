@@ -1,9 +1,26 @@
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import Pako from "../components/onboarding/Pako";
 import { fail } from "./client";
+
+type AuthMode = "login" | "reset" | "password" | "complete";
+
+/** What a failed step tells the student; the provider's own wording varies by deployment. */
+const AUTH_FAILURES: Record<Exclude<AuthMode, "complete">, string> = {
+  login:
+    "Couldn't sign in. Check your email and password, or reset your password.",
+  reset: "Couldn't send a reset link. Check your email and try again.",
+  password: "Couldn't save your password. Try again.",
+};
+
+const BUSY_LABELS: Record<Exclude<AuthMode, "complete">, string> = {
+  login: "Signing in…",
+  reset: "Sending reset link…",
+  password: "Saving password…",
+};
+
 export default function Auth({
   client,
   recovery = false,
@@ -13,10 +30,11 @@ export default function Auth({
   recovery?: boolean;
   onDone: () => void;
 }) {
-  const [mode, setMode] = useState(recovery ? "password" : "login");
+  const [mode, setMode] = useState<AuthMode>(recovery ? "password" : "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
+  const passwordHint = useId();
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   if (mode === "complete")
@@ -48,13 +66,17 @@ export default function Auth({
       </h1>
       {mode === "login" && (
         <p className="quiet-caption">
-          Takeover is currently invite-only. Accept your email invitation and
-          set a password before signing in.
+          You need an invitation to sign in to takeover. Open your invite email
+          to set a password.
         </p>
       )}
       <form
         onSubmit={async (e) => {
           e.preventDefault();
+          if (mode === "password" && password !== confirmation) {
+            setNotice("The passwords don't match.");
+            return;
+          }
           setBusy(true);
           setNotice("");
           try {
@@ -67,19 +89,15 @@ export default function Auth({
                 ).error,
               );
               setNotice(
-                "If an account exists for that address, check your email. Open the reset link in this browser.",
+                "If that email has an account, we'll send a reset link. Open it in this browser.",
               );
             } else if (mode === "password") {
-              if (password !== confirmation)
-                throw new Error("The passwords do not match.");
               const { data, error } = await client.auth.updateUser({
                 password,
               });
               fail(error);
               if (!data.user)
-                throw new Error(
-                  "Could not save your password. Please try again.",
-                );
+                throw new Error("The password update returned no user.");
               setPassword("");
               setConfirmation("");
               setMode("complete");
@@ -91,9 +109,8 @@ export default function Auth({
               onDone();
             }
           } catch (err) {
-            setNotice(
-              err instanceof Error ? err.message : "Could not sign in.",
-            );
+            console.error(err);
+            setNotice(AUTH_FAILURES[mode]);
           } finally {
             setBusy(false);
           }
@@ -113,7 +130,7 @@ export default function Auth({
         )}
         {mode !== "reset" && (
           <label>
-            Password
+            {mode === "password" ? "New password" : "Password"}
             <Input
               type="password"
               autoComplete={
@@ -121,14 +138,20 @@ export default function Auth({
               }
               minLength={8}
               required
+              aria-describedby={mode === "password" ? passwordHint : undefined}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
+            {mode === "password" && (
+              <small id={passwordHint} className="quiet-caption">
+                At least 8 characters
+              </small>
+            )}
           </label>
         )}
         {mode === "password" && (
           <label>
-            Confirm password
+            Repeat password
             <Input
               type="password"
               autoComplete="new-password"
@@ -146,7 +169,7 @@ export default function Auth({
           disabled={busy}
         >
           {busy
-            ? "Please wait…"
+            ? BUSY_LABELS[mode]
             : mode === "reset"
               ? "Send reset link"
               : mode === "password"

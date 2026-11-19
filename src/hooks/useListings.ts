@@ -13,6 +13,7 @@ import { isProducts } from "./savedState";
 import { useSaved } from "./useSaved";
 import { ListingOutbox } from "./listingOutbox";
 import { readDemoCatalog } from "../demoCatalogRead";
+import { withChangedCardImages } from "../cardPhotos";
 
 async function requestListings(
   path: string,
@@ -26,7 +27,7 @@ async function listingsFrom(response: Response): Promise<Product[]> {
     const body = await response.json().catch(() => null);
     if (body?.error?.code === "admin_listing_hidden")
       throw new AdminApiError("admin_listing_hidden");
-    throw new Error("The listing database is unavailable. Please try again.");
+    throw new Error("Couldn't load listings. Try again.");
   }
   const body: unknown = await response.json();
   const listings =
@@ -34,12 +35,12 @@ async function listingsFrom(response: Response): Promise<Product[]> {
       ? (body as { listings?: unknown }).listings
       : null;
   if (!isProducts(listings) || listings.some((item) => item.demo !== true))
-    throw new Error("The listing database returned an invalid response.");
+    throw new Error("Couldn't load listings. Try again.");
   return listings;
 }
 
 const postingCheckUnavailable =
-  "Listing permission could not be checked. Try again.";
+  "Couldn't check that you can publish. Try again.";
 
 async function verifyCanPost() {
   const response = await fetch("/api/listings/permission", {
@@ -71,7 +72,7 @@ export function useListings(enabled = true) {
       return {
         outbox: null,
         error:
-          "Pending listing changes could not be read. Browser storage must be available before editing demo listings.",
+          "Couldn't open your unsaved listing changes. Check that takeover can use this browser's storage.",
       };
     }
   });
@@ -123,7 +124,7 @@ export function useListings(enabled = true) {
             setError(
               failure instanceof Error
                 ? failure.message
-                : "Could not save demo changes.",
+                : "Couldn't save your listing changes. Try again.",
             );
         } finally {
           if (mounted.current) setPending((value) => value - 1);
@@ -177,7 +178,7 @@ export function useListings(enabled = true) {
           setError(
             failure instanceof Error
               ? failure.message
-              : "Could not load demo listings.",
+              : "Couldn't load listings. Try again.",
           );
         return false;
       } finally {
@@ -258,6 +259,22 @@ export function useListings(enabled = true) {
           proposed = apply(previous);
         }
       }
+      // Card copies are made before staging, so a failed photo leaves the catalog unchanged.
+      try {
+        let prepared = await withChangedCardImages(proposed, previous);
+        while (current.current !== previous) {
+          previous = current.current;
+          prepared = await withChangedCardImages(apply(previous), previous);
+        }
+        proposed = prepared;
+      } catch (failure) {
+        setError(
+          failure instanceof Error
+            ? failure.message
+            : "Couldn't prepare your photos. Try again.",
+        );
+        return false;
+      }
       const ids = new Set(proposed.map((item) => item.id));
       // Clearing browser data leaves the database catalog intact. Removal uses status withdrawn.
       const next = [
@@ -276,7 +293,7 @@ export function useListings(enabled = true) {
           journal.outbox.stage(changed);
         } catch {
           setError(
-            "Demo changes could not be saved in browser storage. Free some space and try again.",
+            "Couldn't save your changes on this device. Free some browser storage and try again.",
           );
           return false;
         }

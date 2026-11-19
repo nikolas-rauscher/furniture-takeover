@@ -39,7 +39,7 @@ export default function DeveloperSettings({
       setError(
         reason instanceof Error
           ? reason.message
-          : "Could not reset the demo. Try again.",
+          : "Couldn't reset the demo. Try again.",
       );
     } finally {
       setBusy(false);

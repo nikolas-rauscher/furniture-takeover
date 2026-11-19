@@ -345,6 +345,7 @@ test("inventory photo links use the public URL, not the internal address", async
           dimensions: "120 × 60 cm",
           status: "active",
           images: ["owner/photo one.jpg"],
+          card_images: ["owner/card.jpg"],
           pickup: "weekends",
           pickup_by: null,
           tags: [],
@@ -359,4 +360,7 @@ test("inventory photo links use the public URL, not the internal address", async
     "https://app.example/supabase/storage/v1/object/public/listing-photos/owner/photo%20one.jpg",
   );
   assert.deepEqual(item.images, [item.image]);
+  assert.deepEqual(item.cardImages, [
+    "https://app.example/supabase/storage/v1/object/public/listing-photos/owner/card.jpg",
+  ]);
 });

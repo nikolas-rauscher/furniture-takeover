@@ -17,10 +17,11 @@ export default function Report({
     [text, setText] = useState(""),
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState("");
+  const target = messageId ? "message" : "listing";
   return (
     <div className="report">
       <Button className="report-toggle" onClick={() => setOpen((v) => !v)}>
-        {open ? "Cancel report" : "Report"}
+        {open ? "Cancel report" : `Report ${target}`}
       </Button>
       {open && (
         <form
@@ -39,22 +40,19 @@ export default function Report({
                   })
                 ).error,
               );
-              setNotice(
-                "Report saved for the Takeover team. Reports do not automatically remove content.",
-              );
+              setNotice("Report received. The takeover team can review it.");
               setOpen(false);
               setText("");
             } catch (err) {
-              setNotice(
-                err instanceof Error ? err.message : "Could not send report.",
-              );
+              console.error(err);
+              setNotice("Couldn't send your report. Try again.");
             } finally {
               setBusy(false);
             }
           }}
         >
           <label>
-            What is wrong?
+            Why are you reporting this {target}?
             <Textarea
               required
               maxLength={1000}
@@ -67,7 +65,7 @@ export default function Report({
             className="button danger small"
             disabled={busy || !text.trim()}
           >
-            Submit report
+            Send report
           </Button>
         </form>
       )}

@@ -41,7 +41,7 @@ export class AgentRunError extends Error {
 
 function invalidStream(): AgentRunError {
   return new AgentRunError(
-    "The response could not be read. Please try again.",
+    "I couldn't finish. Try again.",
     "INVALID_STREAM",
   );
 }
@@ -872,13 +872,13 @@ export async function readAgentRunStream(
     }
     if (!completed)
       throw new AgentRunError(
-        "The connection ended before the response was finished. Please try again.",
+        "I lost the connection before I finished. Try again.",
         "INCOMPLETE_STREAM",
       );
   } catch (error) {
     if (signal?.aborted || error instanceof AgentRunError) throw error;
     throw new AgentRunError(
-      "The connection was interrupted. Your partial response is still here; try again.",
+      "I lost the connection. What I found so far is still here. Try again.",
       "NETWORK_ERROR",
     );
   } finally {
@@ -890,7 +890,7 @@ export async function readAgentRunStream(
 
 async function failureMessage(response: Response): Promise<AgentRunError> {
   const fallback = new AgentRunError(
-    "The agent could not start. Please try again.",
+    "I couldn't start. Try again.",
     `HTTP_${response.status}`,
   );
   if (!response.body) return fallback;

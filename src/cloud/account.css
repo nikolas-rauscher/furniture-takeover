@@ -540,8 +540,7 @@
   font-weight: 600;
   margin: 0;
 }
-.account-key-status,
-.account-coming-soon {
+.account-key-status {
   display: inline-block;
   color: var(--muted);
   font-size: 12px;
@@ -569,13 +568,6 @@
 }
 .account-section-heading h2 {
   margin: 0;
-}
-.account-coming-soon {
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: var(--butter);
-  color: #745511;
-  font-weight: 600;
 }
 .account-payments-preview {
   padding: 24px;

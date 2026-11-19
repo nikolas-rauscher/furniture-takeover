@@ -123,7 +123,7 @@ export function useListingAnalysis({
             error:
               error instanceof Error
                 ? error.message
-                : "Could not look at the photos. Try again.",
+                : "I couldn't read the photos. Try again or fill in the details.",
           });
         return { ok: false, error };
       },

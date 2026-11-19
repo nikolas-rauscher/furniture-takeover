@@ -68,7 +68,12 @@ export function useFavorites(account?: AccountConnection) {
       setSaved(next);
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save item.");
+      console.error(err);
+      setError(
+        next.length < previous.length
+          ? "Couldn't remove this item. Try again."
+          : "Couldn't save this item. Try again.",
+      );
       return false;
     } finally {
       working.current = false;

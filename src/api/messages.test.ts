@@ -34,7 +34,7 @@ test("reset starts a fresh inbox and rejects old workspace responses", async (t)
   resetMessageWorkspace();
   assert.deepEqual(await listMessages(), []);
   release(Response.json({ conversations: [{ id: "old" }] }));
-  await assert.rejects(old, /workspace changed/);
+  await assert.rejects(old, /demo conversation changed/);
   await listMessages();
   assert.notEqual(ids[0], ids[1]);
   assert.equal(ids[1], ids[2]);

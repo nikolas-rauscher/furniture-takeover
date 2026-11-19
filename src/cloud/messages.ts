@@ -23,7 +23,9 @@ export async function sendCloudMessage(
       existing.data.conversation_id !== message.conversation_id ||
       existing.data.body !== message.body
     )
-      throw Error("This message could not be confirmed.");
+      throw Error(
+        "I couldn't tell if your message went through. Check the conversation before resending.",
+      );
     return existing.data as Message;
   }
   fail(result.error);

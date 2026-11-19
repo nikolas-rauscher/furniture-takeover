@@ -29,20 +29,26 @@ export type HomeGuide = {
   newMatches: boolean;
 };
 
-/** A photo search on home: dragged over the search, being read, or needing the student. */
-export type PhotoMoment = "dragging" | "reading" | PhotoSearchNotice;
+/** A photo search on home: its button focused, dragged over the search, being read, or needing the student. */
+export type PhotoMoment = "hint" | "dragging" | "reading" | PhotoSearchNotice;
 
 function photoGuide(photo: PhotoMoment): HomeGuide {
+  if (photo === "hint")
+    return {
+      mood: "listen",
+      line: "Search by photo: choose one and I'll look for similar items.",
+      newMatches: false,
+    };
   if (photo === "dragging")
     return {
       mood: "listen",
-      line: "Drop your photo here. I'll find similar things.",
+      line: "Drop a photo and I'll look for similar items.",
       newMatches: false,
     };
   if (photo === "reading")
     return {
       mood: "search",
-      line: "Let me look at your photo…",
+      line: "I'm looking at your photo…",
       newMatches: false,
     };
   return { mood: photo.mood, line: photo.line, newMatches: false };

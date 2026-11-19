@@ -76,7 +76,7 @@ export async function requireDemoListingEdit() {
   if (!response.ok || body.allowed !== true)
     throw new Error(
       body.error?.message ??
-        "Listing permission could not be checked. Try again.",
+        "Couldn't check that you can publish. Try again.",
     );
 }
 

@@ -28,10 +28,10 @@ async function request(init?: RequestInit, path = "/api/messages") {
   });
   const body = await response.json();
   if (workspaceId !== localStorage.getItem(workspaceKey))
-    throw new Error("The demo workspace changed. Reopen the conversation to continue.");
+    throw new Error("This demo conversation changed. Reopen it to continue.");
   if (!response.ok)
     throw Object.assign(
-      new Error(body.error?.message ?? "Messages are unavailable. Please try again."),
+      new Error(body.error?.message ?? "Messages are unavailable. Try again."),
       { key: body.error?.code },
     );
   return body;

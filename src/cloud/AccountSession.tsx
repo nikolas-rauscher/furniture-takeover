@@ -53,7 +53,7 @@ export default function AccountSession() {
       })
       .catch(() => {
         if (alive) {
-          setError("Could not restore your session. Please reload.");
+          setError("Couldn't restore your session. Reload to sign in again.");
           setReady(true);
         }
       });

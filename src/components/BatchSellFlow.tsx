@@ -283,7 +283,7 @@ function allowanceNote(quota: AgentQuota | undefined, items: number) {
   const drafts = itemsCovered(quota?.remaining, items);
   return drafts === undefined
     ? ""
-    : `Today's AI allowance covers about ${drafts} of ${items} drafts. You can finish the others by hand.`;
+    : `Today's Pako requests cover about ${drafts} of ${items} drafts. You can finish the others by hand.`;
 }
 
 export default function BatchSellFlow({
@@ -538,7 +538,7 @@ export default function BatchSellFlow({
             )}
             <p className="quiet-caption">
               {liveAgent
-                ? "Smaller copies of your photos are sent to the AI service to find which ones show the same item."
+                ? "We send smaller copies of your photos to the AI service to find which ones show the same item."
                 : "Each photo starts as its own listing. You can move photos of one item together next."}
             </p>
           </div>

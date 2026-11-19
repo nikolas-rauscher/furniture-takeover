@@ -21,9 +21,9 @@ import {
 } from "./client.ts";
 import { randomUuid } from "../randomUuid.ts";
 export const dealUpdateNeeded =
-  "Offers and confirmations need this server's deal update. You can still send a message.";
+  "Offers are unavailable here. You can still send a message.";
 export const pickupUpdateNeeded =
-  "Pickup day controls need this server's pickup update. You can still send a message.";
+  "Pickup day controls are unavailable here. You can still send a message.";
 const readTerms = (t: StoredDealTerms) =>
   dealTermsSchema.parse({
     amount: t.amount,
@@ -71,7 +71,7 @@ export function readDeal(r: DealRow) {
 }
 function rpcFailure(error: { code?: string; message: string }, updateNeeded: string) {
   if (missingFromSchema(error)) return new Error(updateNeeded);
-  if (!error.code) return new Error("Could not reach the server. Check the conversation and retry.");
+  if (!error.code) return new Error("Couldn't connect. Check the conversation before trying again.");
   return Object.assign(new Error(dealErrorMessage(error.message)), { key: error.message });
 }
 export async function sendAccountDeal(

@@ -11,6 +11,7 @@ import {
 import { ChevronDown } from "./icons";
 import { useId, useState, useRef, useLayoutEffect } from "react";
 import type { AgentRunSource } from "../../shared/runs";
+import { money } from "../../shared/marketplace";
 import type {
   AgentActionEvidence,
   AgentQuestionEvent,
@@ -152,14 +153,14 @@ export function AgentQuestion({
                 disabled={disabled}
                 onClick={() => submit(`CHF ${price}`)}
               >
-                {price === 0 ? "Give it away for free" : `Use CHF ${price}`}
+                {price === 0 ? "List for free" : `Use ${money(price)}`}
               </Button>
             </div>
           )}
           {!!question.choices?.length && (
             <Suggestions
               className="agent-run-choices"
-              aria-label="Suggested answers"
+              aria-label="Choose an answer"
             >
               {question.choices.map((choice) => (
                 <Suggestion
@@ -213,7 +214,7 @@ export function AgentQuestion({
                   disabled={disabled || !text.trim()}
                   onClick={() => submit(text)}
                 >
-                  {compact ? "Send" : "Send answer"}
+                  Send to Pako
                 </Button>
                 {onSkip && (
                   <Button
@@ -240,13 +241,13 @@ const fieldLabels: Record<string, string> = {
   price: "Asking price",
   condition: "Condition",
   dimensions: "Dimensions",
-  location: "Location",
+  location: "Pickup location",
   pickup: "Pickup deadline",
-  query: "Looking for",
-  maxPrice: "Maximum price",
-  radius: "Distance",
-  pickupBy: "Collect by",
-  source: "Platform",
+  query: "Item",
+  maxPrice: "Budget",
+  radius: "Distance limit",
+  pickupBy: "Pickup by",
+  source: "Source",
 };
 
 /** A changed field's new value in words. */
@@ -254,7 +255,7 @@ function changedValue(field: string, value: unknown) {
   if (value === null) return "Not set";
   if (value === "") return "Clear this field";
   if (field === "price" || field === "maxPrice")
-    return `CHF ${Number(value).toLocaleString("en-GB")}`;
+    return money(Number(value));
   if (field === "radius") return `${value} km`;
   return String(value);
 }
@@ -401,7 +402,7 @@ export function AgentChanges({
         </ItemContent>
         <ItemActions>
           <Badge variant={applied ? "secondary" : "outline"}>
-            {undone ? "Undone" : applied ? "Applied" : "Proposed"}
+            {undone ? "Undone" : applied ? "Applied" : "Suggested"}
           </Badge>
           <CollapsibleTrigger
             className="agent-change-toggle"
@@ -428,7 +429,7 @@ export function AgentChanges({
               <p key={index}>
                 <span>
                   {item.kind === "seller"
-                    ? "From your details"
+                    ? "From your listing details"
                     : "From a search result"}
                 </span>
                 <q>{item.quote}</q>

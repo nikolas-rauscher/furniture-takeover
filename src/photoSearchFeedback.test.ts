@@ -23,7 +23,7 @@ test("technical failures retain their actionable error and have a fallback", () 
       line: "Check your connection and retry.",
     },
   );
-  assert.match(photoSearchFailure(null).line, /again.*search box/);
+  assert.match(photoSearchFailure(null).line, /another photo or describe/);
 });
 
 test("new searches clear notices and cancel pending photo recognition", () => {

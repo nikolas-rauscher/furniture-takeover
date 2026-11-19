@@ -48,7 +48,7 @@ export function useAccountThread(
           setError(
             failure instanceof Error
               ? failure.message
-              : "Could not load conversation.",
+              : "Couldn't load this conversation. Try again.",
           );
       } finally {
         loading = false;

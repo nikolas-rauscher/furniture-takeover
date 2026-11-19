@@ -56,7 +56,7 @@ export default function LocalSettings({
   return (
     <section className="local-settings-page">
       <div className="page-title">
-        <h1>Workspace settings</h1>
+        <h1>Browser settings</h1>
         <p>Your listings and preferences are saved in this browser.</p>
       </div>
       {connectionStatus}
@@ -90,7 +90,7 @@ export default function LocalSettings({
           <SettingsRow
             icon={<Sparkles size={22} />}
             tone="sky"
-            title="How the agent works"
+            title="How Pako helps"
             detail="What Pako searches, writes and keeps."
             onClick={onHelp}
           />
@@ -99,8 +99,8 @@ export default function LocalSettings({
           <SettingsRow
             icon={<Trash2 size={22} />}
             tone="danger"
-            title="Clear local workspace"
-            detail="Removes your listings, favourites, saved searches, conversations and demo deals from this browser."
+            title="Clear browser data for takeover"
+            detail="Clears your listings, saved items, saved searches, conversations and demo deals from this browser."
             onClick={onClear}
           />
         </li>

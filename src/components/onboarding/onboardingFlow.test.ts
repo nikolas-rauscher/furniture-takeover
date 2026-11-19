@@ -46,7 +46,7 @@ test("Pako asks first and reacts once a question is answered", () => {
   );
   assert.equal(
     stepBubble("items", { intent: "sell", items: [] })?.title,
-    "What's still in your room?",
+    "What are you selling?",
   );
   assert.equal(stepBubble("welcome", { items: [] }), undefined);
 });
@@ -89,7 +89,7 @@ test("the send-off opens what the visitor came for, or sign-in first", () => {
   });
   assert.equal(
     finalAction({ ...finder, intent: "sell" }, false).label,
-    "Take my first photo",
+    "Add a listing photo",
   );
   assert.deepEqual(finalAction(finder, true).outcome, {
     next: "sign-in",

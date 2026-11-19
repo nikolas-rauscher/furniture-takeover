@@ -9,6 +9,7 @@ import {
 import { Image as ImageIcon, LoaderCircle, Send } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import type { DealRole } from "../../shared/deal";
+import { zurichClockTime } from "../../shared/pickupTime";
 import { useEntrance } from "../hooks/useEntrance";
 import { useSaved } from "../hooks/useSaved";
 import { agreedWords } from "../dealWords";
@@ -157,13 +158,6 @@ export function ChatPartner({
   );
 }
 
-function clock(createdAt: string) {
-  return new Date(createdAt).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 export function ChatMessage({
   mine,
   author,
@@ -191,7 +185,7 @@ export function ChatMessage({
     >
       <span className="chat-message-meta" data-drafted={drafted || undefined}>
         {drafted ? "Drafted with Pako" : author} ·{" "}
-        <time dateTime={createdAt}>{clock(createdAt)}</time>
+        <time dateTime={createdAt}>{zurichClockTime(createdAt)}</time>
       </span>
       <p className="chat-bubble">{text}</p>
       {children}

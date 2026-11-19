@@ -18,7 +18,7 @@ export function ScreenPlaceholder({ label }: { label: string }) {
 function ScreenLoadError({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="screen-placeholder screen-load-error" role="alert">
-      <p>This screen could not load. Check your connection and try again.</p>
+      <p>This screen couldn't load. Check your connection and try again.</p>
       <Button className="button secondary" onClick={onRetry}>
         Try again
       </Button>

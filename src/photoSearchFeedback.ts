@@ -23,6 +23,6 @@ export function photoSearchFailure(error: unknown): PhotoSearchNotice {
     line:
       error instanceof Error && error.message.trim()
         ? error.message
-        : "That photo didn't work for me. Try it again, or describe the item in the search box.",
+        : "I couldn't read that photo. Try another photo or describe the item.",
   };
 }

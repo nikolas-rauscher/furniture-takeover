@@ -12,7 +12,7 @@ const TURNS_KEY = "takeover-pako-turns";
 /** Readings of older threads make way, so this browser's storage stays small. */
 const MAX_STORED_TURNS = 100;
 const UNREADABLE =
-  "Pako's last reading of this conversation could not be opened.";
+  "I couldn't load my earlier suggestions. Read the reply again to get new ones.";
 
 function storedTurns(): Record<string, unknown> {
   const raw = localStorage.getItem(accountStorageKey(TURNS_KEY));

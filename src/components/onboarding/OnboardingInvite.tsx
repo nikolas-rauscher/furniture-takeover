@@ -65,19 +65,21 @@ export default function OnboardingInvite({
             <Pako className="ob-invite-pako" mood="wave" size={40} />
             <div className="ob-invite-text">
               <h2 id={titleId} className="ob-invite-title">
-                New to takeover?
+                Meet Pako
               </h2>
-              <p className="ob-invite-note">A one-minute tour.</p>
+              <p className="ob-invite-note">
+                See how buying and selling work.
+              </p>
             </div>
             <Button
               className="button primary small"
               onClick={() => setChoice("start")}
             >
-              Show me
+              Take the tour
             </Button>
             <Button
               className="icon-button ob-invite-dismiss"
-              aria-label="Not now"
+              aria-label="Dismiss tour invitation"
               title="Not now"
               onClick={() => setChoice("dismiss")}
             >

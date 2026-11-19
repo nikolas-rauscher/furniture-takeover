@@ -1,3 +1,4 @@
+import { cardImageFor } from "../../shared/listingPhotos";
 import { isMine, money, type Product } from "../../shared/marketplace";
 import { Clock, Image as ImageIcon } from "./icons";
 import { Badge } from "./ui/badge";
@@ -77,7 +78,13 @@ function AgentProductCard({
       {best && <span className="agent-product-best">Best match</span>}
       <span className="agent-product-photo">
         {item.image ? (
-          <img src={item.image} alt="" loading="lazy" draggable={false} />
+          <img
+            src={cardImageFor(item)}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            draggable={false}
+          />
         ) : (
           <ImageIcon size={28} aria-hidden="true" />
         )}
