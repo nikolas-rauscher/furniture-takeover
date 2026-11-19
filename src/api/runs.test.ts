@@ -951,3 +951,79 @@ test("watch suggestions accept a bounded query and budget and reject malformed p
       { code: "INVALID_STREAM" },
     );
 });
+
+test("a listing question keeps its draft field, tap answers and queued follow-ups", async () => {
+  const question: AgentRunEvent = {
+    type: "question",
+    id: "ask-1",
+    listingField: "price",
+    question: "What asking price would you like?",
+    input: { type: "price", min: 0, max: 60, step: 1, value: 40 },
+    choices: ["Use CHF 40", "Give it away for free"],
+    choiceActions: [
+      { label: "Use CHF 40", patch: { price: 40 }, acceptsProposal: true },
+      { label: "Give it away for free", patch: { price: 0 } },
+    ],
+    followUps: [
+      {
+        question: "Can the desk be taken apart?",
+        listingField: "other",
+        choices: ["Can be disassembled", "Not sure"],
+        choiceActions: [
+          {
+            label: "Can be disassembled",
+            appendDescription: "Can be disassembled.",
+          },
+          { label: "Not sure" },
+        ],
+      },
+    ],
+  };
+  const seen: AgentRunEvent[] = [];
+  await readAgentRunStream(body([question, complete]), (event) =>
+    seen.push(event),
+  );
+  assert.deepEqual(seen[0], question);
+  const emptyPatch = {
+    ...question,
+    choiceActions: [{ label: "Not sure", patch: {} }],
+  };
+  const parsed: AgentRunEvent[] = [];
+  await readAgentRunStream(
+    body([emptyPatch as AgentRunEvent, complete]),
+    (event) => parsed.push(event),
+  );
+  assert.deepEqual(parsed[0].type === "question" && parsed[0].choiceActions, [
+    { label: "Not sure" },
+  ]);
+});
+
+test("malformed tap answers and follow-ups are rejected", async () => {
+  const question = {
+    type: "question",
+    id: "ask-1",
+    question: "Can the desk be taken apart?",
+  };
+  const fact = { question: "Is the charger included?" };
+  for (const event of [
+    { ...question, listingField: "published" },
+    { ...question, choiceActions: [{ label: "x".repeat(121) }] },
+    {
+      ...question,
+      choiceActions: [{ label: "Yes", appendDescription: "x".repeat(161) }],
+    },
+    { ...question, choiceActions: [{ label: "Yes", acceptsProposal: false }] },
+    { ...question, choiceActions: [{ label: "Yes", patch: { image: "x" } }] },
+    { ...question, followUps: [fact, fact, fact] },
+    {
+      ...question,
+      followUps: [
+        { ...fact, input: { type: "price", min: 0, max: 10, step: 1 } },
+      ],
+    },
+  ])
+    await assert.rejects(
+      readAgentRunStream(body([event as AgentRunEvent, complete]), () => {}),
+      { code: "INVALID_STREAM" },
+    );
+});

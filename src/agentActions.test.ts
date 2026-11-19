@@ -13,6 +13,7 @@ import {
   undoListingAction,
   undoPreferenceAction,
 } from "./agentActions.ts";
+import { tapAction } from "./listingQuestions.ts";
 import { newSearch } from "./searchRequest.ts";
 
 const today = "2026-10-13";
@@ -255,4 +256,55 @@ test("structured search answers update actual preferences and keep the original 
   assert.equal(undone.criteria.maxPrice, 25);
   assert.equal(undone.criteria.radius, defaults.radius);
   assert.equal(undone.location, "Lausanne");
+});
+
+test("a tapped answer applies over the student's earlier edits and undoes cleanly", () => {
+  const revisions = { description: 2 };
+  const tap = tapAction(
+    { label: "Weekends", appendDescription: "Pickup on weekends." },
+    draft,
+    "tap-pickup",
+  );
+  const applied = applyListingAction(
+    draft,
+    tap,
+    { ...revisions },
+    revisions,
+    true,
+    today,
+  );
+  assert.equal(applied.next.description, "White desk.\nPickup on weekends.");
+  const undone = undoListingAction(applied.next, applied.changes, revisions);
+  assert.equal(undone.next.description, "White desk.");
+  assert.deepEqual(undone.restored, ["description"]);
+});
+
+test("Pako's change from an earlier start still loses to a newer edit, while his accepted price undoes to empty", () => {
+  const stale = applyListingAction(
+    draft,
+    action({ condition: "Good" }),
+    {},
+    { condition: 1 },
+    false,
+    today,
+  );
+  assert.deepEqual(stale.skipped, ["condition"]);
+  const blank = { ...draft, price: "" };
+  const accepted = applyListingAction(
+    blank,
+    action({ price: 40 }, true),
+    {},
+    {},
+    true,
+    today,
+  );
+  assert.deepEqual(accepted.changes.price, {
+    before: "",
+    after: "40",
+    revision: 0,
+  });
+  assert.equal(
+    undoListingAction(accepted.next, accepted.changes, {}).next.price,
+    "",
+  );
 });

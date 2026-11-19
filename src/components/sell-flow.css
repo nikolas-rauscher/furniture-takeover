@@ -335,3 +335,55 @@
     animation: none;
   }
 }
+
+/* The price keeps its place from Pako's suggestion to the student's choice: only its
+   colour settles, and the "Suggested" chip fades. */
+.listing-preview-price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+.listing-preview-price > strong {
+  transition: color 200ms ease;
+}
+.listing-preview-price > strong[data-suggested] {
+  color: var(--muted);
+}
+.listing-preview-price > .listing-price-suggested {
+  min-height: 28px;
+  padding: 3px 10px;
+  border: 0;
+  background: var(--sky);
+  color: var(--blue-dark);
+  font-size: var(--type-caption);
+  font-weight: 700;
+  cursor: pointer;
+}
+.listing-preview-price > .listing-price-suggested:disabled {
+  cursor: default;
+}
+.listing-checklist-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--blue);
+}
+/* A sentence a tap just added to the description glows butter, then settles. */
+.listing-preview-added {
+  border-radius: 4px;
+  animation: listing-preview-added 1200ms ease-out both;
+}
+@keyframes listing-preview-added {
+  from {
+    background-color: var(--butter);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .listing-preview-added {
+    animation-timing-function: steps(1, end);
+  }
+}

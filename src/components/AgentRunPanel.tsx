@@ -1,10 +1,11 @@
 import { Button } from "./ui/button";
 import {
   AgentQuestion,
+  AgentChangeLine,
   AgentChanges,
   type AgentActionHandlers,
 } from "./AgentActionControls";
-import { answerParts, answerBlocks } from "./AgentAnswerContent";
+import { answerBlocks } from "./AgentAnswerContent";
 import { AutoHeight } from "@animate-ui/react/primitives/effects/auto-height";
 import { useStreamingText } from "../hooks/useStreamingText";
 import { useId, type ReactNode } from "react";
@@ -12,6 +13,7 @@ import AgentRunDetails from "./AgentRunDetails";
 import AgentSources from "./AgentSources";
 import AgentWebResults from "./AgentWebResults";
 import { Ellipsis } from "./icons";
+import ListingAnswers from "./ListingAnswers";
 import PakoReaction from "./PakoReaction";
 import {
   DropdownMenu,
@@ -22,7 +24,13 @@ import {
 import type { AgentRunState } from "../hooks/useAgentRun";
 import { safeSourceUrl } from "../api/runs";
 import { shownAnswerText, splitSearchAnswer } from "./agentAnswer";
-import { agentTurnPako, workingLine, type StepVoice } from "../pakoMoods";
+import { isPriceSuggestion } from "../listingQuestions";
+import {
+  agentTurnPako,
+  settledSteps,
+  workingLine,
+  type StepVoice,
+} from "../pakoMoods";
 import "./agent-run-panel.css";
 
 type AgentRunPanelProps = AgentActionHandlers & {
@@ -49,6 +57,10 @@ type AgentRunPanelProps = AgentActionHandlers & {
   appliedActionIds?: readonly string[];
   undoneActionIds?: readonly string[];
   actionNotices?: Readonly<Record<string, string>>;
+  /** Pako asks in the tray above the composer; the turn keeps the answers and his changes. */
+  questionsInTray?: boolean;
+  /** Takes an answer of this turn back from its row. */
+  onUndoAnswer?: (questionId: string) => void;
 };
 
 export default function AgentRunPanel({
@@ -76,6 +88,8 @@ export default function AgentRunPanel({
   appliedActionIds = [],
   undoneActionIds = [],
   actionNotices = {},
+  questionsInTray = false,
+  onUndoAnswer,
 }: AgentRunPanelProps) {
   const compact = conversational || splitSearchResults;
   const headingId = useId();
@@ -94,20 +108,11 @@ export default function AgentRunPanel({
   );
   const webSearches = state.steps.filter((step) => step.task === "web");
   const webRetry = !readOnly && state.status !== "error" ? onRetry : undefined;
-  const priceQuestion = state.questions.find(
-    (question) => question.input?.type === "price",
-  );
-  const priceSuggestions = priceQuestion
-    ? state.actions.filter(
-        (action) =>
-          action.type === "listing_patch" &&
-          action.requiresAcceptance &&
-          "price" in action.patch,
-      )
-    : [];
-  const standaloneActions = state.actions.filter(
-    (action) => !priceSuggestions.includes(action),
-  );
+  // The tray carries Pako's suggested price with its evidence until it is decided.
+  const shownActions = questionsInTray
+    ? state.actions.filter((action) => !isPriceSuggestion(action))
+    : state.actions;
+  const steps = settledSteps(state.steps);
   // Queued questions wait their turn: only the next one shows beside the answered ones.
   const nextQuestion = state.questions.find(
     (question) => !state.answers[question.id],
@@ -130,9 +135,9 @@ export default function AgentRunPanel({
         ? "Stopped"
         : state.status === "error"
           ? "Could not finish"
-          : state.steps.some((step) => step.state === "error")
+          : steps.some((step) => step.state === "error")
             ? "Partly completed"
-            : state.steps.some((step) => step.state === "needs_input")
+            : steps.some((step) => step.state === "needs_input")
               ? "Some changes need more details"
               : "Finished";
 
@@ -142,14 +147,19 @@ export default function AgentRunPanel({
     { ...state, text: answerText },
     { textShown: displayText, typing },
   );
-  const pakoLine = running ? workingLine(state, place, voice) : undefined;
+  // The tray says what Pako does and carries his mood, so the turn itself rests.
+  const pakoLine = running
+    ? questionsInTray
+      ? "Working…"
+      : workingLine(state, place, voice)
+    : undefined;
   const avatar = (
     <span className="agent-pako" aria-hidden="true">
       <PakoReaction
         size={42}
         mood={pako.mood}
         talking={pako.talking}
-        still={readOnly}
+        still={readOnly || questionsInTray}
       />
     </span>
   );
@@ -181,6 +191,7 @@ export default function AgentRunPanel({
         <span
           className={
             detailsShowStatus ||
+            (questionsInTray && waitingForAnswer) ||
             ["Finished", "Working", "Starting your request"].includes(
               statusLabel,
             )
@@ -380,73 +391,60 @@ export default function AgentRunPanel({
           onRetry={webRetry}
         />
       )}
-      {standaloneActions.length > 0 && (
+      {shownActions.length > 0 && (
         <div className="agent-run-changes">
-          {standaloneActions.map((action) => (
-            <AgentChanges
-              key={action.id}
-              action={action}
-              sources={safeSources}
-              applied={appliedActionIds.includes(action.id)}
-              undone={undoneActionIds.includes(action.id)}
-              notice={actionNotices[action.id]}
-              onApply={onApplyAction}
-              onUndo={onUndoAction}
-              onEdit={onEditFields}
-            />
-          ))}
+          {shownActions.map((action) =>
+            questionsInTray ? (
+              <AgentChangeLine
+                key={action.id}
+                action={action}
+                sources={safeSources}
+                applied={appliedActionIds.includes(action.id)}
+                undone={undoneActionIds.includes(action.id)}
+                notice={actionNotices[action.id]}
+                onApply={readOnly ? undefined : onApplyAction}
+                onUndo={readOnly ? undefined : onUndoAction}
+              />
+            ) : (
+              <AgentChanges
+                key={action.id}
+                action={action}
+                sources={safeSources}
+                applied={appliedActionIds.includes(action.id)}
+                undone={undoneActionIds.includes(action.id)}
+                notice={actionNotices[action.id]}
+                onApply={onApplyAction}
+                onUndo={onUndoAction}
+                onEdit={onEditFields}
+              />
+            ),
+          )}
         </div>
       )}
-      {shownQuestions.map((question) => (
-        <AgentQuestion
-          key={question.id}
-          question={question}
-          answer={state.answers[question.id]}
-          onAnswer={onAnswer}
-          onSkip={onSkipQuestion}
-          compact={compact}
-          externalComposer={externalComposer}
-          disabled={running}
-          readOnly={readOnly}
-          suggestion={
-            question.id === priceQuestion?.id && priceSuggestions.length > 0 ? (
-              <details className="agent-run-evidence price-suggestion-details">
-                <summary>Why this suggested price</summary>
-                {priceSuggestions.map((action) => (
-                  <div key={action.id}>
-                    {Object.keys(action.patch).some(
-                      (field) => field !== "price",
-                    ) ? (
-                      <AgentChanges
-                        action={action}
-                        sources={safeSources}
-                        applied={appliedActionIds.includes(action.id)}
-                        undone={undoneActionIds.includes(action.id)}
-                        notice={actionNotices[action.id]}
-                        onApply={onApplyAction}
-                        onUndo={onUndoAction}
-                        onEdit={onEditFields}
-                      />
-                    ) : (
-                      <p>{action.reason}</p>
-                    )}
-                    {action.evidence.map((evidence, index) => (
-                      <p key={index}>
-                        <q>{evidence.quote}</q>
-                        {evidence.kind === "source" &&
-                          answerParts(` [${evidence.sourceId}]`, safeSources)}
-                      </p>
-                    ))}
-                  </div>
-                ))}
-              </details>
-            ) : undefined
-          }
+      {questionsInTray ? (
+        <ListingAnswers
+          questions={state.questions}
+          answers={state.answers}
+          onUndo={readOnly ? undefined : onUndoAnswer}
         />
-      ))}
+      ) : (
+        shownQuestions.map((question) => (
+          <AgentQuestion
+            key={question.id}
+            question={question}
+            answer={state.answers[question.id]}
+            onAnswer={onAnswer}
+            onSkip={onSkipQuestion}
+            compact={compact}
+            externalComposer={externalComposer}
+            disabled={running}
+            readOnly={readOnly}
+          />
+        ))
+      )}
       {outcome}
       {!textArriving && quickReplies}
-      {state.error && (
+      {state.error && !questionsInTray && (
         <div className="agent-run-recovery">
           <p className="agent-run-error" role="alert">
             <strong>Sorry, I got stuck there.</strong> {state.error}
