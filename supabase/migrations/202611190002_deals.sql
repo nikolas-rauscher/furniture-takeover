@@ -132,6 +132,13 @@ begin
  was_agreed:=d.status='agreed';
  if p_action in ('propose','accept') then
    if jsonb_typeof(p_terms) is distinct from 'object' or public.valid_deal_terms(p_terms) is not true then raise exception 'terms_invalid'; end if;
+   if p_terms->>'pickup_at' is not null then
+     begin
+       perform (p_terms->>'pickup_at')::timestamptz;
+     exception when invalid_datetime_format or datetime_field_overflow then
+       raise exception 'terms_invalid';
+     end;
+   end if;
    if availability<>'active' then raise exception 'listing_unavailable'; end if;
    if public.body_states_terms(p_body,p_terms) is not true then raise exception 'terms_not_stated'; end if;
    if d.proposal_by<>me and d.proposal=p_terms then p_action:='accept'; end if;

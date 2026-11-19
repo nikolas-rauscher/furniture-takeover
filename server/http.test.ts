@@ -862,3 +862,23 @@ test("an account server without the reply reading update says so instead of read
   );
   assert.equal(readings, 0);
 });
+
+test("deal messages keep one version and one receipt across HTTP retries",async(t)=>{
+ const { createMessagesStore }=await import("./messages.ts");
+ const messages=createMessagesStore(":memory:");
+ t.after(()=>messages.close());
+ const {url}=await startServer(t,undefined,{messages});
+ const workspace=crypto.randomUUID();
+ const send=(workspace:string,body:object)=>fetch(url+"/api/messages/deal",{method:"POST",headers:{"Content-Type":"application/json","X-Message-Workspace":workspace},body:JSON.stringify(body)});
+ const terms={amount:25,fulfillment:"shipping",pickupTime:null,pickupAt:null,pickupPoint:null};
+ const input={title:"Lamp",listingId:"lamp",seller:"Seller",sender:"buyer",messageId:crypto.randomUUID(),text:"CHF 25 shipped?",action:{type:"propose",terms},listingStatus:"active",expectedVersion:0};
+ const first=await (await send(workspace,input)).json();
+ assert.equal(first.conversation.deal.version,1);
+ assert.deepEqual(await (await send(workspace,input)).json(),first);
+ for(const [patch,key] of [[{text:"Another message"},"message_conflict"],[{messageId:crypto.randomUUID()},"deal_changed"]] as const){
+ assert.equal((await (await send(workspace,{...input,...patch})).json()).error.code,key);
+ }
+ assert.equal(messages.list(workspace)[0].messages.length,1);
+ assert.equal((await (await send(crypto.randomUUID(),{...input,sender:"seller"})).json()).error.code,"NO_CONVERSATION");
+ assert.equal((await send(workspace,{...input,text:"x".repeat(65536)})).status,413);
+});

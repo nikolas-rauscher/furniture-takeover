@@ -14,6 +14,7 @@ export type DealTermField =
 /** An exact UTC instant, as the server and the database store pickups. */
 export const isoInstantSchema = z
   .string()
+  .datetime()
   .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/);
 
 /**
@@ -244,7 +245,7 @@ export function dealPhase({
   deal: Deal | null;
   listing: Pick<ThreadListing, "status">;
   role: DealRole;
-  messages: ThreadTurnRequest["messages"];
+  messages: Readonly<ThreadTurnRequest["messages"]>;
   turn: ThreadTurn | null;
   now: Date;
 }) {
@@ -265,8 +266,8 @@ export function dealPhase({
   if (!last) return "talking";
   if (last.from === "me") return noAnswer ? "no_answer" : "waiting";
   if (last.structured) return "talking";
-  if (turn?.agreement.status === "complete") return "looks_agreed";
-  return turn ? "your_turn" : "reading";
+  if (turn?.forMessageId !== last.id) return "reading";
+  return turn.agreement.status === "complete" ? "looks_agreed" : "your_turn";
 }
 export type DealPhase = ReturnType<typeof dealPhase>;
 
