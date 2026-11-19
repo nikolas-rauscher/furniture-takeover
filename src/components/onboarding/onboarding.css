@@ -50,6 +50,15 @@
   line-height: 1.4;
 }
 
+/* Says what to tap when a scene waits for the visitor. */
+.ob-tap-caption {
+  color: var(--muted);
+  font-size: var(--type-support);
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+}
+
 /* A ring that keeps inviting the visitor to tap the scene's one control. */
 .ob-tap-hint {
   position: relative;

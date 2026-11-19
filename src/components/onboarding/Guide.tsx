@@ -14,7 +14,8 @@ const WORD_STEP = 0.03;
 const REVEAL_CAP = 0.7;
 const REVEAL_DELAY = 0.1;
 
-const splitWords = (text: string) => text.split(/\s+/).filter(Boolean);
+/** Words appear one by one; words joined by a no-break space appear, and wrap, as one. */
+const splitWords = (text: string) => text.split(/[^\S\u00a0]+/).filter(Boolean);
 
 /** Reveals words one after another; the last one reports when Pako has finished speaking. */
 function SpokenWords({

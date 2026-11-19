@@ -206,7 +206,10 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-/* A sticker on the best match, like a label on a moving box. */
+/* A sticker on the best match, like a label on a moving box; its card makes room for it. */
+.ob-ask-offer:has(.ob-ask-best) {
+  padding-top: 14px;
+}
 .ob-ask-best {
   position: absolute;
   top: -10px;
@@ -276,8 +279,8 @@
   gap: 8px;
   min-height: 0;
   overflow: hidden;
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 32px);
-  mask-image: linear-gradient(to bottom, transparent, #000 32px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 14px);
+  mask-image: linear-gradient(to bottom, transparent, #000 14px);
 }
 .ob-chat-message {
   display: flex;

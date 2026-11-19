@@ -36,11 +36,13 @@
   height: 32px;
   color: rgb(255 255 255 / 0.72);
 }
+/* Room around the frame keeps its corner brackets clear of the camera bar and its tag. */
 .ob-snap-lens {
   display: grid;
   flex: 1;
   place-items: center;
   min-height: 0;
+  padding-block: 10px;
   container-type: size;
 }
 .ob-snap-frame {
@@ -135,12 +137,6 @@
 .ob-snap-shutter:active .ob-snap-shutter-core,
 .ob-snap-shutter:disabled .ob-snap-shutter-core {
   transform: scale(0.86);
-}
-.ob-snap-caption {
-  color: var(--muted);
-  font-size: var(--type-support);
-  font-weight: 600;
-  line-height: 1.4;
 }
 
 /* The snapshot: a room corner drawn in proportions, so it scales as one piece. */

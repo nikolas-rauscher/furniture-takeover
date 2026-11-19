@@ -32,7 +32,7 @@ import "./snap-demo.css";
 /** After the shutter the flash peaks, then the photo travels into the listing. */
 const AFTER_SHOT_BEATS = [90, 620] as const;
 /** A short breath before Pako starts the next field. */
-const FIELD_PAUSE_MS = 140;
+const FIELD_PAUSE_MS = 100;
 const PHOTO_TRAVEL = { type: "spring", stiffness: 300, damping: 30 } as const;
 
 const DRAFT_ORDER = [
@@ -49,12 +49,12 @@ type Phase = "camera" | "developing" | "writing" | "review" | "live";
 
 /** Milliseconds per character: short facts type slowly, the description quickly. */
 const TYPING_MS: Record<DraftKey, number> = {
-  title: 34,
-  price: 45,
-  condition: 40,
-  size: 30,
-  description: 14,
-  pickup: 30,
+  title: 24,
+  price: 32,
+  condition: 28,
+  size: 22,
+  description: 10,
+  pickup: 22,
 };
 
 const MOODS: Record<Phase, PakoMood> = {
@@ -172,7 +172,7 @@ function CameraView({
             <Camera size={22} aria-hidden="true" />
           </span>
         </Button>
-        <span className="ob-snap-caption" aria-hidden="true">
+        <span className="ob-tap-caption" aria-hidden="true">
           Tap to snap
         </span>
       </div>

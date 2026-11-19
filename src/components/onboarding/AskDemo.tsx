@@ -18,10 +18,11 @@ import { useRevealOnMount, useTimeline, useTypewriter } from "./useStory";
 import "./agent-demos.css";
 
 /** A moment to read Pako's bubble before the request starts typing. */
-const INTRO_BEATS = [600] as const;
-const SEND_PAUSE_MS = 450;
-const STEP_MS = 700;
-const REVIEW_MS = 450;
+const INTRO_BEATS = [400] as const;
+const TYPING_MS_PER_CHAR = 24;
+const SEND_PAUSE_MS = 350;
+const STEP_MS = 500;
+const REVIEW_MS = 350;
 const OFFER_STAGGER_S = 0.08;
 const EASE_OUT = [0.16, 1, 0.3, 1] as const;
 
@@ -38,15 +39,23 @@ function bestOffer(offers: Offer[]) {
 
 const clamp = (value: number, max: number) => Math.min(Math.max(value, 0), max);
 
+/** An amount never breaks between the currency and the number. */
+const keepAmountsTogether = (text: string) =>
+  text.replace(/CHF (\d)/g, "CHF\u00a0$1");
+
 /** The "ask" scene: a request in plain words, the search, and the visitor's pick. */
 export default function AskDemo({ answers, onMood, onDone }: SceneProps) {
   const [firstItem] = answers.items;
-  const request = exampleSearch(answers.items);
+  const request = keepAmountsTogether(exampleSearch(answers.items));
   const steps = useMemo(() => searchSteps(answers.place), [answers.place]);
   const offers = useMemo(() => offersFor(firstItem), [firstItem]);
   const beats = useMemo(() => searchBeats(steps.length), [steps.length]);
   const started = useTimeline(INTRO_BEATS) >= INTRO_BEATS.length;
-  const { typed, done: typedDone } = useTypewriter(request, started);
+  const { typed, done: typedDone } = useTypewriter(
+    request,
+    started,
+    TYPING_MS_PER_CHAR,
+  );
   const beat = useTimeline(beats, typedDone);
   const [picked, setPicked] = useState<number | null>(null);
 
@@ -122,6 +131,11 @@ export default function AskDemo({ answers, onMood, onDone }: SceneProps) {
           picked={picked}
           onPick={pick}
         />
+      )}
+      {showResults && picked === null && (
+        <p className="ob-tap-caption" aria-hidden="true">
+          Tap an offer to pick it
+        </p>
       )}
       <p className="sr-only" aria-live="polite">
         {status()}

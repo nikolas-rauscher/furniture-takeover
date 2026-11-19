@@ -133,8 +133,7 @@
   padding: 8px max(16px, env(safe-area-inset-right)) 24px
     max(16px, env(safe-area-inset-left));
 }
-.ob[data-layout="hero"] .ob-body-inner,
-.ob[data-step="intro"] .ob-body-inner {
+.ob[data-layout="hero"] .ob-body-inner {
   justify-content: center;
 }
 .ob-step {
