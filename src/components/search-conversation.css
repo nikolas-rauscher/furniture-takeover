@@ -139,23 +139,24 @@
 .app-layout:is(.chat-layout, .selling-chat-layout) .chat-composer-dock {
   padding-top: 6px;
 }
-/* Floats at the composer's right edge, beside the reading column rather than on it. */
+/* Rests centred on the conversation's faded bottom edge, right above the composer, so it
+   never covers a line that is still being read. */
 .chat-composer-dock .chat-jump-latest {
   position: absolute;
-  inset-inline: auto 8px;
-  bottom: calc(100% + 10px);
+  inset-inline: 0;
+  bottom: calc(100% + 4px);
   translate: none;
   transform: none;
-  width: 40px;
-  height: 40px;
-  min-height: 40px;
-  margin: 0;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  margin: 0 auto;
   padding: 0;
   border-radius: 999px;
   border: 2px solid var(--card-line);
   background: var(--surface);
   color: var(--blue);
-  box-shadow: 0 10px 22px -12px rgb(41 41 41 / 0.35);
+  box-shadow: 0 8px 18px -10px rgb(41 41 41 / 0.35);
   transition:
     opacity 160ms ease-out,
     translate 220ms var(--ease-out);

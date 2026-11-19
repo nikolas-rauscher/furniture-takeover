@@ -1,8 +1,9 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useEffectEvent, useMemo, useState } from "react";
-import { Check, LoaderCircle, MapPin, Send } from "@/components/icons";
+import { Check, MapPin, Send } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { money } from "../../../shared/marketplace";
+import { StepMark } from "../AgentActivity";
 import { Button } from "../ui/button";
 import {
   exampleSearch,
@@ -104,7 +105,7 @@ export default function AskDemo({ answers, onMood, onDone }: SceneProps) {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.2 }}
           >
-            <StepMark done />
+            <StepMark state="done" />
             Found {offers.length} offers
           </motion.p>
         ) : (
@@ -174,23 +175,11 @@ function SearchSteps({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.26, ease: EASE_OUT }}
         >
-          <StepMark done={index < done} />
+          <StepMark state={index < done ? "done" : "running"} />
           {step}
         </motion.li>
       ))}
     </ol>
-  );
-}
-
-function StepMark({ done = false }: { done?: boolean }) {
-  return (
-    <span className="ob-ask-mark" aria-hidden="true">
-      {done ? (
-        <Check animate size={12} strokeWidth={3} />
-      ) : (
-        <LoaderCircle animate size={14} />
-      )}
-    </span>
   );
 }
 
