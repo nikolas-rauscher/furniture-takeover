@@ -4,6 +4,7 @@ import type { SavedSearch } from "../searchRequest";
 import type { AlertItem } from "./matching";
 import { useAlerts } from "./useAlerts";
 import { activateWatch, findWatch, watchSearch } from "./watch";
+import { randomUuid } from "../randomUuid";
 
 /** A new match as the Searches page shows it: the alert with its listing and search. */
 export type WatchMatch = {
@@ -56,7 +57,7 @@ export function useWatches({
     const search = watchSearch(query, location, maxPrice);
     if (!search) throw new Error("A watch needs the item to look out for.");
     if (findWatch(jobs, search)?.paused === false) return false;
-    const id = crypto.randomUUID();
+    const id = randomUuid();
     setJobs((current) => activateWatch(current, search, id));
     return true;
   }

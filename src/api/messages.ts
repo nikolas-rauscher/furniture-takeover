@@ -1,9 +1,10 @@
 import type { SellerConversation } from "../../shared/messages";
+import { randomUuid } from "../randomUuid";
 function workspace() {
   const key = "takeover-message-workspace";
   let id = localStorage.getItem(key);
   if (!id) {
-    id = crypto.randomUUID();
+    id = randomUuid();
     localStorage.setItem(key, id);
   }
   return id;
@@ -30,7 +31,7 @@ export async function sendMessage(
   listing: { id: string; title: string; seller: string; image?: string },
   text: string,
   sender: "buyer" | "seller" = "buyer",
-  messageId: string = crypto.randomUUID(),
+  messageId: string = randomUuid(),
 ): Promise<SellerConversation> {
   return (
     await request({

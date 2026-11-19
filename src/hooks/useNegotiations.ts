@@ -11,6 +11,7 @@ import {
   reconcileDeliveredDrafts,
 } from "../negotiationRepository";
 import { listMessages } from "../api/messages";
+import { randomUuid } from "../randomUuid";
 
 export function useNegotiations() {
   const key = accountStorageKey("takeover-negotiations");
@@ -105,7 +106,7 @@ export function useNegotiations() {
         .find(
           (item) => item.listingId === listingId && item.status === "draft",
         );
-      const value = previous ?? newNegotiation(crypto.randomUUID(), listingId);
+      const value = previous ?? newNegotiation(randomUuid(), listingId);
       if (!previous)
         commit({
           type: "negotiation_update",

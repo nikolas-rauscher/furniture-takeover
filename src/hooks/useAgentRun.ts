@@ -12,6 +12,7 @@ import type {
   AgentQuestionEvent,
 } from "../../shared/actions";
 import { streamAgentRun } from "../api/runs.ts";
+import { randomUuid } from "../randomUuid.ts";
 
 export type AgentRunStep = Extract<AgentRunEvent, { type: "status" }>;
 export type AgentRunAction = Exclude<AgentActionEvent, AgentQuestionEvent>;
@@ -266,7 +267,7 @@ export function useAgentRun() {
       active.current = controller;
       const input = structuredClone(request);
       lastRequest.current = { input, options };
-      const id = crypto.randomUUID();
+      const id = randomUuid();
       setState((previous) =>
         beginAgentRun(
           previous,

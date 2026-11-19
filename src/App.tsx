@@ -24,6 +24,7 @@ import ComparePage from "./components/ComparePage";
 import SavedSearchesPage from "./components/SavedSearchesPage";
 import { listingPhotos, MAX_LISTING_PHOTOS } from "../shared/listingPhotos";
 import { readListingPhoto, sortListingPhotos } from "./listingPhotos";
+import { randomUuid } from "./randomUuid";
 import type { PhotoGroup } from "../shared/agent";
 import WorkspacePage from "./components/WorkspacePage";
 import WorkspaceHeader from "./components/WorkspaceHeader";
@@ -371,7 +372,7 @@ export default function App({
   >();
   const [jobTitle, setJobTitle] = useState("");
   const [editingJob, setEditingJob] = useState<string | null>(null);
-  const draftId = useRef(crypto.randomUUID());
+  const draftId = useRef(randomUuid());
   const draftRef = useRef<ListingDraft>(newDraft(searchArea.location));
   const [draft, setDraftState] = useState<ListingDraft>(draftRef.current);
   function setDraft(value: SetStateAction<ListingDraft>) {
@@ -815,7 +816,7 @@ export default function App({
     startSellAt(pickupRegion || location);
   }
   function startSellAt(pickupLocation: string) {
-    draftId.current = crypto.randomUUID();
+    draftId.current = randomUuid();
     if (!signedIn) {
       navigate("settings");
       return;
@@ -1479,7 +1480,7 @@ export default function App({
         : [
             ...current,
             {
-              id: crypto.randomUUID(),
+              id: randomUuid(),
               title,
               criteria: search.criteria,
               location: search.location,
@@ -1658,7 +1659,7 @@ export default function App({
     cancelPhotoRead();
     resetListingConversation();
     listingRevisions.current = {};
-    draftId.current = crypto.randomUUID();
+    draftId.current = randomUuid();
     setEditingListing(null);
     setUploadError("");
     setPhotoSplit(null);
