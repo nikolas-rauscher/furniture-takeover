@@ -58,3 +58,40 @@ test("buyer questions are not blocked by unscoped answers about another listing"
     undefined,
   );
 });
+
+test("a skipped question stays skipped when Pako rewords it or leads in with a remark", () => {
+  const request: AgentRunRequest = {
+    text: "Polish the description",
+    context: {
+      intent: "listing_assist",
+      currentDraft: {
+        title: "MacBook Pro with 16 GB RAM",
+        description: "",
+        price: 1250,
+        condition: "",
+        dimensions: "",
+        location: "Lausanne",
+        pickup: "",
+        raw: "",
+      },
+      skippedQuestions: [
+        {
+          question: "Which model year or chip is this MacBook Pro?",
+          listingField: "other",
+        },
+      ],
+    },
+  };
+  for (const reworded of [
+    "Thanks — I've noted 512 GB. Next: which model year or chip is this MacBook Pro?",
+    "Which chip does it have?",
+    "What model year is it?",
+  ])
+    assert.equal(repeatedQuestion(reworded, request)?.answer, "Skipped");
+  for (const other of [
+    "How much storage does it have?",
+    "Is this MacBook Pro's battery still good?",
+    "Which one is it?",
+  ])
+    assert.equal(repeatedQuestion(other, request), undefined);
+});

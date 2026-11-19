@@ -69,6 +69,39 @@ export function answeredQuestions(request: AgentRunRequest) {
   return answered;
 }
 
+/** Words that phrase a question rather than say what it asks about. */
+const PHRASING = new Set(
+  (
+    "a an and any are as at be by can could did do does for from has have how i " +
+    "in is it its me much my next of on or please so some that the there these " +
+    "this those to was what when where which who will with would you your"
+  ).split(" "),
+);
+
+/**
+ * What a question asks about: the words of its last question sentence, without
+ * the phrasing around them or the item's own name.
+ */
+function askedAbout(text: string, itemName: string): Set<string> {
+  const words = (value: string) =>
+    value.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+  const name = new Set(words(itemName));
+  const question = text.match(/[^.!?]*\?/g)?.at(-1) ?? text;
+  return new Set(
+    words(question).filter((word) => !PHRASING.has(word) && !name.has(word)),
+  );
+}
+
+/** Reworded, the same question still asks about the same things: one's subject holds the other's. */
+function asksSame(first: string, second: string, itemName: string) {
+  if (first.trim().toLowerCase() === second.trim().toLowerCase()) return true;
+  const [smaller, larger] = [
+    askedAbout(first, itemName),
+    askedAbout(second, itemName),
+  ].sort((a, b) => a.size - b.size);
+  return smaller.size > 0 && [...smaller].every((word) => larger.has(word));
+}
+
 export function repeatedQuestion(
   question: string,
   request: AgentRunRequest,
@@ -79,8 +112,9 @@ export function repeatedQuestion(
   // is known. Let the buyer agent use the current structured negotiation instead.
   if (request.context?.intent !== "listing_assist") return undefined;
   const topic = questionTopic(question);
+  const itemName = request.context.currentDraft?.title ?? "";
   const skipped = request.context.skippedQuestions?.find((item) =>
-    question.toLowerCase() === item.question.toLowerCase() ||
+    asksSame(question, item.question, itemName) ||
     (topic && topic === questionTopic(item.question)) ||
     (listingField && listingField !== "other" && listingField !== "description" &&
       listingField === item.listingField),
