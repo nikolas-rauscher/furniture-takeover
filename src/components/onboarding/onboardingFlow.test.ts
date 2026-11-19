@@ -67,7 +67,7 @@ test("the send-off opens what the visitor came for, or sign-in first", () => {
   assert.deepEqual(finalAction(finder, false).outcome, {
     next: "search",
     location: "UNIL, Dorigny",
-    query: "A desk under CHF 50, pickup this week",
+    query: "A desk under CHF 50",
   });
   assert.equal(
     finalAction({ ...finder, intent: "sell" }, false).label,

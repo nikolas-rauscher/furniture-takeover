@@ -260,6 +260,8 @@ export default function App({
   const searchFocused = useFocused(searchField);
   const [followUp, setFollowUp] = useState("");
 
+  /** A search asked for in the step that also moved the search area; it runs once the area is in state. */
+  const [pendingSearch, setPendingSearch] = useState<string | null>(null);
   const [onboardingRecord] = useState(readOnboarding);
   const [onboarding, setOnboarding] = useState(() =>
     firstVisitMode(
@@ -688,6 +690,7 @@ export default function App({
       // The intro also opens from the header on other pages; the query belongs on home.
       goHome();
       setQuery(outcome.query);
+      setPendingSearch(outcome.query);
     }
   }
   function declineOnboarding() {
@@ -737,6 +740,11 @@ export default function App({
   function startSearchFromHome(text: string) {
     transitionPage("nav-forward", () => void runSearch(text), "fade");
   }
+  useEffect(() => {
+    if (pendingSearch === null) return;
+    setPendingSearch(null);
+    void runSearch(pendingSearch);
+  }, [pendingSearch]);
   function openBrowse() {
     navigate("discover");
   }
