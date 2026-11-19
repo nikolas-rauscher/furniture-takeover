@@ -127,7 +127,7 @@ test("a reply appears only while its criterion can still narrow the search", () 
   const narrower = (criteria: Partial<Criteria>, request?: string) =>
     texts({ listings: [], search: search(criteria, request) });
   assert.deepEqual(
-    narrower({ maxPrice: 500 }, "A desk"),
+    narrower({ maxPrice: defaults.maxPrice }, "A desk"),
     ["Closer: within 2 km", "Free items only (CHF 0)", "Collect by Sunday"],
     "the app's default ceiling is not a budget the student chose",
   );
@@ -334,7 +334,7 @@ test("when nothing fits yet, keeping watch comes first, ahead of two broader sea
       replies: [
         {
           kind: "watch",
-          text: "Tell me when one is listed",
+          text: "Notify me",
           query: "green armchair",
           maxPrice: 120,
           radius: 5,
@@ -357,7 +357,7 @@ test("with only web results, the watch reply asks about new student listings", (
       listings: [],
     }),
     [
-      "Tell me about new student listings",
+      "Notify me about new student listings",
       "Raise my budget to CHF 105",
       "Search within 10 km",
     ],
@@ -384,4 +384,10 @@ test("keeping watch needs no daily allowance", () => {
   }).replies;
   assert.equal(usesAllowance(watch), false);
   assert.equal(usesAllowance(broader), true);
+});
+
+test("an empty search can offer a watch alongside a question about widening", () => {
+  assert.deepEqual(texts({ turn: { ...emptySearch, watchSuggestion: watchFor,
+    questions: [{ type: "question", id: "widen", question: "Widen the area?", choices: [] }],
+  } }), ["Notify me"]);
 });

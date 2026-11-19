@@ -52,7 +52,7 @@ export type SearchJob = {
 };
 export const defaults: Criteria = {
   category: "All",
-  maxPrice: 500,
+  maxPrice: 1_000_000,
   radius: 20,
   pickup: "",
   query: "",
@@ -83,6 +83,9 @@ const datePattern = String.raw`(?:\d{4}-\d{2}-\d{2}|(?:(?:next|this|nachsten|nä
 const pickupPattern = String.raw`(?:(?:ready to\s+)?(?:pickup|pick up|collection|collect|abholung)\s*)?(?:(?:by|on|before|bis|am)\s+)?(?:${datePattern})\b`;
 const flexiblePickupPattern = String.raw`(?:pickup(?: date)?|collection|date|abholung)\s*(?:is\s*)?flexible|flexible(?:\s+(?:pickup|collection|date))?|any\s+(?:pickup\s+)?date|no\s+(?:pickup\s+)?deadline`;
 const anyBudgetPattern = String.raw`any budget|any price|no\s+(?:budget|price)\s+limit|budget doesn't matter`;
+
+const freeItemPattern = /(?<![-\w])(?<!feel )(?<!not )(?<!smoke )(?<!pet )(?:free(?![-\s]+(?:standing|delivery|shipping|pickup|collection|of|space|to)\b)|gratis|kostenlos)\b/i;
+export const takeoverOnlyPattern = /\b(?:(?:use\s+)?takeover[-\s]+only|(?:use\s+)?only\s+takeover|only (?:my|local|your|our)(?: active)? listings|(?:do not|don't|don’t) search (?:the )?web)\b/i;
 
 export function parsePickupDate(
   text: string,
@@ -171,7 +174,7 @@ export function extractSearchConstraints(
     "i",
   ).test(q)
     ? 1_000_000
-    : validAmount(match?.[1], 1_000_000);
+    : validAmount(match?.[1], 1_000_000) ?? (freeItemPattern.test(q) ? 0 : undefined);
   const radius = validAmount(radiusMatch?.[1], 500);
   const pickup = parsePickupDate(text, today);
   return {
@@ -206,10 +209,13 @@ export function parseSearch(
     kleinanzeigen: "Kleinanzeigen",
     ebay: "eBay",
   };
-  const source = sourceMatch
+  const source = takeoverOnlyPattern.test(text) ? "takeover" : sourceMatch
     ? sourceNames[sourceMatch[1].toLowerCase()]
     : base.source;
   const itemQuery = text
+    .replace(takeoverOnlyPattern, "")
+    .replace(freeItemPattern, "")
+    .replace(/\b(?:all local takeover|(?:around|near|of) (?:EPFL|UNIL)|show all matches|(?:please )?run the search now(?: without asking questions)?)\b/gi, "")
     .replace(
       /\b(?:i am looking for|i need|i want|looking for|search for|find me|find|show me|ich suche|ich brauche|suche nach|suche|finde mir|einen|eine|ein|a|an)\b/gi,
       "",

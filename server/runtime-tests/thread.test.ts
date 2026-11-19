@@ -55,19 +55,19 @@ const counterReading = {
   },
   options: [
     {
-      label: "Accept CHF 45",
+      label: "Discuss CHF 45 after 19:00",
       kind: "accept",
-      message: "Deal, CHF 45 works for me! Which day after 19:00 suits you?",
+      message: "CHF 45 works for me! Which day after 19:00 suits you?",
       terms: { amount: 45 },
     },
     {
-      label: "Meet at CHF 42",
+      label: "Offer CHF 42",
       kind: "counter",
       message: "Could we meet in the middle at CHF 42?",
       terms: { amount: 42 },
     },
     {
-      label: "Ask about Friday",
+      label: "Propose Friday after 19:00",
       kind: "ask",
       message: "Would Friday after 19:00 work for you?",
     },
@@ -153,6 +153,7 @@ test("a counter-offer stays between the two sides' latest amounts", async (t) =>
       options: [
         option({
           kind: "counter",
+          label: `Offer CHF ${amount}`,
           message: `Could you do CHF ${amount}?`,
           terms: { amount },
         }),
@@ -185,7 +186,7 @@ test("an option's message states every term it records", async (t) => {
   const terms = {
     amount: 45,
     pickupTime: "Thursday at 18:00",
-    pickupPoint: vortex,
+    pickupPoint: "Vortex",
   };
   const { model, agent } = agentReading(
     t,
@@ -196,7 +197,8 @@ test("an option's message states every term it records", async (t) => {
       options: [
         option({
           kind: "counter",
-          message: `Could we say CHF 45, Thursday at 18:00 at the ${vortex}?`,
+          label: "Propose CHF 45 Thursday 18:00 Vortex",
+          message: "Could we say CHF 45, Thursday at 18:00 at Vortex?",
           terms,
         }),
       ],
@@ -209,7 +211,7 @@ test("an option's message states every term it records", async (t) => {
     fulfillment: "pickup",
     pickupAt: "2026-11-19T17:00:00.000Z",
     pickupTime: "Thursday at 18:00",
-    pickupPoint: vortex,
+    pickupPoint: "Vortex",
   });
 });
 
@@ -234,14 +236,9 @@ test("acceptance is complete only with a price, a concrete future time and a mee
     },
     options: [
       {
-        label: "Confirm",
+        label: "Ask about the meeting",
         kind: "accept",
-        message: `Great, confirming: CHF 40, Thursday at 18:00 at ${vortex}.`,
-        terms: {
-          amount: 40,
-          pickupTime: "Thursday at 18:00",
-          pickupPoint: vortex,
-        },
+        message: "Anything else I should bring?",
       },
     ],
   };
@@ -260,7 +257,7 @@ test("acceptance is complete only with a price, a concrete future time and a mee
     },
     options: [
       {
-        label: "Ask where",
+        label: "Ask where on Thursday",
         kind: "ask",
         message: "Great! Where should we meet on Thursday?",
       },
@@ -268,7 +265,7 @@ test("acceptance is complete only with a price, a concrete future time and a mee
   };
   const second = agentReading(t, withoutPlace);
   const partial = await second.agent.turn(
-    acceptance("Deal, CHF 40 on Thursday at 18:00!"),
+    acceptance("CHF 40 on Thursday at 18:00!"),
   );
   assert.deepEqual(partial.agreement, {
     status: "partial",
@@ -291,6 +288,7 @@ test("a free listing has no amount to propose", async (t) => {
       facts: {},
       options: [
         option({
+          label: "Propose Thursday",
           message: terms
             ? "Could I give you CHF 10 for it?"
             : "Could I come Thursday?",
@@ -408,6 +406,7 @@ test("an option's time may join a day and a clock time named in different words,
       options: [
         option({
           kind: "counter",
+          label: `Propose CHF 45 Thursday ${clock}`,
           message: `Could we do CHF 45 on Thursday at ${clock}?`,
           terms: { amount: 45, pickupTime },
         }),
@@ -430,6 +429,7 @@ test("only offers and acceptances record terms; a question only talks about them
       options: [
         option({
           kind: "ask",
+          label: "Ask which day after 19:00",
           message: "Which day after 19:00 suits you?",
           terms: { amount: 45, pickupTime: "only after 19:00" },
         }),
@@ -439,4 +439,284 @@ test("only offers and acceptances record terms; a question only talks about them
   const turn = await agent.turn(request);
   assert.equal(model.doStreamCalls.length, 1);
   assert.equal(turn.options[0].terms, null);
+});
+
+const bike: ThreadTurnRequest = {
+  ...request,
+  role: "seller",
+  listing: {
+    title: "City bicycle",
+    price: 145,
+    pickupPoint: vortex,
+    status: "active",
+  },
+  messages: [
+    {
+      ...request.messages[0],
+      from: "them",
+      text: "Is the bike still available? I can pick it up Friday.",
+    },
+  ],
+};
+
+for (const [label, message, repair] of [
+  ["Confirm availability", "Yes, Friday works.", /day, time and place/],
+  ["Confirm availability", "Yes, it's CHF 145.", /exact CHF amount/],
+  ["Confirm availability", "Yes, 145 works for me.", /exact CHF amount/],
+  ["Quote CHF 145", "It's listed at CHF 145.", /listing-only/],
+  ["Discuss Vortex", "Could we meet at Vortex?", /as a proposal/],
+  [
+    "Confirm availability",
+    "Let's meet at Café Central.",
+    /day, time and place/,
+  ],
+  [
+    "Describe listed condition: Good",
+    "It is in good condition. Anything you want checked?",
+    /follow-up question/,
+  ],
+  ["Accept CHF 145, Friday", "Friday works.", /deal card/],
+] as const) {
+  test(`repairs "${label}" before showing "${message}"`, async (t) => {
+    const answer = (label: string, message: string) =>
+      reading({
+        facts: {},
+        stance: "question",
+        options: [option({ label, message })],
+      });
+    const { agent, model } = agentReading(
+      t,
+      answer(label, message),
+      answer("Confirm availability", "Yes, it's still available."),
+    );
+    const turn = await agent.turn(bike);
+    assert.match(promptOf(model, 1), repair);
+    assert.match(promptOf(model, 0), /Only the deal card confirms/);
+    assert.equal(turn.options[0].message, "Yes, it's still available.");
+  });
+}
+
+test("a misleading bike chip leaves valid siblings available without another reading", async (t) => {
+  const warnings = t.mock.method(console, "warn", () => {});
+  const valid = [
+    option({
+      label: "Confirm availability",
+      message: "Yes, it's still available.",
+    }),
+    option({
+      label: "Quote listed CHF 145",
+      message: "The listing price is CHF 145.",
+    }),
+  ];
+  const { agent, model } = agentReading(
+    t,
+    reading({
+      facts: {},
+      stance: "question",
+      options: [
+        option({
+          label: "Confirm availability",
+          message: "Yes! Friday works for me at CHF 145.",
+        }),
+        ...valid,
+      ],
+    }),
+  );
+  const turn = await agent.turn(bike);
+  assert.deepEqual(
+    turn.options.map(({ label, message }) => [label, message]),
+    valid.map(({ label, message }) => [label, message]),
+  );
+  assert.equal(warnings.mock.callCount(), 1);
+  const [prefix, payload] = warnings.mock.calls[0].arguments;
+  assert.equal(prefix, "[thread-turn]");
+  assert.match(JSON.parse(payload).runId, /^[a-f0-9-]{36}$/);
+  assert.deepEqual(JSON.parse(payload), {
+    runId: JSON.parse(payload).runId,
+    event: "option_dropped",
+    optionId: "opt-1",
+    check: "Name the draft's exact CHF amount in the label or remove it.",
+    label: "Confirm availability",
+  });
+  assert.equal(model.doStreamCalls.length, 1);
+});
+
+test("repair one rejected Friday reply once and keep the validated sibling", async () => {
+  const options = [
+    option({
+      label: "Confirm Friday pickup availability",
+      message:
+        "Yes, the bike is still available and Friday pickup works for me.",
+    }),
+    option({
+      label: "Ask what time Friday",
+      message:
+        "Yes, it's still available. What time on Friday would work for you?",
+    }),
+    option({
+      label: "Quote CHF 145 listed, Friday pickup",
+      message:
+        "Yes, it's still available — CHF 145 as listed, and Friday pickup works for me.",
+    }),
+  ];
+  for (const [replacement, expected] of [
+    [options[1], [options[0].label]],
+    [
+      option({
+        label: "Ask what time Friday",
+        message: "What time on Friday suits you?",
+      }),
+      [options[0].label, "Ask what time Friday"],
+    ],
+  ] as const) {
+    const model = new MockLanguageModelV4({
+      doStream: [
+        toolCall(
+          "propose_next_message",
+          reading({ options, facts: {}, stance: "question" }),
+          "initial",
+        ),
+        toolCall("repair_reply", replacement, "repair"),
+      ],
+    });
+    const agent = createThreadAgent({ apiKey: "test", modelImpl: model, now });
+    const turn = await agent.turn(bike);
+    assert.deepEqual(
+      turn.options.map(({ label }) => label),
+      expected,
+    );
+    assert.equal(turn.options[0].id, "opt-1");
+    assert.equal(model.doStreamCalls.length, 2);
+    assert.deepEqual(
+      model.doStreamCalls[1].tools?.map((tool) => tool.name),
+      ["repair_reply"],
+    );
+  }
+});
+
+for (const [role, incoming, label, message] of [
+  [
+    "buyer",
+    "Friday works. What time were you thinking?",
+    "Ask what time Friday",
+    "What time on Friday suits you?",
+  ],
+  [
+    "seller",
+    "Would you take CHF 120?",
+    "Discuss CHF 120",
+    "Could we talk about your CHF 120 offer?",
+  ],
+  [
+    "seller",
+    "What condition is the bike in?",
+    "Describe condition",
+    "The bike is in good condition.",
+  ],
+] as const) {
+  test(`a ${role} can send a focused draft for "${incoming}"`, async (t) => {
+    const { agent } = agentReading(
+      t,
+      reading({
+        facts: {},
+        stance: "question",
+        options: [option({ label, message })],
+      }),
+    );
+    const turn = await agent.turn({
+      ...bike,
+      role,
+      listing: { ...bike.listing, condition: "Good" },
+      messages: [{ ...bike.messages[0], text: incoming }],
+    });
+    assert.deepEqual(
+      turn.options.map((item) => [item.label, item.message]),
+      [[label, message]],
+    );
+    assert.equal(turn.agreement.status, "none");
+  });
+}
+
+test("condition replies can describe the listing or ask what to check in one reading", async (t) => {
+  const options = [
+    option({
+      label: "Describe listed condition",
+      message: "It's listed in good condition.",
+    }),
+    option({
+      kind: "ask",
+      label: "Ask what they'd like checked",
+      message: "Is there a particular part you'd like me to check?",
+    }),
+  ];
+  const { model, agent } = agentReading(
+    t,
+    reading({ facts: {}, stance: "question", options }),
+  );
+  const turn = await agent.turn({
+    ...bike,
+    listing: { ...bike.listing, condition: "Good" },
+    messages: [{ ...bike.messages[0], text: "What condition is the bike in?" }],
+  });
+  assert.deepEqual(
+    turn.options.map(({ label }) => label),
+    options.map(({ label }) => label),
+  );
+  assert.equal(turn.agreement.status, "none");
+  assert.equal(model.doStreamCalls.length, 1);
+});
+
+test("a short question label is the exact composer draft when no message is supplied", async (t) => {
+  const question = "Which pickup window suits you?";
+  const { model, agent } = agentReading(
+    t,
+    reading({
+      facts: {},
+      stance: "question",
+      options: [
+        option({
+          label: "Confirm availability",
+          message: "Yes, it's still available.",
+        }),
+        { kind: "ask", label: question },
+      ],
+    }),
+  );
+  const turn = await agent.turn(bike);
+  assert.deepEqual(turn.options[1], {
+    id: "opt-2",
+    kind: "ask",
+    label: question,
+    message: question,
+    terms: null,
+  });
+  assert.equal(model.doStreamCalls.length, 1);
+});
+
+test("an incomplete or overlong chip cannot invalidate two checked replies", async (t) => {
+  const valid = [
+    { kind: "ask", label: "Which time works?" },
+    option({
+      label: "Confirm availability",
+      message: "Yes, it's still available.",
+    }),
+  ];
+  for (const invalid of [
+    { kind: "answer", label: "Confirm availability only" },
+    option({
+      label:
+        "Confirm availability and also suggest meeting up for pickup on Friday",
+    }),
+  ]) {
+    const { model, agent } = agentReading(
+      t,
+      reading({ facts: {}, stance: "question", options: [invalid, ...valid] }),
+    );
+    const turn = await agent.turn(bike);
+    assert.deepEqual(
+      turn.options.map((item) => item.id),
+      ["opt-2", "opt-3"],
+    );
+    assert.equal(model.doStreamCalls.length, 1);
+  }
 });

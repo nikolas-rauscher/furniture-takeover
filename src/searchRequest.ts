@@ -2,6 +2,8 @@ import { listingInventory } from "../shared/listingInventory.ts";
 import {
   defaults,
   isMine,
+  extractSearchConstraints,
+  takeoverOnlyPattern,
   parseSearch,
   type Criteria,
   type Product,
@@ -102,12 +104,10 @@ export function newSearch(
   previousAnswer?: string,
 ): SearchSnapshot {
   const request = text.trim();
-  const ownOnly =
-    /\b(?:only (?:my|local|your|our)(?: active)? listings|(?:do not|don't|don’t) search (?:the )?web)\b/gi;
   const allSources =
     /\b(?:all (?:sources|platforms)|(?:search|include|use) (?:the )?web|takeover\s+(?:and|und|\+)\s+(?:(?:the|das)\s+)?web|any (?:source|platform))\b/gi;
   const criteria = parseSearch(
-    request.replace(ownOnly, "").replace(allSources, ""),
+    request.replace(takeoverOnlyPattern, "").replace(allSources, ""),
     base,
   );
   // Follow-up questions refine a search; they are not the item name.
@@ -116,7 +116,7 @@ export function newSearch(
     !/\b(?:find|search for|looking for|i need|i want|instead)\b/i.test(request)
   )
     criteria.query = base.query;
-  if (ownOnly.test(request)) criteria.source = "takeover";
+  if (takeoverOnlyPattern.test(request)) criteria.source = "takeover";
   else if (allSources.test(request)) criteria.source = "All";
   else {
     const source = request.match(
@@ -130,7 +130,7 @@ export function newSearch(
     text: request,
     originalRequest: previous?.originalRequest || request,
     criteria,
-    location,
+    location: request.match(/\b(?:around|near|within [\d.,]+ km of) (EPFL|UNIL)\b/i)?.[1].toUpperCase() ?? location,
     ...(previous?.intent ? { intent: previous.intent } : {}),
     ...(previous ? { previousQuery: previous.text.slice(0, 500) } : {}),
     ...(previousAnswer
@@ -218,6 +218,10 @@ export function agentSearchRequest(
   const ownListingIds = inventory
     .filter((item) => isMine(item) && item.status === "active")
     .map((item) => item.id);
+  const budgetSpecified = search.criteria.maxPrice !== defaults.maxPrice ||
+    [search.originalRequest, search.text].some(
+      (text) => extractSearchConstraints(text).maxPrice !== undefined,
+    );
   return {
     text: search.text,
     context: {
@@ -234,12 +238,9 @@ export function agentSearchRequest(
       ...(search.intent === "listing_review"
         ? {}
         : {
-            maxPrice: search.criteria.maxPrice,
-            budgetSpecified:
-              search.criteria.maxPrice !== defaults.maxPrice ||
-              /\b(?:CHF|francs?|budget|free|gratis|kostenlos|any price|no budget)\b|(?:under|unter|bis|up to|max(?:imum)?)\s*\d/i.test(
-                search.originalRequest + " " + search.text,
-              ),
+            ...(budgetSpecified && search.criteria.maxPrice < 1_000_000
+              ? { maxPrice: search.criteria.maxPrice } : {}),
+            budgetSpecified,
             radius: search.criteria.radius,
             pickupBy: search.criteria.pickup,
             condition: search.criteria.condition,

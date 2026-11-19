@@ -82,12 +82,28 @@ const proposalSchema = z
       .array(
         z
           .object({
-            label: z.string().trim().min(1).max(40),
+            label: z.string().trim().min(1).describe("At most 40 characters."),
             kind: z.enum(THREAD_OPTION_KINDS),
-            message: z.string().trim().min(1).max(600),
+            message: z
+              .string()
+              .trim()
+              .min(1)
+              .max(600)
+              .optional()
+              .describe(
+                "For a short question, write the complete question as label and omit message. Otherwise write a draft containing only what the label says.",
+              ),
             terms: proposedTermsSchema.optional(),
           })
-          .strict(),
+          .strict()
+          .transform((option) => ({
+            ...option,
+            message:
+              option.message ??
+              (option.kind === "ask" && /[?？]$/.test(option.label)
+                ? option.label
+                : ""),
+          })),
       )
       .min(1)
       .max(3),
@@ -367,6 +383,210 @@ const plainText = (text: string) =>
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
 
+const AGREEMENT_LABEL =
+  /\b(?:accept\w*|agree(?:d|ment)?|deal|accepter|accord|annehmen|zustimmen)\b|\bconfirm (?:the |our )?(?:offer|price|sale|pickup|CHF)\b/i;
+const PROPOSAL_LABEL =
+  /\b(?:propos\w*|suggest\w*|offer|counter\w*|vorschlag\w*|vorschlagen|anbieten)\b/i;
+const LISTING_LABEL =
+  /\b(?:list(?:ed|ing)|asking|affiché|annonce|inserat|angebotspreis)\b/i;
+const PICKUP_TIMES =
+  /\b(?:(?:before|after|avant|après|vor|nach)\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|tonight|morning|afternoon|evening|weekend|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|demain|montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag|morgen|\d{1,2}[:h]\d{2}|\d{1,2}\s?(?:am|pm|uhr))\b/gi;
+
+/** Inspect the draft even when the model omitted terms or classified it as a question. */
+function checkOptionLabel(
+  option: ProposedOption,
+  request: ThreadTurnRequest,
+  facts: ThreadFacts,
+) {
+  const { label, message } = option;
+  if (
+    AGREEMENT_LABEL.test(label) ||
+    /\b(?:we have a deal|it's a deal|deal confirmed|i accept|deal[!,])/i.test(
+      message,
+    )
+  )
+    throw new Error(
+      "Use conversational wording. Only the deal card confirms an agreement.",
+    );
+
+  if (
+    /\b(?:still available|still for sale|no longer available|already sold)\b/i.test(
+      message,
+    ) &&
+    !/\b(?:availab(?:le|ility)|unavailable|sold|for sale)\b/i.test(label)
+  )
+    throw new Error(
+      "Disclose the availability reply in the label or leave it out of the message.",
+    );
+
+  checkDraftPrices(option, request);
+  checkDraftPickup(option, request, facts);
+}
+
+function checkDraftPrices(option: ProposedOption, request: ThreadTurnRequest) {
+  const { message, label, terms } = option;
+  const conversation = messageTexts(request);
+  const mentionedAmounts = conversation.flatMap(messageAmounts);
+  const prices =
+    message.match(
+      /\b(?:CHF\s*\d+(?:[', ]\d{3})*|\d+(?:[', ]\d{3})*\s*(?:CHF|francs?))\b/gi,
+    ) ?? [];
+  const amounts = new Set(
+    prices.map((price) => Number(price.replace(/[^0-9]/g, ""))),
+  );
+  // A bare "145 works" can name the asking price just as clearly as "CHF 145".
+  const priceContext = message.replace(
+    /\b\d+(?:[.,]\d+)?[ -]*(?:cm|mm|kg|inch(?:es)?|years?|speeds?)\b/gi,
+    "",
+  );
+  for (const number of messageAmounts(priceContext)) {
+    if (number === request.listing.price || mentionedAmounts.includes(number))
+      amounts.add(number);
+  }
+  if (
+    terms?.amount !== undefined &&
+    option.kind !== "ask" &&
+    option.kind !== "answer"
+  )
+    amounts.add(terms.amount);
+  for (const amount of amounts) {
+    if (!amountAllowed(amount, option.kind, request))
+      throw new Error(
+        "Use a price from the conversation, listing or allowed counter range.",
+      );
+    if (
+      !messageStatesTerms(label, {
+        amount,
+        fulfillment: null,
+        pickupAt: null,
+        pickupTime: null,
+        pickupPoint: null,
+      }).ok
+    )
+      throw new Error(
+        "Name the draft's exact CHF amount in the label or remove it.",
+      );
+    if (mentionedAmounts.includes(amount)) continue;
+    if (amount === request.listing.price) {
+      if (!LISTING_LABEL.test(label))
+        throw new Error(
+          "Identify the listing-only amount as listed in the label.",
+        );
+    } else if (!PROPOSAL_LABEL.test(label))
+      throw new Error("Label a new amount as a proposal.");
+  }
+}
+
+function checkDraftPickup(
+  option: ProposedOption,
+  request: ThreadTurnRequest,
+  facts: ThreadFacts,
+) {
+  const { message, label, terms } = option;
+  const conversation = messageTexts(request);
+  const times = message.match(PICKUP_TIMES) ?? [];
+  const places = [
+    request.listing.location,
+    request.listing.pickupPoint,
+    facts.pickupPoint?.value,
+    terms?.pickupPoint,
+    ...campusPointNames,
+  ].filter(isText);
+  const placePhrases = Array.from(
+    message.matchAll(
+      /\b(?:at|near|outside|inside|chez) (?:the )?([\p{Lu}][\p{L}-]*(?: +[\p{Lu}][\p{L}-]*)*)/gu,
+    ),
+    ([, place]) => place,
+  );
+  const details = [
+    ...times,
+    terms?.pickupTime,
+    ...places,
+    ...placePhrases,
+  ].filter(isText);
+  for (const detail of details) {
+    if (!containsQuote(message, detail)) continue;
+    if (
+      !containsQuote(label, detail) &&
+      !(detail === terms?.pickupTime && namesTime([label], detail))
+    )
+      throw new Error(
+        "Name every stated day, time and place in the label, or simplify the draft.",
+      );
+    if (
+      !conversation.some((text) => containsQuote(text, detail)) &&
+      !PROPOSAL_LABEL.test(label)
+    )
+      throw new Error("Label a new pickup time or place as a proposal.");
+  }
+}
+
+function logDroppedOption(
+  runId: string,
+  index: number,
+  label: string,
+  error: Error,
+) {
+  console.warn(
+    "[thread-turn]",
+    JSON.stringify({
+      runId,
+      event: "option_dropped",
+      optionId: `opt-${index + 1}`,
+      check: error.message,
+      label,
+    }),
+  );
+}
+
+function checkedOption(
+  option: ProposedOption,
+  index: number,
+  request: ThreadTurnRequest,
+  facts: ThreadFacts,
+  now: Date,
+): ThreadTurn["options"][number] {
+  if (option.label.length > 40)
+    throw new Error("Keep the label within 40 characters.");
+  if (!option.message)
+    throw new Error(
+      "Supply a draft or use its complete question as the label.",
+    );
+  if (
+    /\bcondition\b/i.test(option.label) &&
+    /[?？]/.test(option.message) &&
+    !/[?？]|\b(?:ask|check|which|what|whether)\b/i.test(option.label)
+  )
+    throw new Error(
+      "Disclose the follow-up question in the condition label or remove it.",
+    );
+  const terms = optionTerms(option, index, request, facts, now);
+  checkOptionLabel(option, request, facts);
+  return { ...option, id: `opt-${index + 1}`, terms };
+}
+
+/** A reading can offer fewer chips when one draft fails its grounding checks. */
+function checkedOptions(
+  proposal: Proposal,
+  request: ThreadTurnRequest,
+  now: Date,
+  runId: string,
+) {
+  const options: ThreadTurn["options"] = [];
+  let firstFailure: Error | undefined;
+  for (const [index, option] of proposal.options.entries()) {
+    try {
+      options.push(checkedOption(option, index, request, proposal.facts, now));
+    } catch (error) {
+      if (!(error instanceof Error)) throw error;
+      logDroppedOption(runId, index, option.label, error);
+      firstFailure ??= error;
+    }
+  }
+  if (!options.length && firstFailure) throw firstFailure;
+  return options;
+}
+
 /** Agreement is worked out from the checked facts, never taken from the model. */
 function agreementOf(
   proposal: Proposal,
@@ -375,9 +595,17 @@ function agreementOf(
   now: Date,
 ): ThreadTurn["agreement"] {
   if (proposal.stance !== "accepts") return { status: "none", missing: [] };
-  const terms = turnTerms({ facts: proposal.facts, pickupAt }, request.deal?.agreed ?? null);
+  const terms = turnTerms(
+    { facts: proposal.facts, pickupAt },
+    request.deal?.agreed ?? null,
+  );
   const missing = missingTerms(terms);
-  if (terms.fulfillment === "pickup" && terms.pickupAt && Date.parse(terms.pickupAt) <= now.getTime()) missing.push("pickupTime");
+  if (
+    terms.fulfillment === "pickup" &&
+    terms.pickupAt &&
+    Date.parse(terms.pickupAt) <= now.getTime()
+  )
+    missing.push("pickupTime");
   return missing.length
     ? { status: "partial", missing }
     : { status: "complete", missing: [] };
@@ -388,6 +616,7 @@ function groundProposal(
   proposal: Proposal,
   request: ThreadTurnRequest,
   now: Date,
+  runId: string,
 ): ThreadTurn {
   checkSafeText(proposal.summary, "summary");
   proposal.options.forEach((option, index) => {
@@ -395,10 +624,11 @@ function groundProposal(
     checkSafeText(option.message, `options[${index}].message`);
   });
   checkFacts(proposal.facts, request);
-  const distinct = new Set(
-    proposal.options.map((option) => plainText(option.message)),
-  );
-  if (distinct.size !== proposal.options.length)
+  const drafts = proposal.options
+    .map((option) => option.message)
+    .filter(Boolean);
+  const distinct = new Set(drafts.map(plainText));
+  if (distinct.size !== drafts.length)
     throw new Error("options: each option must be a different message.");
   const pickupAt = proposal.facts.pickupTime
     ? resolvePickupAt(proposal.facts.pickupTime.value, now)
@@ -411,13 +641,7 @@ function groundProposal(
     facts: proposal.facts,
     pickupAt,
     agreement: agreementOf(proposal, request, pickupAt, now),
-    options: proposal.options.map((option, index) => ({
-      id: `opt-${index + 1}`,
-      label: option.label,
-      kind: option.kind,
-      message: option.message,
-      terms: optionTerms(option, index, request, proposal.facts, now),
-    })),
+    options: checkedOptions(proposal, request, now, runId),
   });
 }
 
@@ -481,11 +705,15 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
       const timeout = AbortSignal.timeout(
         Math.min(config.timeoutMs ?? TURN_LIMIT_MS, TURN_LIMIT_MS),
       );
+      const repairDeadline = new AbortController();
+      let repairTimer: ReturnType<typeof setTimeout> | undefined;
       const signal = callerSignal
-        ? AbortSignal.any([callerSignal, timeout])
-        : timeout;
+        ? AbortSignal.any([callerSignal, timeout, repairDeadline.signal])
+        : AbortSignal.any([timeout, repairDeadline.signal]);
       const now = clock();
       let reading: ThreadTurn | undefined;
+      let repairIndex: number | undefined;
+      let repairStarted = false;
       let streamFailure: unknown;
       /** The checks the model's attempts failed; fixed wording, never what the students wrote. */
       const failedChecks: string[] = [];
@@ -502,11 +730,25 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
           tools: {
             [TOOL_NAME]: tool({
               description:
-                "Save your reading of the conversation: the summary, the facts with their quotes, the stance and 1 to 3 messages the student could send next. Nothing is sent.",
+                "Save your reading of the conversation: the summary, the facts with their quotes, the stance and 2 or 3 distinct messages the student could send next. Nothing is sent.",
               inputSchema: proposalSchema,
               execute: async (proposal) => {
                 try {
-                  reading = groundProposal(proposal, request, now);
+                  reading = groundProposal(proposal, request, now, runId);
+                  if (
+                    reading.options.length === 1 &&
+                    proposal.options.length > 1
+                  ) {
+                    const kept = reading.options[0];
+                    repairIndex = proposal.options.findIndex(
+                      (_, i) => `opt-${i + 1}` !== kept.id,
+                    );
+                    return {
+                      kept: kept.label,
+                      instruction:
+                        "Replace one rejected draft. Write one short, different reply about a single point. Omit extra prices, times and places.",
+                    };
+                  }
                 } catch (error) {
                   failedChecks.push(
                     error instanceof Error ? error.message : "check failed",
@@ -516,10 +758,59 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
                 return { saved: true };
               },
             }),
+            repair_reply: tool({
+              description:
+                "Replace one rejected reply. The saved reading and valid reply are already kept.",
+              inputSchema: proposalSchema.shape.options.element,
+              execute: async (option) => {
+                if (!reading || repairIndex === undefined)
+                  throw new Error("No reply needs repair.");
+                const index = repairIndex;
+                repairIndex = undefined;
+                try {
+                  checkSafeText(option.label, "replacement label");
+                  checkSafeText(option.message, "replacement message");
+                  if (
+                    reading.options.some(
+                      (kept) =>
+                        plainText(kept.message) === plainText(option.message) ||
+                        plainText(kept.label) === plainText(option.label),
+                    )
+                  )
+                    throw new Error("Write a different message.");
+                  const replacement = checkedOption(
+                    option,
+                    index,
+                    request,
+                    reading.facts,
+                    now,
+                  );
+                  reading.options.push(replacement);
+                } catch (error) {
+                  if (!(error instanceof Error)) throw error;
+                  // An unsafe label can contain contact details.
+                  const label = error.message.startsWith("replacement label")
+                    ? "[redacted]"
+                    : option.label;
+                  logDroppedOption(runId, index, label, error);
+                }
+                return { saved: reading.options.length > 1 };
+              },
+            }),
           },
-          activeTools: [TOOL_NAME],
+          prepareStep: () => {
+            if (repairIndex === undefined) return { activeTools: [TOOL_NAME] };
+            repairStarted = true;
+            repairTimer = setTimeout(() => repairDeadline.abort(), 2500);
+            return { activeTools: ["repair_reply"] };
+          },
           toolChoice: "required",
-          stopWhen: [stepCountIs(MAX_STEPS), () => reading !== undefined],
+          stopWhen: [
+            stepCountIs(MAX_STEPS),
+            () =>
+              reading !== undefined &&
+              (repairIndex === undefined || repairStarted),
+          ],
           maxOutputTokens: MAX_OUTPUT_TOKENS,
           maxRetries: 1,
           // DeepSeek cannot combine thinking with a forced tool.
@@ -542,8 +833,12 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
           prompt: JSON.stringify({
             ...request,
             pickupLabels: {
-              agreed: request.deal?.agreed?.pickupAt ? formatPickup(request.deal.agreed.pickupAt) : null,
-              proposed: request.deal?.proposal?.terms.pickupAt ? formatPickup(request.deal.proposal.terms.pickupAt) : null,
+              agreed: request.deal?.agreed?.pickupAt
+                ? formatPickup(request.deal.agreed.pickupAt)
+                : null,
+              proposed: request.deal?.proposal?.terms.pickupAt
+                ? formatPickup(request.deal.proposal.terms.pickupAt)
+                : null,
             },
             now: zurichNow.format(now),
             timeZone: ZONE,
@@ -555,11 +850,14 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
           if (part.type === "error") streamFailure = part.error;
           // The SDK's message would repeat the input, which quotes the students.
           if (
-            part.type === "tool-error" &&
+            part.type === "tool-call" &&
+            part.invalid &&
             InvalidToolInputError.isInstance(part.error)
           )
             failedChecks.push("the input did not match the tool's schema");
         }
+        callerSignal?.throwIfAborted();
+        if (repairStarted && reading) return reading;
         signal.throwIfAborted();
         if (reading) return reading;
         if (streamFailure) throw streamFailure;
@@ -583,7 +881,10 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
             ...(failedChecks.length ? { failedChecks } : {}),
           }),
         );
+        if (repairStarted && reading && !callerSignal?.aborted) return reading;
         throw safe;
+      } finally {
+        clearTimeout(repairTimer);
       }
     },
   };

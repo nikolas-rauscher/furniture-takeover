@@ -248,7 +248,7 @@ test("the actual SDK request carries area and preferences alongside the latest u
   const content = user.content.find((part) => part.type === "text");
   assert.ok(content?.type === "text");
   const payload = JSON.parse(content.text);
-  assert.deepEqual(payload.context, context);
+  assert.deepEqual(payload.context, { ...context, maxPrice: 40 });
   assert.equal(payload.text, "Make the budget CHF 40 and pickup flexible");
   assert.equal(
     model.doStreamCalls[0].tools?.some((entry) => entry.name === "web_search"),
@@ -453,4 +453,50 @@ test("suggest_watch only displays a suggestion and creates nothing", async () =>
     events.filter((event) => event.type === "watch_suggestion"),
     [{ type: "watch_suggestion", query: "piano", maxPrice: 300 }],
   );
+});
+
+test("a free Takeover-only search overrides stale client filters and always offers an empty-result watch", async () => {
+  const model = new MockLanguageModelV4({
+    doStream: [
+      toolCall("inventory_search", { query: "piano", maxPrice: 500 }, "find"),
+      toolCall("show_takeover_listings", { ids: [] }, "show"),
+      answer("No matching piano."),
+    ],
+  });
+  const events = await eventsFor(createAgentRuntime({
+    apiKey: "test", braveApiKey: "test", modelImpl: model,
+  }), {
+    text: "Find a free piano, Takeover only.",
+    context: { source: "All", maxPrice: 500, currentQuery: "piano" },
+    inventory: [{ ...ownDesk, title: "Piano" }],
+  });
+  for (const step of model.doStreamCalls)
+    assert.ok(!step.tools?.some(tool => tool.name === "web_search"));
+  assert.ok(events.some(event => event.type === "complete"));
+  assert.ok(events.every(event => event.type !== "inventory_matches" || !event.ids.length));
+  assert.deepEqual(events.filter(event => event.type === "watch_suggestion"),
+    [{ type: "watch_suggestion", query: "piano", maxPrice: 0 }]);
+});
+
+test("widening only the radius rechecks local inventory and retains the free-item watch when asking whether to widen again", async () => {
+  const model = new MockLanguageModelV4({
+    doStream: [
+      toolCall("inventory_search", { query: "piano" }, "find"),
+      toolCall("show_takeover_listings", { ids: [] }, "show"),
+      toolCall("ask_user", { question: "Search further away?", choices: ["Yes", "No"] }, "widen"),
+    ],
+  });
+  const events = await eventsFor(createAgentRuntime({
+    apiKey: "test", braveApiKey: "test", modelImpl: model,
+  }), {
+    text: "Search within 2 km",
+    context: {
+      currentQuery: "antique grand piano", maxPrice: 0, radius: 1,
+      source: "takeover", budgetSpecified: true, previousAnswer: "No matching piano.",
+    },
+  });
+  assert.deepEqual(model.doStreamCalls[0].tools?.map(tool => tool.name), ["inventory_search"]);
+  assert.ok(events.some(event => event.type === "question"));
+  assert.deepEqual(events.filter(event => event.type === "watch_suggestion"),
+    [{ type: "watch_suggestion", query: "antique grand piano", maxPrice: 0 }]);
 });

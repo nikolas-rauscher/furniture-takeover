@@ -7,6 +7,7 @@ import type {
 import type { AgentRunRequest, AgentRunSource } from "../shared/runs.ts";
 import {
   extractSearchConstraints,
+  takeoverOnlyPattern,
   parsePickupDate,
   TODAY,
 } from "../shared/marketplace.ts";
@@ -767,6 +768,8 @@ export function preferencesAction(
   // A preference update must come from the latest request, never a stale draft or prior answer.
   if (evidence.some((item) => !contains(request.text, item.quote)))
     fail("Search changes need evidence in the latest user message.");
+  if (patch.source && patch.source !== "takeover" && takeoverOnlyPattern.test(request.text))
+    fail("The buyer limited this search to Takeover.");
   const constraints = extractSearchConstraints(request.text);
   const shortNumber = /^\s*\d+(?:[.,]\d{1,2})?\s*$/.test(request.text)
     ? Number(request.text.trim().replace(",", "."))

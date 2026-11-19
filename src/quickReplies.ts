@@ -1,5 +1,4 @@
 import {
-  defaults,
   extractSearchConstraints,
   type Criteria,
 } from "../shared/marketplace.ts";
@@ -84,7 +83,6 @@ const WATCHING_LINE = "Nothing yet, but I'm keeping an eye out for you.";
 const ANY_BUDGET = 1_000_000;
 /** The largest radius a search area accepts. */
 const MAX_RADIUS_KM = 500;
-/* The parser reads a free budget only from an amount, so the reply names one. */
 const FREE_ONLY = "Free items only (CHF 0)";
 const COLLECT_BY_SUNDAY = "Collect by Sunday";
 
@@ -96,10 +94,13 @@ const COLLECT_BY_SUNDAY = "Collect by Sunday";
  */
 export function quickReplies(input: QuickRepliesInput): QuickReplies {
   const { turn, search } = input;
-  if (!search || search.intent === "listing_review" || !awaitsReply(input))
+  if (!search || search.intent === "listing_review" || !input.latest ||
+      turn.status !== "complete" || input.negotiating || turn.proposal)
     return NO_REPLIES;
   const budget = chosenBudget(search);
   const watch = watchReply(input);
+  if (turn.questions.some(question => !turn.answers[question.id]))
+    return watch ? { line: null, replies: [watch] } : NO_REPLIES;
   if (foundNothing(turn)) {
     const broader = broaderSearches(search.criteria, budget);
     if (!watch)
@@ -148,25 +149,14 @@ function watchReply({
   return {
     kind: "watch",
     text: foundNothing(turn)
-      ? "Tell me when one is listed"
-      : "Tell me about new student listings",
+      ? "Notify me"
+      : "Notify me about new student listings",
     query: suggestion.query,
     ...(suggestion.maxPrice === undefined
       ? {}
       : { maxPrice: suggestion.maxPrice }),
     radius: search.criteria.radius,
   };
-}
-
-/** Only the newest finished turn waits for a reply; a question or an offer draft has its own. */
-function awaitsReply({ turn, latest, negotiating }: QuickRepliesInput) {
-  return (
-    latest &&
-    turn.status === "complete" &&
-    !negotiating &&
-    !turn.proposal &&
-    turn.questions.every((question) => turn.answers[question.id])
-  );
 }
 
 const ask = (text: string): QuickReply => ({ kind: "ask", text });
@@ -219,13 +209,8 @@ function broaderSearches(criteria: Criteria, budget: number | undefined) {
 /** The CHF limit the student chose; the app's default ceiling, "free" and "any budget" are none. */
 function chosenBudget({
   criteria: { maxPrice },
-  originalRequest,
-  text,
 }: NonNullable<QuickRepliesInput["search"]>) {
-  if (maxPrice <= 0 || maxPrice >= ANY_BUDGET) return undefined;
-  if (maxPrice !== defaults.maxPrice) return maxPrice;
-  const written = extractSearchConstraints(`${originalRequest}\n${text}`);
-  return written.maxPrice === maxPrice ? maxPrice : undefined;
+  return maxPrice > 0 && maxPrice < ANY_BUDGET ? maxPrice : undefined;
 }
 
 /** Amounts as students say them: whole francs, then steps of 5, 10, 50 and 100. */

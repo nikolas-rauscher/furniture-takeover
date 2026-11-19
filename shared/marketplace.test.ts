@@ -123,8 +123,8 @@ for (const [text, expectedTitle] of [
 }
 
 for (const [text, expectedBudget] of [
-  ["Sofa bis 5 km", 500],
-  ["Chair within 5 km", 500],
+  ["Sofa bis 5 km", defaults.maxPrice],
+  ["Chair within 5 km", defaults.maxPrice],
   ["Sofa under 150 CHF", 150],
   ["Lamp under 25", 25],
 ] as const) {

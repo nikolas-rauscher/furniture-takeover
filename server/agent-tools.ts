@@ -35,6 +35,7 @@ export type AgentToolState = {
   ownInventoryOnly: boolean;
   allowWebSearch: boolean;
   observedInventory: Map<string, AgentRunInventoryItem>;
+  watchQuery?: string;
   inventorySearched: boolean;
   inventoryCurated: boolean;
   webSearched: boolean;
@@ -401,13 +402,9 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                 maxPrice: z.number().min(0).max(1_000_000).optional(),
               })
               .strict(),
-            execute: async ({ query, maxPrice }) => {
+            execute: async ({ query }) => {
               claimTool();
-              await send({
-                type: "watch_suggestion",
-                query,
-                ...(maxPrice === undefined ? {} : { maxPrice }),
-              });
+              state.watchQuery = query;
               return {
                 suggested: true,
                 nextStep:
