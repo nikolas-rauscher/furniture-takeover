@@ -268,11 +268,8 @@ export function useListings(enabled = true) {
         }
         proposed = prepared;
       } catch (failure) {
-        setError(
-          failure instanceof Error
-            ? failure.message
-            : "Couldn't prepare your photos. Try again.",
-        );
+        if (!(failure instanceof Error)) throw failure;
+        setError(failure.message);
         return false;
       }
       const ids = new Set(proposed.map((item) => item.id));

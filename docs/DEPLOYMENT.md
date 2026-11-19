@@ -95,7 +95,28 @@ done
 
 `supabase-db` is the default container name (`docker ps` shows yours). If you prefer, paste each file into Studio's SQL Editor, in order.
 
-Optional demo listings: after applying `202611190004_admin.sql`, review and run `supabase/seed-demo.sql`. It adds the six inert demo sellers and 40 shipped listings without overwriting existing edits. The seed and admin reset use the catalog bundled in the migration.
+### The migrations
+
+Apply every file in `supabase/migrations/`, in this order:
+
+| File | Adds |
+| --- | --- |
+| `202610300001_supabase.sql` | Listings, conversations, messages and conversation archives with row-level security, `start_conversation`, the photo path check, the `listing-photos` storage bucket and realtime for messages |
+| `202610300002_accounts.sql` | Profiles, account preferences, saved listings, blocked users, reports, block checks on contact, and `delete_account` |
+| `202610300003_listing_details.sql` | The `pickup_by` date and `tags` on listings |
+| `202610300004_profile_and_api_keys.sql` | Profile bio, postal code, country and handover preference, and the table of encrypted personal API keys |
+| `202611060001_ai_quota.sql` | Daily AI request counters (50 per student, 500 in total) and `ai_quota` |
+| `202611190001_thread_reading.sql` | Read markers for unread counts, Pako's saved readings, the auto-read preference, and the separate reading allowance (150 per student, 1,500 in total) |
+| `202611190002_deals.sql` | Deals and deal events, participant-only access, the `deal_action` function for offers, confirmation and reservation, and release of reservations when a buyer deletes their account |
+| `202611190003_pickup.sql` | Pickup-day fields on deals (on my way, late, picked up, no-show, cancel reason), more deal event kinds, and `pickup_action` |
+| `202611190004_admin.sql` | The private `takeover_admin` schema, the `admins` table and `is_admin`, hidden listings, report resolution, student blocks, the moderation log, moderation checks on posting and contact, the shipped catalog (6 sellers, 40 listings), the demo seed and the `admin_*` functions |
+| `202611200001_review_fixes.sql` | Moves `deal_action` and `pickup_action` behind checked wrappers, guards listings with an agreed deal, tightens `delete_account`, and adds `ai_quota_spend`, which only the server's secret key may call. The older quota functions are revoked |
+| `202611200002_deal_rules.sql` | Stricter check that a deal message states its price, time and meeting point, with updated deal and pickup functions |
+| `202611200003_card_photos.sql` | `card_images` on listings, a card-size copy of each uploaded photo, with the photo checks updated |
+
+`202611200001_review_fixes.sql` makes the app server depend on `SUPABASE_SECRET_KEY`: without it, AI quota checks fail. Apply it only when the new build, started with that key, is ready to restart right after.
+
+Optional demo listings: after all migrations are applied, review and run `supabase/seed-demo.sql`. It adds the six inert demo sellers and the 40 shipped listings without overwriting existing edits. The seed and the admin reset use the catalog stored by `202611190004_admin.sql`.
 
 To grant yourself admin access, create your account normally. In Studio's SQL Editor, replace the email below with the email for your account and run:
 
@@ -260,5 +281,5 @@ Then in a browser:
 ## Backups and updates
 
 - **Back up** the Supabase database volume, the Supabase `.env` (its keys and secrets), and `ACCOUNT_KEYS_ENCRYPTION_KEY`.
-- **Roll out the review fixes:** set `SUPABASE_SECRET_KEY` on the app server and prepare the new build. On a database already migrated through `202611190004_admin.sql`, apply only `202611200001_review_fixes.sql` and restart the app with the new build immediately after. The migration revokes the previous quota endpoints.
+- **Roll out the review fixes:** set `SUPABASE_SECRET_KEY` on the app server and prepare the new build. On a database already migrated through `202611190004_admin.sql`, apply `202611200001_review_fixes.sql` and restart the app with the new build immediately after. The migration revokes the previous quota endpoints. Then apply `202611200002_deal_rules.sql` and `202611200003_card_photos.sql`.
 - **Update the app:** `git pull && npm ci && npm run build && sudo systemctl restart takeover`. Check the release for new files in `supabase/migrations/` and apply any new ones once, in order, as in step 2.

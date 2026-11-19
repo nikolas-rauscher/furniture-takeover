@@ -73,6 +73,24 @@ node --experimental-strip-types --test server/runtime-tests/listing.test.ts
 
 Before a pull request, run `npm run check` and `npm run build`.
 
+## UI components
+
+AI interfaces follow [shadcn AI Elements](https://ui.shadcn.com/docs/ai-elements): Message Scroller and Bubble for chat, Input Group for prompts, Trace for activity, sources and the listing checklist, Hover Card for citations, Item for confirmations, and Attachment for photos. Compositions live in `src/components/`; shared primitives live in `src/components/ui/`. Activity steps and expandable provider reasoning are shown separately from the answer.
+
+Use the shared **shadcn/ui components with Base UI**, styled for Takeover. Tailwind Preflight is omitted to preserve existing page styles. Design values live in `src/styles.css`, Tailwind mappings in `src/tailwind.css`, and shared control styles in `src/components/ui/ui.css`.
+
+```sh
+npm run ui:add -- tooltip
+npm run ui:animate -- tabs
+npm run ui:check
+```
+
+Add `--dry-run` to `ui:add` or `ui:animate` to preview changes before replacing customized components. `ui:check` inventories animations; validate changes with `npm run check`, `npm run build`, and desktop/mobile interaction checks.
+
+Import icons through `src/components/icons.ts`. Add individual animated Lucide icons with `npm run ui:add -- @animate-ui/icons-lucide-bell`, then export them from that file. The existing Lucide symbols remain as fallbacks where Animate UI has no equivalent. Set `animateIcon` on a shared `Button` to animate its icons on hover and tap; keep passive icons still. Animate UI respects reduced-motion preferences.
+
+[`components.json`](components.json) configures shadcn and the Animate UI registry.
+
 ## Data
 
 The API seeds `data/marketplace.sqlite` when it does not exist. Catalog edits and inbox previews survive API restarts. Personal listings and saved browser state use the browser's local storage. Neither store is a production multi-user database.
