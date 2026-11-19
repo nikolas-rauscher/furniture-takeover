@@ -140,6 +140,15 @@ function threadEvents(conversation: SellerConversation): ThreadEvent[] {
   ];
 }
 
+/**
+ * Which thread is open: the student's own conversation about a listing goes by
+ * the listing, another demo buyer's by the listing and that buyer.
+ */
+const threadKeyOf = (conversation: SellerConversation) =>
+  conversation.buyerKey
+    ? `${conversation.listingId}#${conversation.buyerKey}`
+    : conversation.listingId;
+
 const GONE_NOTES: Record<Exclude<Product["status"], "active">, string> = {
   reserved: "Reserved",
   sold: "Sold",
@@ -178,7 +187,10 @@ function DemoMessagesPage({
   // The newest conversation opens once the inbox has loaded.
   useEffect(() => {
     if (loaded)
-      setSelected((value) => value || conversations[0]?.listingId || "");
+      setSelected(
+        (value) =>
+          value || (conversations[0] ? threadKeyOf(conversations[0]) : ""),
+      );
   }, [loaded, conversations]);
   const [drafts, setDrafts] = useState<Record<string, string>>(
     listingId && initialMessage
@@ -225,9 +237,8 @@ function DemoMessagesPage({
         onDeleted?.(item.listingId);
         setDeleted(item);
         setDismissedListing(item.listingId);
-        setSelected(
-          conversations.find((entry) => entry.id !== item.id)?.listingId ?? "",
-        );
+        const next = conversations.find((entry) => entry.id !== item.id);
+        setSelected(next ? threadKeyOf(next) : "");
         setDrafts((items) =>
           Object.fromEntries(
             Object.entries(items).filter(
@@ -239,7 +250,7 @@ function DemoMessagesPage({
         inbox.put(updated);
         setDeleted(undefined);
         setDismissedListing("");
-        setSelected(updated.listingId);
+        setSelected(threadKeyOf(updated));
       }
     } catch (error) {
       setError(
@@ -253,7 +264,7 @@ function DemoMessagesPage({
   };
   const pendingMessage = useRef(new PendingMessage());
   const pakoDrafts = usePakoDrafts();
-  const saved = conversations.find((item) => item.listingId === selected);
+  const saved = conversations.find((item) => threadKeyOf(item) === selected);
   const current =
     saved ??
     (listing && selected === listing.id
@@ -267,7 +278,12 @@ function DemoMessagesPage({
         }
       : undefined);
   const product = current && productFor(current.listingId);
-  const otherName = role === "buyer" ? (current?.seller ?? "") : "Buyer";
+  const otherName =
+    role === "buyer"
+      ? (current?.seller ?? "")
+      : saved?.buyerKey
+        ? "Another buyer"
+        : "Buyer";
   const messages = current ? threadMessages(current, role) : [];
   const events = current ? threadEvents(current) : [];
   const threadKey = current ? `${current.id}:${role}` : "";
@@ -327,6 +343,7 @@ function DemoMessagesPage({
   const offerOpened = useRef<number>(undefined);
   const offerThread =
     current?.listingId === listingId &&
+    !saved?.buyerKey &&
     role === "buyer" &&
     deal.loaded &&
     threadDeal.open;
@@ -446,20 +463,22 @@ function DemoMessagesPage({
             <ChatThreadCard
               key={item.id}
               order={order}
-              active={selected === item.listingId}
+              active={selected === threadKeyOf(item)}
               disabled={busy}
               image={imageFor(item)}
-              name={item.seller}
+              name={item.buyerKey ? "Another buyer" : item.seller}
               title={item.title}
               preview={item.messages.at(-1)?.text}
               note={threadNote(item)}
               unread={isUnread(demoInboxThread(item), reads.reads)}
-              onSelect={() => openThread(item.listingId)}
+              onSelect={() => openThread(threadKeyOf(item))}
             />
           ))}
           {listing &&
             dismissedListing !== listing.id &&
-            !conversations.some((item) => item.listingId === listing.id) && (
+            !conversations.some(
+              (item) => threadKeyOf(item) === listing.id,
+            ) && (
               <ChatThreadCard
                 order={conversations.length}
                 active
