@@ -64,6 +64,10 @@
   :root[data-keyboard-open] .mobile-nav {
     display: none;
   }
+  /* An open thread has its own way back, so the tab bar steps aside for the composer. */
+  #root:has(.messages-layout .messages-page.has-conversation) > .mobile-nav {
+    display: none;
+  }
   .mobile-nav-item {
     min-width: 0;
   }
@@ -92,7 +96,6 @@
     scroll-margin-block: 80px;
   }
   .search-hero textarea,
-  .assistant-composer.conversation-composer textarea,
   .main-content input,
   .main-content textarea,
   .main-content select,
@@ -200,6 +203,12 @@
     )
     > .main-content {
     padding-bottom: 8px;
+  }
+  /* The docked composer stays clear of the home indicator unless the keyboard covers it. */
+  :root:not([data-keyboard-open])
+    .messages-layout:has(.messages-page.has-conversation)
+    > .main-content {
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
   }
   .selling-chat-layout .listing-save-form {
     flex-wrap: wrap;

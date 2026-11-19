@@ -851,53 +851,6 @@ textarea {
   padding: 14px 16px 12px;
   background: #fcfcfe;
 }
-.assistant-composer {
-  border: 1px solid #dde2ef;
-  background: white;
-  border-radius: 10px;
-  padding: 11px;
-}
-.assistant-composer:focus-within {
-  border-color: #9cabe5;
-}
-.assistant-composer textarea {
-  border: 0;
-  padding: 0;
-  font-size: 11px;
-  resize: none;
-  width: 100%;
-  outline: none;
-  min-height: 41px;
-  line-height: 1.6;
-}
-.assistant-composer > div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 3px;
-}
-.assistant-composer > div > span {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 8px;
-  color: #adb3c0;
-}
-.assistant-composer > div > button {
-  width: 28px;
-  height: 28px;
-  background: var(--blue);
-  color: white;
-  border-radius: 7px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.assistant-composer > div > button:disabled {
-  background: #e9edf8;
-  color: #8493cb;
-  opacity: 1;
-}
 .assistant-bottom > p {
   font-size: 8px;
   text-align: center;
@@ -2032,9 +1985,6 @@ textarea {
   .suggestion-list button {
     font-size: 11px;
   }
-  .assistant-composer textarea {
-    font-size: 12px;
-  }
   .mobile-assistant-toggle {
     display: flex;
     position: fixed;
@@ -2644,9 +2594,6 @@ textarea {
   }
   .assistant-tip p {
     font-size: 10px;
-  }
-  .assistant-composer textarea {
-    font-size: 12px;
   }
   .assistant-bottom > p {
     font-size: 9px;

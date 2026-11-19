@@ -9,6 +9,7 @@ import {
 import { Image as ImageIcon, LoaderCircle, Send } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { useSaved } from "../hooks/useSaved";
+import { fitTextarea } from "../textarea";
 import Confetti from "./onboarding/Confetti";
 import Pako from "./onboarding/Pako";
 import { Button } from "./ui/button";
@@ -17,6 +18,7 @@ import {
   InputGroupAddon,
   InputGroupTextarea,
 } from "./ui/input-group";
+import "./composer.css";
 import "./messages.css";
 
 /** New bubbles arrive like in the intro's chat: a short spring from below. */
@@ -309,7 +311,7 @@ export function SentCelebration({ recipient }: { recipient: string }) {
   );
 }
 
-/** The message field grows with its text up to a limit; Ctrl/⌘ + Enter sends. */
+/** The shared composer: the field grows with its text up to a limit; Ctrl/⌘ + Enter sends. */
 export function ChatComposerField({
   value,
   disabled,
@@ -325,23 +327,20 @@ export function ChatComposerField({
   useEffect(() => {
     const input = field.current;
     if (!input) return;
-    const fit = () => {
-      input.style.height = "auto";
-      input.style.height = `${input.scrollHeight}px`;
-    };
-    fit();
+    fitTextarea(input);
     let width = input.clientWidth;
     const observer = new ResizeObserver(() => {
       if (input.clientWidth === width) return;
       width = input.clientWidth;
-      fit();
+      fitTextarea(input);
     });
     observer.observe(input);
     return () => observer.disconnect();
   }, [value]);
   const sendable = !disabled && !busy && value.trim().length > 0;
+  const sendLabel = busy ? "Sending message" : "Send message";
   return (
-    <InputGroup className="seller-message-input">
+    <InputGroup className="composer-field">
       <InputGroupTextarea
         ref={field}
         aria-label="Message"
@@ -366,8 +365,9 @@ export function ChatComposerField({
         <Button
           animateIcon
           type="submit"
-          className="button primary seller-message-send"
-          aria-label={busy ? "Sending message" : "Send message"}
+          className="icon-button composer-send"
+          aria-label={sendLabel}
+          title={sendLabel}
           disabled={!sendable}
         >
           {busy ? (
@@ -375,7 +375,6 @@ export function ChatComposerField({
           ) : (
             <Send size={18} aria-hidden="true" />
           )}
-          <span>{busy ? "Sending…" : "Send"}</span>
         </Button>
       </InputGroupAddon>
     </InputGroup>

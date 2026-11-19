@@ -592,26 +592,12 @@ label > textarea {
   background: none;
   color: var(--blue);
 }
-.suggestion-list button svg,
-.assistant-composer > div > span > svg {
+.suggestion-list button svg {
   display: none;
 }
 .assistant-bottom {
   padding: 24px;
   background: #fbfbf9;
-}
-.assistant-composer {
-  border-radius: 4px;
-  padding: 16px;
-}
-.assistant-composer textarea {
-  font-size: 14px;
-  min-height: 62px;
-}
-.assistant-composer > div > button {
-  border-radius: 3px;
-  width: 34px;
-  height: 34px;
 }
 .assistant-bottom > p {
   margin-top: 13px;
@@ -1471,7 +1457,6 @@ label > textarea {
 .page-title > .button { margin: 0; }
 .results-controls { margin-bottom: 16px; }
 .search-title .back-link { margin-bottom: 8px; }
-.assistant-composer { margin-top: 20px; padding: 16px; }
 
 .listing-save-form { margin-top: 24px; padding-top: 20px; }
 .listing-manual-fields[open] > summary { margin-bottom: 16px; }
@@ -1597,9 +1582,11 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
 .chat-layout .chat-composer-dock textarea { max-height: 100px; overflow-y: auto; }
 .chat-layout .agent-footnote { margin: 4px 0 0; }
 @media (max-width: 760px) {
+  /* Below a conversation the tab bar keeps a clean gap to the composer above it. */
   #root:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-layout) > .mobile-nav {
     position: static;
     flex: 0 0 auto;
+    padding-top: 12px;
   }
   .chat-layout .main-content.view-discover { padding: var(--space-label) var(--space-page); }
   .chat-layout .search-title { gap: 12px; margin-bottom: 4px; }
@@ -1635,7 +1622,6 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
 .messages-layout .seller-chat { min-height: 0; }
 .messages-layout .seller-chat-messages { min-height: 0; max-height: none; overscroll-behavior: contain; }
 .messages-layout .seller-chat form { flex-shrink: 0; }
-.messages-layout .seller-chat textarea { max-height: 180px; }
 @media (max-width: 760px) {
   .messages-layout:has(.messages-page.has-conversation) .main-content.view-messages { padding-top: var(--space-label); }
 }

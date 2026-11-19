@@ -139,11 +139,6 @@
 .app-layout:is(.chat-layout, .selling-chat-layout) .chat-composer-dock {
   padding-top: 6px;
 }
-.chat-composer-dock .assistant-composer.conversation-composer {
-  position: static;
-  width: 100%;
-  margin: 0;
-}
 /* Floats at the composer's right edge, beside the reading column rather than on it. */
 .chat-composer-dock .chat-jump-latest {
   position: absolute;
