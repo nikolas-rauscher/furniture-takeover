@@ -65,6 +65,42 @@ test("eight-step tool limit stops real loop execution instead of reporting compl
     false,
   );
 });
+test("an offer draft prepared on the last step still finishes with its reply", async () => {
+  const { newNegotiation } = await import("../../shared/negotiation.ts");
+  const model = new MockLanguageModelV4({
+    doStream: [
+      ...Array.from({ length: 7 }, (_, step) =>
+        toolCall("get_listing", { listingId: ownDesk.id }, `read-${step}`),
+      ),
+      toolCall("prepare_offer_draft", { expectedVersion: 1 }, "prepare"),
+      answer("Your draft is ready for review."),
+    ],
+  });
+  const events = await eventsFor(
+    createAgentRuntime({ apiKey: "key", modelImpl: model }),
+    {
+      text: "Prepare the draft now.",
+      context: {
+        intent: "negotiation",
+        negotiation: newNegotiation("proposal", ownDesk.id),
+      },
+      inventory: [ownDesk],
+    },
+  );
+  assert.equal(model.doStreamCalls.length, 9);
+  assert.deepEqual(model.doStreamCalls[8].toolChoice, { type: "none" });
+  assert.ok(
+    events.some(
+      (event) => event.type === "negotiation_update" && event.negotiation.draft,
+    ),
+  );
+  assert.ok(events.some((event) => event.type === "complete"));
+  assert.equal(
+    events.some((event) => event.type === "error"),
+    false,
+  );
+});
+
 test("timeout aborts the SDK provider and never reports a completed run", async () => {
   let upstreamAborted = false;
   const guard = setTimeout(() => {}, 1000);

@@ -16,6 +16,9 @@ import {
   MAX_PHOTO_PREVIEW_BYTES,
 } from "../shared/listingPhotos.ts";
 import { mkdtemp, mkdir, writeFile, symlink, rm } from "node:fs/promises";
+import type { ThreadAgent } from "./thread-agent.ts";
+import type { ThreadTurn, ThreadTurnRequest } from "../shared/threadTurn.ts";
+import { AgentError } from "./errors.ts";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -37,6 +40,44 @@ async function startServer(
     url: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
   };
 }
+
+const readingRequest: ThreadTurnRequest = {
+  intent: "thread_turn",
+  trigger: "reply",
+  role: "seller",
+  listing: { title: "Desk chair", price: 30, status: "active" },
+  deal: null,
+  messages: [
+    {
+      id: "m1",
+      from: "them",
+      text: "Hi! Could I get it for 20?",
+      at: "2026-11-19T13:00:00.000Z",
+    },
+  ],
+};
+const reading: ThreadTurn = {
+  forMessageId: "m1",
+  summary: "{other} offers CHF 20.",
+  language: "en",
+  stance: "offer",
+  facts: {},
+  pickupAt: null,
+  agreement: { status: "none", missing: [] },
+  options: [
+    {
+      id: "opt-1",
+      label: "Meet at CHF 25",
+      kind: "counter",
+      message: "Could we meet at CHF 25?",
+      terms: null,
+    },
+  ],
+};
+const readerOf = (turn: ThreadAgent["turn"]): ThreadAgent => ({
+  configured: true,
+  turn,
+});
 
 test("production hosting serves built assets but never source, secrets or escaped paths", async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "takeover-hosting-"));
@@ -121,6 +162,9 @@ test("daily allowance blocks both agent routes before provider work and health c
           reservations.push(spend);
           return { allowed, limit: 50, remaining: allowed ? 49 : 0, resetAt };
         },
+        spendReplyReading: async () => {
+          throw new Error("Searches never spend reply readings");
+        },
       },
       runtime: {
         health: () => ({
@@ -193,6 +237,9 @@ test("too many pending token validations are rejected before another Supabase au
       quota: async () => {
         throw new Error("Must not reach quotas without auth");
       },
+      spendReplyReading: async () => {
+        throw new Error("Must not reach quotas without auth");
+      },
     },
   });
   t.after(release);
@@ -253,6 +300,9 @@ test("account keys and AI requests use only the authenticated owner's credential
           remaining: 49,
           resetAt: "2026-12-01T00:00:00Z",
         }),
+        spendReplyReading: async () => {
+          throw new Error("This test reads no replies");
+        },
       },
       accountKeys: {
         status: async (owner) => status(owner),
@@ -295,6 +345,10 @@ test("account keys and AI requests use only the authenticated owner's credential
               });
             },
           },
+          threads: readerOf(async () => {
+            seen.push(owner);
+            return reading;
+          }),
         };
       },
     },
@@ -634,6 +688,9 @@ test("cloud mode exposes only public config and guards all AI and old demo route
           remaining: 49,
           resetAt: "2026-12-01T00:00:00Z",
         }),
+        spendReplyReading: async () => {
+          throw new Error("This test reads no replies");
+        },
       },
     },
   );
@@ -642,13 +699,17 @@ test("cloud mode exposes only public config and guards all AI and old demo route
     supabaseUrl: "https://example.supabase.co",
     supabaseKey: "public-test-key",
   });
-  for (const route of ["/api/agent/assist", "/api/agent/run"])
+  for (const route of [
+    "/api/agent/assist",
+    "/api/agent/run",
+    "/api/agent/thread",
+  ])
     assert.equal(
       (await fetch(instance.url + route, { method: "POST", body: "{}" }))
         .status,
       401,
     );
-  assert.equal(calls, 2);
+  assert.equal(calls, 3);
   for (const route of [
     "/api/listings",
     "/api/listings/demo/update",
@@ -664,4 +725,140 @@ test("cloud mode exposes only public config and guards all AI and old demo route
     body: JSON.stringify({ intent: "search", text: "desk" }),
   });
   assert.equal(allowed.status, 503); // Passed auth; deliberately unconfigured provider.
+});
+
+const signedIn = {
+  Authorization: "Bearer alice",
+  "Content-Type": "application/json",
+};
+
+test("each reply reading spends one reading of its own allowance, only after its request is valid", async (t) => {
+  let remaining = 2,
+    readings = 0;
+  const spent: string[] = [];
+  const resetAt = new Date(Date.now() + 3600_000).toISOString();
+  const { url } = await startServer(t, undefined, {
+    cloud: {
+      config: {
+        supabaseUrl: "https://example.supabase.co",
+        supabaseKey: "public-test-key",
+      },
+      authorize: async (header) => {
+        if (header !== "Bearer alice")
+          throw new AgentError(401, "AUTH_REQUIRED", "Sign in.");
+        return "alice";
+      },
+      quota: async () => {
+        throw new Error("Reading replies never spends searches");
+      },
+      spendReplyReading: async (authorization) => {
+        spent.push(authorization);
+        const allowed = remaining > 0;
+        if (allowed) remaining--;
+        return { allowed, limit: 150, remaining, resetAt };
+      },
+    },
+    threads: readerOf(async () => {
+      readings++;
+      return reading;
+    }),
+  });
+  const read = (body: unknown, headers: Record<string, string> = signedIn) =>
+    fetch(`${url}/api/agent/thread`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+  assert.equal(
+    (await read(readingRequest, { "Content-Type": "application/json" })).status,
+    401,
+  );
+  const invalid = await read({ ...readingRequest, messages: [] });
+  assert.equal(invalid.status, 400);
+  assert.equal((await invalid.json()).error.code, "INVALID_THREAD_REQUEST");
+  assert.deepEqual(spent, []);
+  const first = await read(readingRequest);
+  assert.equal(first.status, 200);
+  assert.deepEqual(await first.json(), {
+    turn: reading,
+    allowance: { limit: 150, remaining: 1, resetAt },
+  });
+  assert.equal((await read(readingRequest)).status, 200);
+  const exhausted = await read(readingRequest);
+  assert.equal(exhausted.status, 429);
+  assert.equal((await exhausted.json()).error.code, "THREAD_QUOTA_EXCEEDED");
+  assert.ok(Number(exhausted.headers.get("Retry-After")) > 0);
+  assert.equal(readings, 2);
+  assert.deepEqual(spent, Array(3).fill("Bearer alice"));
+});
+
+test("the local demo reads replies without accounts, within the route's size, method and origin", async (t) => {
+  const { url } = await startServer(t, undefined, {
+    threads: readerOf(async () => reading),
+  });
+  const read = (init: RequestInit) =>
+    fetch(`${url}/api/agent/thread`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      ...init,
+    });
+  const local = await read({ body: JSON.stringify(readingRequest) });
+  assert.equal(local.status, 200);
+  assert.deepEqual(await local.json(), { turn: reading });
+  const large = JSON.stringify({
+    ...readingRequest,
+    messages: [{ ...readingRequest.messages[0], text: "x".repeat(70_000) }],
+  });
+  assert.equal((await read({ body: large })).status, 413);
+  assert.equal((await read({ method: "GET" })).status, 405);
+  assert.equal(
+    (
+      await read({
+        headers: {
+          "Content-Type": "application/json",
+          Origin: "https://untrusted.example",
+        },
+        body: JSON.stringify(readingRequest),
+      })
+    ).status,
+    403,
+  );
+});
+
+test("an account server without the reply reading update says so instead of reading", async (t) => {
+  let readings = 0;
+  const { url } = await startServer(t, undefined, {
+    cloud: {
+      config: {
+        supabaseUrl: "https://example.supabase.co",
+        supabaseKey: "public-test-key",
+      },
+      authorize: async () => "alice",
+      quota: async () => {
+        throw new Error("Reading replies never spends searches");
+      },
+      spendReplyReading: async () => {
+        throw new AgentError(
+          503,
+          "THREAD_READING_UNAVAILABLE",
+          "Pako can't read replies here yet.",
+        );
+      },
+    },
+    threads: readerOf(async () => {
+      readings++;
+      return reading;
+    }),
+  });
+  const response = await fetch(`${url}/api/agent/thread`, {
+    method: "POST",
+    headers: signedIn,
+    body: JSON.stringify(readingRequest),
+  });
+  assert.equal(response.status, 503);
+  assert.equal(
+    (await response.json()).error.code,
+    "THREAD_READING_UNAVAILABLE",
+  );
+  assert.equal(readings, 0);
 });

@@ -4,6 +4,10 @@ import { createClient } from "@supabase/supabase-js";
 import { AgentError } from "./errors.ts";
 import type { Product } from "../shared/marketplace.ts";
 import type { AgentQuota } from "../shared/agent.ts";
+
+/** Searches and listings share one daily allowance; reading replies has its own. */
+type AllowanceName = "ai_quota" | "ai_thread_quota";
+type Allowance = AgentQuota & { allowed: boolean };
 /** Loopback, private-network and Tailscale addresses; never a public host. */
 export function isPrivateHost(hostname: string): boolean {
   if (hostname === "localhost" || hostname === "[::1]") return true;
@@ -94,67 +98,87 @@ export function createCloud(
     testEmail &&
     testUntil > Date.now() &&
     testUntil <= Date.now() + 86_400_000;
-  let testUsed = 0;
+  /** Local AI testing keeps each allowance's count in memory instead. */
+  const testBudgets: Record<AllowanceName, { limit: number; used: number }> = {
+    ai_quota: { limit: 250, used: 0 },
+    ai_thread_quota: { limit: 750, used: 0 },
+  };
+  const testAllowance = async (
+    name: AllowanceName,
+    authorization: string,
+    spend: boolean,
+  ): Promise<Allowance | undefined> => {
+    if (!testEnabled || Date.now() >= testUntil) return undefined;
+    const token = authorization.match(/^Bearer (.+)$/)?.[1];
+    if (!token) return undefined;
+    const { data, error } = await client.auth.getUser(token);
+    if (
+      error ||
+      !data.user?.email_confirmed_at ||
+      data.user.email?.toLowerCase() !== testEmail
+    )
+      return undefined;
+    const budget = testBudgets[name];
+    const allowed = budget.used < budget.limit;
+    if (spend && allowed) budget.used++;
+    return {
+      allowed,
+      limit: budget.limit,
+      remaining: budget.limit - budget.used,
+      resetAt: new Date(testUntil).toISOString(),
+    };
+  };
+  const allowance = async (
+    name: AllowanceName,
+    authorization: string,
+    spend: boolean,
+  ): Promise<Allowance> => {
+    const testing = await testAllowance(name, authorization, spend);
+    if (testing) return testing;
+    const response = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: "POST",
+      headers: {
+        apikey: key,
+        Authorization: authorization,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ spend }),
+      signal: AbortSignal.timeout(10_000),
+    }).catch(() => null);
+    const value = response?.ok ? await response.json().catch(() => null) : null;
+    if (name === "ai_thread_quota" && response?.status === 404)
+      throw new AgentError(
+        503,
+        "THREAD_READING_UNAVAILABLE",
+        "Pako can't read replies here yet. This server still needs its reply reading update.",
+      );
+    if (
+      !value ||
+      typeof value.allowed !== "boolean" ||
+      !Number.isInteger(value.limit) ||
+      value.limit <= 0 ||
+      !Number.isInteger(value.remaining) ||
+      value.remaining < 0 ||
+      value.remaining > value.limit ||
+      typeof value.resetAt !== "string" ||
+      !Number.isFinite(Date.parse(value.resetAt))
+    )
+      throw new AgentError(
+        503,
+        "QUOTA_UNAVAILABLE",
+        "AI usage limits are temporarily unavailable. Please retry shortly.",
+      );
+    return value;
+  };
   return {
     /** Sent to browsers by /api/config; holds only the public URL. */
     config: { supabaseUrl: publicUrl, supabaseKey: key },
     /** Used by this server only; may be a private address. */
     internalUrl: url,
-    async quota(
-      authorization: string,
-      spend = false,
-    ): Promise<AgentQuota & { allowed: boolean }> {
-      if (testEnabled && Date.now() < testUntil) {
-        const token = authorization.match(/^Bearer (.+)$/)?.[1];
-        if (token) {
-          const { data, error } = await client.auth.getUser(token);
-          if (
-            !error &&
-            data.user?.email_confirmed_at &&
-            data.user.email?.toLowerCase() === testEmail
-          ) {
-            const allowed = testUsed < 250;
-            if (spend && allowed) testUsed++;
-            return {
-              allowed,
-              limit: 250,
-              remaining: 250 - testUsed,
-              resetAt: new Date(testUntil).toISOString(),
-            };
-          }
-        }
-      }
-      const response = await fetch(`${url}/rest/v1/rpc/ai_quota`, {
-        method: "POST",
-        headers: {
-          apikey: key,
-          Authorization: authorization,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ spend }),
-        signal: AbortSignal.timeout(10_000),
-      }).catch(() => null);
-      const value = response?.ok
-        ? await response.json().catch(() => null)
-        : null;
-      if (
-        !value ||
-        typeof value.allowed !== "boolean" ||
-        !Number.isInteger(value.limit) ||
-        value.limit <= 0 ||
-        !Number.isInteger(value.remaining) ||
-        value.remaining < 0 ||
-        value.remaining > value.limit ||
-        typeof value.resetAt !== "string" ||
-        !Number.isFinite(Date.parse(value.resetAt))
-      )
-        throw new AgentError(
-          503,
-          "QUOTA_UNAVAILABLE",
-          "AI usage limits are temporarily unavailable. Please retry shortly.",
-        );
-      return value;
-    },
+    quota: (authorization: string, spend = false) =>
+      allowance("ai_quota", authorization, spend),
+    spendReplyReading: (authorization: string) =>
+      allowance("ai_thread_quota", authorization, true),
     async authorize(header: string | undefined, charge = true) {
       const token = header?.match(/^Bearer (.+)$/)?.[1];
       if (!token)
