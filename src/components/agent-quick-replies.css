@@ -12,7 +12,11 @@
   line-height: 1.45;
   animation: quick-reply-rise 360ms var(--ease-out) both;
 }
-/* A handful of replies wraps instead of scrolling, so every one stays in view. */
+/* A handful of replies wraps instead of scrolling, so every one stays in view.
+   Next steps and changes to the search each keep their own row. */
+.agent-quick-reply-list + .agent-quick-reply-list {
+  margin-top: var(--space-label);
+}
 .agent-quick-reply-list.ai-suggestions {
   flex-wrap: wrap;
   gap: var(--space-label);

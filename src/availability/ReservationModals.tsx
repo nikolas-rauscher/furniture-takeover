@@ -29,7 +29,7 @@ export function RequestModal({
   const [day, setDay] = useState(days[1].day);
   const [error, setError] = useState("");
   return (
-    <Modal title="Ask to reserve" onClose={onClose}>
+    <Modal title="Request reservation" onClose={onClose}>
       <div className="reservation-intro">
         <Pako mood="listen" size={64} />
         <p>
@@ -43,8 +43,7 @@ export function RequestModal({
             <Clock size={18} />
           </span>
           <span>
-            <strong>The seller has {SELLER_REPLY_HOURS} h to confirm.</strong>{" "}
-            It takes them one tap.
+            <strong>The seller can confirm within {SELLER_REPLY_HOURS} h.</strong>
           </span>
         </li>
         <li>
@@ -53,7 +52,7 @@ export function RequestModal({
           </span>
           <span>
             <strong>
-              Once confirmed, it&apos;s held for you for {HOLD_HOURS} h
+              Once confirmed, it&apos;s reserved for you for {HOLD_HOURS} h
             </strong>{" "}
             so you can pick it up
             {listing.pickupPoint ? ` at ${listing.pickupPoint.name}` : ""}.
@@ -65,7 +64,7 @@ export function RequestModal({
           </span>
           <span>
             <strong>No reply within {SELLER_REPLY_HOURS} h?</strong> The listing
-            is hidden, and Pako helps you find something similar.
+            is hidden. You can look for similar items.
           </span>
         </li>
       </ol>
@@ -85,7 +84,7 @@ export function RequestModal({
         ))}
       </fieldset>
       <div className="reservation-message">
-        <span>This goes to the seller in your chat:</span>
+        <span>Message to seller</span>
         <p>{reservationRequestMessage(day)}</p>
       </div>
       <p className="availability-open-questions">{OPEN_QUESTIONS}</p>
@@ -136,8 +135,8 @@ export function CancelModal({
       <p className="modal-intro">
         {held
           ? `${listing.title} will be available to other buyers again, starting with the first person on the waitlist.`
-          : `The seller will no longer see your request for ${listing.title}.`}{" "}
-        A short message goes to the seller.
+          : `Your request for ${listing.title} will be cancelled.`}{" "}
+        We'll send the seller a message.
       </p>
       {error && (
         <p className="form-error" role="alert">
@@ -146,7 +145,7 @@ export function CancelModal({
       )}
       <div className="modal-actions">
         <Button className="button secondary" disabled={busy} onClick={onClose}>
-          Keep it
+          {held ? "Keep reservation" : "Keep request"}
         </Button>
         <Button
           className="button danger"

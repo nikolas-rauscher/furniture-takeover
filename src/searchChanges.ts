@@ -9,18 +9,18 @@ function budgetSentence(maxPrice: number) {
 
 function sourceSentence(source: string) {
   if (source === "All") return "I'm searching all sources.";
-  return `I'm searching ${source === "takeover" ? "Takeover" : source} only.`;
+  return `I'm searching ${source} only.`;
 }
 
 function pickupSentence(pickupBy: string) {
   return pickupBy
-    ? `You can collect by ${shortDate(pickupBy)}.`
-    : "I removed the collection date.";
+    ? `I'll look for pickup by ${shortDate(pickupBy)}.`
+    : "I removed the pickup deadline.";
 }
 
 function conditionSentence(condition: string) {
   return condition === "All"
-    ? "Any condition is fine."
+    ? "I'll include any condition."
     : `I'm looking for items in ${condition.toLowerCase()} condition.`;
 }
 
@@ -31,7 +31,7 @@ export function searchChangeSummary(patch: AgentPreferencesPatch) {
   return [
     query !== undefined && `I'm now looking for “${query}”.`,
     maxPrice !== undefined && budgetSentence(maxPrice),
-    radius !== undefined && `I set the distance to ${radius} km.`,
+    radius !== undefined && `I set your distance limit to ${radius} km.`,
     pickupBy !== undefined && pickupSentence(pickupBy),
     condition !== undefined && conditionSentence(condition),
     source !== undefined && sourceSentence(source),

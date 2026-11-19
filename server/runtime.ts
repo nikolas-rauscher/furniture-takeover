@@ -960,7 +960,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
         if (finishReason === "tool-calls")
           throw new RunError(
             "STEP_LIMIT",
-            "The agent reached its eight-step limit. Try a narrower request.",
+            "I couldn't finish the comparison.",
           );
         if (refinement || !text || finishReason !== "stop")
           throw new RunError(

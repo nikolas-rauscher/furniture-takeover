@@ -38,7 +38,7 @@ export default function ThreadBanner({
       <p className="chip thread-reservation-chip" role="status">
         <CalendarCheck size={15} aria-hidden="true" />
         {context.role === "seller"
-          ? `Held for this buyer until ${formatDeadline(reservation.holdUntil!)}`
+          ? `Reserved for this buyer until ${formatDeadline(reservation.holdUntil!)}`
           : `Reserved for you until ${formatDeadline(reservation.holdUntil!)}`}
       </p>
     );
@@ -46,8 +46,8 @@ export default function ThreadBanner({
     return (
       <p className="chip thread-reservation-chip" role="status">
         <Clock size={15} aria-hidden="true" />
-        Reservation requested · the seller confirms by{" "}
-        {formatDeadline(reservation.replyBy)}
+        Reservation requested · the seller has until{" "}
+        {formatDeadline(reservation.replyBy)} to respond
       </p>
     );
   const left = formatTimeLeft(reservation.replyBy, now);
@@ -69,14 +69,14 @@ export default function ThreadBanner({
           disabled={busy}
           onClick={onConfirm}
         >
-          Confirm & hold {HOLD_HOURS} h
+          Confirm reservation · {HOLD_HOURS} h
         </Button>
         <Button
           className="button secondary small"
           disabled={busy}
           onClick={onDecline}
         >
-          It&apos;s gone
+          Mark sold
         </Button>
       </div>
       <p className="availability-open-questions">{OPEN_QUESTIONS}</p>

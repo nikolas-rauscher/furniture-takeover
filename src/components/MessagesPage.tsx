@@ -11,7 +11,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { threadDealSnapshot, type DealTerms } from "../../shared/deal";
+import {
+  nextPickupBuyer,
+  threadDealSnapshot,
+  type DealTerms,
+} from "../../shared/deal";
+import { availableAgainMessage } from "../../shared/dealMessages";
 import type { SellerConversation } from "../../shared/messages";
 import { sendMessage, setConversationDeleted } from "../api/messages";
 import { PendingMessage } from "../pendingMessage";
@@ -21,6 +26,7 @@ import { attachedTermsNote, threadDealNote } from "../dealWords";
 import { useDemoDeal } from "../hooks/useDemoDeal";
 import type { DemoInbox } from "../hooks/useDemoInbox";
 import { useMediaQuery } from "../hooks/useMediaQuery";
+import { useNow } from "../hooks/useNow";
 import { useOnline } from "../hooks/useOnline";
 import { usePageVisible } from "../hooks/usePageVisible";
 import type { ThreadReads } from "../hooks/useThreadReads";
@@ -28,6 +34,7 @@ import { demoInboxThread, isUnread } from "../inboxActivity";
 import { newestAt } from "../inboxDeals";
 import { demoThreadMessage, type ThreadMessage } from "../pakoThread";
 import { demoTurnCache } from "../pakoTurnCache";
+import DemoPickupClock from "./DemoPickupClock";
 import InboxEmpty from "./InboxEmpty";
 import {
   ChatPartner,
@@ -36,7 +43,11 @@ import {
   InboxLoading,
   usePakoDrafts,
 } from "./ChatParts";
-import { useThreadDeal, type ThreadEvent } from "./ThreadDeal";
+import {
+  useThreadDeal,
+  type DealStatusChange,
+  type ThreadEvent,
+} from "./ThreadDeal";
 import { useThreadPako, type PakoReading } from "./ThreadPako";
 import {
   CARD_IN_CONVERSATION,
@@ -73,10 +84,7 @@ export type MessagesProps = {
   /** The campus meeting point near where the student searches from. */
   homePoint?: string;
   /** Applies a listing status a deal change brought, through the app's one status path. */
-  onListingStatus: (
-    listingId: string,
-    status: "active" | "reserved",
-  ) => Promise<void>;
+  onListingStatus: (listingId: string, status: DealStatusChange) => Promise<void>;
   onBeforeSend?: (listingId: string, role: "buyer" | "seller") => void;
   onSent?: (
     listingId: string,
@@ -90,6 +98,15 @@ export type MessagesProps = {
  * there, such as a follow-up; each tap is a new request.
  */
 export type ThreadRequest = { id: string; draft?: string };
+/**
+ * A released item offered to the next buyer: their thread opens with Pako's
+ * message, and Send records it as offered again.
+ */
+export type OfferAgain = {
+  threadKey: string;
+  releasedConversationId: string;
+  draft: string;
+};
 /** The inbox the app runs: local, signed in, or waiting for a sign-in. */
 export type MessagesInboxProps =
   | { mode: "demo"; inbox: DemoInbox; reads: ThreadReads }
@@ -122,19 +139,28 @@ const threadMessages = (
 /** A local thread's deal changes: each with the message that carried it, and news nobody wrote. */
 function threadEvents(conversation: SellerConversation): ThreadEvent[] {
   return [
-    ...conversation.messages.flatMap((message) =>
-      message.deal
-        ? [
-            {
-              id: `${message.id}:deal`,
-              kind: message.deal.kind,
-              terms: message.deal.terms,
-              messageId: message.id,
-              at: message.createdAt,
-            },
-          ]
-        : [],
-    ),
+    ...conversation.messages.flatMap((message): ThreadEvent[] => {
+      const carried = { messageId: message.id, at: message.createdAt };
+      if (message.deal)
+        return [
+          {
+            id: `${message.id}:deal`,
+            kind: message.deal.kind,
+            terms: message.deal.terms,
+            ...carried,
+          },
+        ];
+      if (message.pickupEvent)
+        return [
+          {
+            id: `${message.id}:pickup`,
+            ...message.pickupEvent,
+            actor: message.sender,
+            ...carried,
+          },
+        ];
+      return [];
+    }),
     ...(conversation.systemEvents ?? []).map((event, index) => ({
       id: `${conversation.id}:news:${index}`,
       kind: event.kind,
@@ -320,7 +346,34 @@ function DemoMessagesPage({
   const cardInConversation = useMediaQuery(CARD_IN_CONVERSATION);
   const online = useOnline();
   const pageVisible = usePageVisible();
+  const now = useNow(true);
   const visible = Boolean(current) && (!phone || showConversation);
+  const [offerAgain, setOfferAgain] = useState<OfferAgain>();
+  /** After a released pickup, the next buyer in the inbox who wrote about the listing. */
+  const released = role === "seller" && product?.status === "active" ? saved : undefined;
+  const nextThread =
+    released?.deal &&
+    nextPickupBuyer(
+      released.deal,
+      conversations.filter((item) => item.messages.length > 0),
+    );
+  const nextBuyer = released && nextThread && {
+    name: buyerName(nextThread.buyerKey),
+    onOffer: () => {
+      const key = threadKeyOf(nextThread);
+      const draft = availableAgainMessage(nextThread.title);
+      setOfferAgain({ threadKey: key, releasedConversationId: released.id, draft });
+      setSelected(key);
+      setShowConversation(true);
+      setDrafts((items) => ({ ...items, [`${key}:seller`]: draft }));
+    },
+  };
+  /** The thread's booked pickup, which the developer's demo clock jumps around. */
+  const bookedPickup =
+    deal.deal?.status === "agreed" ? deal.deal.agreed?.terms.pickupAt : null;
+  /** The composer holds the offer of a released item to this thread's buyer. */
+  const offeringAgain =
+    offerAgain?.threadKey === selected && role === "seller" ? offerAgain : undefined;
   const assistant = useThreadPako({
     reading,
     thread:
@@ -354,6 +407,8 @@ function DemoMessagesPage({
     enabled: true,
     visible,
     homePoint,
+    now,
+    nextBuyer,
     onStatusChange: onListingStatus,
     onWrite: setText,
   });
@@ -398,6 +453,8 @@ function DemoMessagesPage({
     role === "buyer" &&
     selected === listingId &&
     text === initialMessage;
+  /** Pako's offer of a released item to this buyer, still as he wrote it. */
+  const offerAgainDraft = offeringAgain?.draft === text;
   /** Only the opening offer from the search chat carries terms. */
   const openingTerms = appDraft ? initialTerms : undefined;
   // Terms travel with the text from Pako's option or the opening offer while the deal can take them.
@@ -426,8 +483,23 @@ function DemoMessagesPage({
     inbox.put(updated);
     return messageId;
   }
+  /** The thread's own path for the composed text: offered again, with terms, or plain. */
+  function sendComposed(thread: SellerConversation) {
+    const withTerms = attached && termsNote?.states ? attached : null;
+    if (offeringAgain)
+      return threadDeal.sendPickup(
+        {
+          type: "offer_again",
+          releasedConversationId: offeringAgain.releasedConversationId,
+        },
+        text.trim(),
+      );
+    return withTerms
+      ? threadDeal.sendTerms(withTerms, text.trim())
+      : sendPlain(thread);
+  }
   async function send(thread: SellerConversation) {
-    const fromPako = appDraft || assistant.draftedByPako;
+    const fromPako = appDraft || offerAgainDraft || assistant.draftedByPako;
     const celebrates = Boolean(openingTerms) || assistant.celebrates;
     const withTerms = attached && termsNote?.states ? attached : null;
     setBusy(true);
@@ -435,9 +507,8 @@ function DemoMessagesPage({
     setError("");
     try {
       onBeforeSend?.(thread.listingId, role);
-      const messageId = withTerms
-        ? await threadDeal.sendTerms(withTerms, text.trim())
-        : await sendPlain(thread);
+      const messageId = await sendComposed(thread);
+      if (offeringAgain) setOfferAgain(undefined);
       onSent?.(thread.listingId, role, text.trim());
       if (fromPako) pakoDrafts.remember(messageId);
       if (celebrates && !withTerms)
@@ -571,6 +642,9 @@ function DemoMessagesPage({
                     onChange={setRole}
                   />
                 )}
+                {developerMode && bookedPickup && (
+                  <DemoPickupClock pickupAt={bookedPickup} now={now} />
+                )}
               </header>
               {threadBanner?.({
                 listingId: current.listingId,
@@ -582,6 +656,7 @@ function DemoMessagesPage({
                 threadKey={threadKey}
                 messages={messages}
                 otherName={otherName}
+                role={role}
                 loaded={loaded || !saved}
                 drafted={pakoDrafts.drafted}
                 events={events}
@@ -608,7 +683,7 @@ function DemoMessagesPage({
                 busy={busy}
                 disabled={false}
                 error={sendError || error}
-                pakoDrafted={appDraft || assistant.draftedByPako}
+                pakoDrafted={appDraft || offerAgainDraft || assistant.draftedByPako}
                 tools={assistant.askMenu}
                 terms={termsNote}
                 onTextChange={setText}

@@ -675,6 +675,233 @@ button.deal-strip:hover {
   color: var(--muted);
 }
 
+/* Pickup day: the countdown leads, then what and where, the other student's news,
+   Pako's line and the actions the pickup allows now. */
+.pickup-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--selected);
+  color: var(--blue-dark);
+}
+.pickup-head-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: var(--on-primary);
+}
+.pickup-head-words {
+  display: grid;
+  min-width: 0;
+  line-height: 1.3;
+}
+.pickup-countdown {
+  font-size: var(--type-item);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.pickup-head-words > span {
+  color: var(--ink);
+  font-size: var(--type-label);
+  font-weight: 600;
+}
+.pickup-card[data-phase="overdue"] .pickup-head {
+  background: var(--butter);
+  color: var(--ink);
+}
+.pickup-card[data-phase="overdue"] .pickup-head-icon {
+  background: var(--kraft-deep);
+}
+.pickup-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.pickup-facts > div {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+  padding: 9px 12px;
+  border-radius: 14px;
+  background: var(--canvas);
+}
+.pickup-facts dt {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 600;
+}
+.pickup-facts dt svg {
+  color: var(--blue);
+}
+.pickup-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--type-label);
+  font-weight: 700;
+  line-height: 1.35;
+}
+.pickup-facts dd.deal-card-term-note {
+  font-size: var(--type-caption);
+  font-weight: 500;
+}
+/* The other student's news stands out on a lip; the student's own stays quiet. */
+.pickup-signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pickup-signal {
+  padding: 7px 12px;
+  border: 2px solid var(--blue);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: 0 2px 0 var(--blue-dark);
+  color: var(--blue-dark);
+  font-size: var(--type-label);
+  font-weight: 800;
+}
+.pickup-signal[data-mine] {
+  border-color: transparent;
+  background: var(--canvas);
+  box-shadow: none;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 700;
+}
+/* The booked time and the new one side by side until the other side answers. */
+.pickup-compare {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: 8px;
+}
+.pickup-compare > p {
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 2px solid var(--card-line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.pickup-compare > p[data-side="current"] {
+  background: var(--canvas);
+  color: var(--muted);
+}
+.pickup-compare > p[data-side="proposed"] {
+  border-color: var(--blue);
+  box-shadow: 0 2px 0 var(--blue-dark);
+  color: var(--blue-dark);
+}
+.pickup-compare small {
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 600;
+}
+.pickup-compare strong {
+  overflow-wrap: anywhere;
+  font-size: var(--type-label);
+}
+.pickup-compare-arrow {
+  align-self: center;
+  color: var(--muted);
+}
+/* Pako's line for the moment, in a small bubble beside him. */
+.pickup-pako {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+.pickup-pako-bubble {
+  position: relative;
+  padding: 9px 12px;
+  border: 2px solid var(--card-line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 2px 0 var(--lip);
+  font-size: var(--type-label);
+  font-weight: 600;
+  line-height: 1.45;
+}
+.pickup-pako-bubble::before {
+  content: "";
+  position: absolute;
+  top: calc(50% - 6px);
+  left: -8px;
+  width: 12px;
+  height: 12px;
+  border-bottom: 2px solid var(--card-line);
+  border-left: 2px solid var(--card-line);
+  border-bottom-left-radius: 3px;
+  background: var(--surface);
+  transform: rotate(45deg);
+}
+/* The exact message stays readable in full before it goes out. */
+.pickup-card .deal-card-sends {
+  display: block;
+  overflow: visible;
+}
+.pickup-card .deal-card-choices > .pickup-choice[data-primary] {
+  grid-area: primary;
+}
+.pickup-card .deal-card-choices > .pickup-actions {
+  grid-area: others;
+}
+.pickup-choice {
+  display: inline-grid;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+}
+.pickup-choice[data-primary] {
+  display: grid;
+}
+.pickup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0 18px;
+}
+.pickup-actions > .pickup-choice > .button.quiet {
+  min-height: 44px;
+  padding-inline: 0;
+  justify-content: flex-start;
+}
+.pickup-reason {
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 500;
+  line-height: 1.4;
+}
+.pickup-actions .pickup-reason {
+  max-width: 22ch;
+  margin-top: -6px;
+}
+@container (min-width: 640px) {
+  .pickup-card .deal-card-choices:has(> .pickup-choice[data-primary]) {
+    grid-template-columns: minmax(220px, auto) 1fr;
+    grid-template-areas: "primary others" "sends sends";
+    align-items: center;
+    column-gap: 20px;
+  }
+}
+
 @media (max-width: 760px) {
   .thread-deal {
     margin-top: 8px;

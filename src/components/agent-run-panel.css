@@ -631,6 +631,12 @@
 .search-conversation .agent-change-line-reason > p {
   margin: 0;
 }
+.search-conversation .agent-change-line > .agent-change-line-notice {
+  flex-basis: 100%;
+  padding: 0 10px 8px 0;
+  color: var(--muted);
+  font-size: var(--type-support);
+}
 .agent-run-panel.conversation-agent .agent-run-identity {
   margin-bottom: 4px;
   font-size: 12px;

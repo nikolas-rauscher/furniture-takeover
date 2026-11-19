@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
+import { checkDemoContact, initializeDemoModeration } from "./demo-admin.ts";
 import { AgentError } from "./errors.ts";
 import type { SellerConversation, ChatMessage } from "../shared/messages.ts";
 
@@ -49,6 +50,7 @@ const inputSchema = z
 /** Local prototype workspace only. Seller mode is a preview, not authentication. */
 export function createMessagesStore(path: string) {
   const db = new DatabaseSync(path);
+  initializeDemoModeration(db);
   db.exec(
     "CREATE TABLE IF NOT EXISTS conversations (id TEXT PRIMARY KEY, workspace TEXT NOT NULL, listing_id TEXT NOT NULL, payload TEXT NOT NULL, UNIQUE(workspace, listing_id))",
   );
@@ -129,6 +131,7 @@ export function createMessagesStore(path: string) {
       const duplicate = peers.find((c) =>
         c.messages.some((m) => m.id === value.messageId),
       );
+      if (!duplicate) checkDemoContact(db, workspace, value.listingId);
       let statusChange: "active" | "reserved" | undefined;
       let pickupStatusChange: PickupStatusChange | undefined;
       if (duplicate) {

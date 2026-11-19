@@ -78,7 +78,7 @@ export default function HomeDeals({
                   aria-label={`Open the conversation about ${deal.title}`}
                   onClick={deal.onOpen}
                 >
-                  Open
+                  Open chat
                 </Button>
               )}
             </article>

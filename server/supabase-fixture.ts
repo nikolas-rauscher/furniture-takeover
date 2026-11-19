@@ -18,7 +18,11 @@ export const buyer = "11111111-1111-4111-8111-111111111111",
 export async function marketplace() {
   const db = new PGlite();
   await db.exec(`create role anon; create role authenticated;
- create schema auth; create table auth.users(id uuid primary key);
+ create schema auth; create table auth.users(
+  id uuid primary key, instance_id uuid, aud text, role text, email text, encrypted_password text,
+  email_confirmed_at timestamptz, banned_until timestamptz, raw_app_meta_data jsonb,
+  raw_user_meta_data jsonb, created_at timestamptz, updated_at timestamptz
+ );
  create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
  grant usage on schema auth to anon,authenticated;
  create schema storage; create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
@@ -35,7 +39,7 @@ export async function marketplace() {
         "utf8",
       ),
     );
-  await db.query("insert into auth.users values ($1),($2),($3)", [
+  await db.query("insert into auth.users(id) values ($1),($2),($3)", [
     buyer,
     seller,
     stranger,

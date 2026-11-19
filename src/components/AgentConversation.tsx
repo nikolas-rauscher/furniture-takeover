@@ -62,7 +62,7 @@ export default function AgentConversation({
   const headingId = useId();
   const viewport = useRef<HTMLDivElement>(null);
   // Messages dissolve into the header and the composer instead of being cut off there; the
-  // jump-to-latest pill rests inside the lower fade. No shrink or blur: a whole message
+  // jump-to-latest pill rests in the lower fade's right corner. No shrink or blur: a whole message
   // still in view looked out of focus.
   useScrollFade(viewport, { size: 48, shrink: 0, blur: 0 });
   const turns = state.id ? [...state.history, state] : [];
@@ -177,7 +177,7 @@ export default function AgentConversation({
           <div className="chat-composer-content">
             {footer || (
               <span className="quiet-caption">
-                Choose an option or reply above.
+                Choose an answer or type your own.
               </span>
             )}
           </div>
@@ -185,7 +185,7 @@ export default function AgentConversation({
             className="chat-jump-latest"
             size="sm"
             variant="outline"
-            aria-label="Scroll to the latest messages"
+            aria-label="Latest messages"
             behavior={motionBehavior()}
             onClick={(event) => focusConversation(event.currentTarget)}
           >

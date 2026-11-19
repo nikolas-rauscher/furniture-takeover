@@ -55,24 +55,26 @@ export default function AgentWebResults({
   return (
     <section
       className="agent-web-results agent-search-result-message"
-      aria-label="Web search results"
+      aria-label="Results from other sites"
       aria-busy={searching}
     >
       <h3>
         <Globe size={14} aria-hidden="true" />
-        Web search
+        Other sites
       </h3>
       {(!failed || sources.length > 0) && children}
       {(searching || reviewing) && (
         <p className="agent-web-progress">
           <LoaderCircle size={14} animate aria-hidden="true" />
-          {searching ? "Searching the web…" : "Reviewing web results…"}
+          {searching
+            ? "I’m checking other sites…"
+            : "I’m reading what I found…"}
         </p>
       )}
       {failed && (
         <div className="agent-web-recovery">
           <p role="status">
-            {sources.length > 0 && "Some results are available. "}
+            {sources.length > 0 && "Some results are ready. "}
             {latest.failure?.message ??
               "Web search could not finish. Try again shortly."}
           </p>
@@ -83,17 +85,17 @@ export default function AgentWebResults({
           )}
         </div>
       )}
-      {interrupted && <p className="agent-web-note">Web search was stopped.</p>}
+      {interrupted && (
+        <p className="agent-web-note">I stopped checking other sites.</p>
+      )}
       {/* The agent's own summary already says so when it wrote one. */}
       {empty && !children && (
-        <p className="agent-web-note">
-          No matching web results were returned for this search.
-        </p>
+        <p className="agent-web-note">I didn’t find a match on other sites.</p>
       )}
       {!awaitingSummary && <AgentSources sources={sources} />}
       {!awaitingSummary && sources.length > 0 && (
         <p className="agent-web-note">
-          Search snippets · Check price and availability on the source.
+          Check price and availability on the listing page.
         </p>
       )}
     </section>

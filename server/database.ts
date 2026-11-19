@@ -3,8 +3,14 @@ import { isLegacyCampusPickupPoint } from "../shared/campusPickupPoints.ts";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { adminIllustrations } from "../shared/admin.ts";
 import { demoListings } from "../shared/demoListings.ts";
 import type { Product } from "../shared/marketplace.ts";
+import {
+  adminFailure,
+  createDemoAdmin,
+  initializeDemoModeration,
+} from "./demo-admin.ts";
 import { AgentError } from "./errors.ts";
 import { validateRequest } from "./validation.ts";
 
@@ -12,10 +18,10 @@ export type ListingsStore = {
   listDemo: () => Product[];
   seedDemo: () => Product[];
   updateDemo: (listings: unknown) => Product[];
+  admin: ReturnType<typeof createDemoAdmin>;
   close: () => void;
 };
 
-const demoIds = new Set(demoListings.map((listing) => listing.id));
 const invalidListing = () =>
   new AgentError(
     400,
@@ -48,11 +54,11 @@ function number(value: unknown, max: number): number {
   return value;
 }
 
-function validateDemoListing(value: unknown): Product {
+function validateDemoListing(value: unknown, existing: Product): Product {
   if (
     !record(value) ||
     typeof value.id !== "string" ||
-    !demoIds.has(value.id) ||
+    value.id !== existing.id ||
     value.demo !== true ||
     value.own !== true ||
     value.source !== "takeover"
@@ -71,9 +77,8 @@ function validateDemoListing(value: unknown): Product {
   )
     throw invalidListing();
   const image = text(value.image, 2_796_240, true);
-  const seed = demoListings.find((listing) => listing.id === value.id);
   if (
-    image !== seed?.image &&
+    !adminIllustrations.includes(image) &&
     !/^\/images\/[a-zA-Z0-9_-]+\.(?:jpe?g|png|webp)$/.test(image)
   ) {
     // Reuse the same bounded raster-photo validation as the upload endpoint.
@@ -95,7 +100,7 @@ function validateDemoListing(value: unknown): Product {
       images: value.images.map((photo) => {
         const candidate = text(photo, 2_796_240, true);
         if (
-          candidate !== seed?.image &&
+          !adminIllustrations.includes(candidate) &&
           !/^\/images\/[a-zA-Z0-9_-]+\.(?:jpe?g|png|webp)$/.test(candidate)
         ) {
           try {
@@ -119,22 +124,22 @@ function validateDemoListing(value: unknown): Product {
     ...(Array.isArray(value.tags)
       ? { tags: value.tags.slice(0, 3).map((tag) => text(tag, 40, true)) }
       : {}),
-    price: number(value.price, 10_000),
+    price: number(value.price, Math.max(10_000, existing.price)),
     category: text(value.category, 120),
     image,
     ...(images ? { images } : {}),
-    location: text(value.location, 120, true),
-    ...(value.location === seed?.location && seed?.pickupPoint
-      ? { pickupPoint: seed.pickupPoint }
+    location: text(value.location, 180, true),
+    ...(value.location === existing.location && existing.pickupPoint
+      ? { pickupPoint: existing.pickupPoint }
       : {}),
     distance: number(value.distance, 500),
-    condition: text(value.condition, 120),
+    condition: text(value.condition, 180),
     dimensions: text(value.dimensions, 160),
     source: "takeover",
     seller: text(value.seller, 120, true),
     initials: text(value.initials, 8, true),
-    description: text(value.description, 4000, true),
-    available: text(value.available, 160),
+    description: text(value.description, 4000),
+    available: text(value.available, 300),
     pickupBy,
     status: value.status as Product["status"],
     own: true,
@@ -182,14 +187,20 @@ export function createListingsStore(filename: string): ListingsStore {
       payload TEXT NOT NULL CHECK (json_valid(payload))
     );
   `);
+  initializeDemoModeration(database);
   const read = database.prepare(
-    "SELECT payload FROM listings WHERE demo = 1 ORDER BY rowid",
+    `SELECT l.payload FROM listings l LEFT JOIN demo_listing_admin a ON a.id=l.id
+      WHERE l.demo=1 AND coalesce(a.hidden,0)=0 ORDER BY l.rowid`,
   );
   const insert = database.prepare(
     "INSERT INTO listings (id, demo, payload) VALUES (?, 1, ?) ON CONFLICT(id) DO NOTHING",
   );
-  const exists = database.prepare(
-    "SELECT id FROM listings WHERE id = ? AND demo = 1",
+  const stored = database.prepare(
+    `SELECT l.payload,a.edited FROM listings l LEFT JOIN demo_listing_admin a ON a.id=l.id
+      WHERE l.id=? AND l.demo=1`,
+  );
+  const retiredOrHidden = database.prepare(
+    "SELECT 1 FROM demo_listing_admin WHERE id=? AND hidden=1",
   );
   const update = database.prepare(
     "UPDATE listings SET payload = ? WHERE id = ? AND demo = 1",
@@ -206,27 +217,28 @@ export function createListingsStore(filename: string): ListingsStore {
           (seedOrder.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
           (seedOrder.get(right.id) ?? Number.MAX_SAFE_INTEGER),
       );
-  const transaction = (write: () => void) => {
+  const transaction = <T>(write: () => T): T => {
     database.exec("BEGIN IMMEDIATE");
     try {
-      write();
+      const result = write();
       database.exec("COMMIT");
+      return result;
     } catch (error) {
       database.exec("ROLLBACK");
       throw error;
     }
   };
+  const admin = createDemoAdmin(database, transaction);
   return {
     listDemo,
+    admin,
     seedDemo() {
       transaction(() => {
         for (const listing of demoListings) {
           insert.run(listing.id, JSON.stringify(listing));
           // Only migrate bundled stock photos; preserve uploads and all user edits.
-          const row = database
-            .prepare("SELECT payload FROM listings WHERE id = ?")
-            .get(listing.id);
-          if (row) {
+          const row = stored.get(listing.id);
+          if (row && !row.edited) {
             const existing = JSON.parse(String(row.payload)) as Product;
             if (
               ((!existing.pickupPoint &&
@@ -249,15 +261,27 @@ export function createListingsStore(filename: string): ListingsStore {
     updateDemo(value) {
       if (!Array.isArray(value) || value.length > demoListings.length)
         throw invalidListing();
-      const listings = value.map(validateDemoListing);
-      if (
-        new Set(listings.map((listing) => listing.id)).size !== listings.length
-      )
-        throw invalidListing();
       transaction(() => {
+        const seen = new Set<string>();
         // Validate the complete batch before updating any row.
-        for (const listing of listings)
-          if (!exists.get(listing.id)) throw invalidListing();
+        const listings = value.map((item) => {
+          if (!record(item) || typeof item.id !== "string" || seen.has(item.id))
+            throw invalidListing();
+          seen.add(item.id);
+          const row = stored.get(item.id);
+          if (retiredOrHidden.get(item.id))
+            throw adminFailure("admin_listing_hidden", 409);
+          if (!row) throw invalidListing();
+          const existing = JSON.parse(String(row.payload)) as Product;
+          const listing = validateDemoListing(item, existing);
+          return row.edited
+            ? {
+                ...listing,
+                seller: existing.seller,
+                initials: existing.initials,
+              }
+            : listing;
+        });
         for (const listing of listings)
           update.run(JSON.stringify(listing), listing.id);
       });

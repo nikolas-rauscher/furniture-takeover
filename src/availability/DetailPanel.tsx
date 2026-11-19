@@ -133,13 +133,13 @@ function PanelContent({
           tone="canvas"
           title={
             view.position
-              ? `You're #${view.position} in line.`
+              ? `Position ${view.position} on the waitlist`
               : "Someone reserved it."
           }
           detail={
             view.position
-              ? "If their reservation ends, you get the first chance to reserve it."
-              : "Join the waitlist to get the first chance if their reservation ends."
+              ? "If the item becomes available, the first person on the waitlist gets priority."
+              : "Join the waitlist. If the item becomes available, the first person on it gets priority."
           }
         />
         {view.position ? (
@@ -195,12 +195,12 @@ function PanelContent({
         onClick={onRequest}
       >
         <CalendarCheck size={18} aria-hidden="true" />
-        Ask to reserve
+        Request reservation
       </Button>
       {messageSeller(true)}
       <ul className="availability-rules" aria-label="How reserving works">
-        <li className="chip">Seller confirms within {SELLER_REPLY_HOURS} h</li>
-        <li className="chip">Held for {HOLD_HOURS} h</li>
+        <li className="chip">The seller has {SELLER_REPLY_HOURS} h to respond</li>
+        <li className="chip">Reserved for {HOLD_HOURS} h</li>
       </ul>
       <p className="availability-open-questions">{OPEN_QUESTIONS}</p>
     </>

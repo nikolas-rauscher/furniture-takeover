@@ -1,12 +1,17 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import {
   dealPhase,
+  pickupDay,
   type Deal,
   type DealAction,
   type DealEventKind,
   type DealPhase,
   type DealRole,
   type DealTerms,
+  type LateMinutes,
+  type PickupAction,
+  type PickupEvent,
+  type PickupStatusChange,
 } from "../../shared/deal";
 import type { Product } from "../../shared/marketplace";
 import type { ThreadTurn } from "../../shared/threadTurn";
@@ -20,6 +25,7 @@ import {
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { useSaved } from "../hooks/useSaved";
 import type { ThreadMoment } from "../pakoMoods";
+import type { PickupSend } from "../pickupOptions";
 import type { ThreadMessage } from "../pakoThread";
 import { PendingMessage } from "../pendingMessage";
 import {
@@ -35,19 +41,25 @@ import OfferEditor from "./OfferEditor";
 /** A change to the deal as the reading student sees it in the thread. */
 export type ThreadEvent = {
   id: string;
-  kind: DealEventKind;
+  kind: DealEventKind | PickupEvent["kind"];
   terms: DealTerms | null;
   /** The message that carried it; null for news nobody wrote, such as another buyer's deal. */
   messageId: string | null;
   at: string;
+  /** Pickup-day news says who made it. */
+  actor?: DealRole | null;
+  minutes?: LateMinutes;
 };
+
+/** A listing status a deal change brought: reserved on agreement, back on sale, or sold. */
+export type DealStatusChange = "active" | "reserved" | PickupStatusChange;
 
 export type DealResult = {
   deal: Deal;
-  statusChange?: "active" | "reserved";
+  statusChange?: DealStatusChange;
 };
 
-/** One thread's deal from either inbox: the shared record and the one way to change it. */
+/** One thread's deal from either inbox: the shared record and the ways to change it. */
 export type DealController = {
   deal: Deal | null;
   loaded: boolean;
@@ -57,7 +69,18 @@ export type DealController = {
     text: string,
     messageId?: string,
   ) => Promise<DealResult>;
+  /** Pickup-day actions work here; otherwise `pickupError` says why. */
+  pickupAvailable: boolean;
+  pickupError: string;
+  actPickup: (
+    action: PickupAction,
+    text: string,
+    messageId?: string,
+  ) => Promise<DealResult>;
 };
+
+/** The seller's next interested buyer once a pickup was released. */
+export type NextBuyer = { name: string; onOffer: () => void };
 
 /** Phases in which the other student's move waits for this one: the card opens for them. */
 const NEEDS_YOU: readonly DealPhase[] = [
@@ -83,8 +106,8 @@ const MAX_CARD_CHOICES = 200;
 /** The message a failed deal tap shows, keeping the student's next step clear. */
 function dealFailure(failure: unknown, other: string, title: string) {
   if (failure instanceof TypeError)
-    return "Couldn't confirm. Nothing was sent. Try again.";
-  if (!(failure instanceof Error)) return "Couldn't confirm. Try again.";
+    return "No connection, so nothing was sent. Try again.";
+  if (!(failure instanceof Error)) return "Couldn't send that. Try again.";
   switch ((failure as Error & { key?: string }).key) {
     case "deal_changed":
       return `${other} just changed the deal. Check the new terms; your text is kept.`;
@@ -94,6 +117,12 @@ function dealFailure(failure: unknown, other: string, title: string) {
       return "Pick a time and a meeting point first.";
     case "pickup_time_past":
       return "That time has passed. Pick a new one.";
+    case "too_early":
+      return "You can send this from 3 h before the pickup.";
+    case "pickup_window_ended":
+      return "Pickup was over an hour ago, so this can't be sent anymore.";
+    case "pickup_unavailable":
+      return "This pickup isn't booked anymore. Check the deal card.";
     default:
       return failure.message;
   }
@@ -175,6 +204,8 @@ export function useThreadDeal({
   enabled,
   visible,
   homePoint,
+  now,
+  nextBuyer,
   onStatusChange,
   onWrite,
 }: {
@@ -195,22 +226,23 @@ export function useThreadDeal({
   visible: boolean;
   /** The campus meeting point near where the student searches from. */
   homePoint: string | undefined;
+  /** The clock pickup day counts down on: the demo clock in a developer's local demo. */
+  now: Date;
+  /** After a released pickup, the seller's next interested buyer for this listing. */
+  nextBuyer: NextBuyer | undefined;
   /** Applies the listing status a deal change brought, in the app's one status path. */
-  onStatusChange: (
-    listingId: string,
-    status: "active" | "reserved",
-  ) => Promise<void>;
+  onStatusChange: (listingId: string, status: DealStatusChange) => Promise<void>;
   /** Puts a message in the composer, for the student to send with a second tap. */
   onWrite: (text: string) => void;
 }) {
   const { deal } = controller;
   const namedPrice = useNamedOfferPrice();
   const phase = listing
-    ? cardPhase(
-        dealPhase({ deal, listing, role, messages, turn, now: new Date() }),
-        turn,
-      )
+    ? cardPhase(dealPhase({ deal, listing, role, messages, turn, now }), turn)
     : "talking";
+  const day = pickupDay(deal, role, now);
+  /** A pickup on its day, or a new time to answer, opens its card on phones too. */
+  const pickupNeedsYou = !!day && (day.phase !== "booked" || day.change === "received");
   const phone = useMediaQuery("(max-width: 760px)");
   // A card opens by itself where the student has something to do; whether the
   // student opened or folded it is kept per thread and phase, on desktop
@@ -223,10 +255,12 @@ export function useThreadDeal({
   const [phoneChoices, setPhoneChoices] = useState<Record<string, boolean>>(
     {},
   );
-  const cardKey = `${threadKey}:${phase}`;
+  const cardKey = day
+    ? `${threadKey}:${phase}:${day.phase}:${day.change ?? ""}`
+    : `${threadKey}:${phase}`;
   const expanded =
     (phone ? phoneChoices : desktopChoices)[cardKey] ??
-    (phone ? NEEDS_YOU : OPEN_ON_DESKTOP).includes(phase);
+    (pickupNeedsYou || (phone ? NEEDS_YOU : OPEN_ON_DESKTOP).includes(phase));
   const toggle = () =>
     phone
       ? setPhoneChoices((current) => ({ ...current, [cardKey]: !expanded }))
@@ -270,14 +304,14 @@ export function useThreadDeal({
   }
 
   /**
-   * Sends one deal change with its message; a retry of the same text reuses
-   * its id, so it never arrives twice. A failure comes back in the student's
+   * Sends one change with its message; a retry of the same text reuses its
+   * id, so it never arrives twice. A failure comes back in the student's
    * words.
    */
-  async function perform(
-    action: DealAction,
+  async function send(
     text: string,
-    confirming: boolean,
+    change: (messageId: string) => Promise<DealResult>,
+    follow: (result: DealResult) => Promise<void>,
   ): Promise<string> {
     if (!listing) throw new Error("This listing is no longer available.");
     const { title } = listing;
@@ -285,9 +319,9 @@ export function useThreadDeal({
     setFailure(undefined);
     const id = pending.current.idFor(threadKey, role, text);
     try {
-      const result = await controller.act(action, text, id);
+      const result = await change(id);
       pending.current.acknowledge(id);
-      await report(result, action, confirming);
+      await follow(result);
       return id;
     } catch (error) {
       throw new Error(dealFailure(error, otherName, title));
@@ -295,16 +329,41 @@ export function useThreadDeal({
       setBusy(false);
     }
   }
-  /** A tap on the card or the offer card: a failure stays on the card, the text kept. */
-  async function act(action: DealAction, text: string, confirming = false) {
+  const perform = (action: DealAction, text: string, confirming: boolean) =>
+    send(
+      text,
+      (id) => controller.act(action, text, id),
+      (result) => report(result, action, confirming),
+    );
+  /** What follows a pickup tap: the listing's status, and a cheer once the item changed hands. */
+  async function reportPickup(result: DealResult, action: PickupAction) {
+    if (result.statusChange)
+      await onStatusChange(result.deal.listingId, result.statusChange);
+    if (action.type === "picked_up" && listing)
+      celebrate({ kind: "handed_over", role, title: listing.title });
+  }
+  /** A failure stays on the card, where the same tap tries again. */
+  async function onCard(sending: () => Promise<string>) {
     try {
-      await perform(action, text, confirming);
+      await sending();
       return true;
     } catch (error) {
       setFailure({ key: threadKey, text: (error as Error).message });
       return false;
     }
   }
+  /** A tap on the card or the offer card. */
+  const act = (action: DealAction, text: string, confirming = false) =>
+    onCard(() => perform(action, text, confirming));
+  /** A pickup tap on the card, with exactly the message it showed. */
+  const actPickup = (pickup: PickupSend) =>
+    onCard(() =>
+      send(
+        pickup.message,
+        (id) => controller.actPickup(pickup.action, pickup.message, id),
+        (result) => reportPickup(result, pickup.action),
+      ),
+    );
 
   const openEditor = (entry: OfferEntry) => {
     setFailure(undefined);
@@ -365,6 +424,13 @@ export function useThreadDeal({
         error={cardError}
         confirmedHere={confirmedHere === threadKey}
         onOption={choose}
+        now={now}
+        pickup={{
+          available: controller.pickupAvailable,
+          error: controller.pickupError,
+          onSend: actPickup,
+        }}
+        nextBuyer={role === "seller" ? nextBuyer : undefined}
       />
     ),
     editor: editor && listing && (
@@ -413,6 +479,13 @@ export function useThreadDeal({
     /** Sends composed text whose terms it states as an offer; a failure is thrown in the student's words. */
     sendTerms: (terms: DealTerms, text: string) =>
       perform({ type: "propose", terms }, text, false),
+    /** Sends composed text as a pickup action, such as offering a released item again; a failure is thrown in the student's words. */
+    sendPickup: (action: PickupAction, text: string) =>
+      send(
+        text,
+        (id) => controller.actPickup(action, text, id),
+        (result) => reportPickup(result, action),
+      ),
     /** Follows a deal change the inbox sent itself, such as the first offer of a new account conversation. */
     report: (result: DealResult, action: DealAction) =>
       report(result, action, false),

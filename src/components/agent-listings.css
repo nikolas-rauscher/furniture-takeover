@@ -92,15 +92,20 @@
   max-width: 36rem;
   margin-top: 10px;
 }
-/* A sticker on Pako's first pick, like a label on a moving box. */
+/* Pako's first pick stands on a kraft lip, with a sticker like a label on a moving box. */
+.agent-product-card.is-best {
+  border-color: var(--kraft-light);
+  background: linear-gradient(var(--butter), var(--surface) 70%);
+  box-shadow: 0 3px 0 var(--kraft-shade);
+}
 .agent-product-best {
   position: absolute;
   top: -11px;
   left: 18px;
   z-index: 1;
   padding: 2px 9px;
-  border-radius: 999px;
-  background: var(--sun);
+  border-radius: 6px;
+  background: var(--kraft);
   color: var(--ink);
   font-size: var(--type-caption);
   font-weight: 700;
@@ -167,6 +172,70 @@
   font-size: var(--type-support);
   line-height: 1.45;
 }
+.agent-product-content .agent-product-pickup {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--kraft-deep);
+  font-weight: 600;
+}
+.agent-product-pickup svg {
+  flex: none;
+}
+.agent-product-pickup span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* While Pako ranks, one card-sized place holds the lane so nothing below moves:
+   the heading keeps the carousel arrows' height and the place a result card's. */
+.is-pending .agent-listings-heading {
+  min-height: 43px;
+}
+.agent-product-placeholder {
+  box-sizing: border-box;
+  min-height: 183px;
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  max-width: 36rem;
+  margin-block: 12px 4px;
+  padding: 10px;
+  border: 2px dashed var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.agent-product-placeholder .agent-product-photo {
+  display: block;
+  width: 88px;
+  height: 88px;
+  border-radius: 12px;
+  background: var(--sand);
+}
+.agent-product-placeholder-lines {
+  display: grid;
+  gap: 10px;
+}
+.agent-product-placeholder-lines > span {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--canvas);
+  animation: agent-placeholder-breathe 1.6s ease-in-out infinite alternate;
+}
+.agent-product-placeholder-lines > span:nth-child(1) {
+  width: 70%;
+}
+.agent-product-placeholder-lines > span:nth-child(2) {
+  width: 52%;
+}
+.agent-product-placeholder-lines > span:nth-child(3) {
+  width: 36%;
+}
+@keyframes agent-placeholder-breathe {
+  to {
+    opacity: 0.45;
+  }
+}
 .agent-product-footer {
   display: flex;
   flex-wrap: wrap;
@@ -197,6 +266,13 @@
   .agent-product-content {
     min-height: 72px;
   }
+  .agent-product-placeholder {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+  .agent-product-placeholder .agent-product-photo {
+    width: 72px;
+    height: 72px;
+  }
 }
 @container agent-listings (min-width: 35rem) {
   .agent-product-slide {
@@ -209,7 +285,8 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .agent-product-card.arriving {
+  .agent-product-card.arriving,
+  .agent-product-placeholder-lines > span {
     animation: none;
   }
   .agent-product-photo img {

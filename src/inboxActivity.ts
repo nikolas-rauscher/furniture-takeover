@@ -130,27 +130,16 @@ export function inboxBadge(
   return threads.filter((thread) => isUnread(thread, reads) || pickupReadKeys.has(thread.readKey)).length;
 }
 
-/** The three live deals for Home, prioritising a response before an upcoming handover. */
-export function homeDeals(
-  deals: readonly Deal[],
-  roleFor: (deal: Deal) => DealRole,
-) {
-  return orderHomeDeals(deals, roleFor);
-}
-
+/** The three live deals for Home: a pickup within 2 h first, then a response, then an upcoming handover. */
 export function pickupHomeDeals(deals: readonly Deal[], roleFor: (deal: Deal) => DealRole, now: Date) {
-  return orderHomeDeals(deals, roleFor, now);
-}
-
-function orderHomeDeals(deals: readonly Deal[], roleFor: (deal: Deal) => DealRole, now?: Date) {
-  const scheduled = (deal: Deal) => now && pickupDay(deal, roleFor(deal), now);
+  const scheduled = (deal: Deal) => pickupDay(deal, roleFor(deal), now);
   const isCurrent = (deal: Deal) => {
     const day = scheduled(deal);
     return day && (day.phase === "pickup_soon" || day.phase === "pickup_now");
   };
   const priority = (deal: Deal) =>
     isCurrent(deal) ? 0
-      : (now && pickupActivity(deal, roleFor(deal), now).needsYou) ||
+      : pickupActivity(deal, roleFor(deal), now).needsYou ||
           (deal.proposal && deal.proposal.by !== roleFor(deal)) ? 1
         : deal.status === "agreed" ? 2
           : 3;

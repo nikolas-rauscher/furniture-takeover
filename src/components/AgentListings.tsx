@@ -1,5 +1,5 @@
 import { isMine, money, type Product } from "../../shared/marketplace";
-import { Image as ImageIcon } from "./icons";
+import { Clock, Image as ImageIcon } from "./icons";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import {
@@ -21,7 +21,20 @@ export const canOffer = (item: Product) =>
 
 /** What Pako prepares for a listing: a pickup plan for a free one, otherwise an offer. */
 export const offerLabel = (item: Pick<Product, "price">) =>
-  item.price === 0 ? "Plan pickup with Pako" : "Draft an offer with Pako";
+  item.price === 0 ? "Plan pickup" : "Draft offer";
+
+/**
+ * Where Pako's matches stand: still being ranked while he works, ranked best
+ * first once he has finished, or as found when the turn stopped early.
+ */
+export type ResultOrder = "pending" | "ranked" | "unranked";
+
+/** The listing's place, with the seller's distance when they gave one. */
+function placeLine(item: Product) {
+  return item.distance === undefined
+    ? item.location
+    : `${item.location} · ${item.distance} km`;
+}
 
 type AgentProductCardProps = {
   item: Product;
@@ -47,17 +60,15 @@ function AgentProductCard({
 }: AgentProductCardProps) {
   const entrance = useEntrance(true);
   const offerable = canOffer(item);
-  const details = [
-    item.condition,
-    item.dimensions,
-    item.available?.split(";")[0],
-  ]
+  const details = [item.condition, item.dimensions]
     .filter((value) => value && value !== "Not specified")
     .join(" · ");
+  const pickup = item.available?.split(";")[0];
   return (
     <article
       className={cn(
         "agent-product-card linked-card",
+        best && "is-best",
         entrance.entering && "arriving",
       )}
       style={{ "--stagger": Math.min(index, 4) } as CSSProperties}
@@ -81,8 +92,14 @@ function AgentProductCard({
             {item.title}
           </Button>
         </h4>
-        <p>{item.location}</p>
+        <p>{placeLine(item)}</p>
         {details && <p>{details}</p>}
+        {pickup && (
+          <p className="agent-product-pickup">
+            <Clock size={13} aria-hidden="true" />
+            <span>{pickup}</span>
+          </p>
+        )}
         <div className="agent-product-footer">
           <strong className="agent-product-price">
             {item.price === 0 ? "Free" : money(item.price)}
@@ -91,6 +108,7 @@ function AgentProductCard({
             className="agent-product-offer"
             variant="outline"
             size="sm"
+            aria-label={`${offerable ? offerLabel(item) : "View listing"}: ${item.title}`}
             onClick={() => (offerable ? onOffer(item) : onOpen(item))}
           >
             {offerable ? offerLabel(item) : "View listing"}
@@ -101,25 +119,50 @@ function AgentProductCard({
   );
 }
 
+/** A card-sized place for the results, held while Pako ranks his matches. */
+function PendingResults() {
+  return (
+    <section
+      className="agent-listings is-pending"
+      aria-label="takeover listings"
+      aria-busy="true"
+    >
+      <div className="agent-listings-heading">
+        <h3>On takeover</h3>
+      </div>
+      <div className="agent-product-placeholder">
+        <span className="agent-product-photo" />
+        <span className="agent-product-placeholder-lines">
+          <span />
+          <span />
+          <span />
+        </span>
+        <span className="sr-only">I'm ranking the listings I found…</span>
+      </div>
+    </section>
+  );
+}
+
 export default function AgentListings({
   listings,
-  ranked,
+  order,
   onOpen,
   onOffer,
 }: {
   listings: readonly Product[];
-  /** Pako has finished and shows his matches best first. */
-  ranked: boolean;
+  order: ResultOrder;
   onOpen: (item: Product) => void;
   onOffer: (item: Product) => void;
 }) {
   const multiple = listings.length > 1;
   const reducedMotion = useReducedMotion();
+  // The cards land once, in their final order, so a tap never meets a card that is about to change.
+  if (order === "pending") return <PendingResults />;
   const card = (item: Product, index: number) => (
     <AgentProductCard
       item={item}
       index={index}
-      best={ranked && multiple && index === 0}
+      best={order === "ranked" && multiple && index === 0}
       onOpen={onOpen}
       onOffer={onOffer}
     />
@@ -127,7 +170,7 @@ export default function AgentListings({
   return (
     <section
       className={`agent-listings${multiple ? " has-carousel" : " has-single-product"}`}
-      aria-label="Takeover listings"
+      aria-label="takeover listings"
     >
       {multiple ? (
         <Carousel
@@ -136,14 +179,14 @@ export default function AgentListings({
             loop: false,
             duration: reducedMotion ? 0 : 25,
           }}
-          aria-label="Takeover product results"
+          aria-label="takeover listings"
         >
           <div className="agent-listings-heading">
-            <h3>On Takeover</h3>
+            <h3>On takeover</h3>
             <Badge variant="secondary">{listings.length}</Badge>
             <div className="agent-carousel-controls">
-              <CarouselPrevious aria-label="Previous products" />
-              <CarouselNext aria-label="Next products" />
+              <CarouselPrevious aria-label="Previous listings" />
+              <CarouselNext aria-label="Next listings" />
             </div>
           </div>
           <CarouselContent className="agent-product-track">
@@ -161,7 +204,7 @@ export default function AgentListings({
       ) : (
         <>
           <div className="agent-listings-heading">
-            <h3>On Takeover</h3>
+            <h3>On takeover</h3>
             <Badge variant="secondary">{listings.length}</Badge>
           </div>
           {listings.map((item, index) => (

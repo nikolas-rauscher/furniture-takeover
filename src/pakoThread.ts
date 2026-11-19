@@ -28,7 +28,7 @@ export function demoThreadMessage(
     from: message.sender === role ? "me" : "them",
     text: message.text,
     at: message.createdAt,
-    ...(message.deal ? { structured: true } : {}),
+    ...(message.deal || message.pickupEvent ? { structured: true } : {}),
   };
 }
 

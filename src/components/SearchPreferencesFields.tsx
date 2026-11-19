@@ -104,7 +104,7 @@ export default function SearchPreferencesFields({
             ]),
           ].map((option) => ({
             value: option,
-            label: option === "takeover" ? "Takeover" : option,
+            label: option,
           }))}
         />
       </label>

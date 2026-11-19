@@ -2,8 +2,13 @@ import { AnimatePresence, motion } from "motion/react";
 import { AutoHeight } from "@animate-ui/react/primitives/effects/auto-height";
 import { useId, useState } from "react";
 import { Check, ChevronDown } from "@/components/icons";
-import { campusPickupPoints } from "../../shared/campusPickupPoints";
-import type { Deal, DealPhase, DealRole, DealTerms } from "../../shared/deal";
+import {
+  pickupDay,
+  type Deal,
+  type DealPhase,
+  type DealRole,
+  type DealTerms,
+} from "../../shared/deal";
 import type { Product } from "../../shared/marketplace";
 import type { ThreadFacts, ThreadTurn } from "../../shared/threadTurn";
 import {
@@ -22,20 +27,12 @@ import {
 } from "../dealWords";
 import BookedBanner from "./BookedBanner";
 import { PakoLabel } from "./ChatParts";
-import { DealTermsGrid, DealTile } from "./DealTerms";
+import { CARD_SWAP, DealTermsGrid, DealTile, PlaceNote } from "./DealTerms";
+import PickupCard, { type PickupLink } from "./PickupCard";
+import type { NextBuyer } from "./ThreadDeal";
 import { Button } from "./ui/button";
 import "./deal-card.css";
 
-/** A new state settles in place of the last one, like Pako's tray; the old one leaves at once. */
-const SWAP = {
-  initial: { opacity: 0, y: 6 },
-  animate: {
-    opacity: 1,
-    y: 0,
-    transition: { type: "spring", stiffness: 420, damping: 34 },
-  },
-  exit: { opacity: 0, y: -4, transition: { duration: 0.1 } },
-} as const;
 /** The card grows out of the strip and folds back into it. */
 const GROW = { type: "spring", stiffness: 360, damping: 34 } as const;
 const NOT_SET = {
@@ -45,7 +42,10 @@ const NOT_SET = {
   pickupPoint: "Not set",
 };
 
-type Listing = Pick<Product, "title" | "image" | "price" | "status"> & {
+type Listing = Pick<
+  Product,
+  "title" | "image" | "price" | "status" | "available"
+> & {
   pickupPoint?: Product["pickupPoint"];
 };
 type Seat = { name: string; done: boolean };
@@ -131,27 +131,6 @@ function StripWords({ view }: { view: StripView }) {
   );
 }
 
-/** A known meeting point's address and a map under its tile, once the pickup is booked. */
-function placeNote(name: string, listing: Listing) {
-  const point = [listing.pickupPoint, ...campusPickupPoints].find(
-    (candidate) => candidate?.name === name,
-  );
-  if (!point) return undefined;
-  return (
-    <>
-      {point.address} ·{" "}
-      <a
-        aria-label={`Open ${point.name} in Maps`}
-        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${point.name} ${point.address}`)}`}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        Map
-      </a>
-    </>
-  );
-}
-
 /** What the tiles say under their values: the words Pako read as agreed, or where to meet. */
 function termNotes(
   phase: DealPhase,
@@ -162,7 +141,11 @@ function termNotes(
   if (phase === "looks_agreed" && turn)
     return quotesOf(turn.facts, shownTerms(terms));
   if ((phase === "agreed" || phase === "completed") && terms.pickupPoint)
-    return { pickupPoint: placeNote(terms.pickupPoint, listing) };
+    return {
+      pickupPoint: (
+        <PlaceNote name={terms.pickupPoint} listingPoint={listing.pickupPoint} />
+      ),
+    };
   return {};
 }
 
@@ -202,7 +185,7 @@ function ConfirmStep({
   onBack: () => void;
 }) {
   return (
-    <motion.div className="deal-card-confirm" {...SWAP}>
+    <motion.div className="deal-card-confirm" {...CARD_SWAP}>
       <p className="deal-card-question">{option.confirm}</p>
       <p className="deal-card-sends">
         Message to {otherName}: <q>{option.message}</q>
@@ -240,7 +223,8 @@ function CardBody({
   error,
   confirmedHere,
   onOption,
-}: Omit<Props, "expanded" | "onToggle">) {
+  now,
+}: Omit<Props, "expanded" | "onToggle" | "pickup" | "nextBuyer">) {
   const [asking, setAsking] = useState<Extract<DealOption, { kind: "act" }>>();
   const options = dealOptions({
     phase,
@@ -249,7 +233,7 @@ function CardBody({
     role,
     otherName,
     turn,
-    now: new Date(),
+    now,
   });
   const terms = cardTerms(phase, deal, turn);
   const pair = seats(phase, otherName);
@@ -301,7 +285,7 @@ function CardBody({
             onBack={() => setAsking(undefined)}
           />
         ) : (
-          <motion.div key="actions" className="deal-card-choices" {...SWAP}>
+          <motion.div key="actions" className="deal-card-choices" {...CARD_SWAP}>
             {primary && (
               <Button
                 type="button"
@@ -342,8 +326,11 @@ function CardBody({
   );
 }
 
-/** What the card tells a screen reader when the deal changes. */
-function announcement(view: StripView, terms: DealTerms | null) {
+/** What the card tells a screen reader when the deal changes; a countdown's ticking stays quiet. */
+function announcement(deal: Deal | null, view: StripView, terms: DealTerms | null) {
+  const agreed = deal?.status === "agreed" && deal.agreed;
+  if (agreed && !deal.proposal)
+    return `Deal agreed. ${termsSummary(agreed.terms, "full")}.`;
   if (view.tone === "booked" && terms)
     return `Deal agreed. ${termsSummary(terms, "full")}.`;
   return `${view.lead}${view.detail ? `: ${view.detail}` : ""}.`;
@@ -365,7 +352,35 @@ type Props = {
   /** The student confirmed here a moment ago, so the booked banner takes focus. */
   confirmedHere: boolean;
   onOption: (option: DealOption) => void;
+  /** The clock the pickup counts down on. */
+  now: Date;
+  /** How pickup-day taps reach the deal, or why they can't. */
+  pickup: PickupLink;
+  /** After a released pickup, the seller's next interested buyer. */
+  nextBuyer: NextBuyer | undefined;
 };
+
+/** The booked card, or on pickup day the pickup card. */
+function ExpandedBody(props: Omit<Props, "expanded" | "onToggle">) {
+  const { phase, deal, role, otherName, listing, busy, error, now, pickup } =
+    props;
+  const day = phase === "agreed" ? pickupDay(deal, role, now) : null;
+  return day && deal ? (
+    <PickupCard
+      day={day}
+      deal={deal}
+      role={role}
+      otherName={otherName}
+      listing={listing}
+      busy={busy}
+      error={error}
+      now={now}
+      pickup={pickup}
+    />
+  ) : (
+    <CardBody {...props} />
+  );
+}
 
 /**
  * The deal in a thread: one calm line under the header that grows into the
@@ -386,11 +401,12 @@ export default function DealCard(props: Props) {
     other: otherName,
     listing,
     agreedTerms,
+    now: props.now,
   });
   if (!view) return null;
   const spoken = (
     <p className="sr-only" role="status">
-      {announcement(view, cardTerms(phase, deal, turn))}
+      {announcement(deal, view, cardTerms(phase, deal, turn))}
     </p>
   );
   if (view.tone === "start" || view.tone === "closed") {
@@ -401,8 +417,9 @@ export default function DealCard(props: Props) {
       role,
       otherName,
       turn,
-      now: new Date(),
+      now: props.now,
     });
+    const { nextBuyer } = props;
     return (
       <motion.section
         layout
@@ -422,6 +439,16 @@ export default function DealCard(props: Props) {
               onClick={() => props.onOption(primary)}
             >
               {primary.label}
+            </Button>
+          )}
+          {phase === "cancelled" && nextBuyer && (
+            <Button
+              type="button"
+              className="button secondary small"
+              disabled={props.busy}
+              onClick={nextBuyer.onOffer}
+            >
+              Offer it to {nextBuyer.name}
             </Button>
           )}
         </div>
@@ -465,8 +492,8 @@ export default function DealCard(props: Props) {
               exit={{ opacity: 0, transition: { duration: 0.12 } }}
             >
               <AnimatePresence mode="wait" initial={false}>
-                <motion.div key={phase} {...SWAP}>
-                  <CardBody {...props} />
+                <motion.div key={phase} {...CARD_SWAP}>
+                  <ExpandedBody {...props} />
                 </motion.div>
               </AnimatePresence>
             </motion.div>

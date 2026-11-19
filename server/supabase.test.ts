@@ -540,6 +540,20 @@ test("Supabase migration enforces listing ownership, private chats and photo own
       "insert into public.listings(owner_id,title,price,location) values($1,'[Demo] Old desk',45,'Lausanne')",
       [retiredSeller],
     );
+    for (const name of [
+      "202611060001_ai_quota.sql",
+      "202611190001_thread_reading.sql",
+      "202611190002_deals.sql",
+      "202611190003_pickup.sql",
+      "202611190004_admin.sql",
+    ]) {
+      await db.exec(
+        await readFile(
+          new URL(`../supabase/migrations/${name}`, import.meta.url),
+          "utf8",
+        ),
+      );
+    }
     const seed = await readFile(
       new URL("../supabase/seed-demo.sql", import.meta.url),
       "utf8",
@@ -561,10 +575,9 @@ test("Supabase migration enforces listing ownership, private chats and photo own
       ).rows.length,
       0,
     );
-    // An administrator's edit: the photo check only knows uploads, not the bundled illustrations.
-    await db.exec(`alter table public.listings disable trigger validate_listing_photos;
-      update public.listings set price=99,status='withdrawn' where title='White work desk';
-      alter table public.listings enable trigger validate_listing_photos;`);
+    await db.exec(
+      "update public.listings set price=99,status='withdrawn' where title='White work desk'",
+    );
     await db.exec(seed);
     assert.equal(
       (await db.query("select * from public.listings")).rows.length,
@@ -589,14 +602,15 @@ test("Supabase migration enforces listing ownership, private chats and photo own
     assert.equal(
       (await db.query("select * from public.listings")).rows.length,
       demoListings.filter(
-        (listing) => listing.status === "active" || listing.status === "reserved",
+        (listing) =>
+          listing.status === "active" || listing.status === "reserved",
       ).length - 1,
     );
     await db.exec("reset role");
     await db.exec(
       `update auth.users set encrypted_password='collision-test' where id='${demoSellers[0].id}'`,
     );
-    await assert.rejects(db.exec(seed), /Reserved demo owner/);
+    await assert.rejects(db.exec(seed), /admin_seed_conflict/);
     await db.exec("rollback");
   } finally {
     await db.close();

@@ -35,6 +35,7 @@ const CELEBRATION_MS: Record<ChatMoment["kind"], number> = {
   sent: PAKO_FLIGHT_MS,
   confirmed: PAKO_FLIGHT_MS,
   agreed: 3600,
+  handed_over: 3600,
 };
 /** Enough history to label recent threads; older messages lose the label. */
 const MAX_REMEMBERED_DRAFTS = 300;
@@ -323,7 +324,9 @@ export function usePakoDrafts() {
 export type ChatMoment =
   | { kind: "sent"; other: string }
   | { kind: "confirmed"; other: string }
-  | { kind: "agreed"; role: DealRole; other: string; title: string };
+  | { kind: "agreed"; role: DealRole; other: string; title: string }
+  /** The buyer picked the item up, or the seller marked it sold. */
+  | { kind: "handed_over"; role: DealRole; title: string };
 
 /** The celebration on screen and the thread it belongs to, if any; it leaves by itself. */
 export function useChatCelebration() {
@@ -345,6 +348,7 @@ const CELEBRATION_MOODS: Record<ChatMoment["kind"], PakoMood> = {
   sent: "deliver",
   confirmed: "happy",
   agreed: "cheer",
+  handed_over: "cheer",
 };
 
 function celebrationWords(moment: ChatMoment): ReactNode {
@@ -373,6 +377,16 @@ function celebrationWords(moment: ChatMoment): ReactNode {
         </>
       );
     }
+    case "handed_over":
+      return moment.role === "seller" ? (
+        <>
+          <strong>Sold!</strong> The {moment.title} has a new home.
+        </>
+      ) : (
+        <>
+          <strong>Picked up!</strong> Enjoy your {moment.title}.
+        </>
+      );
   }
 }
 

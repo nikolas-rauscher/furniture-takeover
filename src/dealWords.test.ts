@@ -45,6 +45,7 @@ const strip = (input: Partial<Parameters<typeof dealStrip>[0]>) =>
     role: "buyer",
     other: "Léa",
     listing,
+    now: new Date("2026-11-19T13:00:00.000Z"),
     ...input,
   });
 

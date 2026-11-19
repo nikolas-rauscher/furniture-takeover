@@ -103,7 +103,7 @@ export default function AgentSources({
           </TraceLine>
         </TraceCollapsibleTrigger>
         <TraceCollapsibleContent>
-          <ul className="agent-source-previews" aria-label="Web sources">
+          <ul className="agent-source-previews" aria-label="Sources">
             {unique.map((source) => (
               <li key={source.url}>
                 <SourcePreview source={source} />

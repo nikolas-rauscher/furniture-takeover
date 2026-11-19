@@ -1,3 +1,10 @@
+import {
+  adminActions,
+  demoAdminHeader,
+  demoReportSchema,
+  isAdminAction,
+} from "../shared/admin.ts";
+import { adminFailure } from "./demo-admin.ts";
 import type { MessagesStore } from "./messages.ts";
 import {
   createServer,
@@ -228,7 +235,7 @@ export function createAgentServer(
         response.writeHead(204, {
           "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
           "Access-Control-Allow-Headers":
-            "Content-Type, X-Message-Workspace, Authorization",
+            `Content-Type, X-Message-Workspace, Authorization, ${demoAdminHeader}`,
           "Access-Control-Max-Age": "600",
         });
         response.end();
@@ -236,6 +243,53 @@ export function createAgentServer(
       }
       if (pathname === "/api/config" && request.method === "GET") {
         send(response, 200, options.cloud?.config ?? {});
+        return;
+      }
+      const isDemoReport = pathname === "/api/reports";
+      const isDemoPostingCheck = pathname === "/api/listings/permission";
+      if (pathname.startsWith("/api/admin/") || isDemoReport || isDemoPostingCheck) {
+        if (options.cloud || !options.listings)
+          throw adminFailure("admin_unavailable", 404);
+        const store = options.listings.admin;
+        if (isDemoReport || isDemoPostingCheck) {
+          const workspace = request.headers["x-message-workspace"];
+          const method = isDemoReport ? "POST" : "GET";
+          if (request.method !== method)
+            throw new AgentError(405, "METHOD_NOT_ALLOWED", `Use ${method}.`);
+          if (
+            typeof workspace !== "string" ||
+            !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(workspace)
+          )
+            throw adminFailure("admin_invalid_input", 400);
+          if (isDemoPostingCheck) {
+            store.checkPosting(workspace);
+            send(response, 200, { allowed: true });
+          } else {
+            const input = demoReportSchema.safeParse(await readBody(request, 8192));
+            if (!input.success) throw adminFailure("admin_invalid_input", 400);
+            send(response, 200, store.submitReport(workspace, input.data));
+          }
+          return;
+        }
+        if (request.headers[demoAdminHeader.toLowerCase()] !== "1")
+          throw adminFailure("admin_required", 403);
+        const action = pathname
+          .slice("/api/admin/".length)
+          .replaceAll("-", "_");
+        if (!isAdminAction(action))
+          throw new AgentError(404, "NOT_FOUND", "This endpoint does not exist.");
+        const contract = adminActions[action];
+        const method = contract.input.safeParse(null).success ? "GET" : "POST";
+        if (request.method !== method)
+          throw new AgentError(405, "METHOD_NOT_ALLOWED", `Use ${method}.`);
+        const input = contract.input.safeParse(
+          method === "GET" ? null : await readBody(request, 65536),
+        );
+        if (!input.success) throw adminFailure("admin_invalid_input", 400);
+        const run = store[action] as (data: unknown) => unknown;
+        const output = contract.output.safeParse(run(input.data));
+        if (!output.success) throw adminFailure("admin_invalid_response", 500);
+        send(response, 200, output.data);
         return;
       }
       let actor: string | void = undefined;
@@ -572,6 +626,7 @@ export function createAgentServer(
               "Pako has read all the replies he can for today. You can still reply yourself.",
             );
           }
+          options.listings?.admin.countPako(true);
           const turn = await agents.threads.turn(reading, controller.signal);
           send(
             response,
@@ -610,6 +665,7 @@ export function createAgentServer(
               "AGENT_NOT_CONFIGURED",
               "The agent runtime is not configured.",
             );
+          options.listings?.admin.countPako(false);
           response.writeHead(200, {
             "Content-Type": "application/x-ndjson; charset=utf-8",
             "Cache-Control": "no-store, no-transform",
@@ -628,6 +684,7 @@ export function createAgentServer(
           if (!response.destroyed && !response.writableEnded) response.end();
           return;
         }
+        options.listings?.admin.countPako(false);
         const result =
           pathname === "/api/agent/group-photos"
             ? await agents.service.groupPhotos(body, controller.signal)

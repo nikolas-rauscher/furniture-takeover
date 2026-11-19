@@ -848,7 +848,13 @@ test("Pako mentions an offer waiting for the student, or a booked pickup, on hom
     updatedAt: "2026-11-19T13:00:00.000Z",
   };
   const news = (deal: Parameters<typeof homeDealNews>[0]["deal"], role: "buyer" | "seller" = "buyer") =>
-    homeDealNews({ deal, role, other: "Léa", title: "White study desk" });
+    homeDealNews({
+      deal,
+      role,
+      other: "Léa",
+      title: "White study desk",
+      now: new Date("2026-11-19T13:00:00.000Z"),
+    });
   const offered = { ...base, status: "open" as const, proposal: { by: "seller" as const, terms, messageId: "m1" } };
   assert.deepEqual(news(offered), { kind: "offer", other: "Léa", title: "White study desk" });
   assert.equal(news(offered, "seller"), null);

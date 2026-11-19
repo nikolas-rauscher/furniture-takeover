@@ -198,6 +198,32 @@
 .inbox-controls input {
   width: 100%;
 }
+/* Developer mode only: jumps around the open thread's booked pickup. */
+.demo-clock {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 2px dashed var(--card-line);
+  border-radius: 14px;
+}
+.demo-clock-now {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 700;
+}
+.demo-clock-jumps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.demo-clock-jumps > .tap-chip {
+  min-height: 36px;
+  padding: 4px 12px;
+  font-size: var(--type-caption);
+}
 .chat-segment {
   display: flex;
   gap: 2px;

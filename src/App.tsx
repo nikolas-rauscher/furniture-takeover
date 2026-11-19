@@ -12,7 +12,10 @@ import { useMarketplaceListings } from "./cloud/useMarketplaceListings";
 import { useFavorites } from "./cloud/useFavorites";
 import { useAppViewport } from "./hooks/useAppViewport";
 import { useWindowScrolled } from "./hooks/useWindowScrolled";
-import AccountPage, { type AccountTab } from "./components/AccountPage";
+import AccountPage, {
+  type AccountTab,
+  type ListingPickup,
+} from "./components/AccountPage";
 import ListingDetailPage from "./components/ListingDetailPage";
 import ComparePage from "./components/ComparePage";
 import SavedSearchesPage from "./components/SavedSearchesPage";
@@ -48,9 +51,14 @@ import {
   agreedWords,
   awayPhase,
   dealView,
+  pickupCountdown,
   reservedForChip,
 } from "./dealWords";
-import { effectiveStatus, homeDeals } from "./inboxActivity";
+import { effectiveStatus, pickupHomeDeals } from "./inboxActivity";
+import { listingPickupChoices } from "./pickupOptions";
+import { useListingPickup } from "./hooks/useListingPickup";
+import { usePickupReminders } from "./hooks/usePickupReminders";
+import type { DealStatusChange } from "./components/ThreadDeal";
 import {
   accountInboxDeals,
   buyerDealFor,
@@ -59,14 +67,17 @@ import {
   sellerAgreementFor,
   type InboxDeal,
 } from "./inboxDeals";
-import type { Deal } from "../shared/deal";
+import { pickupDay, type Deal } from "../shared/deal";
 import HomeDeals from "./components/HomeDeals";
 import { draftMessage, nudgeMessage } from "../shared/dealMessages";
 import { resetMessageWorkspace } from "./api/messages";
 import AgentConversation, {
   focusConversation,
 } from "./components/AgentConversation";
-import AgentListings, { canOffer } from "./components/AgentListings";
+import AgentListings, {
+  canOffer,
+  type ResultOrder,
+} from "./components/AgentListings";
 import AgentComposer from "./components/AgentComposer";
 import AgentQuickReplies from "./components/AgentQuickReplies";
 import { quickReplies, type TappableReply } from "./quickReplies";
@@ -128,7 +139,7 @@ import { batchItem, itemsFromGroups } from "./batchListings";
 import { batchStepNote } from "./sellingCelebration";
 import AgentSuggestions from "./components/AgentSuggestions";
 import AgentRunPanel from "./components/AgentRunPanel";
-import { useAgentRun } from "./hooks/useAgentRun";
+import { useAgentRun, type AgentRunState } from "./hooks/useAgentRun";
 import { useAgentAssist } from "./hooks/useAgentAssist";
 import { useListingAnalysis } from "./hooks/useListingAnalysis";
 import type { PakoAbsence } from "./sellGuide";
@@ -167,7 +178,6 @@ import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import {
   homeDealNews,
   homeGuide,
-  showedResults,
   turnAnnouncement,
 } from "./pakoMoods";
 import { useAvailability } from "./availability/useAvailability";
@@ -215,6 +225,12 @@ const DESTINATION_ORDER: Destination[] = [
 
 type Dialog =
   "filters" | "save" | "edit-search" | "location" | "help" | "clear" | null;
+/** Results wait while Pako works and are ranked once his turn has finished. */
+function resultOrder(status: AgentRunState["status"]): ResultOrder {
+  if (status === "running") return "pending";
+  return status === "complete" ? "ranked" : "unranked";
+}
+
 /** A blank listing, picked up where the student lives or searches. */
 function newDraft(location: string): ListingDraft {
   return {
@@ -516,6 +532,31 @@ export default function App({
     elsewhere: view !== "messages",
     onCheer: cheerAgreement,
   });
+  usePickupReminders({
+    deals: inboxDeals,
+    loaded:
+      database.ready &&
+      (account ? accountRows !== null : messages.demoInbox.loaded),
+    elsewhere: view !== "messages",
+    now: messages.now,
+    onRemind: remindPickup,
+  });
+  const sendListingPickup = useListingPickup(account?.client, () => {
+    database.retry();
+    void messages.accountInbox.refresh();
+  });
+  /** Mark sold and Make active on a listing with a booked pickup send its pickup actions. */
+  function listingPickup(item: InboxDeal): ListingPickup | undefined {
+    const listing = own.find((entry) => entry.id === item.listingId);
+    const day = pickupDay(item.deal, "seller", messages.now);
+    if (!listing || !day) return undefined;
+    const other = item.otherName;
+    return {
+      other,
+      ...listingPickupChoices({ day, deal: item.deal, other, title: listing.title }),
+      onSend: (send) => sendListingPickup(item, send),
+    };
+  }
   /** A listing as students see it: an agreed deal reserves it while its own status catches up. */
   const shownListing = (item: Product): Product => ({
     ...item,
@@ -533,10 +574,11 @@ export default function App({
           now: new Date(),
         })
       : null;
-  /** Home's live deals, what waits for the student first. */
-  const homeDealItems = homeDeals(
+  /** Home's live deals: a pickup within 2 h first, then what waits for the student. */
+  const homeDealItems = pickupHomeDeals(
     inboxDeals.map((item) => item.deal),
     (deal) => inboxDealOf(deal).role,
+    messages.now,
   ).flatMap((deal) => {
     const item = inboxDealOf(deal);
     const listing = own.find((entry) => entry.id === item.listingId);
@@ -546,7 +588,7 @@ export default function App({
       role: item.role,
       listing: shownListing(listing),
       latest: item.latest,
-      now: new Date(),
+      now: messages.now,
     };
     const view = dealView({ ...away, other: item.otherName });
     return view
@@ -628,9 +670,7 @@ export default function App({
   const sourceLabel =
     resultCriteria.source === "All"
       ? "All sources"
-      : resultCriteria.source === "takeover"
-        ? "Takeover"
-        : resultCriteria.source;
+      : resultCriteria.source;
   const compactPreferences = [
     budgetLabel,
     `${resultCriteria.radius} km`,
@@ -650,7 +690,7 @@ export default function App({
             ? "Any condition"
             : committedSearch.criteria.condition + " condition",
           resultCriteria.source === "takeover"
-            ? "Takeover listings only"
+            ? "takeover only"
             : sourceLabel,
         ].join(" · ")
       : "";
@@ -756,6 +796,7 @@ export default function App({
         role: firstHomeDeal.item.role,
         other: firstHomeDeal.item.otherName,
         title: firstHomeDeal.listing.title,
+        now: messages.now,
       }),
     unreadMatches: watches.unread,
     suggestionsLoading: searchAssist.status === "loading",
@@ -934,6 +975,21 @@ export default function App({
     setToastNotice({
       message: `${cheer} ${meaning}`,
       mood: "cheer",
+      action: {
+        label: "Open chat",
+        description: `Open the conversation about ${listing.title}`,
+        onClick: () => openDealThread(item),
+      },
+    });
+  }
+  /** 2 h before a booked pickup: Pako reminds the student once, with a way to the chat. */
+  function remindPickup(item: InboxDeal) {
+    const listing = own.find((entry) => entry.id === item.listingId);
+    const day = pickupDay(item.deal, item.role, messages.now);
+    if (!listing || !day) return;
+    setToastNotice({
+      message: `${pickupCountdown(day)}: the ${listing.title} with ${item.otherName}.`,
+      mood: "wave",
       action: {
         label: "Open chat",
         description: `Open the conversation about ${listing.title}`,
@@ -1128,15 +1184,7 @@ export default function App({
         [action.id]: result.changes,
       };
       setSearchChanges(searchChangesRef.current);
-      setSearchNotices((value) => ({
-        ...value,
-        [action.id]: "Preferences updated from your request.",
-      }));
-    } else
-      setSearchNotices((value) => ({
-        ...value,
-        [action.id]: "These preferences already match your search.",
-      }));
+    }
   }
   function undoSearchPatch(id: string) {
     const current = committedSearchRef.current;
@@ -1146,7 +1194,7 @@ export default function App({
     setSearchUndone((value) => [...value, id]);
     setSearchNotices((value) => ({
       ...value,
-      [id]: "Undone. Later changes were kept. Run the search again to update results.",
+      [id]: "Search again to refresh the results.",
     }));
   }
   async function performSearch(
@@ -1350,7 +1398,8 @@ export default function App({
   function chooseQuickReply(reply: TappableReply, shown: Product[]) {
     if (reply.kind === "ask") void runSearch(reply.text, criteria, true);
     else if (reply.kind === "compare") compareListings(reply.listingIds);
-    else if (reply.kind === "watch") keepWatch(reply);
+    else if (reply.kind === "watch") watches.watch(reply);
+    else if (reply.kind === "searches") openDestination("searches");
     else {
       const item = shown.find((listing) => listing.id === reply.listingId);
       if (!item)
@@ -1410,17 +1459,17 @@ export default function App({
     void runSearch(answer, criteria, true, question.question);
     return true;
   }
-  /** Pako keeps watch for an item, or says the watch is running already. */
+  /** Saves a search for an item, or says it is saved already. */
   function keepWatch({ query, maxPrice, radius }: WatchTarget) {
     if (!watches.watch({ query, maxPrice, radius })) {
       setToastNotice({
-        message: `I'm already keeping an eye out for “${query}”.`,
+        message: `“${query}” is already a saved search.`,
         mood: "search",
       });
       return;
     }
     setToastNotice({
-      message: `I'll keep an eye out for “${query}”. New matches show up in Searches.`,
+      message: `I saved “${query}”. New matches show up in Searches.`,
       mood: "search",
       action:
         view === "searches"
@@ -1753,7 +1802,7 @@ export default function App({
    * server saved it in the same step, so the listings only reload; the local
    * demo saves it here.
    */
-  async function followDealStatus(id: string, status: "active" | "reserved") {
+  async function followDealStatus(id: string, status: DealStatusChange) {
     if (account) {
       database.retry();
       return;
@@ -2145,7 +2194,7 @@ export default function App({
                   }}
                   onDeleted={() => replaceRoute("#messages")}
                   threadBanner={availability?.threadBanner}
-                  listings={own}
+                  listings={own.map(shownListing)}
                   {...messagesInbox}
                   pako={{
                     available: messages.available,
@@ -2445,10 +2494,7 @@ export default function App({
                                   ? "Ask about your listing…"
                                   : awaitingAnswer
                                     ? "Or type your answer…"
-                                    : !negotiations.active &&
-                                        showedResults(agentRun.state)
-                                      ? "Cheaper, closer or bigger?"
-                                      : "Ask a follow-up…"
+                                    : "Ask a follow-up…"
                               }
                               sendLabel="Send to Pako"
                               disabled={running || quotaExhausted}
@@ -2559,7 +2605,7 @@ export default function App({
                               localMatches.length > 0 ? (
                                 <AgentListings
                                   listings={localMatches}
-                                  ranked={turn.status === "complete"}
+                                  order={resultOrder(turn.status)}
                                   onOpen={openProduct}
                                   onOffer={openOfferCard}
                                 />
@@ -2948,6 +2994,7 @@ export default function App({
                           agreed.terms,
                         ),
                         onOpenChat: () => openDealThread(agreement),
+                        pickup: listingPickup(agreement),
                       }
                     : undefined;
                 }}

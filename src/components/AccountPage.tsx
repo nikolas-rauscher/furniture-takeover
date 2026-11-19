@@ -36,6 +36,8 @@ import type { PakoMood } from "./onboarding/storyTypes";
 import PakoReaction from "./PakoReaction";
 import ProductGrid from "./ProductGrid";
 import { celebrationFor, type Celebration } from "../sellingCelebration";
+import type { ListingPickupChoice, PickupSend } from "../pickupOptions";
+import Modal from "./Modal";
 
 export type AccountTab = "favorites" | "listings" | "archive";
 
@@ -193,10 +195,68 @@ type AccountPageProps = {
   publishedIds: string[];
   onCelebrationEnd(): void;
   /** A buyer's agreed deal on a listing: who it is reserved for, and its conversation. */
-  agreementFor?(
-    listingId: string,
-  ): { chip: string; onOpenChat(): void } | undefined;
+  agreementFor?(listingId: string): Agreement | undefined;
 };
+
+/** A booked pickup on a listing: Mark sold and Make active go through its actions. */
+export type ListingPickup = {
+  other: string;
+  sold: ListingPickupChoice;
+  reopen: ListingPickupChoice;
+  /** Sends one action with its message; a failure is thrown in the student's words. */
+  onSend(send: PickupSend): Promise<void>;
+};
+type Agreement = { chip: string; onOpenChat(): void; pickup?: ListingPickup };
+
+/** What a status change on a booked listing sends, asked before it goes out. */
+function PickupStep({
+  pickup,
+  choice,
+  onClose,
+}: {
+  pickup: ListingPickup;
+  choice: ListingPickupChoice;
+  onClose(): void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function send() {
+    setBusy(true);
+    setError("");
+    try {
+      await pickup.onSend(choice.send);
+      onClose();
+    } catch (failure) {
+      setError((failure as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Modal title={choice.confirm} onClose={() => !busy && onClose()}>
+      <p className="deal-card-sends">
+        Message to {pickup.other}: <q>{choice.send.message}</q>
+      </p>
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="modal-actions">
+        <Button className="button secondary" disabled={busy} onClick={onClose}>
+          Keep pickup
+        </Button>
+        <Button
+          className={`button ${choice.id === "picked_up" ? "primary" : "danger"}`}
+          disabled={busy}
+          onClick={() => void send()}
+        >
+          {busy ? "Sending…" : choice.label}
+        </Button>
+      </div>
+    </Modal>
+  );
+}
 
 export default function AccountPage({
   cloud = false,
@@ -227,6 +287,10 @@ export default function AccountPage({
     const timer = setTimeout(() => endCelebration(), CELEBRATION_MS);
     return () => clearTimeout(timer);
   }, [publishedKey]);
+  const [pickupStep, setPickupStep] = useState<{
+    pickup: ListingPickup;
+    choice: ListingPickupChoice;
+  }>();
   const [filters, setFilters] = useState<
     Record<AccountTab, { query: string; status: string }>
   >({
@@ -454,14 +518,22 @@ export default function AccountPage({
                     {(item.status === "active" ||
                       item.status === "reserved") && (
                       <DropdownMenuItem
-                        onClick={() => onStatusChange(item.id, "sold")}
+                        onClick={() =>
+                          agreement?.pickup
+                            ? setPickupStep({ pickup: agreement.pickup, choice: agreement.pickup.sold })
+                            : onStatusChange(item.id, "sold")
+                        }
                       >
                         Mark sold
                       </DropdownMenuItem>
                     )}
                     {item.status !== "active" && (
                       <DropdownMenuItem
-                        onClick={() => onStatusChange(item.id, "active")}
+                        onClick={() =>
+                          agreement?.pickup
+                            ? setPickupStep({ pickup: agreement.pickup, choice: agreement.pickup.reopen })
+                            : onStatusChange(item.id, "active")
+                        }
                       >
                         {item.status === "withdrawn"
                           ? "Restore listing"
@@ -559,6 +631,9 @@ export default function AccountPage({
               {content}
             </TabsContent>
           </Tabs>
+        )}
+        {pickupStep && (
+          <PickupStep {...pickupStep} onClose={() => setPickupStep(undefined)} />
         )}
       </section>
     </MotionConfig>

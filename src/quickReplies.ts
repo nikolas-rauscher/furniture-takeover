@@ -23,7 +23,9 @@ export type QuickReply =
       radius: number;
     }
   /** The offered watch is on already: a confirmation, not a button. */
-  | { kind: "watching"; text: string };
+  | { kind: "watching"; text: string }
+  /** Beside that confirmation, the way to the saved searches and their matches. */
+  | { kind: "searches"; text: string };
 
 /** The replies the student can tap; a running watch only confirms itself. */
 export type TappableReply = Exclude<QuickReply, { kind: "watching" }>;
@@ -77,14 +79,15 @@ const MAX_BROADER_SEARCHES = 3;
 const NOTHING_FOUND_LINE =
   "Nothing turned up this time. Shall I look a little wider?";
 const WATCH_OFFER_LINE =
-  "Nothing yet. Shall I keep an eye out for you, or look a little wider?";
-const WATCHING_LINE = "Nothing yet, but I'm keeping an eye out for you.";
+  "Nothing yet. Save this search for new matches, or let me look wider.";
+const WATCHING_LINE = "This search is saved. New matches show up in Searches.";
 /** "Any budget" is stored as this maximum price. */
 const ANY_BUDGET = 1_000_000;
 /** The largest radius a search area accepts. */
 const MAX_RADIUS_KM = 500;
-const FREE_ONLY = "Free items only (CHF 0)";
-const COLLECT_BY_SUNDAY = "Collect by Sunday";
+const FREE_ONLY = "Free items only";
+const COLLECT_BY_SUNDAY = "Pickup by Sunday";
+const SEE_SEARCHES: QuickReply = { kind: "searches", text: "See Searches" };
 
 /**
  * What the student can tap after Pako's latest finished answer: keeping watch
@@ -100,7 +103,7 @@ export function quickReplies(input: QuickRepliesInput): QuickReplies {
   const budget = chosenBudget(search);
   const watch = watchReply(input);
   if (turn.questions.some(question => !turn.answers[question.id]))
-    return watch ? { line: null, replies: [watch] } : NO_REPLIES;
+    return watch ? { line: null, replies: withRoute(watch) } : NO_REPLIES;
   if (foundNothing(turn)) {
     const broader = broaderSearches(search.criteria, budget);
     if (!watch)
@@ -112,7 +115,7 @@ export function quickReplies(input: QuickRepliesInput): QuickReplies {
         : NO_REPLIES;
     return {
       line: watch.kind === "watching" ? WATCHING_LINE : WATCH_OFFER_LINE,
-      replies: [watch, ...broader].slice(0, MAX_BROADER_SEARCHES),
+      replies: [...withRoute(watch), ...broader].slice(0, MAX_BROADER_SEARCHES),
     };
   }
   // Web results alone mean no student listing fits: widen the search, never narrow it.
@@ -120,7 +123,7 @@ export function quickReplies(input: QuickRepliesInput): QuickReplies {
   return {
     line: null,
     replies: [
-      ...(watch ? [watch] : []),
+      ...(watch ? withRoute(watch) : []),
       ...listingActions(input.listings),
       ...(studentMatches
         ? narrowerSearches(search.criteria, budget, input.today)
@@ -145,12 +148,10 @@ function watchReply({
   const suggestion = turn.watchSuggestion;
   if (!suggestion || !search) return;
   if (watching)
-    return { kind: "watching", text: `Watching for “${suggestion.query}”` };
+    return { kind: "watching", text: "Search saved" };
   return {
     kind: "watch",
-    text: foundNothing(turn)
-      ? "Notify me"
-      : "Notify me about new student listings",
+    text: foundNothing(turn) ? "Save search" : "Save search for new listings",
     query: suggestion.query,
     ...(suggestion.maxPrice === undefined
       ? {}
@@ -161,19 +162,23 @@ function watchReply({
 
 const ask = (text: string): QuickReply => ({ kind: "ask", text });
 
+/** A saved search confirms itself and points to Searches right beside it. */
+const withRoute = (watch: QuickReply) =>
+  watch.kind === "watching" ? [watch, SEE_SEARCHES] : [watch];
+
 function listingActions([best, second]: readonly ShownListing[]) {
   const replies: QuickReply[] = [];
   if (best?.offerable)
     replies.push({
       kind: "offer",
       listingId: best.id,
-      text: `${best.price === 0 ? "Plan pickup for" : "Draft an offer for"} ${best.title}`,
+      text: `${best.price === 0 ? "Plan pickup" : "Draft offer"}: ${best.title}`,
     });
   if (best && second)
     replies.push({
       kind: "compare",
       listingIds: [best.id, second.id],
-      text: "Compare the top two",
+      text: "Compare two listings",
     });
   return replies;
 }
@@ -185,9 +190,9 @@ function narrowerSearches(
 ) {
   const replies: QuickReply[] = [];
   const lower = budget === undefined ? undefined : lowerBudget(budget);
-  if (lower !== undefined) replies.push(ask(`Cheaper: under CHF ${lower}`));
+  if (lower !== undefined) replies.push(ask(`Under CHF ${lower}`));
   const closer = closerRadius(criteria.radius);
-  if (closer !== undefined) replies.push(ask(`Closer: within ${closer} km`));
+  if (closer !== undefined) replies.push(ask(`Within ${closer} km`));
   if (criteria.maxPrice > 0) replies.push(ask(FREE_ONLY));
   if (!criteria.pickup || criteria.pickup > weekendDeadline(today))
     replies.push(ask(COLLECT_BY_SUNDAY));

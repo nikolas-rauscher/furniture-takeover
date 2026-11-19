@@ -12,14 +12,14 @@ test("a free-only budget reads as what the student asked for", () => {
 test("each changed preference gets its own sentence", () => {
   assert.equal(
     searchChangeSummary({ radius: 2, source: "takeover", maxPrice: 80 }),
-    "I set your budget to CHF 80. I set the distance to 2 km. I'm searching Takeover only.",
+    "I set your budget to CHF 80. I set your distance limit to 2 km. I'm searching takeover only.",
   );
 });
 
 test("removed limits say so instead of printing placeholder values", () => {
   assert.equal(
     searchChangeSummary({ maxPrice: 1_000_000, pickupBy: "" }),
-    "I removed the price limit. I removed the collection date.",
+    "I removed the price limit. I removed the pickup deadline.",
   );
 });
 
@@ -30,6 +30,6 @@ test("dates, conditions and places read naturally", () => {
       condition: "Very good",
       location: "UNIL, Chamberonne",
     }),
-    "You can collect by 21 Nov. I'm looking for items in very good condition. I'm searching around UNIL, Chamberonne.",
+    "I'll look for pickup by 21 Nov. I'm looking for items in very good condition. I'm searching around UNIL, Chamberonne.",
   );
 });

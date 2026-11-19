@@ -94,7 +94,21 @@ done
 
 `supabase-db` is the default container name (`docker ps` shows yours). If you prefer, paste each file into Studio's SQL Editor, in order.
 
-Optional demo listings: review `supabase/seed-demo.sql`, then run it the same way. It adds six students who cannot log in and their 40 listings, the same ones the local demo shows; their pictures are the illustrations in `public/samples`, which the app serves. Messages to them are not answered. Regenerate the file with `node --experimental-strip-types scripts/render-demo-seed.ts > supabase/seed-demo.sql` after changing `shared/demoListings.ts`.
+Optional demo listings: after applying `202611190004_admin.sql`, review and run `supabase/seed-demo.sql`. It adds the six inert demo sellers and 40 shipped listings without overwriting existing edits. The seed and admin reset use the catalog bundled in the migration.
+
+To grant yourself admin access, create your account normally. In Studio's SQL Editor, replace the email below with the email for your account and run:
+
+```sql
+insert into public.admins (user_id)
+select id
+from auth.users
+where lower(email) = lower('your-email@example.com')
+  and raw_app_meta_data->>'demo_seed' is null
+on conflict (user_id) do nothing
+returning user_id;
+```
+
+A returned UUID confirms a new grant. Reload takeover to pick up the change. If no row is returned, confirm the email in Authentication → Users or check whether the UUID is already listed in `public.admins`.
 
 ## Step 3. App machine
 

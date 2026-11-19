@@ -2,11 +2,16 @@ import {
   dealPhase,
   messageStatesTerms,
   missingTerms,
+  pickupDay,
   type Deal,
   type DealEvent,
+  type DealEventKind,
   type DealPhase,
   type DealRole,
   type DealTerms,
+  type LateMinutes,
+  type PickupEvent,
+  type PickupPhase,
 } from "../shared/deal.ts";
 import { money, type Product } from "../shared/marketplace.ts";
 import { formatPickup, zurichClockTime } from "../shared/pickupTime.ts";
@@ -197,6 +202,57 @@ function bookedStrip(terms: DealTerms): StripView {
       };
 }
 
+/** "40 min", "2 h 10 min", "2 days": a stretch of time, rounded to the minute. */
+function stretchWords(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 24 * 60) {
+    const rest = minutes % 60;
+    return `${Math.floor(minutes / 60)} h${rest ? ` ${rest} min` : ""}`;
+  }
+  const days = Math.round(minutes / (24 * 60));
+  return days === 1 ? "1 day" : `${days} days`;
+}
+
+/** The calm countdown of a booked pickup: "Pickup in 2 h 10 min", "Pickup now", "15 min overdue". */
+export function pickupCountdown({
+  phase,
+  minutesUntil,
+}: {
+  phase: PickupPhase;
+  minutesUntil: number;
+}): string {
+  if (phase === "overdue")
+    return `${stretchWords(Math.floor(-minutesUntil))} overdue`;
+  if (phase === "pickup_now") return "Pickup now";
+  return `Pickup in ${stretchWords(Math.max(1, Math.ceil(minutesUntil)))}`;
+}
+
+/** A booked pickup on its day, or with a new time on the table: the countdown leads. */
+function pickupStrip(
+  deal: Deal,
+  role: DealRole,
+  other: string,
+  now: Date,
+): StripView | null {
+  const day = pickupDay(deal, role, now);
+  if (!day) return null;
+  const place = day.terms.pickupPoint && shortPlace(day.terms.pickupPoint);
+  if (day.change === "received" && deal.proposal?.terms.pickupAt)
+    return {
+      lead: `${other} suggests a new time`,
+      detail: formatPickup(deal.proposal.terms.pickupAt),
+      tone: "needs",
+    };
+  if (day.phase === "booked") return null;
+  return {
+    lead: pickupCountdown(day),
+    detail: [zurichClockTime(day.terms.pickupAt!), place]
+      .filter(Boolean)
+      .join(" · "),
+    tone: "needs",
+  };
+}
+
 /**
  * The deal in one calm line under the thread's header, from the reading
  * student's side. Null where a thread has no deal to show: a seller before
@@ -209,6 +265,7 @@ export function dealStrip({
   other,
   listing,
   agreedTerms,
+  now,
 }: {
   phase: DealPhase;
   deal: Deal | null;
@@ -217,12 +274,17 @@ export function dealStrip({
   listing: Pick<Product, "price" | "status">;
   /** The terms Pako read as agreed, while the card says "Looks agreed". */
   agreedTerms?: DealTerms;
+  /** The clock pickup day counts down on. */
+  now: Date;
 }): StripView | null {
   const proposal = deal?.proposal;
   const mine = proposal?.by === role;
   switch (phase) {
     case "agreed":
-      return deal?.agreed ? bookedStrip(deal.agreed.terms) : null;
+      return deal?.agreed
+        ? (pickupStrip(deal, role, other, now) ??
+            bookedStrip(deal.agreed.terms))
+        : null;
     case "completed":
       return {
         lead: `${completedWords(role, deal?.agreed?.terms ?? null)} ✓`,
@@ -353,9 +415,9 @@ export function dealView({
   other,
   ...away
 }: AwayDeal & { other: string }): StripView | null {
-  const { deal, role, listing } = away;
+  const { deal, role, listing, now } = away;
   const phase = awayPhase(away);
-  const view = dealStrip({ phase, deal, role, other, listing });
+  const view = dealStrip({ phase, deal, role, other, listing, now });
   return view?.tone === "start" ? null : view;
 }
 
@@ -388,6 +450,87 @@ export function eventChip(event: DealEvent): string {
       return "Listing available again · deal ended";
     case "completed":
       return "Sold ✓";
+  }
+}
+
+/** A pickup-day change as the thread notes it, with who made it. */
+type PickupNews = PickupEvent & { actor: DealRole };
+
+const PICKUP_KINDS: ReadonlySet<string> = new Set<PickupEvent["kind"]>([
+  "time_suggested",
+  "time_accepted",
+  "time_kept",
+  "time_withdrawn",
+  "on_my_way",
+  "late",
+  "no_show",
+  "no_show_released",
+  "pickup_cancelled",
+  "picked_up",
+  "offered_again",
+]);
+
+export const isPickupKind = (
+  kind: DealEventKind | PickupEvent["kind"],
+): kind is PickupEvent["kind"] => PICKUP_KINDS.has(kind);
+
+/** Any change in a thread, as its timeline reads it. */
+export type ThreadNews = {
+  kind: DealEventKind | PickupEvent["kind"];
+  terms: DealTerms | null;
+  minutes?: LateMinutes;
+  actor?: DealRole | null;
+};
+
+/** The row a thread shows for a change: a deal chip, or a pickup-day row that says who. */
+export function threadNewsText(
+  event: ThreadNews,
+  reader: { role: DealRole; other: string },
+): string {
+  const { kind, terms, minutes, actor } = event;
+  if (!isPickupKind(kind)) return eventChip({ kind, terms });
+  if (!actor) throw new Error(`Pickup news ${kind} has no actor.`);
+  return pickupNewsRow({ kind, terms, minutes, actor }, reader);
+}
+
+/**
+ * The quiet row under a pickup-day message, from the reading student's side:
+ * "Léa is on the way", "You're about 10 min late", "New time agreed · …".
+ */
+function pickupNewsRow(
+  event: PickupNews,
+  { role, other }: { role: DealRole; other: string },
+): string {
+  const mine = event.actor === role;
+  const time = event.terms?.pickupAt && formatPickup(event.terms.pickupAt);
+  switch (event.kind) {
+    case "time_suggested":
+      return time ? `New time suggested · ${time}` : "New time suggested";
+    case "time_accepted":
+      return time ? `New time agreed · ${time}` : "New time agreed";
+    case "time_kept":
+      return "Pickup time kept";
+    case "time_withdrawn":
+      return "New time withdrawn";
+    case "on_my_way":
+      return mine ? "You're on the way" : `${other} is on the way`;
+    case "late":
+      return mine
+        ? `You're about ${event.minutes} min late`
+        : `${other} is about ${event.minutes} min late`;
+    case "no_show":
+      return mine
+        ? "You're waiting at the meeting point"
+        : `${other} is waiting at the meeting point`;
+    case "no_show_released":
+      return "Pickup released · available again";
+    case "pickup_cancelled":
+      return "Pickup cancelled · available again";
+    case "picked_up":
+      if (event.actor === "seller") return "Sold ✓";
+      return mine ? "You picked it up ✓" : `${other} picked it up ✓`;
+    case "offered_again":
+      return "Available again";
   }
 }
 

@@ -97,16 +97,27 @@ export function acceptMessage(role: DealRole, terms: DealTerms): string {
   return `Deal! ${action}${price ? ` for ${price}` : ""}.${meetingSentence(terms)}`;
 }
 
+/**
+ * The first confirmation of terms both students talked about: it states them
+ * and asks the other side to confirm, so it never sounds booked yet.
+ */
 export function confirmAgreementMessage(terms: DealTerms): string {
   const price = priceWords(terms);
-  return `Great, let's do ${price ? `it for ${price}` : "that"}.${meetingSentence(terms)}`;
+  const pickup = pickupWords(terms);
+  const agreeing =
+    terms.amount === 0
+      ? "Great, free it is."
+      : price
+        ? `I can do ${price}.`
+        : "That works for me.";
+  if (pickup) return `${agreeing} Can you confirm pickup ${pickup}?`;
+  return terms.fulfillment === "shipping"
+    ? `${agreeing} Can you confirm shipping?`
+    : `${agreeing} Can you confirm?`;
 }
 
-export function askToConfirmMessage(role?: DealRole): string {
-  const forWhom =
-    role === "seller" ? " for you" : role === "buyer" ? " for me" : "";
-  return `Great! Could you tap Confirm on the deal card so it's reserved${forWhom}?`;
-}
+export const askToConfirmMessage = () =>
+  "Could you confirm the offer in the deal card?";
 export const declineMessage = () =>
   "Thanks for the offer, but I'll pass on that one.";
 export const withdrawMessage = () => "Sorry, I'm withdrawing my offer.";
@@ -119,6 +130,8 @@ export const changeTimeMessage = (terms: DealTerms) =>
   `Could we move pickup to ${pickupWords(terms)}? Still ${priceWords(terms)}.`;
 export const acceptNewTimeMessage = (terms: DealTerms) =>
   `The new time works for me. See you ${pickupWords(terms)} for ${priceWords(terms)}.`;
+export const withdrawTimeMessage = (terms: DealTerms) =>
+  `Let's keep ${pickupWords(terms)} after all.`;
 export const keepTimeMessage = (terms: DealTerms) =>
   `Sorry, that doesn't work for me. Can we keep ${pickupWords(terms)} for ${priceWords(terms)}?`;
 export const onMyWayMessage = (terms: DealTerms) =>

@@ -11,7 +11,10 @@ import {
 import { ChevronDown } from "./icons";
 import { useId, useState, useRef, useLayoutEffect } from "react";
 import type { AgentRunSource } from "../../shared/runs";
-import type { AgentQuestionEvent } from "../../shared/actions";
+import type {
+  AgentActionEvidence,
+  AgentQuestionEvent,
+} from "../../shared/actions";
 import type { AgentRunAction } from "../hooks/useAgentRun";
 import { searchChangeSummary } from "../searchChanges";
 import { motionBehavior } from "../uiMotion";
@@ -274,6 +277,17 @@ export function changeSummary(action: AgentRunAction): string {
   return `I updated the ${names.slice(0, -1).join(", ")} and ${names.at(-1)}.`;
 }
 
+/** Pako's own reason for a change, from where its evidence comes. */
+function changeReason(evidence: readonly AgentActionEvidence[]) {
+  const fromListings = evidence.some((item) => item.kind === "source");
+  const fromStudent = evidence.some((item) => item.kind === "seller");
+  if (fromListings && fromStudent)
+    return "I went by what you wrote and what these listings say:";
+  return fromListings
+    ? "I went by what these listings say:"
+    : "I went by what you wrote:";
+}
+
 /** A change Pako made to the listing as one line, with its Undo and the reason on demand. */
 export function AgentChangeLine({
   action,
@@ -316,18 +330,25 @@ export function AgentChangeLine({
             Undo
           </Button>
         )}
-        <Button
-          className="button quiet small"
-          aria-expanded={open}
-          aria-controls={reasonId}
-          onClick={() => setOpen((value) => !value)}
-        >
-          Why?
-        </Button>
+        {action.evidence.length > 0 && (
+          <Button
+            className="button quiet small"
+            aria-expanded={open}
+            aria-controls={reasonId}
+            onClick={() => setOpen((value) => !value)}
+          >
+            Why?
+          </Button>
+        )}
       </div>
+      {notice && (
+        <p className="agent-change-line-notice" role="status">
+          {notice}
+        </p>
+      )}
       {open && (
         <div id={reasonId} className="agent-change-line-reason">
-          <p>{action.reason}</p>
+          <p>{changeReason(action.evidence)}</p>
           {action.evidence.map((item, index) => (
             <p key={index}>
               <q>{item.quote}</q>
@@ -335,7 +356,6 @@ export function AgentChangeLine({
                 answerParts(` [${item.sourceId}]`, sources)}
             </p>
           ))}
-          {notice && <p role="status">{notice}</p>}
         </div>
       )}
     </div>

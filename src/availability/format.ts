@@ -58,4 +58,4 @@ export function pickupDays(now: Date) {
 
 /** The one buyer message a reservation request posts in the thread. */
 export const reservationRequestMessage = (day: string) =>
-  `I'd like to reserve this. Can I pick it up by ${formatDay(day)}?`;
+  `I'd like to reserve this. Could I pick it up by ${formatDay(day)}?`;

@@ -100,15 +100,15 @@ test("after results, Pako offers the best match, a comparison and narrower searc
       {
         kind: "offer",
         listingId: "desk-1",
-        text: "Draft an offer for Compact study desk",
+        text: "Draft offer: Compact study desk",
       },
       {
         kind: "compare",
         listingIds: ["desk-1", "desk-2"],
-        text: "Compare the top two",
+        text: "Compare two listings",
       },
-      { kind: "ask", text: "Cheaper: under CHF 60" },
-      { kind: "ask", text: "Closer: within 2 km" },
+      { kind: "ask", text: "Under CHF 60" },
+      { kind: "ask", text: "Within 2 km" },
     ],
   });
 });
@@ -128,33 +128,33 @@ test("a reply appears only while its criterion can still narrow the search", () 
     texts({ listings: [], search: search(criteria, request) });
   assert.deepEqual(
     narrower({ maxPrice: defaults.maxPrice }, "A desk"),
-    ["Closer: within 2 km", "Free items only (CHF 0)", "Collect by Sunday"],
+    ["Within 2 km", "Free items only", "Pickup by Sunday"],
     "the app's default ceiling is not a budget the student chose",
   );
   assert.equal(
     narrower({ maxPrice: 500 }, "A desk under CHF 500")[0],
-    "Cheaper: under CHF 370",
+    "Under CHF 370",
   );
   assert.deepEqual(narrower({ maxPrice: 1_000_000 }, "A desk, any budget"), [
-    "Closer: within 2 km",
-    "Free items only (CHF 0)",
-    "Collect by Sunday",
+    "Within 2 km",
+    "Free items only",
+    "Pickup by Sunday",
   ]);
   assert.deepEqual(
     narrower({ maxPrice: 0, radius: 1, pickup: "2026-11-21" }),
     [],
     "free, within a kilometre and ready on Saturday cannot get narrower",
   );
-  assert.equal(narrower({ pickup: "2026-11-24" }).at(-1), "Collect by Sunday");
+  assert.equal(narrower({ pickup: "2026-11-24" }).at(-1), "Pickup by Sunday");
 });
 
 test("budgets and distances shrink and grow to amounts students say", () => {
   const cheaper = (maxPrice: number) =>
     texts({ listings: [], search: search({ maxPrice }) })[0];
-  assert.equal(cheaper(100), "Cheaper: under CHF 75");
-  assert.equal(cheaper(50), "Cheaper: under CHF 35");
-  assert.equal(cheaper(10), "Cheaper: under CHF 7");
-  assert.equal(cheaper(1000), "Cheaper: under CHF 750");
+  assert.equal(cheaper(100), "Under CHF 75");
+  assert.equal(cheaper(50), "Under CHF 35");
+  assert.equal(cheaper(10), "Under CHF 7");
+  assert.equal(cheaper(1000), "Under CHF 750");
   const broader = (criteria: Partial<Criteria>) =>
     texts({ turn: emptySearch, listings: [], search: search(criteria) });
   assert.deepEqual(broader({ maxPrice: 100, radius: 7.5 }), [
@@ -167,7 +167,7 @@ test("budgets and distances shrink and grow to amounts students say", () => {
   ]);
   assert.equal(
     texts({ listings: [], search: search({ radius: 20 }) })[1],
-    "Closer: within 10 km",
+    "Within 10 km",
   );
 });
 
@@ -179,15 +179,15 @@ test("only someone else's active best match gets an offer, a free one a pickup p
         twoDesks[1],
       ],
     }).slice(0, 2),
-    ["Compare the top two", "Cheaper: under CHF 60"],
+    ["Compare two listings", "Under CHF 60"],
   );
   assert.equal(
     texts({ listings: [listing("lamp-1", "Desk lamp", { price: 0 })] })[0],
-    "Plan pickup for Desk lamp",
+    "Plan pickup: Desk lamp",
   );
   assert.deepEqual(texts({ listings: [twoDesks[0]] }).slice(0, 2), [
-    "Draft an offer for Compact study desk",
-    "Cheaper: under CHF 60",
+    "Draft offer: Compact study desk",
+    "Under CHF 60",
   ]);
 });
 
@@ -266,10 +266,10 @@ test("each typed reply changes the search just as the follow-up path reads it", 
     "EPFL, Ecublens",
   );
   const expected: Record<string, Partial<Criteria>> = {
-    "Cheaper: under CHF 60": { maxPrice: 60 },
-    "Closer: within 2 km": { radius: 2 },
-    "Free items only (CHF 0)": { maxPrice: 0 },
-    "Collect by Sunday": {
+    "Under CHF 60": { maxPrice: 60 },
+    "Within 2 km": { radius: 2 },
+    "Free items only": { maxPrice: 0 },
+    "Pickup by Sunday": {
       pickup: extractSearchConstraints("this weekend").pickup,
     },
     "Raise my budget to CHF 105": { maxPrice: 105 },
@@ -330,11 +330,11 @@ test("when nothing fits yet, keeping watch comes first, ahead of two broader sea
       listings: [],
     }),
     {
-      line: "Nothing yet. Shall I keep an eye out for you, or look a little wider?",
+      line: "Nothing yet. Save this search for new matches, or let me look wider.",
       replies: [
         {
           kind: "watch",
-          text: "Notify me",
+          text: "Save search",
           query: "green armchair",
           maxPrice: 120,
           radius: 5,
@@ -357,7 +357,7 @@ test("with only web results, the watch reply asks about new student listings", (
       listings: [],
     }),
     [
-      "Notify me about new student listings",
+      "Save search for new listings",
       "Raise my budget to CHF 105",
       "Search within 10 km",
     ],
@@ -370,11 +370,11 @@ test("once the watch is on, its reply turns into a confirmation", () => {
     listings: [],
     watching: true,
   });
-  assert.equal(result.line, "Nothing yet, but I'm keeping an eye out for you.");
-  assert.deepEqual(result.replies[0], {
-    kind: "watching",
-    text: "Watching for “green armchair”",
-  });
+  assert.equal(result.line, "This search is saved. New matches show up in Searches.");
+  assert.deepEqual(result.replies.slice(0, 2), [
+    { kind: "watching", text: "Search saved" },
+    { kind: "searches", text: "See Searches" },
+  ]);
 });
 
 test("keeping watch needs no daily allowance", () => {
@@ -389,5 +389,5 @@ test("keeping watch needs no daily allowance", () => {
 test("an empty search can offer a watch alongside a question about widening", () => {
   assert.deepEqual(texts({ turn: { ...emptySearch, watchSuggestion: watchFor,
     questions: [{ type: "question", id: "widen", question: "Widen the area?", choices: [] }],
-  } }), ["Notify me"]);
+  } }), ["Save search"]);
 });

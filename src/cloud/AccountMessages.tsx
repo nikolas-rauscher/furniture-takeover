@@ -18,6 +18,7 @@ import {
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import type {
   MessagesProps,
+  OfferAgain,
   ThreadRequest,
 } from "../components/MessagesPage";
 import InboxEmpty from "../components/InboxEmpty";
@@ -43,6 +44,7 @@ import {
 } from "../components/ThreadView";
 import Pako from "../components/onboarding/Pako";
 import { useMediaQuery } from "../hooks/useMediaQuery";
+import { useNow } from "../hooks/useNow";
 import { usePageVisible } from "../hooks/usePageVisible";
 import { accountInboxThread, isUnread } from "../inboxActivity";
 import { newestAt } from "../inboxDeals";
@@ -59,7 +61,8 @@ import Report from "./Report";
 import type { AccountInbox } from "./useAccountInbox";
 import { useAccountDeal } from "./useAccountDeal";
 import { useAccountThread } from "./useAccountThread";
-import { threadDealSnapshot } from "../../shared/deal";
+import { nextPickupBuyer, threadDealSnapshot } from "../../shared/deal";
+import { availableAgainMessage } from "../../shared/dealMessages";
 import { money, type Product } from "../../shared/marketplace";
 const FILTERS = [
   ["all", "All"],
@@ -224,15 +227,26 @@ export default function AccountMessages({
   const pakoDrafts = usePakoDrafts();
   const thread = useAccountThread(client, current?.id);
   const deal = useAccountDeal(client, inbox, current?.id);
-  const events: ThreadEvent[] = deal.events.map(
-    ({ id, kind, terms, messageId, at }) => ({
+  const events: ThreadEvent[] = [
+    ...deal.events.map(({ id, kind, terms, messageId, at }) => ({
       id,
       kind,
       terms,
       messageId,
       at,
-    }),
-  );
+    })),
+    ...deal.pickupEvents.map(
+      ({ id, kind, terms, minutes, messageId, actorRole, at }) => ({
+        id,
+        kind,
+        terms,
+        minutes,
+        messageId,
+        actor: actorRole,
+        at,
+      }),
+    ),
+  ].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
   const structured = new Set(events.map((event) => event.messageId));
   const messages: ThreadMessage[] = thread.messages.map((message) => ({
     id: message.id,
@@ -263,7 +277,11 @@ export default function AccountMessages({
             role,
             listing: product,
             messages,
-            loaded: thread.loaded && deal.loaded,
+            // Pickup news marks its messages as structured, so Pako waits for it.
+            loaded:
+              thread.loaded &&
+              deal.loaded &&
+              (!deal.deal || deal.pickupEventsLoaded),
             deal: threadDealSnapshot(deal.deal, role),
             cache: accountTurnCache(client, userId, current.id),
           }
@@ -275,6 +293,48 @@ export default function AccountMessages({
     canNudge: !seededSeller,
     agreedWith: agreedElsewhere && (names[agreedElsewhere.buyer_id] || "Buyer"),
   });
+  const now = useNow();
+  const [offerAgain, setOfferAgain] = useState<OfferAgain>();
+  /** After a released pickup, the next buyer in the inbox who wrote about the listing. */
+  const released =
+    role === "seller" && product?.status === "active" ? current : undefined;
+  const releasedDeal = released && rows?.deals?.[released.id];
+  const nextThread =
+    releasedDeal &&
+    nextPickupBuyer(
+      releasedDeal,
+      threads
+        .filter(
+          (thread) =>
+            latest[thread.id] &&
+            !archived.includes(thread.id) &&
+            !blocked.includes(thread.buyer_id),
+        )
+        .map((thread) => ({
+          id: thread.id,
+          listingId: thread.listing_id,
+          buyerId: thread.buyer_id,
+          deal: rows?.deals?.[thread.id],
+        })),
+    );
+  const nextBuyer = released && nextThread && product && {
+    name: names[nextThread.buyerId] || "Buyer",
+    onOffer: () => {
+      const draft = availableAgainMessage(product.title);
+      setOfferAgain({
+        threadKey: nextThread.id,
+        releasedConversationId: released.id,
+        draft,
+      });
+      setSelected(nextThread.id);
+      setDrafts((items) => ({ ...items, [nextThread.id]: draft }));
+    },
+  };
+  /** The composer holds the offer of a released item to this thread's buyer. */
+  const offeringAgain =
+    offerAgain?.threadKey === selected && role === "seller" ? offerAgain : undefined;
+  /** Pako's offer of a released item to this buyer, still as he wrote it. */
+  const offerAgainDraft = offeringAgain?.draft === text;
   /** A first offer starts the conversation, then records the offer with its message. */
   const controller: DealController = current
     ? deal
@@ -312,6 +372,8 @@ export default function AccountMessages({
     enabled: !otherBlocked && !seededSeller,
     visible,
     homePoint,
+    now,
+    nextBuyer,
     onStatusChange: onListingStatus,
     onWrite: setText,
   });
@@ -448,8 +510,23 @@ export default function AccountMessages({
     pending.current.acknowledge(id);
     return id;
   }
+  /** The conversation's own path for the composed text: offered again, with terms, or plain. */
+  function sendComposed(conversation: Conversation) {
+    const withTerms = attached && termsNote?.states ? attached : null;
+    if (offeringAgain)
+      return threadDeal.sendPickup(
+        {
+          type: "offer_again",
+          releasedConversationId: offeringAgain.releasedConversationId,
+        },
+        text.trim(),
+      );
+    return withTerms
+      ? threadDeal.sendTerms(withTerms, text.trim())
+      : sendPlain(conversation);
+  }
   async function send() {
-    const fromPako = appDraft || assistant.draftedByPako;
+    const fromPako = appDraft || offerAgainDraft || assistant.draftedByPako;
     const celebrates = Boolean(openingTerms) || assistant.celebrates;
     const withTerms = attached && termsNote?.states ? attached : null;
     setBusy(true);
@@ -459,9 +536,8 @@ export default function AccountMessages({
       const itemId = current?.listing_id ?? product!.id;
       onBeforeSend?.(itemId, role);
       const conversation = await conversationFor(itemId);
-      const id = withTerms
-        ? await threadDeal.sendTerms(withTerms, text.trim())
-        : await sendPlain(conversation);
+      const id = await sendComposed(conversation);
+      if (offeringAgain) setOfferAgain(undefined);
       if (fromPako) pakoDrafts.remember(id);
       if (celebrates && !withTerms)
         threadDeal.celebrate({ kind: "sent", other: otherName });
@@ -693,6 +769,7 @@ export default function AccountMessages({
                 threadKey={current?.id ?? selected}
                 messages={messages}
                 otherName={otherName}
+                role={role}
                 loaded={thread.loaded}
                 error={thread.error}
                 drafted={pakoDrafts.drafted}
@@ -736,7 +813,7 @@ export default function AccountMessages({
                 busy={busy}
                 disabled={otherBlocked}
                 error={error}
-                pakoDrafted={appDraft || assistant.draftedByPako}
+                pakoDrafted={appDraft || offerAgainDraft || assistant.draftedByPako}
                 tools={!otherBlocked && !seededSeller && assistant.askMenu}
                 terms={termsNote}
                 onTextChange={setText}

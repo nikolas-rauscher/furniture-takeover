@@ -1,9 +1,15 @@
-import type { Deal, DealRole, DealTerms } from "../shared/deal";
+import { pickupDay, type Deal, type DealRole, type DealTerms } from "../shared/deal.ts";
 import { money } from "../shared/marketplace.ts";
 import { formatPickup } from "../shared/pickupTime.ts";
 import type { AgentTaskKind } from "../shared/runs";
 import { plainAnswer } from "./components/agentAnswer.ts";
-import { agreedWords, openTermsList } from "./dealWords.ts";
+import {
+  agreedWords,
+  openTermsList,
+  pickupCountdown,
+  shortPickup,
+} from "./dealWords.ts";
+import type { PickupDay } from "./pickupOptions.ts";
 import type { PakoMood } from "./components/onboarding/storyTypes";
 import type { AgentRunState, AgentRunStep } from "./hooks/useAgentRun";
 import type { TrayPhase } from "./listingQuestions";
@@ -45,7 +51,9 @@ function photoGuide(photo: PhotoMoment): HomeGuide {
 /** A deal Pako mentions first on home: an offer waiting for the student, or a booked pickup. */
 export type HomeDealNews =
   | { kind: "offer"; other: string; title: string }
-  | { kind: "booked"; title: string; when: string };
+  | { kind: "booked"; title: string; when: string }
+  /** The pickup is within 2 h, now or overdue: "Pickup in 1 h 40 min". */
+  | { kind: "pickup_day"; title: string; countdown: string };
 
 /** What Pako tells on home about a deal: the other student's offer, or the booked pickup. */
 export function homeDealNews({
@@ -53,24 +61,35 @@ export function homeDealNews({
   role,
   other,
   title,
+  now,
 }: {
   deal: Deal;
   role: DealRole;
   other: string;
   title: string;
+  now: Date;
 }): HomeDealNews | null {
   if (deal.status === "open" && deal.proposal && deal.proposal.by !== role)
     return { kind: "offer", other, title };
+  const day = pickupDay(deal, role, now);
+  if (day && day.phase !== "booked")
+    return { kind: "pickup_day", title, countdown: pickupCountdown(day) };
   const pickupAt = deal.status === "agreed" && deal.agreed?.terms.pickupAt;
   return pickupAt
     ? { kind: "booked", title, when: formatPickup(pickupAt) }
     : null;
 }
 
-const dealNewsLine = (deal: HomeDealNews) =>
-  deal.kind === "offer"
-    ? `${deal.other} made you an offer for the ${deal.title}.`
-    : `Pickup booked: the ${deal.title}, ${deal.when}.`;
+function dealNewsLine(deal: HomeDealNews) {
+  switch (deal.kind) {
+    case "offer":
+      return `${deal.other} made you an offer for the ${deal.title}.`;
+    case "booked":
+      return `Pickup booked: the ${deal.title}, ${deal.when}.`;
+    case "pickup_day":
+      return `${deal.countdown}: the ${deal.title}.`;
+  }
+}
 
 /**
  * What Pako shows and says beside the search on the home page. A photo search
@@ -594,5 +613,74 @@ export function threadGuide(
     }
     case "deal_cancelled":
       return { mood: "sad", line: CANCELLED[moment.by](other) };
+  }
+}
+
+/**
+ * Pako's line on the pickup card, by how close the pickup is and what the
+ * other student last said: a new time to answer first, then their signals,
+ * then what to tap next. He names the other student and never guesses their
+ * pronouns.
+ */
+export function pickupGuide({
+  day,
+  deal,
+  role,
+  other,
+  title,
+}: {
+  day: PickupDay;
+  deal: Deal;
+  role: DealRole;
+  other: string;
+  title: string;
+}): { mood: PakoMood; line: string } {
+  const signals = deal.pickup;
+  const theirs: DealRole = role === "buyer" ? "seller" : "buyer";
+  const proposed = deal.proposal?.terms.pickupAt;
+  if (day.change === "received" && proposed)
+    return {
+      mood: "listen",
+      line: `${other} suggests ${formatPickup(proposed)} instead. Accept it, or keep ${shortPickup(day.terms.pickupAt!)}.`,
+    };
+  if (day.change === "sent")
+    return { mood: "listen", line: `Waiting for ${other} to answer your new time.` };
+  if (day.buyerReportedPickup)
+    return role === "seller"
+      ? { mood: "happy", line: `${other} says they picked it up. Mark it sold to finish.` }
+      : { mood: "idle", line: `Enjoy the ${title}! ${other} marks it sold next.` };
+  if (signals?.noShow?.by === role)
+    return {
+      mood: "think",
+      line:
+        role === "seller"
+          ? `If ${other} still doesn't come, you can release the ${title}.`
+          : `If ${other} still doesn't come, you can cancel the pickup.`,
+    };
+  if (signals?.late && signals.late.by === theirs)
+    return { mood: "listen", line: `${other} is about ${signals.late.minutes} min late.` };
+  if (signals?.onWay[theirs])
+    return { mood: "happy", line: `${other} is on the way.` };
+  switch (day.phase) {
+    case "booked":
+      return {
+        mood: "idle",
+        line: "You're all set. If plans change, change the time here.",
+      };
+    case "pickup_soon":
+      return {
+        mood: "wave",
+        line: `${pickupCountdown(day)}. Tap On my way when you leave.`,
+      };
+    case "pickup_now":
+      return {
+        mood: "wave",
+        line:
+          role === "seller"
+            ? `It's pickup time. Tap Mark sold once ${other} has the ${title}.`
+            : `It's pickup time. Tap Picked up once you have the ${title}.`,
+      };
+    case "overdue":
+      return { mood: "think", line: `Did you meet ${other}?` };
   }
 }

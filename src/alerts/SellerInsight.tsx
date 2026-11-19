@@ -20,7 +20,7 @@ export default function SellerInsight({ similar, ladder }: SellerInsightProps) {
     ladder && ladder.rungs.some((rung) => rung.count > 0) ? ladder : undefined;
   if (!similar && !demand) return null;
   return (
-    <div className="seller-insight" aria-label="Prices on Takeover">
+    <div className="seller-insight" aria-label="Asking prices on takeover">
       {similar && (
         <p className="seller-insight-range">
           {similar.count === 1

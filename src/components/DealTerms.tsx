@@ -6,8 +6,48 @@ import {
   MapPin,
   Package,
 } from "@/components/icons";
+import { campusPickupPoints } from "../../shared/campusPickupPoints";
+import type { Product } from "../../shared/marketplace";
 import { termPrice, type ShownTerms } from "../dealWords";
 import "./deal-card.css";
+
+/** A new state settles in place of the last one, like Pako's tray; the old one leaves at once. */
+export const CARD_SWAP = {
+  initial: { opacity: 0, y: 6 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 420, damping: 34 },
+  },
+  exit: { opacity: 0, y: -4, transition: { duration: 0.1 } },
+} as const;
+
+/** A known meeting point's address and a map link, once the pickup is booked. */
+export function PlaceNote({
+  name,
+  listingPoint,
+}: {
+  name: string;
+  listingPoint: Product["pickupPoint"] | undefined;
+}) {
+  const point = [listingPoint, ...campusPickupPoints].find(
+    (candidate) => candidate?.name === name,
+  );
+  if (!point) return null;
+  return (
+    <>
+      {point.address} ·{" "}
+      <a
+        aria-label={`Open ${point.name} in Maps`}
+        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${point.name} ${point.address}`)}`}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Map
+      </a>
+    </>
+  );
+}
 
 type TermField = keyof ShownTerms;
 

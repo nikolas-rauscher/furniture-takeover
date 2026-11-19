@@ -117,6 +117,8 @@ export default function AgentRunPanel({
         appliedActionIds.includes(action.id),
   );
   const steps = settledSteps(state.steps);
+  // Pako ran out of activities mid-comparison: the student taps to let him go on.
+  const unfinished = state.diagnostic?.code === "STEP_LIMIT";
   // Queued questions wait their turn: only the next one shows beside the answered ones.
   const nextQuestion = state.questions.find(
     (question) => !state.answers[question.id],
@@ -234,6 +236,38 @@ export default function AgentRunPanel({
     </div>
   );
 
+  // Search changes sit right under Pako's name, so the student reads what he changed before the results.
+  const changes = shownActions.length > 0 && (
+    <div className="agent-run-changes">
+      {shownActions.map((action) =>
+        questionsInTray || action.type === "preferences_patch" ? (
+          <AgentChangeLine
+            key={action.id}
+            action={action}
+            sources={safeSources}
+            applied={appliedActionIds.includes(action.id)}
+            undone={undoneActionIds.includes(action.id)}
+            notice={actionNotices[action.id]}
+            onApply={readOnly ? undefined : onApplyAction}
+            onUndo={readOnly ? undefined : onUndoAction}
+          />
+        ) : (
+          <AgentChanges
+            key={action.id}
+            action={action}
+            sources={safeSources}
+            applied={appliedActionIds.includes(action.id)}
+            undone={undoneActionIds.includes(action.id)}
+            notice={actionNotices[action.id]}
+            onApply={onApplyAction}
+            onUndo={onUndoAction}
+            onEdit={onEditFields}
+          />
+        ),
+      )}
+    </div>
+  );
+
   const panel = (
     <section
       className={`agent-run-panel ${running ? "is-running" : ""} ${splitSearchResults ? "split-search-results" : ""} ${compact ? "conversation-agent" : ""} ${className}`}
@@ -271,6 +305,7 @@ export default function AgentRunPanel({
           {actions}
         </div>
       )}
+      {splitSearchResults && changes}
       {!splitSearchResults && localListings && (
         <div className="agent-local-listings">{localListings}</div>
       )}
@@ -344,9 +379,9 @@ export default function AgentRunPanel({
             {(localListings || searchAnswer.takeover) && (
               <section
                 className="agent-search-result-message"
-                aria-label="Takeover results"
+                aria-label="takeover results"
               >
-                {!localListings && <h3>Takeover</h3>}
+                {!localListings && <h3>On takeover</h3>}
                 {localListings && (
                   <div className="agent-local-listings">{localListings}</div>
                 )}
@@ -396,36 +431,7 @@ export default function AgentRunPanel({
           onRetry={webRetry}
         />
       )}
-      {shownActions.length > 0 && (
-        <div className="agent-run-changes">
-          {shownActions.map((action) =>
-            questionsInTray || action.type === "preferences_patch" ? (
-              <AgentChangeLine
-                key={action.id}
-                action={action}
-                sources={safeSources}
-                applied={appliedActionIds.includes(action.id)}
-                undone={undoneActionIds.includes(action.id)}
-                notice={actionNotices[action.id]}
-                onApply={readOnly ? undefined : onApplyAction}
-                onUndo={readOnly ? undefined : onUndoAction}
-              />
-            ) : (
-              <AgentChanges
-                key={action.id}
-                action={action}
-                sources={safeSources}
-                applied={appliedActionIds.includes(action.id)}
-                undone={undoneActionIds.includes(action.id)}
-                notice={actionNotices[action.id]}
-                onApply={onApplyAction}
-                onUndo={onUndoAction}
-                onEdit={onEditFields}
-              />
-            ),
-          )}
-        </div>
-      )}
+      {!splitSearchResults && changes}
       {questionsInTray ? (
         <ListingAnswers
           questions={state.questions}
@@ -452,11 +458,17 @@ export default function AgentRunPanel({
       {state.error && !questionsInTray && (
         <div className="agent-run-recovery">
           <p className="agent-run-error" role="alert">
-            <strong>Sorry, I got stuck there.</strong> {state.error}
+            {unfinished ? (
+              <strong>{state.error}</strong>
+            ) : (
+              <>
+                <strong>Sorry, I got stuck there.</strong> {state.error}
+              </>
+            )}
           </p>
           {!readOnly && !running && (
             <Button type="button" variant="outline" size="sm" onClick={onRetry}>
-              Try again
+              {unfinished ? "Continue" : "Try again"}
             </Button>
           )}
         </div>

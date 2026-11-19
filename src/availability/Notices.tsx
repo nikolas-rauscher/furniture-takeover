@@ -49,7 +49,7 @@ export default function Notices({
                     className="button primary small"
                     onClick={() => onRequest(notice)}
                   >
-                    Ask to reserve
+                    Request reservation
                   </Button>
                 )
               ) : (

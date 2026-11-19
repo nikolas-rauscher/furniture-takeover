@@ -6,7 +6,7 @@ import { useOnline } from "../hooks/useOnline";
 import type { ThreadMessage } from "../pakoThread";
 import { motionBehavior } from "../uiMotion";
 import type { PakoRequest } from "./AskPakoMenu";
-import { eventChip } from "../dealWords";
+import { isPickupKind, threadNewsText } from "../dealWords";
 import {
   ChatComposerField,
   ChatDate,
@@ -108,6 +108,7 @@ export function ThreadLog({
   threadKey,
   messages,
   otherName,
+  role,
   loaded,
   error,
   drafted,
@@ -120,6 +121,8 @@ export function ThreadLog({
   threadKey: string;
   messages: readonly ThreadMessage[];
   otherName: string;
+  /** The side the thread is read from, so pickup news says "You" or the other's name. */
+  role: DealRole;
   loaded: boolean;
   error?: string;
   /** Whether a sent message started as Pako's draft. */
@@ -167,6 +170,15 @@ export function ThreadLog({
     observer.observe(inner);
     return () => observer.disconnect();
   }, []);
+  const reader = { role, other: otherName };
+  /** Pickup-day news reads as a quiet row of the timeline, like news nobody wrote. */
+  const news = (event: ThreadEvent) => (
+    <ChatEvent
+      key={event.id}
+      text={threadNewsText(event, reader)}
+      system={event.messageId === null || isPickupKind(event.kind)}
+    />
+  );
   const toLatest = () => {
     const element = pane.current;
     if (!element) return;
@@ -211,7 +223,7 @@ export function ThreadLog({
                 {logEntries(messages, events).map((entry) =>
                   entry.kind === "news" ? (
                     <div className="message-entry" key={entry.event.id}>
-                      <ChatEvent text={eventChip(entry.event)} system />
+                      {news(entry.event)}
                     </div>
                   ) : (
                     <div className="message-entry" key={entry.message.id}>
@@ -234,9 +246,7 @@ export function ThreadLog({
                       </ChatMessage>
                       {events
                         .filter((event) => event.messageId === entry.message.id)
-                        .map((event) => (
-                          <ChatEvent key={event.id} text={eventChip(event)} />
-                        ))}
+                        .map(news)}
                     </div>
                   ),
                 )}

@@ -94,7 +94,7 @@ const thread = (listing: Product) => ({
 const noticeText: Record<AvailabilityNotice["kind"], string> = {
   declined: "The seller says it's no longer available.",
   expired: `The seller didn't confirm within ${SELLER_REPLY_HOURS}h, so the listing was removed.`,
-  hold_ended: `Your ${HOLD_HOURS}h hold ended without pickup, so the item is available again.`,
+  hold_ended: "Your reservation expired. The item is available again.",
   available_again: `It's available again. You're first in line for ${WAITLIST_PRIORITY_HOURS} hours.`,
 };
 
@@ -184,7 +184,7 @@ export function useAvailability(options: Options) {
       const conversation = await sendMessage(thread(item), text(t), sender);
       onConversation?.(conversation);
       if (stateRef.current !== before)
-        throw new Error("This reservation changed meanwhile. Try again.");
+        throw new Error("This reservation changed. Check the details and try again.");
       const next =
         sender === "buyer" && conversation.messages.length === 1
           ? rememberThread(t.state, listingId)
@@ -291,10 +291,10 @@ export function useAvailability(options: Options) {
           const holdUntil = t.state.reservations.find(
             (reservation) => reservation.listingId === listingId,
           )?.holdUntil;
-          return `Confirmed! It's held for you until ${holdUntil ? formatDeadline(holdUntil) : "pickup"}.`;
+          return `Confirmed! It's reserved for you until ${holdUntil ? formatDeadline(holdUntil) : "pickup"}.`;
         },
         (at) => confirmReservation(stateRef.current, item, at),
-        `Confirmed. The item is held for this buyer for ${HOLD_HOURS}h.`,
+        `Confirmed. The item is reserved for this buyer for ${HOLD_HOURS} h.`,
         onConversation,
       ).catch(failed);
     },
@@ -309,7 +309,7 @@ export function useAvailability(options: Options) {
         "seller",
         () => "Sorry, it's no longer available.",
         (at) => declineReservation(stateRef.current, item, at),
-        "Marked as no longer available. The buyer has been told.",
+        "Marked as sold. The buyer was notified.",
         onConversation,
       ).catch(failed);
     },
@@ -369,7 +369,7 @@ export function useAvailability(options: Options) {
           onJoin={() => {
             void commit(joinWaitlist(stateRef.current, item, clock()).state);
             optionsRef.current.setToast(
-              "You're on the waitlist. We'll tell you if it becomes available.",
+              "You're on the waitlist. Check reservation updates here.",
             );
           }}
           onLeave={() =>

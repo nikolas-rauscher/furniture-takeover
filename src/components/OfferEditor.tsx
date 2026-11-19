@@ -95,7 +95,7 @@ function sendBlocker(terms: DealTerms, unstated: string | null) {
 }
 
 /** A tap target among a few choices; the chosen one turns blue. */
-function TapChip({
+export function TapChip({
   selected,
   onSelect,
   children,
@@ -244,7 +244,8 @@ function PricePanel({
   );
 }
 
-function TimePanel({
+/** Pickup times to tap, and any other day and time to type. */
+export function TimePanel({
   slots,
   slot,
   now,
