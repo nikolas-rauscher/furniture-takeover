@@ -355,3 +355,81 @@ export function listingAnnouncement(
       return "";
   }
 }
+
+/** A moment beside an open thread, in the tray above its composer. */
+export type ThreadMoment =
+  | { phase: "reading" | "asking" | "asleep" | "offline" | "error" }
+  | { phase: "ready"; summary: string }
+  | { phase: "paused"; remaining: number | undefined }
+  | { phase: "unavailable"; reason: "unconfigured" | "missing" }
+  | { phase: "gone"; status: "reserved" | "sold" | "withdrawn" }
+  | { phase: "no_answer"; hoursWaiting: number };
+
+const GONE: Record<Extract<ThreadMoment, { phase: "gone" }>["status"], string> =
+  {
+    reserved: "is reserved now",
+    sold: "is sold",
+    withdrawn: "isn't listed anymore",
+  };
+
+function waitedFor(other: string, hours: number) {
+  const days = Math.floor(hours / 24);
+  return days < 2
+    ? `No answer from ${other} since yesterday.`
+    : `No answer from ${other} for ${days} days.`;
+}
+
+/**
+ * What Pako shows and says beside a thread: he thinks while he reads, is happy
+ * when his reading arrives, sad when the item is gone, dizzy when a reading
+ * fails and asleep once his readings for today are used up. He names the other
+ * student and never guesses their pronouns.
+ */
+export function threadGuide(
+  moment: ThreadMoment,
+  { other, title }: { other: string; title: string },
+): { mood: PakoMood; line: string } {
+  switch (moment.phase) {
+    case "reading":
+      return { mood: "think", line: `Reading ${other}'s reply…` };
+    case "asking":
+      return { mood: "think", line: "Writing that for you…" };
+    case "ready":
+      return { mood: "happy", line: moment.summary };
+    case "paused":
+      return {
+        mood: "idle",
+        line:
+          moment.remaining === undefined
+            ? `Want me to read ${other}'s reply?`
+            : `Want me to read ${other}'s reply? (${moment.remaining} left today)`,
+      };
+    case "asleep":
+      return {
+        mood: "sleep",
+        line: "I'm out of answers for today. You can still reply yourself.",
+      };
+    case "offline":
+      return {
+        mood: "idle",
+        line: "You're offline. I'll read it when you're back.",
+      };
+    case "error":
+      return { mood: "dizzy", line: "Sorry, I couldn't read that one." };
+    case "unavailable":
+      return {
+        mood: "idle",
+        line:
+          moment.reason === "missing"
+            ? "I can't read replies here yet: this server still needs its update. You can still reply yourself."
+            : "I'm not set up here, so I can't read replies. You can still reply yourself.",
+      };
+    case "gone":
+      return {
+        mood: "sad",
+        line: `The ${title} ${GONE[moment.status]}. Shall I look for something similar?`,
+      };
+    case "no_answer":
+      return { mood: "idle", line: waitedFor(other, moment.hoursWaiting) };
+  }
+}

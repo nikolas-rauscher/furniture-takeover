@@ -88,7 +88,8 @@ function isMetadata(value: unknown): value is AgentMetadata {
   return true;
 }
 
-async function requestJson(
+/** Sends a JSON request to the agent API; an error response becomes an AgentApiError with its code. */
+export async function requestJson(
   path: string,
   options: RequestInit,
 ): Promise<unknown> {

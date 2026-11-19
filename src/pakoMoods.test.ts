@@ -12,9 +12,11 @@ import {
   showedResults,
   stepsSummary,
   stepWords,
+  threadGuide,
   trayMood,
   turnAnnouncement,
   workingLine,
+  type ThreadMoment,
 } from "./pakoMoods.ts";
 import {
   photoSearchClarification,
@@ -249,8 +251,9 @@ test("a photo search speaks first on home: Pako listens to a drag, looks at the 
     newMatches: false,
   });
   assert.equal(
-    guide({ photo: photoSearchFailure(new Error("Choose a photo of 25 MB or less.")) })
-      .line,
+    guide({
+      photo: photoSearchFailure(new Error("Choose a photo of 25 MB or less.")),
+    }).line,
     "Choose a photo of 25 MB or less.",
   );
   assert.equal(guide({ photo: "reading", allowanceUsed: true }).mood, "sleep");
@@ -654,4 +657,64 @@ test("the listing conversation speaks once per moment: working line, answer with
     `Pako: I polished it. ${closing}`,
   );
   assert.equal(listingAnnouncement(turn, { phase: "error", closing }), "");
+});
+
+test("beside a thread Pako thinks while he reads, reacts to how it went and sleeps when out of readings", () => {
+  const names = { other: "Léa", title: "White study desk" };
+  const moods = (
+    [
+      [{ phase: "reading" }, "think"],
+      [{ phase: "asking" }, "think"],
+      [{ phase: "ready", summary: "Léa offers CHF 45." }, "happy"],
+      [{ phase: "paused", remaining: 4 }, "idle"],
+      [{ phase: "asleep" }, "sleep"],
+      [{ phase: "offline" }, "idle"],
+      [{ phase: "error" }, "dizzy"],
+      [{ phase: "unavailable", reason: "missing" }, "idle"],
+      [{ phase: "gone", status: "reserved" }, "sad"],
+      [{ phase: "no_answer", hoursWaiting: 30 }, "idle"],
+    ] as const
+  ).map(([moment, mood]) => [threadGuide(moment, names).mood, mood]);
+  for (const [shown, expected] of moods) assert.equal(shown, expected);
+});
+
+test("Pako's thread lines name the other student and never guess their pronouns", () => {
+  const names = { other: "Léa", title: "White study desk" };
+  const line = (moment: ThreadMoment) => threadGuide(moment, names).line;
+  assert.equal(line({ phase: "reading" }), "Reading Léa's reply…");
+  assert.equal(
+    line({ phase: "paused", remaining: 4 }),
+    "Want me to read Léa's reply? (4 left today)",
+  );
+  assert.equal(
+    line({ phase: "paused", remaining: undefined }),
+    "Want me to read Léa's reply?",
+  );
+  assert.equal(
+    line({ phase: "gone", status: "reserved" }),
+    "The White study desk is reserved now. Shall I look for something similar?",
+  );
+  assert.equal(
+    line({ phase: "no_answer", hoursWaiting: 30 }),
+    "No answer from Léa since yesterday.",
+  );
+  assert.equal(
+    line({ phase: "no_answer", hoursWaiting: 80 }),
+    "No answer from Léa for 3 days.",
+  );
+  const every: ThreadMoment[] = [
+    { phase: "reading" },
+    { phase: "asking" },
+    { phase: "asleep" },
+    { phase: "offline" },
+    { phase: "error" },
+    { phase: "paused", remaining: 2 },
+    { phase: "unavailable", reason: "unconfigured" },
+    { phase: "unavailable", reason: "missing" },
+    { phase: "gone", status: "sold" },
+    { phase: "gone", status: "withdrawn" },
+    { phase: "no_answer", hoursWaiting: 25 },
+  ];
+  for (const moment of every)
+    assert.doesNotMatch(line(moment), /\b(?:he|she|him|her|his|hers)\b/i);
 });
