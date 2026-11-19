@@ -6,6 +6,8 @@ import Pako from "./onboarding/Pako";
 import "./compare-page.css";
 
 type ComparePageProps = {
+  /** Listings have loaded, so a kept comparison shows at once instead of the empty state. */
+  loaded: boolean;
   items: Product[];
   onBack(): void;
   onOpen(item: Product): void;
@@ -127,6 +129,7 @@ function ComparisonCard({
 }
 
 export default function ComparePage({
+  loaded,
   items,
   onBack,
   onOpen,
@@ -141,7 +144,7 @@ export default function ComparePage({
         </Button>
         <h1>Compare items</h1>
       </div>
-      {items.length ? (
+      {!loaded ? null : items.length ? (
         <>
           {items.length > 1 && <FactTable items={items} />}
           <div
@@ -164,7 +167,7 @@ export default function ComparePage({
           <h2>Select listings to compare</h2>
           <p>Tap the compare tile on up to three listings.</p>
           <Button className="button secondary" onClick={() => onBack()}>
-            My listings
+            Choose listings
           </Button>
         </div>
       )}

@@ -110,6 +110,7 @@ import { useListingAnalysis } from "./hooks/useListingAnalysis";
 import type { PakoAbsence } from "./sellGuide";
 import { useListingConversation } from "./hooks/useListingConversation";
 import { useSaved } from "./hooks/useSaved";
+import { useSessionIds } from "./hooks/useSessionIds";
 import { useWatches } from "./alerts/useWatches";
 import type { WatchTarget } from "./alerts/watch";
 import { demandLadder, similarListings } from "./alerts/matching";
@@ -353,7 +354,7 @@ export default function App({
     setToast,
     onFindSimilar: (title) => void runSearch(title),
   });
-  const [compared, setCompared] = useState<string[]>([]);
+  const [compared, setCompared] = useSessionIds("takeover-compare");
   const comparisonOrigin = useRef<View>("discover");
   /** Where the open listing was reached from; a listing opened by link leads back to Browse. */
   const [detailOrigin, setDetailOrigin] = useState<View>("discover");
@@ -2688,6 +2689,7 @@ export default function App({
             {view === "compare" && (
               <PageTransitionView>
                 <ComparePage
+                  loaded={listingsSettled}
                   items={comparison}
                   onBack={() =>
                     transitionPage("nav-back", () =>
