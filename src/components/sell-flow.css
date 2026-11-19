@@ -369,3 +369,21 @@
   border-radius: 50%;
   background: var(--blue);
 }
+/* A sentence a tap just added to the description glows butter, then settles. */
+.listing-preview-added {
+  border-radius: 4px;
+  animation: listing-preview-added 1200ms ease-out both;
+}
+@keyframes listing-preview-added {
+  from {
+    background-color: var(--butter);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .listing-preview-added {
+    animation-timing-function: steps(1, end);
+  }
+}

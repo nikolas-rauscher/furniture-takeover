@@ -85,8 +85,11 @@ import ProductGrid from "./components/ProductGrid";
 import SearchPreferencesFields from "./components/SearchPreferencesFields";
 import SellFlow, {
   listingSaveWords,
+  saveActionLabel,
+  type BatchProgress,
   type ListingDraft,
 } from "./components/SellFlow";
+import ListingConversation from "./components/ListingConversation";
 import DeveloperSettings from "./components/DeveloperSettings";
 import { useDeveloperMode } from "./availability/useDeveloperMode";
 import {
@@ -101,17 +104,13 @@ import { batchStepNote } from "./sellingCelebration";
 import PhotoSplitQuestion from "./components/PhotoSplitQuestion";
 import AgentSuggestions from "./components/AgentSuggestions";
 import AgentRunPanel from "./components/AgentRunPanel";
-import PhotoBubble from "./components/PhotoBubble";
 import { useAgentRun } from "./hooks/useAgentRun";
 import {
   assistRequestKey,
   useAgentAssist,
   type TypingAssistRequest,
 } from "./hooks/useAgentAssist";
-import {
-  startingListingTurn,
-  useListingConversation,
-} from "./hooks/useListingConversation";
+import { useListingConversation } from "./hooks/useListingConversation";
 import { useSaved } from "./hooks/useSaved";
 import { useWatches } from "./alerts/useWatches";
 import { demandLadder, similarListings } from "./alerts/matching";
@@ -1629,73 +1628,28 @@ export default function App({
   );
   /** Pako still reads the photos in step 2, before his first run of the listing starts. */
   const listingStarting = busy && sellStep === 2 && !listing.state.id;
-  const suggestedPrice = pendingPrice(
-    [...listing.state.history, listing.state],
-    draft,
-  );
-  const priceDecision = listing.state.questions.some(
-    (question) =>
-      question.input?.type === "price" && !listing.state.answers[question.id],
-  );
-  /** Takes the student to Pako's price question, where the price is decided. */
-  function reviewPrice() {
-    document
-      .querySelector<HTMLElement>(".listing-conversation [data-price-decision]")
-      ?.focus();
-  }
-  const listingTurn = listingStarting ? startingListingTurn : listing.state;
+  const sellBatch: BatchProgress | undefined =
+    batchQueue && !editingListing
+      ? {
+          index: batchQueue.index,
+          covers: batchQueue.drafts.map((item) => item.image),
+          results: batchQueue.results,
+          onSkip: () => finishBatchItem("skipped"),
+        }
+      : undefined;
   const listingConversation = (
-    <section className="listing-conversation" aria-label="Listing agent">
-      <AgentConversation
-        state={listingTurn}
-        announcement={turnAnnouncement(listingTurn, undefined, "listing")}
-        typing={listing.input.trim() !== ""}
-        footer={
-          <AgentComposer
-            value={listing.input}
-            onChange={listing.setInput}
-            onSend={() => void listing.send(listing.input)}
-            label="Tell Pako about your listing"
-            placeholder="Add a detail…"
-            sendLabel="Send to Pako"
-            disabled={!configured || listing.running}
-            onStop={listing.running ? listing.cancel : undefined}
-          />
-        }
-        renderRequest={(turn, index) =>
-          index === 0 && !editingListing ? (
-            <PhotoBubble photos={listingPhotos(draft)} note={draft.raw} />
-          ) : (
-            <p>{turn.request}</p>
-          )
-        }
-      >
-        {(turn, archived) => (
-          <AgentRunPanel
-            className={archived ? "archived-agent-response" : ""}
-            conversational
-            externalComposer
-            readOnly={archived}
-            voice="listing"
-            typing={listing.input.trim() !== ""}
-            showHistory={false}
-            state={turn}
-            onCancel={listing.cancel}
-            onReset={listing.resetConversation}
-            onRetry={listing.retry}
-            onAnswer={listing.answer}
-            onChoose={listing.choose}
-            onChoosePrice={listing.choosePrice}
-            onSkipQuestion={listing.skip}
-            onApplyAction={listing.accept}
-            onUndoAction={listing.undo}
-            appliedActionIds={listing.appliedIds}
-            undoneActionIds={listing.undoneIds}
-            actionNotices={listing.notices}
-          />
-        )}
-      </AgentConversation>
-    </section>
+    <ListingConversation
+      listing={listing}
+      draft={draft}
+      starting={listingStarting}
+      editing={Boolean(editingListing)}
+      saveAction={saveActionLabel({
+        cloud: Boolean(account),
+        editing: Boolean(editingListing),
+        batch: sellBatch,
+      })}
+      configured={configured}
+    />
   );
   const productCard = (item: Product, arriving = false) => (
     <ProductCard
@@ -2525,8 +2479,13 @@ export default function App({
                   }
                   onDraftChange={listing.editDraft}
                   agentWorking={listingStarting || listing.running}
-                  suggestedPrice={suggestedPrice}
-                  onReviewPrice={priceDecision ? reviewPrice : undefined}
+                  suggestedPrice={pendingPrice(
+                    [...listing.state.history, listing.state],
+                    draft,
+                  )}
+                  onReviewPrice={
+                    listing.decidingPrice ? listing.reviewPrice : undefined
+                  }
                   insight={
                     <SellerInsight
                       similar={similarListings(
@@ -2556,16 +2515,7 @@ export default function App({
                   onCreateDraft={() => void generateDraft()}
                   onSuggestionSelected={addListingSuggestion}
                   onPublish={publish}
-                  batch={
-                    batchQueue && !editingListing
-                      ? {
-                          index: batchQueue.index,
-                          covers: batchQueue.drafts.map((item) => item.image),
-                          results: batchQueue.results,
-                          onSkip: () => finishBatchItem("skipped"),
-                        }
-                      : undefined
-                  }
+                  batch={sellBatch}
                   onSellSeveral={
                     batchQueue
                       ? undefined

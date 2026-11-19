@@ -7,10 +7,12 @@ import {
   foundNothing,
   homeGuide,
   isReaction,
+  listingAnnouncement,
   settledSteps,
   showedResults,
   stepsSummary,
   stepWords,
+  trayMood,
   turnAnnouncement,
   workingLine,
 } from "./pakoMoods.ts";
@@ -526,22 +528,6 @@ test("a listing turn says what Pako does in the server's plain words, with the o
     line(researched, { text: "Desks like this ask", offers: 3 }),
     "Writing my answer…",
   );
-  assert.equal(
-    turnAnnouncement(
-      {
-        id: "run-1",
-        status: "running",
-        steps: [readingDetails],
-        text: "",
-        sources: [],
-        questions: [],
-        answers: {},
-      },
-      undefined,
-      "listing",
-    ),
-    "Reading your listing details…",
-  );
 });
 
 test("listing steps name what they looked at, while search steps keep the intro's words", () => {
@@ -593,4 +579,79 @@ test("a finished listing turn sums up the offers it compared, other turns their 
   assert.equal(stepsSummary(2, 0, "listing"), "2 steps");
   assert.equal(stepsSummary(4, 3, "search"), "4 steps");
   assert.equal(stepsSummary(1, 0, "search"), "1 step");
+});
+
+test("Pako in the tray thinks while he reads, works like in the thread, listens while he asks and reacts at the end", () => {
+  const research = step(
+    "web",
+    "running",
+    "web",
+    "Checking comparable prices online",
+  );
+  assert.equal(trayMood("starting", []), "think");
+  assert.equal(
+    trayMood("working", [step("step-0", "running"), research]),
+    "search",
+  );
+  assert.equal(trayMood("asking", []), "listen");
+  assert.equal(trayMood("done", []), "happy");
+  assert.equal(trayMood("error", []), "dizzy");
+});
+
+test("the listing conversation speaks once per moment: working line, answer with the first question, later questions, closing line", () => {
+  const turn = {
+    steps: [
+      step("step-0", "running", undefined, "Reading your listing details"),
+    ],
+    text: "Suggested CHF 40 based on 3 offers [web-1].",
+    sources: [],
+    questions: [
+      {
+        type: "question" as const,
+        id: "q",
+        question: "What asking price would you like?",
+      },
+    ],
+  };
+  const closing =
+    "All set! Check the card and tap Save listing when you're happy.";
+  assert.equal(
+    listingAnnouncement({ ...turn, text: "" }, { phase: "working", closing }),
+    "Reading your listing details…",
+  );
+  assert.equal(
+    listingAnnouncement(
+      { ...turn, steps: [], text: "" },
+      { phase: "starting", closing },
+    ),
+    "Reading your photos and notes…",
+  );
+  assert.equal(
+    listingAnnouncement(turn, {
+      phase: "asking",
+      question: { text: "What asking price would you like?", first: true },
+      closing,
+    }),
+    "Pako: Suggested CHF 40 based on 3 offers. What asking price would you like?",
+  );
+  assert.equal(
+    listingAnnouncement(turn, {
+      phase: "asking",
+      question: { text: "Can the desk be taken apart?", first: false },
+      closing,
+    }),
+    "Pako: Can the desk be taken apart?",
+  );
+  assert.equal(
+    listingAnnouncement(turn, { phase: "done", closing }),
+    `Pako: ${closing}`,
+  );
+  assert.equal(
+    listingAnnouncement(
+      { ...turn, questions: [], text: "I polished it." },
+      { phase: "done", closing },
+    ),
+    `Pako: I polished it. ${closing}`,
+  );
+  assert.equal(listingAnnouncement(turn, { phase: "error", closing }), "");
 });

@@ -2,6 +2,7 @@ import type { AgentTaskKind } from "../shared/runs";
 import { plainAnswer } from "./components/agentAnswer.ts";
 import type { PakoMood } from "./components/onboarding/storyTypes";
 import type { AgentRunState, AgentRunStep } from "./hooks/useAgentRun";
+import type { TrayPhase } from "./listingQuestions";
 import type { PhotoSearchNotice } from "./photoSearchFeedback.ts";
 
 /** How long each reaction to a moment plays before Pako rests; every other mood lasts as long as its cause. */
@@ -290,9 +291,8 @@ export function turnAnnouncement(
     "id" | "status" | "steps" | "text" | "sources" | "questions" | "answers"
   >,
   place?: string,
-  voice: StepVoice = "search",
 ): string {
-  if (turn.status === "running") return workingLine(turn, place, voice);
+  if (turn.status === "running") return workingLine(turn, place);
   if (turn.status === "error") return "";
   if (turn.status === "idle") return turn.id ? "Pako stopped." : "";
   const answer = plainAnswer(turn.text);
@@ -304,4 +304,51 @@ export function turnAnnouncement(
       ? `${answer} ${question}`.trim()
       : answer;
   return spoken ? `Pako: ${spoken}` : "";
+}
+
+const TRAY_MOODS: Record<Exclude<TrayPhase, "working">, PakoMood> = {
+  hidden: "idle",
+  starting: "think",
+  asking: "listen",
+  done: "happy",
+  error: "dizzy",
+};
+
+/** Pako in the tray: he works like in the thread, listens while he asks and reacts at the end. */
+export function trayMood(
+  phase: TrayPhase,
+  steps: readonly AgentRunStep[],
+): PakoMood {
+  return phase === "working" ? workingMood(steps) : TRAY_MOODS[phase];
+}
+
+/**
+ * The listing conversation's one voice: what Pako does while he works, then his
+ * answer with the first question in the tray, each later question on its own and
+ * his closing line. A failure is announced by its own alert.
+ */
+export function listingAnnouncement(
+  turn: Pick<AgentRunState, "steps" | "text" | "sources" | "questions">,
+  tray: {
+    phase: TrayPhase;
+    question?: { text: string; first: boolean };
+    closing: string;
+  },
+): string {
+  const answer = plainAnswer(turn.text);
+  const spoken = (...parts: string[]) =>
+    `Pako: ${parts.filter(Boolean).join(" ")}`;
+  switch (tray.phase) {
+    case "starting":
+    case "working":
+      return workingLine(turn, undefined, "listing");
+    case "asking":
+      return tray.question
+        ? spoken(tray.question.first ? answer : "", tray.question.text)
+        : "";
+    case "done":
+      return spoken(turn.questions.length ? "" : answer, tray.closing);
+    default:
+      return "";
+  }
 }

@@ -12,7 +12,9 @@ import {
   type ListingChanges,
 } from "../agentActions";
 import type { ListingDraft } from "../components/SellFlow";
+import { money } from "../../shared/marketplace";
 import {
+  asksPrice,
   DescriptionFullError,
   nextQuestion,
   resolvedByDraft,
@@ -77,6 +79,8 @@ export function useListingConversation({
     message: string;
   } | null>(null);
   const tapCount = useRef(0);
+  /** Counts the times the student asked to decide the price, so the tray can bring it into focus. */
+  const [priceReviews, setPriceReviews] = useState(0);
   const activeQuestion = nextQuestion(
     run.state.questions,
     run.state.answers,
@@ -310,7 +314,7 @@ export function useListingConversation({
   function choosePrice(questionId: string, price: number): boolean {
     const question = waitingQuestion(questionId);
     if (!question) return false;
-    const label = price === 0 ? "Give it away for free" : `Use CHF ${price}`;
+    const label = price === 0 ? "Give it away for free" : money(price);
     const suggested = question.choiceActions?.find(
       (item) => item.acceptsProposal && item.patch?.price === price,
     );
@@ -333,6 +337,17 @@ export function useListingConversation({
       value.includes(questionId) ? value : [...value, questionId],
     );
   }
+  /** The price question Pako still waits on, put off or not. */
+  const waitingPriceQuestion = run.state.questions.find(
+    (question) => asksPrice(question) && !run.state.answers[question.id],
+  );
+  /** Brings a price question that was put off back to the front of the tray. */
+  function reviewPrice() {
+    if (!waitingPriceQuestion) return;
+    const id = waitingPriceQuestion.id;
+    setDeferred((value) => value.filter((deferredId) => deferredId !== id));
+    setPriceReviews((count) => count + 1);
+  }
   /** Takes a tapped answer back: its change is undone and the question waits again. */
   function undoAnswer(questionId: string) {
     const actionId = answerActions[questionId];
@@ -354,8 +369,9 @@ export function useListingConversation({
     undoneIds: undone,
     notices,
     activeQuestion,
-    answerActions,
     tapError,
+    priceReviews,
+    decidingPrice: waitingPriceQuestion !== undefined,
     resetConversation,
     resetForNewDraft,
     cancel,
@@ -365,11 +381,11 @@ export function useListingConversation({
     send,
     start,
     retry,
-    answer,
     choose,
     choosePrice,
     skip,
     decideLater,
+    reviewPrice,
     undoAnswer,
   };
 }

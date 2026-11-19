@@ -4,10 +4,15 @@ import type { AgentQuestionEvent } from "../shared/actions.ts";
 import type { ListingDraft } from "./components/SellFlow.tsx";
 import {
   appendToDescription,
+  asksPrice,
+  closingLine,
+  niceStep,
+  trayPhase,
   DescriptionFullError,
   nextQuestion,
   pendingPrice,
   resolvedByDraft,
+  splitQuestion,
   tapAction,
   tapOutcome,
 } from "./listingQuestions.ts";
@@ -178,4 +183,81 @@ test("Pako's suggested price shows until the listing has a price of its own", ()
   );
   assert.equal(pendingPrice(turns, { price: "0" }), undefined);
   assert.equal(pendingPrice([{ actions: [fact] }], { price: "" }), undefined);
+});
+
+test("the price stepper moves in steps that suit the amount", () => {
+  assert.equal(niceStep(15), 1);
+  assert.equal(niceStep(40), 5);
+  assert.equal(niceStep(160), 10);
+  assert.equal(niceStep(1200), 50);
+  assert.equal(niceStep(4000), 100);
+});
+
+test("the tray reads Pako first, asks while a question waits, then closes or says what failed", () => {
+  const phase = (overrides: Partial<Parameters<typeof trayPhase>[0]>) =>
+    trayPhase({
+      starting: false,
+      status: "complete",
+      asking: false,
+      ...overrides,
+    });
+  assert.equal(phase({ starting: true, status: "idle" }), "starting");
+  assert.equal(phase({ status: "running" }), "working");
+  assert.equal(
+    phase({ status: "running", asking: true }),
+    "asking",
+    "a question can wait while Pako still works",
+  );
+  assert.equal(phase({ asking: true }), "asking");
+  assert.equal(phase({}), "done");
+  assert.equal(phase({ status: "error" }), "error");
+  assert.equal(phase({ status: "idle" }), "hidden");
+});
+
+test("a price question is answered with the price card", () => {
+  assert.equal(asksPrice(priceQuestion), true);
+  assert.equal(
+    asksPrice({ input: { type: "price", min: 0, max: 50, step: 1 } }),
+    true,
+  );
+  assert.equal(asksPrice(factQuestion), false);
+});
+
+test("Pako's closing line names what is still missing before saving", () => {
+  assert.deepEqual(closingLine([], "Save listing"), {
+    title: "All set!",
+    text: "Check the card and tap Save listing when you're happy.",
+  });
+  assert.deepEqual(closingLine(["price"], "Publish listing"), {
+    title: "Almost there!",
+    text: "Add the price, then tap Publish listing.",
+  });
+  assert.equal(
+    closingLine(["title", "price", "pickup location"], "Save listing").text,
+    "Add the title, price and pickup location, then tap Save listing.",
+  );
+});
+
+test("a question keeps the asked sentence as its heading and what Pako wrote after it apart", () => {
+  assert.deepEqual(
+    splitQuestion(
+      "What asking price would you like? Recent listings ask CHF 1,090 [web-3], so CHF 1,250 is a fair start.",
+    ),
+    {
+      ask: "What asking price would you like?",
+      aside:
+        "Recent listings ask CHF 1,090 [web-3], so CHF 1,250 is a fair start.",
+    },
+  );
+  assert.deepEqual(splitQuestion("Is the charger included?"), {
+    ask: "Is the charger included?",
+    aside: "",
+  });
+  assert.deepEqual(
+    splitQuestion("Recent listings ask CHF 40. What would you like to ask?"),
+    {
+      ask: "Recent listings ask CHF 40. What would you like to ask?",
+      aside: "",
+    },
+  );
 });

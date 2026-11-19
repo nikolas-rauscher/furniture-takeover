@@ -109,12 +109,24 @@ export function resolvedByDraft(
   );
 }
 
-type PriceSuggestion = AgentListingPatchEvent & { patch: { price: number } };
+/** Pako's researched price, which waits for the student's decision. */
+export type PriceSuggestion = AgentListingPatchEvent & {
+  patch: { price: number };
+};
 
-const isPriceSuggestion = (action: AgentRunAction): action is PriceSuggestion =>
+export const isPriceSuggestion = (
+  action: AgentRunAction,
+): action is PriceSuggestion =>
   action.type === "listing_patch" &&
   action.requiresAcceptance &&
   typeof action.patch.price === "number";
+
+/** The newest price Pako suggested among these changes. */
+export function priceSuggestion(
+  actions: readonly AgentRunAction[],
+): PriceSuggestion | undefined {
+  return actions.filter(isPriceSuggestion).at(-1);
+}
 
 /** Pako's newest suggested price, while the listing has no price of its own. */
 export function pendingPrice(
@@ -122,8 +134,76 @@ export function pendingPrice(
   draft: Pick<ListingDraft, "price">,
 ): number | undefined {
   if (draft.price.trim()) return undefined;
-  return turns
-    .flatMap((turn) => turn.actions)
-    .filter(isPriceSuggestion)
-    .at(-1)?.patch.price;
+  return priceSuggestion(turns.flatMap((turn) => turn.actions))?.patch.price;
+}
+
+/** A question about the asking price, answered with the price card. */
+export const asksPrice = (
+  question: Pick<AgentQuestionEvent, "listingField" | "input">,
+) => question.listingField === "price" || question.input?.type === "price";
+
+/**
+ * A step of the price card's stepper that suits the amount: single francs for
+ * small things, rounder steps for dearer ones.
+ */
+export function niceStep(price: number): number {
+  if (price < 20) return 1;
+  if (price < 100) return 5;
+  if (price < 500) return 10;
+  if (price < 2000) return 50;
+  return 100;
+}
+
+/** What Pako's tray above the composer shows. */
+export type TrayPhase =
+  "hidden" | "starting" | "working" | "asking" | "done" | "error";
+
+export function trayPhase({
+  starting,
+  status,
+  asking,
+}: {
+  /** Pako still reads the photos before his first run starts. */
+  starting: boolean;
+  status: "idle" | "running" | "complete" | "error";
+  /** A question waits for the student. */
+  asking: boolean;
+}): TrayPhase {
+  if (starting) return "starting";
+  if (asking) return "asking";
+  if (status === "running") return "working";
+  if (status === "error") return "error";
+  if (status === "complete") return "done";
+  return "hidden";
+}
+
+const listWords = (words: readonly string[]) =>
+  words.length < 2
+    ? words.join("")
+    : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`;
+
+/** Pako's closing line once his questions are answered: what is left before saving. */
+export function closingLine(missing: readonly string[], action: string) {
+  return missing.length
+    ? {
+        title: "Almost there!",
+        text: `Add the ${listWords(missing)}, then tap ${action}.`,
+      }
+    : {
+        title: "All set!",
+        text: `Check the card and tap ${action} when you're happy.`,
+      };
+}
+
+/**
+ * A question as asked, and what Pako wrote after it: the tray shows the asked
+ * sentence as the heading and keeps the rest, such as his reasoning, apart.
+ */
+export function splitQuestion(text: string): { ask: string; aside: string } {
+  const end = text.search(/\?\s+\S/);
+  if (end < 0) return { ask: text.trim(), aside: "" };
+  return {
+    ask: text.slice(0, end + 1).trim(),
+    aside: text.slice(end + 1).trim(),
+  };
 }

@@ -88,6 +88,21 @@ export function listingSaveWords(cloud: boolean) {
     : { verb: "Save", gerund: "saving", action: "Save listing" };
 }
 
+/** The save button's words: an edit is saved, a new listing published or saved, then the next one. */
+export function saveActionLabel({
+  cloud,
+  editing,
+  batch,
+}: {
+  cloud: boolean;
+  editing: boolean;
+  batch?: Pick<BatchProgress, "index" | "covers">;
+}) {
+  if (editing) return "Save changes";
+  const more = batch !== undefined && batch.index + 1 < batch.covers.length;
+  return listingSaveWords(cloud).action + (more ? " & next" : "");
+}
+
 /** Where a listing stands in the batch tray. */
 function trayState(batch: BatchProgress, index: number) {
   if (index === batch.index) return "current";
@@ -148,6 +163,30 @@ function BatchTray({
         Skip this one
       </Button>
     </nav>
+  );
+}
+
+/** The card's description; a sentence just added to its end glows for a moment. */
+function DescriptionPreview({ text }: { text: string }) {
+  const [shown, setShown] = useState({ text, added: "" });
+  if (shown.text !== text)
+    setShown({
+      text,
+      added:
+        shown.text && text.startsWith(shown.text)
+          ? text.slice(shown.text.length)
+          : "",
+    });
+  const kept = text.slice(0, text.length - shown.added.length);
+  return (
+    <p className="listing-preview-description">
+      {kept}
+      {shown.added && (
+        <span key={text} className="listing-preview-added">
+          {shown.added}
+        </span>
+      )}
+    </p>
   );
 }
 
@@ -739,14 +778,7 @@ export default function SellFlow({
                 disabled={agentWorking || busy || photoReading}
               >
                 <Check size={18} />
-                {busy
-                  ? "Saving…"
-                  : editing
-                    ? "Save changes"
-                    : saveWords.action +
-                      (batch && batch.index + 1 < batch.covers.length
-                        ? " & next"
-                        : "")}
+                {busy ? "Saving…" : saveActionLabel({ cloud, editing, batch })}
               </Button>
               <span className="quiet-caption">
                 {cloud
@@ -843,9 +875,7 @@ export default function SellFlow({
               </div>
               {insight}
               {draft.description && (
-                <p className="listing-preview-description">
-                  {draft.description}
-                </p>
+                <DescriptionPreview text={draft.description} />
               )}
               {(draft.condition || draft.dimensions) && (
                 <dl className="listing-preview-facts">
