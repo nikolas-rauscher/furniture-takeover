@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { draftMessage } from "./dealMessages.ts";
 
 export const negotiationTermsSchema = z
   .object({
@@ -114,33 +115,6 @@ export function reviseNegotiation(
   for (const field of negotiationFields)
     if (next.terms[field] === null) delete next.evidence[field];
   return negotiationSchema.parse(next);
-}
-export function draftMessage(title: string, terms: NegotiationTerms): string {
-  const parts = [`Hi, I'm interested in your ${title}. Is it still available?`];
-  if (terms.amount !== null)
-    parts.push(`Would you accept CHF ${terms.amount}?`);
-  if (terms.fulfillment === "shipping")
-    parts.push(
-      "Would shipping be possible, and what would the total including shipping be?",
-    );
-  else if (
-    terms.fulfillment === "pickup" ||
-    terms.pickupTime ||
-    terms.pickupPoint
-  ) {
-    parts.push(
-      terms.pickupTime
-        ? `Would pickup ${terms.pickupTime} work for you?`
-        : "When would pickup work for you?",
-    );
-    parts.push(
-      terms.pickupPoint
-        ? `Could we meet at ${terms.pickupPoint}?`
-        : "Where would you like to meet for pickup?",
-    );
-  } else parts.push("How would you prefer to arrange handover?");
-  if (terms.note) parts.push(terms.note);
-  return parts.join(" ");
 }
 export function prepareNegotiation(
   current: Negotiation,
