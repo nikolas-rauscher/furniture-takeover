@@ -562,14 +562,12 @@
   min-height: 40px;
   padding: 8px 14px;
   border: 2px solid var(--card-line);
-  border-radius: 16px;
+  border-radius: 999px;
   background: var(--surface);
   color: var(--ink);
   font-weight: 500;
-  box-shadow: 0 3px 0 var(--lip);
   transition:
-    translate 90ms var(--ease-out),
-    box-shadow 90ms var(--ease-out),
+    scale 90ms var(--ease-out),
     border-color 160ms ease;
   animation: reply-suggestion-in 320ms var(--ease-out) both;
 }
@@ -587,8 +585,7 @@
   background: var(--surface);
 }
 .reply-assistance .reply-suggestions > .reply-choice:active:not(:disabled) {
-  translate: 0 3px;
-  box-shadow: 0 0 0 var(--lip);
+  scale: 0.96;
 }
 @keyframes reply-suggestion-in {
   from {

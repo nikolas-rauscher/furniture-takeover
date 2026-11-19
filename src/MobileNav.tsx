@@ -9,6 +9,7 @@ import {
 import { AnimateIcon } from "@animate-ui/react/icons";
 import { useMemo } from "react";
 import { Button } from "./components/ui/button";
+import { useMediaQuery } from "./hooks/useMediaQuery";
 import {
   MessageCircle,
   Heart,
@@ -50,6 +51,10 @@ export default function MobileNav({
     () => ({ current: null }) as { current: HTMLElement | null },
     [pageKey],
   );
+  // Wider screens navigate from the header. The bar is not mounted there, because its
+  // size animations cannot run, nor be interrupted, on an element that is not rendered.
+  const phone = useMediaQuery("(max-width: 760px)");
+  if (!phone) return null;
   return (
     <BottomNavigation
       className="mobile-nav"

@@ -1337,14 +1337,16 @@ export default function App({
       return;
     }
     hasSellingDraft.current = false;
-    if (!editingListing) setPublishedListing(item.id);
     setAccountTab("listings");
     navigate("account");
-    setToast(
-      account
-        ? "Listing published to Takeover."
-        : "Listing saved in this browser.",
-    );
+    // A new listing is celebrated on My listings; only edits get a toast.
+    if (editingListing)
+      setToast(
+        account
+          ? "Listing published to Takeover."
+          : "Listing saved in this browser.",
+      );
+    else setPublishedListing(item.id);
   }
   function editListing(item: Product) {
     if (account && !item.own) return;
@@ -2109,7 +2111,7 @@ export default function App({
                 )}
                 {searchIsHome && !visibleListings.length && (
                   <div className="home-empty">
-                    <Pako mood="idle" size={72} />
+                    <Pako mood="idle" size={72} still />
                     <div>
                       <h2>Nothing listed nearby yet</h2>
                       <p>

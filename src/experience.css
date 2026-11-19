@@ -81,32 +81,21 @@
   min-height: 40px;
   padding: 7px 16px 7px 13px;
 }
-/* The account button stands on the same lip as the button beside it. */
+/* Header icon buttons are flat rounds, like every other icon button. */
 .app-header .icon-button {
   width: 40px;
   height: 40px;
-  border: 2px solid var(--card-line);
-  background: var(--surface);
-  box-shadow: 0 3px 0 var(--lip);
   transition:
-    transform 90ms var(--ease-out),
-    box-shadow 90ms var(--ease-out),
+    scale 90ms var(--ease-out),
     background-color 160ms ease,
     color 160ms ease;
 }
 .app-header .icon-button:hover {
   background: var(--selected);
 }
-.app-header .icon-button:not(:disabled):active {
-  scale: 1;
-  transform: translateY(3px);
-  box-shadow: 0 0 0 var(--lip);
-}
 .app-header .icon-button.active {
-  border-color: var(--blue);
   background: var(--selected);
   color: var(--blue-dark);
-  box-shadow: 0 3px 0 var(--blue-dark);
 }
 /* Narrow desktop windows keep every tab: Sell shrinks to its plus. */
 @media (min-width: 761px) and (max-width: 960px) {

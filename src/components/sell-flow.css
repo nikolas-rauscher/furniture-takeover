@@ -130,11 +130,6 @@
   }
 }
 
-/* Next to Publish, editing the details is a light outline without a lip. */
-.view-sell .listing-edit-button {
-  --button-depth: 0px;
-}
-
 /* The draft reads like the intro's listing card while Pako fills it in. */
 .listing-preview-status {
   display: flex;

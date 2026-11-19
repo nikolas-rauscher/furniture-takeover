@@ -890,23 +890,21 @@
   overflow: visible;
   mask-image: none;
 }
-/* Suggested answers are the intro's answer cards in small: a face on a lip. */
+/* Suggested answers are outlined pills, like every suggestion chip. */
 .agent-run-question .agent-run-choices > .ai-suggestion[data-slot="button"] {
   flex: 0 1 auto;
   max-width: 100%;
   min-height: 40px;
   padding: 7px 14px;
   border: 2px solid var(--card-line);
-  border-radius: 14px;
+  border-radius: 999px;
   background: var(--surface);
   color: var(--blue-dark);
   font-weight: 650;
   white-space: normal;
   overflow-wrap: anywhere;
-  box-shadow: 0 3px 0 var(--lip);
   transition:
-    transform 90ms var(--ease-out),
-    box-shadow 90ms var(--ease-out),
+    scale 90ms var(--ease-out),
     border-color 160ms ease,
     background-color 160ms ease;
 }
@@ -919,6 +917,5 @@
 .agent-run-question
   .agent-run-choices
   > .ai-suggestion[data-slot="button"]:active:not(:disabled) {
-  transform: translateY(3px);
-  box-shadow: 0 0 0 var(--lip);
+  scale: 0.96;
 }

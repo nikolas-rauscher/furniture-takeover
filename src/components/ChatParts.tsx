@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils";
 import { useSaved } from "../hooks/useSaved";
 import Confetti from "./onboarding/Confetti";
 import Pako from "./onboarding/Pako";
-import type { PakoMood } from "./onboarding/storyTypes";
 import { Button } from "./ui/button";
 import {
   InputGroup,
@@ -242,17 +241,11 @@ export function ChatSegment<Value extends string>({
   );
 }
 
-/** Marks text that Pako prepared, the way the intro labels Pako's messages. */
-export function PakoLabel({
-  mood = "idle",
-  children,
-}: {
-  mood?: PakoMood;
-  children: ReactNode;
-}) {
+/** Marks text that Pako prepared; the label's Pako stands still, like an icon. */
+export function PakoLabel({ children }: { children: ReactNode }) {
   return (
     <span className="pako-label">
-      <Pako mood={mood} size={22} />
+      <Pako mood="idle" size={22} still />
       {children}
     </span>
   );

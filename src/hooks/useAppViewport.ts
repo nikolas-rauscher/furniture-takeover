@@ -6,7 +6,8 @@ export function useAppViewport() {
     const root = document.documentElement;
     const visual = window.visualViewport;
     const mobile = window.matchMedia("(max-width: 760px)");
-    const navigation = document.querySelector<HTMLElement>(".mobile-nav");
+    // The tab bar is only mounted on phones, so it is looked up again on every update.
+    let navigation: HTMLElement | null = null;
     let baseline = window.innerHeight;
     let width = window.innerWidth;
     let frame = 0;
@@ -37,6 +38,7 @@ export function useAppViewport() {
           "data-compact-viewport",
           mobile.matches && unzoomed && height < 460,
         );
+        watchNavigation();
         // Enlarged text can grow the navigation. Its minimized size while
         // scrolling is ignored, so pages keep their spacing instead of reflowing.
         if (!mobile.matches || !navigation)
@@ -51,7 +53,13 @@ export function useAppViewport() {
       });
     };
     const navigationResize = new ResizeObserver(update);
-    if (navigation) navigationResize.observe(navigation);
+    const watchNavigation = () => {
+      const current = document.querySelector<HTMLElement>(".mobile-nav");
+      if (current === navigation) return;
+      if (navigation) navigationResize.unobserve(navigation);
+      if (current) navigationResize.observe(current);
+      navigation = current;
+    };
     update();
     visual?.addEventListener("resize", update);
     window.addEventListener("resize", update);

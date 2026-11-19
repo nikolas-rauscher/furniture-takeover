@@ -37,7 +37,6 @@ import SnapTarget from "./SnapTarget";
 import ListingChecklist from "./ListingChecklist";
 import WorkspaceHeader from "./WorkspaceHeader";
 import Guide, { type GuideBubble } from "./onboarding/Guide";
-import Pako from "./onboarding/Pako";
 import type { PakoMood } from "./onboarding/storyTypes";
 import { listingPhotos } from "../../shared/listingPhotos";
 import "./sell-flow.css";
@@ -642,7 +641,6 @@ export default function SellFlow({
                     className="listing-preview-status"
                     {...previewSwap}
                   >
-                    <Pako mood="work" size={36} />
                     <span className="chip">
                       <Sparkles size={14} aria-hidden="true" />
                       Pako is writing…
