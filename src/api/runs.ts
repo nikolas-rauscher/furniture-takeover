@@ -16,8 +16,11 @@ import type {
 import type {
   AgentListingDraft,
   AgentListingPatch,
+  AgentListingQuestion,
   AgentPreferencesPatch,
   AgentActionEvidence,
+  AgentQuestionEvent,
+  AgentTapAnswer,
   SellerEvidence,
 } from "../../shared/actions";
 
@@ -341,6 +344,107 @@ function sources(value: unknown): AgentRunSource[] {
   return [...unique.values()];
 }
 
+const QUESTION_FIELDS: readonly string[] = [
+  "price",
+  "condition",
+  "dimensions",
+  "location",
+  "pickup",
+  "description",
+  "title",
+  "other",
+];
+
+function priceInput(value: unknown): AgentQuestionEvent["input"] {
+  if (
+    !record(value) ||
+    value.type !== "price" ||
+    typeof value.min !== "number" ||
+    !Number.isFinite(value.min) ||
+    value.min < 0 ||
+    typeof value.max !== "number" ||
+    !Number.isFinite(value.max) ||
+    value.max > 10_000 ||
+    value.max <= value.min ||
+    typeof value.step !== "number" ||
+    !Number.isFinite(value.step) ||
+    value.step <= 0 ||
+    value.step > 1000 ||
+    value.step > value.max - value.min ||
+    (value.value !== undefined &&
+      (typeof value.value !== "number" ||
+        !Number.isFinite(value.value) ||
+        value.value < value.min ||
+        value.value > value.max))
+  )
+    throw invalidStream();
+  return value as AgentQuestionEvent["input"];
+}
+
+/** A tapped answer's change; an empty one changes nothing and is left out. */
+function tapPatch(value: unknown): { patch?: AgentListingPatch } {
+  if (value === undefined || (record(value) && !Object.keys(value).length))
+    return {};
+  return { patch: listingPatch(value) };
+}
+
+function tapAnswer(value: unknown): AgentTapAnswer {
+  if (
+    !record(value) ||
+    !boundedString(value.label, 120) ||
+    (value.appendDescription !== undefined &&
+      !boundedString(value.appendDescription, 160)) ||
+    (value.acceptsProposal !== undefined && value.acceptsProposal !== true)
+  )
+    throw invalidStream();
+  return {
+    label: value.label,
+    ...tapPatch(value.patch),
+    ...(typeof value.appendDescription === "string"
+      ? { appendDescription: value.appendDescription }
+      : {}),
+    ...(value.acceptsProposal ? { acceptsProposal: true as const } : {}),
+  };
+}
+
+/** A question's text, the draft field it asks for and its answers, without its follow-ups. */
+function listingQuestion(value: Record<string, unknown>): AgentListingQuestion {
+  if (
+    !boundedString(value.question, 500) ||
+    (value.listingField !== undefined &&
+      !QUESTION_FIELDS.includes(value.listingField as string)) ||
+    (value.choices !== undefined &&
+      (!Array.isArray(value.choices) ||
+        value.choices.length > 5 ||
+        !value.choices.every((choice) => boundedString(choice, 120)))) ||
+    (value.choiceActions !== undefined &&
+      (!Array.isArray(value.choiceActions) || value.choiceActions.length > 5))
+  )
+    throw invalidStream();
+  return {
+    question: value.question,
+    ...(value.listingField !== undefined
+      ? {
+          listingField:
+            value.listingField as AgentListingQuestion["listingField"],
+        }
+      : {}),
+    ...(value.input !== undefined ? { input: priceInput(value.input) } : {}),
+    ...(Array.isArray(value.choices)
+      ? { choices: [...new Set(value.choices as string[])] }
+      : {}),
+    ...(Array.isArray(value.choiceActions)
+      ? { choiceActions: value.choiceActions.map(tapAnswer) }
+      : {}),
+  };
+}
+
+/** A question queued behind another asks for a fact, never for the price with a slider. */
+function followUpQuestion(value: unknown): AgentListingQuestion {
+  if (!record(value) || value.input !== undefined) throw invalidStream();
+  return listingQuestion(value);
+}
+
 function parseEvent(line: string): AgentRunEvent {
   let value: unknown;
   try {
@@ -387,51 +491,18 @@ function parseEvent(line: string): AgentRunEvent {
       };
     }
     case "question": {
-      const priceInput = value.input;
-      if (
-        priceInput !== undefined &&
-        (!record(priceInput) ||
-          priceInput.type !== "price" ||
-          typeof priceInput.min !== "number" ||
-          !Number.isFinite(priceInput.min) ||
-          priceInput.min < 0 ||
-          typeof priceInput.max !== "number" ||
-          !Number.isFinite(priceInput.max) ||
-          priceInput.max > 10_000 ||
-          priceInput.max <= priceInput.min ||
-          typeof priceInput.step !== "number" ||
-          !Number.isFinite(priceInput.step) ||
-          priceInput.step <= 0 ||
-          priceInput.step > 1000 ||
-          priceInput.step > priceInput.max - priceInput.min ||
-          (priceInput.value !== undefined &&
-            (typeof priceInput.value !== "number" ||
-              !Number.isFinite(priceInput.value) ||
-              priceInput.value < priceInput.min ||
-              priceInput.value > priceInput.max)))
-      )
-        throw invalidStream();
       if (
         !boundedString(value.id, 160) ||
-        !boundedString(value.question, 500) ||
-        (value.choices !== undefined &&
-          (!Array.isArray(value.choices) ||
-            value.choices.length > 5 ||
-            !value.choices.every((choice) => boundedString(choice, 120))))
+        (value.followUps !== undefined &&
+          (!Array.isArray(value.followUps) || value.followUps.length > 2))
       )
         throw invalidStream();
       return {
         type: "question",
         id: value.id,
-        question: value.question,
-        ...(priceInput
-          ? {
-              input:
-                priceInput as import("../../shared/actions").AgentQuestionEvent["input"],
-            }
-          : {}),
-        ...(Array.isArray(value.choices)
-          ? { choices: [...new Set(value.choices as string[])] }
+        ...listingQuestion(value),
+        ...(Array.isArray(value.followUps)
+          ? { followUps: value.followUps.map(followUpQuestion) }
           : {}),
       };
     }
