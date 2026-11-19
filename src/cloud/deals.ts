@@ -3,6 +3,7 @@ import {
   dealSchema,
   dealTermsSchema,
   pickupEventKindSchema,
+  reopenUnagreedDeal,
   lateMinutesSchema,
   type DealAction,
   type DealTerms,
@@ -39,7 +40,7 @@ const writeTerms = (t: DealTerms): StoredDealTerms => ({
   pickup_time: t.pickupTime,
 });
 export function readDeal(r: DealRow) {
-  return dealSchema.parse({
+  const deal = dealSchema.parse({
     conversationId: r.conversation_id,
     listingId: r.listing_id,
     status: r.status,
@@ -66,6 +67,7 @@ export function readDeal(r: DealRow) {
       },
     }),
   });
+  return reopenUnagreedDeal(deal);
 }
 function rpcFailure(error: { code?: string; message: string }, updateNeeded: string) {
   if (missingFromSchema(error)) return new Error(updateNeeded);

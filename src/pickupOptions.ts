@@ -137,7 +137,13 @@ function pickedUp({
     action: { type: "picked_up" },
     message: pickedUpMessage(role, title),
   } as const;
-  if (role === "seller") return { id: "picked_up", label: "Mark sold", send };
+  if (role === "seller")
+    return {
+      id: "picked_up",
+      label: "Mark sold",
+      send,
+      unavailable: day.canMarkSold ? undefined : "You can mark it sold at pickup time.",
+    };
   return {
     id: "picked_up",
     label: "Picked up",

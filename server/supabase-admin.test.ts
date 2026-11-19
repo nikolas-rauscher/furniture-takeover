@@ -7,7 +7,7 @@ import {
   type AdminAction,
   type AdminOutput,
 } from "../shared/admin.ts";
-import { adminMigration, applyMigrations, buyer, marketplace, pickupMigration, reviewMigration, seller, stranger } from "./supabase-fixture.ts";
+import { adminMigration, applyMigrations, buyer, dealRulesMigration, marketplace, pickupMigration, reviewMigration, seller, stranger } from "./supabase-fixture.ts";
 
 const why = { reason: "Reviewed with the marketplace team" };
 const draft = {
@@ -36,7 +36,7 @@ async function setup(t: TestContext) {
     "insert into public.reports(reporter_id,message_id,reason) values($1,$2,'Message problem')",
     [seller, fixture.message],
   );
-  await applyMigrations(db, [pickupMigration, adminMigration, reviewMigration]);
+  await applyMigrations(db, [pickupMigration, adminMigration, reviewMigration, dealRulesMigration]);
   await db.query("insert into public.admins(user_id) values($1)", [stranger]);
   return {
     ...fixture,
@@ -195,6 +195,30 @@ test("admins provision inert sellers, edit demo listings, and restore the shippe
   assert.equal((await rpc("overview")).conversations, 2);
 });
 
+test("reports on simulated seller replies show the listing without a student to block", async (t) => {
+  const { as, db, rpc } = await setup(t);
+  await as(stranger);
+  const demo = await rpc("save_demo_seller", { name: "Camille", styleNote: "" });
+  const listing = await rpc("save_demo_listing", { ...draft, sellerId: demo.id });
+
+  await as(buyer);
+  const { rows: [{ id: conversation }] } = await db.query<{ id: string }>(
+    "select public.start_conversation($1) as id", [listing.id],
+  );
+  await as(demo.id);
+  const { rows: [{ id: message }] } = await db.query<{ id: string }>(
+    "insert into public.messages(conversation_id,body) values($1,'Pickup today works.') returning id",
+    [conversation],
+  );
+  await as(buyer);
+  await db.query("insert into public.reports(message_id,reason) values($1,'Review reply')", [message]);
+
+  await as(stranger);
+  const report = (await rpc("list_reports")).find(({ target }) => target.id === message);
+  assert.equal(report?.studentId, null);
+  assert.equal(report?.target.kind === "message" && report.target.listingTitle, draft.title);
+});
+
 test("hide, block and report moderation preserve privacy and write a reasoned audit trail", async (t) => {
   const { db, as, rpc, listing, conversation, message } = await setup(t);
   await as(buyer);
@@ -229,6 +253,7 @@ test("hide, block and report moderation preserve privacy and write a reasoned au
     id: message,
     conversationId: conversation,
     listingId: listing,
+    listingTitle: "Desk chair",
     body: "Could I get it for 20?",
   });
   assert.equal((await rpc("overview")).reportsOpen, 2);

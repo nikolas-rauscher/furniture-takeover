@@ -18,6 +18,17 @@ const migrated: DealRow = {
   late_by: null, late_minutes: null, buyer_picked_up_at: null,
   no_show_at: null, no_show_by: null, pickup_cancel_reason: null,
 };
+test("a legacy pre-agreement cancellation reads as an open negotiation", () => {
+  const deal = readDeal({
+    ...migrated, status: "cancelled", agreed: null, agreed_at: null,
+    outcome: "cancelled", outcome_by: "seller",
+  });
+  assert.equal(deal.status, "open");
+  assert.equal(deal.outcome, null);
+  assert.equal(deal.version, migrated.version);
+  assert.equal(readDeal({ ...migrated, status: "cancelled" }).status, "cancelled");
+});
+
 test("account clients keep ordinary deals working while pickup columns and RPC are absent", async () => {
   assert.equal(readDeal(legacy).pickup, undefined);
   assert.deepEqual(readDeal(migrated).pickup, {

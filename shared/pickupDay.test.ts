@@ -60,6 +60,25 @@ test("a pickup change preserves the booking until accepted and clears old signal
   assert.equal(deal.status, "completed");
 });
 
+test("a delay moves both no-show actions to the revised time plus the grace period", () => {
+  const delayed = apply(booked, at(-10), {
+    actor: "buyer", action: { type: "late", minutes: 30 }, body: "Running 30 minutes late.",
+  }).deal;
+  for (const step of scenarios.overdue) {
+    assert.equal(pickupDay(delayed, step.actor, at(44))?.canReportNoShow, false);
+    assert.throws(() => apply(delayed, at(44), step), { key: "too_early" });
+    assert.equal(apply(delayed, at(45), step).event.kind, step.kind);
+  }
+});
+
+test("the seller can complete pickup from the booked time or when the buyer reports it", () => {
+  const [buyerPickup, sellerPickup] = scenarios.handling.slice(-2);
+  assert.throws(() => apply(booked, at(-1), sellerPickup), { key: "too_early" });
+  assert.equal(apply(booked, at(0), sellerPickup).statusChange, "sold");
+  const collected = apply(booked, at(-1), buyerPickup).deal;
+  assert.equal(apply(collected, at(-1), sellerPickup).statusChange, "sold");
+});
+
 test("reports need an overdue pickup and taking a release message is a separate action", () => {
   assert.throws(() => apply(booked, at(14), scenarios.earlyNoShow), { key: "too_early" });
   let deal = booked;

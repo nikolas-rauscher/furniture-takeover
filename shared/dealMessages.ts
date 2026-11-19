@@ -127,7 +127,7 @@ export const reservedElsewhereMessage = (title: string) =>
   `Sorry, the ${title} is now reserved for someone else. I'll let you know if that changes.`;
 
 export const changeTimeMessage = (terms: DealTerms) =>
-  `Could we move pickup to ${pickupWords(terms)}? Still ${priceWords(terms)}.`;
+  `Could we move pickup to ${pickupWords(terms)}? Still ${terms.amount === 0 ? "CHF 0" : priceWords(terms)}.`;
 export const acceptNewTimeMessage = (terms: DealTerms) =>
   `The new time works for me. See you ${pickupWords(terms)} for ${priceWords(terms)}.`;
 export const withdrawTimeMessage = (terms: DealTerms) =>

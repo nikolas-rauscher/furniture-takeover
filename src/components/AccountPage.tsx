@@ -579,21 +579,15 @@ export default function AccountPage({
                       <>
                         <DropdownMenuItem onClick={agreement.onOpenChat}>
                           <MessageCircle size={16} />
-                          Open chat
+                          Open conversation
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                       </>
                     )}
-                    {item.status === "active" && (
-                      <DropdownMenuItem
-                        onClick={() => void changeStatus(item, "reserved")}
-                      >
-                        Mark reserved
-                      </DropdownMenuItem>
-                    )}
                     {(item.status === "active" ||
                       item.status === "reserved") && (
                       <DropdownMenuItem
+                        disabled={Boolean(agreement?.pickup?.sold.unavailable)}
                         onClick={() => void changeStatus(item, "sold")}
                       >
                         Mark sold

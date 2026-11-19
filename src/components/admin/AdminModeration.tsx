@@ -28,6 +28,7 @@ function ReportTarget({ target }: { target: AdminReport["target"] }) {
     return (
       <div className="admin-report-target">
         <span className="admin-target-kind">Message</span>
+        {target.listingTitle && <strong>{target.listingTitle}</strong>}
         <p className="admin-report-message">{target.body}</p>
       </div>
     );
@@ -61,8 +62,8 @@ function ReportCard({
   api: AdminApi;
 }) {
   const { target, studentId } = report;
-  const listingId = target.kind === "listing" ? target.id : target.listingId;
-  const listingHidden = target.kind === "listing" && target.hidden;
+  const canBlock = studentId && !blocked;
+  const blockFirst = target.kind === "message" && canBlock;
   return (
     <li className="admin-report">
       <div className="admin-report-head">
@@ -73,7 +74,7 @@ function ReportCard({
       </div>
       <ReportTarget target={target} />
       <div className="admin-row-actions">
-        {!listingHidden && (
+        {target.kind === "listing" && !target.hidden && (
           <Button
             className="button secondary small"
             onClick={() =>
@@ -82,16 +83,16 @@ function ReportCard({
                 explanation: "Students won't see it in the marketplace.",
                 confirmLabel: "Hide listing",
                 run: (reason) =>
-                  api.setListingHidden({ id: listingId, hidden: true, reason }),
+                  api.setListingHidden({ id: target.id, hidden: true, reason }),
               })
             }
           >
             Hide listing
           </Button>
         )}
-        {studentId && !blocked && (
+        {canBlock && (
           <Button
-            className="button secondary small"
+            className={`button ${blockFirst ? "danger" : "secondary"} small`}
             onClick={() =>
               onStep({
                 title: "Block this student?",
@@ -113,7 +114,7 @@ function ReportCard({
           </span>
         )}
         <Button
-          className="button primary small"
+          className={`button ${blockFirst ? "secondary" : "primary"} small`}
           onClick={() =>
             onStep({
               title: "Resolve this report?",

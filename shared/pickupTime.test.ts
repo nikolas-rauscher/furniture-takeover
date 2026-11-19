@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolvePickupAt, zurichClockTime } from "./pickupTime.ts";
+import { pickupSlots, resolvePickupAt, zurichClockTime } from "./pickupTime.ts";
 
 // Wednesday 18 November 2026, 12:00 in Zurich (UTC+1 in November).
 const wednesdayNoon = new Date("2026-11-18T11:00:00.000Z");
@@ -74,6 +74,16 @@ test("times need a day, one clock time and no window", () => {
     "Thu 20 Nov, 18:00",
   ])
     assert.equal(resolvePickupAt(words, wednesdayNoon), null, words);
+});
+
+test("slot suggestions use the stated time when availability says after", () => {
+  for (const [available, times] of [
+    ["Weekday evenings after 19:30", ["20:00", "21:00", "20:00", "21:00"]],
+    ["Thursday after 17:00", ["17:30", "18:30"]],
+  ] as const) {
+    const slots = pickupSlots(available, wednesdayNoon);
+    assert.deepEqual(slots.map(({ pickupAt }) => zurichClockTime(pickupAt)), times);
+  }
 });
 
 test("a weekday means today only while it is at least an hour ahead", () => {

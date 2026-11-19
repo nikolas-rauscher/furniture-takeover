@@ -403,7 +403,9 @@ test("the pickup line says the pickup times the description states", () => {
 
 test("the price slider leaves room above Pako's price on a round top", () => {
   assert.deepEqual(priceSliderRange(45), { min: 0, max: 90, step: 1 });
-  assert.deepEqual(priceSliderRange(145), { min: 0, max: 290, step: 5 });
+  assert.deepEqual(priceSliderRange(145), { min: 0, max: 290, step: 1 });
+  assert.deepEqual(priceSliderRange(112), { min: 0, max: 230, step: 1 });
+  assert.deepEqual(priceSliderRange(148), { min: 0, max: 300, step: 1 });
   assert.deepEqual(priceSliderRange(40, 120), { min: 0, max: 120, step: 1 });
   assert.deepEqual(priceSliderRange(0), { min: 0, max: 20, step: 1 });
   assert.equal(priceSliderRange(8000).max, 10_000);

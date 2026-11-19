@@ -156,14 +156,13 @@ export function niceStep(price: number): number {
 
 /**
  * The seller's price slider: from free up to twice the price, or the top of
- * the range Pako offered when that is higher, ending on a round amount, in
- * about a hundred steps.
+ * the range Pako offered when that is higher, ending on a round amount.
  */
 export function priceSliderRange(price: number, rangeMax = 0) {
   const room = Math.max(price * 2, rangeMax, 20);
   const round = niceStep(room);
   const max = Math.min(MAX_ASKING_PRICE, Math.ceil(room / round) * round);
-  return { min: 0, max, step: niceStep(max / 10) };
+  return { min: 0, max, step: 1 };
 }
 
 /** What Pako's tray above the composer shows. */

@@ -25,6 +25,7 @@ import {
   type OfferMode,
 } from "../dealOptions";
 import { shortPlace, slotLabel, termPrice, unstatedTerm } from "../dealWords";
+import { useNow } from "../hooks/useNow";
 import {
   futureSlot,
   proposalLine,
@@ -81,8 +82,14 @@ function typedSlot(value: string, now: Date): Slot | null {
   return pickupAt ? { pickupAt, pickupTime: formatPickup(pickupAt) } : null;
 }
 
+function pickupTimePassed(terms: DealTerms, now: number) {
+  return terms.pickupAt !== null && Date.parse(terms.pickupAt) <= now;
+}
+
 /** Why Send waits, said beside it; null once the offer can go out. */
-function sendBlocker(terms: DealTerms, unstated: string | null) {
+function sendBlocker(terms: DealTerms, unstated: string | null, now: Date) {
+  if (pickupTimePassed(terms, now.getTime()))
+    return "Choose a pickup time in the future.";
   const missing = missingTerms(terms);
   const time = missing.includes("pickupTime");
   const place = missing.includes("pickupPoint");
@@ -471,7 +478,7 @@ export default function OfferEditor({
 }) {
   const { mode } = entry;
   const panelId = useId();
-  const [now] = useState(() => new Date());
+  const now = useNow();
   const free = listing.price === 0;
   const fulfillment = entry.terms.fulfillment ?? "pickup";
   const pickup = fulfillment === "pickup";
@@ -530,7 +537,7 @@ export default function OfferEditor({
   };
   const [written, setWritten] = useState<string | null>(null);
   const message = written ?? draftFor(mode, listing.title, terms);
-  const blocker = sendBlocker(terms, unstatedTerm(message, terms));
+  const blocker = sendBlocker(terms, unstatedTerm(message, terms), now);
   const description = `${listing.title} · ${free ? "Free" : `Asking price ${termPrice(listing.price)}`}`;
   return (
     <Modal
@@ -544,7 +551,13 @@ export default function OfferEditor({
         className="offer-editor"
         onSubmit={(event) => {
           event.preventDefault();
-          if (blocker === null && !busy) onSend(terms, message.trim());
+          if (busy) return;
+          if (pickupTimePassed(terms, Date.now())) {
+            setSlot(null);
+            setPanel("time");
+            return;
+          }
+          if (blocker === null) onSend(terms, message.trim());
         }}
       >
         <PakoProposal line={line} />

@@ -12,6 +12,7 @@ import {
   DealError,
   isoInstantSchema,
   pickupActionSchema,
+  reopenUnagreedDeal,
   type DealAction,
   type PickupAction,
   type PickupStatusChange,
@@ -68,13 +69,18 @@ export function createMessagesStore(path: string) {
       DROP TABLE old_conversations;
       COMMIT;`);
   }
+  const readConversation = (payload: unknown): SellerConversation => {
+    const conversation: SellerConversation = JSON.parse(String(payload));
+    if (conversation.deal) conversation.deal = reopenUnagreedDeal(conversation.deal);
+    return conversation;
+  };
   const list = (workspace: string): SellerConversation[] =>
     db
       .prepare(
         "SELECT payload FROM conversations WHERE workspace = ? ORDER BY rowid DESC",
       )
       .all(workspace)
-      .map((row) => JSON.parse(String(row.payload)))
+      .map((row) => readConversation(row.payload))
       .filter((item) => !item.deletedAt);
   const dealInput = inputSchema.extend({
     action: dealActionSchema,
@@ -102,8 +108,9 @@ export function createMessagesStore(path: string) {
           "select payload from conversations where workspace=? and listing_id=? and buyer_key=?",
         )
         .get(workspace, value.listingId, value.buyerKey ?? "");
+      const existing = row && readConversation(row.payload);
       if (
-        (!row || JSON.parse(String(row.payload)).deletedAt) &&
+        (!existing || existing.deletedAt) &&
         (value.sender === "seller" ||
           (command && command.action.type !== "propose"))
       )
@@ -112,16 +119,14 @@ export function createMessagesStore(path: string) {
           "NO_CONVERSATION",
           "Start a buyer conversation first.",
         );
-      const conversation: SellerConversation = row
-        ? JSON.parse(String(row.payload))
-        : {
-            id: randomUUID(),
-            listingId: value.listingId,
-            title: value.title,
-            seller: value.seller,
-            ...(value.buyerKey ? { buyerKey: value.buyerKey } : {}),
-            messages: [],
-          };
+      const conversation: SellerConversation = existing ?? {
+        id: randomUUID(),
+        listingId: value.listingId,
+        title: value.title,
+        seller: value.seller,
+        ...(value.buyerKey ? { buyerKey: value.buyerKey } : {}),
+        messages: [],
+      };
       if (conversation.deletedAt) {
         conversation.messages = [];
         delete conversation.deal;

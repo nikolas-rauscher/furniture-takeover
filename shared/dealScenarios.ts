@@ -70,6 +70,12 @@ export const dealScenarios: { name: string; steps: Step[] }[] = [
       offer,
       {
         actor: "seller",
+        action: { type: "cancel", reason: "changed_mind" },
+        body: "Sorry, I can't do it.",
+        error: "deal_not_agreed",
+      },
+      {
+        actor: "seller",
         action: { type: "withdraw" },
         body: "Withdraw",
         error: "deal_changed",
@@ -120,7 +126,15 @@ export const dealScenarios: { name: string; steps: Step[] }[] = [
       name: example.name,
       steps: [
         step,
-        { ...step, actor: "seller" as const, error: example.error },
+        ...(example.error === "terms_incomplete"
+          ? [{ ...step, actor: "seller" as const }]
+          : []),
+        {
+          ...step,
+          actor: example.error === "terms_incomplete" ? "buyer" as const : "seller" as const,
+          action: { type: "accept" as const, terms: example.terms },
+          error: example.error,
+        },
       ],
     };
   }),

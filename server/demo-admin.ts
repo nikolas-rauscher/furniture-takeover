@@ -345,23 +345,33 @@ export function createDemoAdmin(
         )
         .all()
         .map((row) => {
-          const target = JSON.parse(
-            String(row.target),
-          ) as AdminReport["target"];
-          const current =
-            target.kind === "listing" ? readListing.get(target.id) : undefined;
+          let target = JSON.parse(String(row.target)) as AdminReport["target"];
+          let studentId = row.student_id ? String(row.student_id) : null;
+          if (target.kind === "listing") {
+            const current = readListing.get(target.id);
+            target = current ? listingTarget(current) : { ...target, hidden: true };
+          } else if (target.listingTitle === undefined) {
+            // Older reports stored the workspace even for simulated seller replies.
+            const conversationRow = conversationsExist(db) && db.prepare(
+              "SELECT payload FROM conversations WHERE id=?",
+            ).get(target.conversationId);
+            const conversation: SellerConversation | undefined = conversationRow
+              ? JSON.parse(String(conversationRow.payload))
+              : undefined;
+            const messageId = target.id;
+            const sender = conversation?.messages.find(({ id }) => id === messageId)?.sender;
+            studentId = sender === "buyer" ? studentId : null;
+            const listing = readListing.get(target.listingId);
+            target = { ...target, listingTitle: listing ? listingJson(listing).title : conversation?.title };
+          }
           return {
             id: String(row.id),
             reporterId: String(row.reporter_id),
-            studentId: row.student_id ? String(row.student_id) : null,
+            studentId,
             reason: String(row.reason),
             createdAt: String(row.created_at),
             resolvedAt: row.resolved_at ? String(row.resolved_at) : null,
-            target: current
-              ? listingTarget(current)
-              : target.kind === "listing"
-                ? { ...target, hidden: true }
-                : target,
+            target,
           };
         });
     },
@@ -504,9 +514,10 @@ export function createDemoAdmin(
               id: message.id,
               conversationId: conversation.id,
               listingId: conversation.listingId,
+              listingTitle: conversation.title,
               body: message.text,
             };
-            studentId = workspace;
+            studentId = message.sender === "buyer" ? workspace : null;
             break;
           }
         }

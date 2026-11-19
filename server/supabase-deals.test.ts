@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import {
   marketplace,
-  applyMigrations, adminMigration, pickupMigration, reviewMigration,
+  applyMigrations, adminMigration, pickupMigration, reviewMigration, dealRulesMigration,
   buyer,
   seller,
   stranger,
@@ -54,6 +54,8 @@ for (const scenario of dealScenarios)
   test("RPC: " + scenario.name, async () => {
     const { db, as, act, listing } = await setup();
     try {
+      await db.exec("reset role");
+      await applyMigrations(db, [pickupMigration, adminMigration, reviewMigration, dealRulesMigration]);
       let version = 0;
       for (const step of scenario.steps) {
         await as(step.actor === "buyer" ? buyer : seller);
@@ -292,19 +294,24 @@ for (const ending of ["pickup", "no-show", "cancel"] as const) {
         "select public.start_conversation($1) as id", [listing],
       );
       await db.query("insert into public.messages(conversation_id,body) values ($1,'Can I be next?')", [other]);
+      await act({ type: "cancel", reason: "changed_mind" }, "I'll pass for now.", 0, randomUUID(), other);
       await as(buyer);
       await act({ type: "propose", terms }, offerMessage("desk", terms), 0);
       await as(seller);
       await act({ type: "accept", terms }, acceptMessage("seller", terms), 1);
       await db.exec("reset role");
-      await applyMigrations(db, [pickupMigration, adminMigration, reviewMigration]);
+      await applyMigrations(db, [pickupMigration, adminMigration, reviewMigration, dealRulesMigration]);
       await as(buyer);
       assert.deepEqual((await db.query(
         "select version, agreed, late_minutes from public.deals where conversation_id=$1", [conversation],
       )).rows, [{ version: 2, agreed: storeTerms(terms), late_minutes: null }]);
       await as(stranger);
-      assert.equal(await count(db, "select * from public.deals"), 0);
-      assert.equal(await count(db, "select * from public.deal_events"), 0);
+      for (const table of ["deals", "deal_events"]) {
+        const { rows } = await db.query(
+          `select * from public.${table} where conversation_id=$1`, [conversation],
+        );
+        assert.deepEqual(rows, []);
+      }
       await assert.rejects(db.query(
         "select public.pickup_action($1,$2,'On my way','on_my_way',2)", [conversation, randomUUID()],
       ), /conversation_unavailable/);
@@ -321,14 +328,13 @@ for (const ending of ["pickup", "no-show", "cancel"] as const) {
       await pickup(scenarios.earlyNoShow);
       await pickup({ ...scenarios.handling[0], error: "deal_changed" }, conversation, 1);
       if (ending === "pickup") {
+        await pickup({ ...scenarios.handling.at(-1)!, error: "too_early" });
         await movePickup(SIGNAL_WINDOW.beforeMinutes + 1);
         await pickup({ ...scenarios.handling[1], error: "too_early" });
         await movePickup(SIGNAL_WINDOW.beforeMinutes - 1);
         for (const step of scenarios.handling) {
-          if (step.action.type === "picked_up") {
-            await movePickup(-1);
-            if (step.actor === "seller") await blockBuyer();
-          }
+          if (step.action.type === "picked_up" && step.actor === "seller")
+            await blockBuyer();
           const result = await pickup(step);
           if (!result) continue;
           if (step.kind === "time_kept") assert.deepEqual(result.agreed, storeTerms(terms));
@@ -345,7 +351,15 @@ for (const ending of ["pickup", "no-show", "cancel"] as const) {
         if (ending === "no-show") {
           await movePickup(-SIGNAL_WINDOW.afterMinutes - 1);
           await pickup({ ...scenarios.handling[1], error: "pickup_window_ended" });
+          await movePickup(10);
+          await pickup({
+            actor: "buyer", action: { type: "late", minutes: 30 },
+            body: "Running 30 minutes late.", kind: "late",
+          });
           await movePickup(-NO_SHOW_AFTER_MINUTES - 1);
+          for (const step of scenarios.overdue)
+            await pickup({ ...step, error: "too_early" });
+          await movePickup(-30 - NO_SHOW_AFTER_MINUTES - 1);
           for (const step of scenarios.overdue) {
             if (step.action.type === "release_no_show") await blockBuyer();
             await pickup(step);
@@ -362,13 +376,37 @@ for (const ending of ["pickup", "no-show", "cancel"] as const) {
           actor: "buyer",
           error: ending === "no-show" ? "admin_student_blocked" : "next_buyer_unavailable",
         });
-        await pickup(scenarios.nextBuyer, other, 0);
+        await pickup(scenarios.nextBuyer, other, 1);
       }
     } finally {
       await db.close();
     }
   });
 }
+
+test("the original buyer can negotiate again after a pre-agreement cancellation", async () => {
+  const { db, act, as, conversation, listing } = await setup();
+  const terms = dealScenarios[0].steps[0].action;
+  assert.equal(terms.type, "propose");
+  try {
+    await as(seller);
+    assert.equal((await act({ type: "cancel", reason: "changed_mind" }, "Sorry", 0)).status, "cancelled");
+    await db.exec("reset role");
+    await applyMigrations(db, [pickupMigration, adminMigration, reviewMigration, dealRulesMigration]);
+    await as(buyer);
+    assert.deepEqual((await db.query("select public.start_conversation($1) as id", [listing])).rows, [
+      { id: conversation },
+    ]);
+    assert.deepEqual(await act(terms, "CHF 30 shipped?", 1), { status: "open", version: 2 });
+    assert.deepEqual((await db.query("select outcome, outcome_by from public.deals")).rows, [
+      { outcome: null, outcome_by: null },
+    ]);
+    await as(seller);
+    assert.deepEqual(await act(terms, "CHF 30 shipped?", 2), { status: "agreed", version: 3 });
+  } finally {
+    await db.close();
+  }
+});
 
 test("every terms message states its terms in the demo and the deal RPC", async () => {
   const { db } = await setup();
@@ -380,6 +418,20 @@ test("every terms message states its terms in the demo and the deal RPC", async 
     pickupPoint: "FMEL Atrium · outside entrance",
   };
   try {
+    await db.exec("reset role");
+    await applyMigrations(db, [pickupMigration, adminMigration, reviewMigration, dealRulesMigration]);
+    const zero = storeTerms({ ...base, amount: 0, pickupAt: null, pickupPoint: null, pickupTime: null });
+    for (const [body, ok] of [
+      ["I'm free after 18:00.", false], ["This is not free.", false],
+      ["I can't do it for free.", false], ["CHF 05", false],
+      ["Could I have it for free?", true], ["Free pickup at Vortex.", true],
+      ["It's free!", true], ["C'est gratuit.", true], ["Kostenlos", true], ["CHF 0", true],
+    ] as const) {
+      const { rows } = await db.query<{ ok: boolean }>(
+        "select public.body_states_terms($1, $2) as ok", [body, zero],
+      );
+      assert.equal(rows[0].ok, ok, body);
+    }
     for (const terms of [
       base,
       { ...base, amount: 0 },

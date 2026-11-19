@@ -71,6 +71,7 @@ const reportTarget = z.discriminatedUnion("kind", [
     id,
     conversationId: id,
     listingId: id,
+    listingTitle: z.string().optional(),
     body: z.string(),
   }),
 ]);

@@ -369,7 +369,7 @@ export function pickupSlots(available: string, now: Date) {
     evenings = /weekday/.test(text);
   const named = weekday(text);
   const after = text.match(/after\s+(\d{1,2}):(\d{2})/);
-  const start = after ? Number(after[1]) * 60 + Number(after[2]) + 30 : 18 * 60;
+  const afterStart = after ? Number(after[1]) * 60 + Number(after[2]) + 30 : null;
   const instants = new Set<number>();
   for (let offset = 0; offset <= 8 && instants.size < 4; offset++) {
     const date = addDays(today, offset),
@@ -384,13 +384,16 @@ export function pickupSlots(available: string, now: Date) {
           : []
         : named !== undefined
           ? day === named
-            ? [start, start + 60]
+            ? [1080, 1140]
             : []
           : [
               ...(offset === 1 || offset === 2 ? [1080] : []),
               ...(day === 6 && offset < 7 ? [660] : []),
             ];
-    for (const minutes of times) {
+    if (!times.length) continue;
+    const shift = afterStart === null ? 0 : afterStart - times[0];
+    for (const time of times) {
+      const minutes = time + shift;
       if (minutes >= 1440) continue;
       const instant = zurichInstant(date, {
         hour: Math.floor(minutes / 60),

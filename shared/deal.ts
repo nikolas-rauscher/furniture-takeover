@@ -54,14 +54,17 @@ export function missingTerms(terms: DealTerms): DealTermField[] {
   return missing;
 }
 
-/** Words that state a price of zero in the languages students write in. */
-const FREE_WORDS = /\b(?:free|gratuit|gratuite|gratis|kostenlos)\b/i;
+/** A standalone price or wording that offers the item at no charge. */
+const FREE_PRICE = /^(?:free|gratuite?|gratis|kostenlos)[.!]?$/i;
+const FREE_OFFER = /\b(?:(?:for|it's|it’s) free|free (?:pickup|it is)|c['’]est gratuite?|(?:pour|c['’]est) gratis|ist kostenlos)\b/i;
+const NEGATED_FREE_OFFER = /\b(?:not|never|cannot|can['’]t|won['’]t)\b[^.!?;]*\bfor free\b/i;
 
 /** "CHF 1'200", "CHF 1,200", "chf1200": the amount's digits after CHF, and no digit after them. */
 function statesAmount(body: string, amount: number): boolean {
   const digits = String(amount).replace(/(\d)(?=(\d{3})+$)/g, "$1[,' ]?");
   if (new RegExp(`chf ?${digits}(?![0-9])`, "i").test(body)) return true;
-  return amount === 0 && FREE_WORDS.test(body);
+  return amount === 0 && (FREE_PRICE.test(body.trim()) ||
+    (FREE_OFFER.test(body) && !NEGATED_FREE_OFFER.test(body)));
 }
 
 const containsWords = (body: string, words: string) =>
@@ -136,6 +139,13 @@ export const dealSchema = z
   })
   .strict();
 export type Deal = z.infer<typeof dealSchema>;
+
+/** Older versions could cancel a negotiation before either side agreed. */
+export function reopenUnagreedDeal(deal: Deal): Deal {
+  return deal.status === "cancelled" && !deal.agreed
+    ? { ...deal, status: "open", outcome: null }
+    : deal;
+}
 export const dealActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("propose"), terms: dealTermsSchema }).strict(),
   z.object({ type: z.literal("accept"), terms: dealTermsSchema }).strict(),
@@ -191,7 +201,9 @@ export function pickupDay(deal: Deal | null | undefined, role: DealRole, now: Da
   if (deal?.status !== "agreed" || terms?.fulfillment !== "pickup" || !terms.pickupAt)
     return null;
   const minutesUntil = (Date.parse(terms.pickupAt) - now.getTime()) / 60000;
-  const overdue = minutesUntil <= -NO_SHOW_AFTER_MINUTES;
+  const delay = deal.pickup?.late?.minutes ?? 0;
+  const overdue = minutesUntil <= -(delay + NO_SHOW_AFTER_MINUTES);
+  const buyerReportedPickup = !!deal.pickup?.buyerPickedUpAt;
   const phase: PickupPhase = overdue ? "overdue"
     : minutesUntil <= 0 ? "pickup_now"
     : minutesUntil <= REMINDER_BEFORE_MINUTES ? "pickup_soon" : "booked";
@@ -202,7 +214,8 @@ export function pickupDay(deal: Deal | null | undefined, role: DealRole, now: Da
     change: deal.proposal && (deal.proposal.by === role ? "sent" as const : "received" as const),
     canSignal: minutesUntil <= SIGNAL_WINDOW.beforeMinutes && minutesUntil >= -SIGNAL_WINDOW.afterMinutes,
     canReportNoShow: overdue,
-    buyerReportedPickup: !!deal.pickup?.buyerPickedUpAt,
+    canMarkSold: minutesUntil <= 0 || buyerReportedPickup,
+    buyerReportedPickup,
   };
 }
 
@@ -229,7 +242,7 @@ export function applyPickupAction(input: Omit<Parameters<typeof applyDealAction>
 }): { deal: Deal; event: PickupEvent; statusChange?: PickupStatusChange } {
   const { actor, action, listingStatus, body, now, conversationId, listingId } = input;
   if (!body.trim() || body.trim().length > 4000) throw new DealError("message_invalid");
-  const current = input.deal;
+  const current = input.deal && reopenUnagreedDeal(input.deal);
   const at = now.toISOString();
   const deal: Deal = {
     conversationId, listingId, status: "open", proposal: null, agreed: null, outcome: null,
@@ -305,6 +318,7 @@ export function applyPickupAction(input: Omit<Parameters<typeof applyDealAction>
       };
     }
     case "picked_up":
+      if (actor === "seller" && !day.canMarkSold) throw new DealError("too_early");
       return actor === "buyer"
         ? { deal: { ...deal, pickup: { ...pickup, buyerPickedUpAt: at } },
           event: { kind: "picked_up", terms: null } }
@@ -345,7 +359,7 @@ export function applyDealAction(input: {
     proposal: null,
     agreed: null,
     outcome: null,
-    ...input.deal,
+    ...(input.deal && reopenUnagreedDeal(input.deal)),
     version: (input.deal?.version ?? 0) + 1,
     updatedAt: at,
   };
@@ -353,7 +367,7 @@ export function applyDealAction(input: {
     throw new DealError("deal_closed");
   const proposal = deal.proposal;
   if (action.type === "cancel") {
-    const statusChange = deal.status === "agreed" ? "active" : undefined;
+    if (deal.status !== "agreed") throw new DealError("deal_not_agreed");
     return {
       deal: {
         ...deal,
@@ -362,7 +376,7 @@ export function applyDealAction(input: {
         proposal: null,
       },
       event: { kind: "cancelled", terms: null },
-      statusChange,
+      statusChange: "active",
     };
   }
   if (deal.status !== "open") throw new DealError("deal_closed");
@@ -384,7 +398,7 @@ export function applyDealAction(input: {
     throw new DealError("terms_not_stated");
   const matches =
     proposal && proposal.by !== actor && sameTerms(proposal.terms, terms);
-  if (action.type === "accept" || matches) {
+  if (action.type === "accept" || (matches && termsComplete(terms))) {
     if (!matches) throw new DealError("deal_changed");
     if (!termsComplete(terms)) throw new DealError("terms_incomplete");
     if (

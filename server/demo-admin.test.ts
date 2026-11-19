@@ -265,6 +265,7 @@ test("demo moderation persists reports and workspace blocks and exposes usage", 
   );
   const reported = reports.find(({ target }) => target.kind === "message")!;
   assert.equal(reported.studentId, workspace["X-Message-Workspace"]);
+  assert.equal(reported.target.kind === "message" && reported.target.listingTitle, listing.title);
   assert.equal(
     reported.target.kind === "message" && reported.target.body,
     message.text,
@@ -317,6 +318,19 @@ test("demo moderation persists reports and workspace blocks and exposes usage", 
   );
   assert.equal((await call("overview", null)).reportsOpen, 1);
   assert.equal((await call("list_moderation_log", null)).length, 4);
+
+  await call("set_listing_hidden", { id: listing.id, hidden: false, ...why });
+  const replyId = randomUUID();
+  assert.equal((await request("/api/messages", {
+    ...message, sender: "seller", messageId: replyId, text: "This afternoon works.",
+  }, workspace)).status, 200);
+  assert.equal((await request("/api/reports", {
+    id: replyId, kind: "message", ...why,
+  }, workspace)).status, 200);
+  const replyReport = (await call("list_reports", null)).find(({ target }) => target.id === replyId);
+  assert.equal(replyReport?.studentId, null);
+  assert.equal(replyReport?.target.kind === "message" && replyReport.target.listingTitle, listing.title);
+
   listings.admin.countPako(true);
   listings.admin.countPako(false);
   assert.deepEqual((await call("overview", null)).pakoToday, {

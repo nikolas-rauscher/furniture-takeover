@@ -2,6 +2,7 @@ const messages: Record<string, string> = {
   deal_changed:
     "The deal just changed. Check the new terms. Your text is kept.",
   deal_closed: "This deal is closed.",
+  deal_not_agreed: "Only an agreed deal can be cancelled.",
   listing_unavailable: "This listing is no longer available.",
   terms_not_stated: "Your message needs to mention the terms you are sending.",
   terms_incomplete: "Choose a price and handover details before confirming.",
