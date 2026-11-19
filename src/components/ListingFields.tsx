@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { plainPrice, priceText } from "../priceText";
 import { Input } from "./ui/input";
 import { SelectField } from "./ui/select-field";
 import { Textarea } from "./ui/textarea";
@@ -9,6 +10,44 @@ export type ListingFieldIds = Record<
   "title" | "description" | "price" | "location",
   string
 >;
+
+/**
+ * The asking price, written as the app writes prices (1,250) while the student
+ * does not type in it; the draft keeps the plain amount.
+ */
+function PriceField({
+  id,
+  form,
+  price,
+  onPrice,
+}: {
+  id: string;
+  form?: string;
+  price: string;
+  onPrice: (price: string) => void;
+}) {
+  const [typed, setTyped] = useState<string | null>(null);
+  const amount = Number(price);
+  const shown =
+    price.trim() && Number.isFinite(amount) ? priceText(amount) : price;
+  return (
+    <Input
+      id={id}
+      form={form}
+      required
+      inputMode="decimal"
+      autoComplete="off"
+      value={typed ?? shown}
+      onFocus={() => setTyped(shown)}
+      onChange={(event) => {
+        setTyped(event.target.value);
+        onPrice(plainPrice(event.target.value));
+      }}
+      onBlur={() => setTyped(null)}
+      placeholder="Your asking price"
+    />
+  );
+}
 
 /** The listing's details as a form, in the details dialog or in place of Pako's conversation. */
 export default function ListingFields({
@@ -63,18 +102,11 @@ export default function ListingFields({
       <div className="form-grid">
         <label>
           Price (CHF)
-          <Input
+          <PriceField
             id={ids.price}
             form={form}
-            required
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            min="0"
-            max="10000"
-            value={draft.price}
-            onChange={(event) => onDraftChange({ price: event.target.value })}
-            placeholder="Your asking price"
+            price={draft.price}
+            onPrice={(price) => onDraftChange({ price })}
           />
         </label>
         <label>
