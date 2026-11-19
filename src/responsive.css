@@ -91,9 +91,6 @@
     align-items: center;
     min-height: 44px;
   }
-  :root[data-keyboard-open] {
-    --mobile-nav-height: 0px;
-  }
   /* The keyboard, an open thread and a listing (both have their own way back) make the
      tab bar step aside. It is hidden rather than removed: its animations need a rendered
      element. Taken out of the flow, it leaves no empty strip below a docked composer. */
@@ -103,8 +100,10 @@
     position: fixed;
     visibility: hidden;
   }
-  /* A listing keeps no room for the bar, even while its measured height still lags
-     behind the page change. */
+  /* Meanwhile the page keeps no room for it. The bar's measured height stays on the
+     root, so the compare tray and notes clear the bar again the moment it is back. */
+  :root[data-keyboard-open] body,
+  body:has(.messages-layout .messages-page.has-conversation),
   body:has(.listing-detail) {
     --mobile-nav-height: 0px;
   }
