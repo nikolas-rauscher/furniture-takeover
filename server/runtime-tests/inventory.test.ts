@@ -403,6 +403,35 @@ test("hosted search includes other sellers and ignores browser-injected inventor
   );
 });
 
+test("the asking student's own listings never reach Pako's buyer search", async () => {
+  const otherDesk = { ...ownDesk, id: "other-desk", title: "Oak desk" };
+  const model = new MockLanguageModelV4({
+    doStream: [
+      toolCall("inventory_search", { query: "desk" }, "find"),
+      toolCall("show_takeover_listings", { ids: [otherDesk.id] }, "show"),
+      answer("## Takeover\nThe oak desk fits."),
+    ],
+  });
+  const events = await eventsFor(
+    createAgentRuntime({ apiKey: "test-key", modelImpl: model }),
+    {
+      text: "Find a desk",
+      context: { source: "takeover", ownListingIds: [ownDesk.id] },
+      inventory: [ownDesk, otherDesk],
+    },
+  );
+  assert.ok(events.some((event) => event.type === "complete"));
+  const prompt = JSON.stringify(model.doStreamCalls[0].prompt);
+  assert.match(prompt, /other-desk/);
+  assert.doesNotMatch(prompt.replace(/ownListingIds[^\]]*\]/g, ""), /own-desk/);
+  assert.throws(() =>
+    validateRunRequest({
+      text: "Find a desk",
+      context: { ownListingIds: Array.from({ length: 201 }, (_, i) => `id-${i}`) },
+    }),
+  );
+});
+
 test("suggest_watch only displays a suggestion and creates nothing", async () => {
   const model = new MockLanguageModelV4({
     doStream: [

@@ -10,6 +10,7 @@ import {
   parsePickupDate,
   TODAY,
 } from "../shared/marketplace.ts";
+import { isSkippedAnswer } from "./conversation.ts";
 import { explicitPrice } from "./facts.ts";
 
 export const dateSchema = z
@@ -220,16 +221,60 @@ function negated(value: string, text: string) {
   return false;
 }
 
-function extractive(value: string, quotes: string[]) {
-  const parts = value
+/** The lines and sentences of a text, without their closing punctuation. */
+const textParts = (value: string) =>
+  value
     .split(/\n+|(?<=[.!?])\s+/)
     .map((part) => part.trim().replace(/[.!?]+$/, ""))
     .filter(Boolean);
+
+const quoted = (part: string, quotes: string[]) =>
+  quotes.some((quote) => contains(quote, part) && !negated(part, quote));
+
+function extractive(value: string, quotes: string[]) {
+  const parts = textParts(value);
+  return parts.length > 0 && parts.every((part) => quoted(part, quotes));
+}
+
+type SellerAnswer = { question: string; answer: string };
+
+/** The seller's answers to Pako's questions so far; a skip states nothing. */
+function sellerAnswers(request: AgentRunRequest): SellerAnswer[] {
+  const context = request.context;
+  return [
+    ...(context?.answeredQuestions ?? []),
+    ...(context?.previousQuestion
+      ? [{ question: context.previousQuestion, answer: request.text }]
+      : []),
+  ].filter(({ answer }) => !isSkippedAnswer(answer));
+}
+
+const words = (text: string) =>
+  normalized(text).match(/[\p{L}\p{N}]+/gu) ?? [];
+
+/**
+ * "Storage: 512 GB" restates the answer "512 GB" to "How much storage does it
+ * have?": besides the whole answer it uses only words of the question.
+ */
+function restatesAnswer(part: string, answers: readonly SellerAnswer[]) {
+  return answers.some(({ question, answer }) => {
+    const asked = new Set(words(question));
+    const added = words(part).filter((word) => !asked.has(word));
+    const answered = words(answer).filter((word) => !asked.has(word));
+    return added.length > 0 && added.join(" ") === answered.join(" ");
+  });
+}
+
+/** Listing text in the seller's own wording, or restating their answers to Pako's questions. */
+function sellerWording(
+  value: string,
+  quotes: string[],
+  answers: readonly SellerAnswer[],
+) {
+  const parts = textParts(value);
   return (
     parts.length > 0 &&
-    parts.every((part) =>
-      quotes.some((quote) => contains(quote, part) && !negated(part, quote)),
-    )
+    parts.every((part) => quoted(part, quotes) || restatesAnswer(part, answers))
   );
 }
 
@@ -396,6 +441,7 @@ export function listingAction(
     .filter((item) => item.kind === "seller")
     .map((item) => item.quote);
   const draft = request.context.currentDraft;
+  const answers = sellerAnswers(request);
   if (research.length) {
     if (
       Object.keys(patch).some((field) => field !== "price") ||
@@ -566,7 +612,9 @@ export function listingAction(
           fail(`Clearing ${field} needs an explicit request.`);
       } else if (
         typeof value !== "string" ||
-        (!knownPriceCorrection && !typedAddition && !extractive(value, quotes)) ||
+        (!knownPriceCorrection &&
+          !typedAddition &&
+          !sellerWording(value, quotes, answers)) ||
         negated(value, request.text)
       ) {
         fail(
@@ -581,12 +629,12 @@ export function listingAction(
           value !== current &&
           !knownPriceCorrection &&
           !typedAddition &&
-          !extractive(value, [request.text, current]) &&
+          !sellerWording(value, [request.text, current], answers) &&
           // Earlier user replies may add missing details, never replace newer facts.
           !(
             field === "description" &&
             contains(value, current) &&
-            extractive(value, sellerFacts(request))
+            sellerWording(value, sellerFacts(request), answers)
           )
         )
           fail(

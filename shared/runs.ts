@@ -46,6 +46,8 @@ export type AgentRunRequest = {
     currentQuery?: string;
     previousAnswer?: string;
     previousMatchIds?: string[];
+    /** The asking student's own listings; Pako never offers them to buy. */
+    ownListingIds?: string[];
     originalRequest?: string;
     /** Stored preferences; explicit updates in text take precedence. */
     maxPrice?: number;

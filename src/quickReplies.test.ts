@@ -113,18 +113,13 @@ test("after results, Pako offers the best match, a comparison and narrower searc
   });
 });
 
-test("without listings to act on, the replies narrow the search's own criteria", () => {
+test("with only web results, the replies widen the search instead of narrowing it", () => {
   assert.deepEqual(
     texts({
       turn: finished({ inventoryMatchIds: [], sources: [webResult] }),
       listings: [],
     }),
-    [
-      "Cheaper: under CHF 60",
-      "Closer: within 2 km",
-      "Free items only (CHF 0)",
-      "Collect by Sunday",
-    ],
+    ["Raise my budget to CHF 105", "Search within 10 km"],
   );
 });
 
@@ -362,9 +357,8 @@ test("with only web results, the watch reply asks about new student listings", (
     }),
     [
       "Tell me about new student listings",
-      "Cheaper: under CHF 60",
-      "Closer: within 2 km",
-      "Free items only (CHF 0)",
+      "Raise my budget to CHF 105",
+      "Search within 10 km",
     ],
   );
 });

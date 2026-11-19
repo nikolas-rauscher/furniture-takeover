@@ -433,6 +433,57 @@ test("listing-assist context sends only typed current draft facts and the previo
   );
 });
 
+test("listing runs send the conversation so far and search runs their matches and own listings", async (context) => {
+  const history = {
+    listingStart: true,
+    photoAnalysis: { missingDetails: ["Model year"], keywords: ["MacBook"] },
+    skippedQuestions: [
+      { question: "Which chip is it?", listingField: "other" as const },
+    ],
+    answeredQuestions: [
+      { question: "How much storage does it have?", answer: "512 GB" },
+    ],
+  };
+  const sent: unknown[] = [];
+  context.mock.method(
+    globalThis,
+    "fetch",
+    async (_url: string, options: RequestInit) => {
+      sent.push(JSON.parse(String(options.body)).context);
+      return new Response(body([complete]));
+    },
+  );
+  await streamAgentRun(
+    { text: "Polish the description", context: history },
+    { onEvent() {} },
+  );
+  const search = { previousMatchIds: ["desk-1"], ownListingIds: ["mine-1"] };
+  await streamAgentRun(
+    { text: "A desk", context: search },
+    { onEvent() {} },
+  );
+  assert.deepEqual(sent, [history, search]);
+  for (const invalid of [
+    { listingStart: "yes" },
+    { photoAnalysis: { missingDetails: [""] } },
+    { photoAnalysis: { notes: ["private"] } },
+    { skippedQuestions: [{ question: "Which chip?", listingField: "colour" }] },
+    { answeredQuestions: [{ question: "Storage?" }] },
+    { ownListingIds: Array.from({ length: 201 }, (_, index) => `id-${index}`) },
+    { previousMatchIds: [42] },
+  ])
+    await assert.rejects(
+      streamAgentRun(
+        {
+          text: "A desk",
+          context: invalid as unknown as AgentRunRequest["context"],
+        },
+        { onEvent() {} },
+      ),
+      { code: "INVALID_CONTEXT" },
+    );
+});
+
 test("real HTTPS thumbnails survive source and completion events", async () => {
   const imageUrl = "https://images.example.com/chair.jpg";
   const result = { ...source, imageUrl };

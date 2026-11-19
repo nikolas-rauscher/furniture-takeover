@@ -152,7 +152,7 @@ test("explicit source changes leave a previous own-only restriction", () => {
   );
 });
 
-test("agent inventory includes active Takeover listings from every owner, without photos and bounded fields", () => {
+test("agent inventory holds other students' active Takeover listings, never the student's own, without photos and bounded fields", () => {
   const active = {
     id: "own",
     title: "Desk",
@@ -173,8 +173,9 @@ test("agent inventory includes active Takeover listings from every owner, withou
   ]);
   assert.deepEqual(
     payload.inventory?.map((item) => item.id),
-    ["own", "other"],
+    ["other"],
   );
+  assert.deepEqual(payload.context?.ownListingIds, ["own"]);
   assert.equal(payload.inventory?.[0].description.length, 1500);
   assert.equal("image" in payload.inventory![0], false);
 });

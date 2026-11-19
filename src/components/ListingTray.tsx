@@ -46,6 +46,8 @@ type Props = {
   question?: AgentQuestionEvent;
   /** The questions of this turn in order, answered ones included. */
   queue: readonly AgentQuestionEvent[];
+  /** Questions answered or skipped in the listing's earlier turns; the count goes on from them. */
+  answeredBefore: number;
   suggestion?: PriceSuggestion;
   closing: { title: string; text: string };
   /** Why the last tap could not apply. */
@@ -68,24 +70,41 @@ type Props = {
   onPolish?: () => void;
 };
 
-/** One dot per question of this turn, filled once answered. */
+/** The most dots the tray shows; the oldest answered questions make room first. */
+const MAX_DOTS = 8;
+
+/**
+ * One dot per question of the listing, filled once answered: those of earlier
+ * turns first, so a new turn's questions carry on from them.
+ */
 function Progress({
   queue,
+  answeredBefore,
   answers,
   current,
 }: {
   queue: readonly AgentQuestionEvent[];
+  answeredBefore: number;
   answers: Readonly<Record<string, string>>;
   current: string;
 }) {
-  if (queue.length < 2) return null;
-  const position = queue.findIndex((item) => item.id === current) + 1;
+  const total = answeredBefore + queue.length;
+  if (total < 2) return null;
+  const position =
+    answeredBefore + queue.findIndex((item) => item.id === current) + 1;
+  const earlierDots = Math.min(
+    answeredBefore,
+    Math.max(0, MAX_DOTS - queue.length),
+  );
   return (
     <span
       className="listing-tray-progress"
       role="img"
-      aria-label={`Question ${position} of ${queue.length}`}
+      aria-label={`Question ${position} of ${total}`}
     >
+      {Array.from({ length: earlierDots }, (_, index) => (
+        <span key={`earlier-${index}`} data-state="answered" />
+      ))}
       {queue.map((item) => (
         <span
           key={item.id}
@@ -211,6 +230,7 @@ export default function ListingTray({
   turn,
   question,
   queue,
+  answeredBefore,
   suggestion,
   closing,
   tapError,
@@ -304,6 +324,7 @@ export default function ListingTray({
           </h3>
           <Progress
             queue={queue}
+            answeredBefore={answeredBefore}
             answers={turn.answers}
             current={question.id}
           />

@@ -29,10 +29,10 @@ import NegotiationSummary, {
 } from "./components/NegotiationSummary";
 import {
   discardNegotiation,
-  draftMessage,
   markNegotiationSent,
   type Negotiation,
 } from "../shared/negotiation";
+import { draftMessage } from "../shared/dealMessages";
 import AgentConversation, {
   focusConversation,
 } from "./components/AgentConversation";
