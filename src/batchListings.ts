@@ -2,6 +2,7 @@ import type { PhotoGroup } from "../shared/agent";
 import { MAX_LISTING_PHOTOS } from "../shared/listingPhotos.ts";
 import type { ListingDraft } from "./components/SellFlow";
 import { listingDraftReady } from "./listingPreparation.ts";
+import { randomUuid } from "./randomUuid.ts";
 
 export type BatchItem = {
   id: string;
@@ -18,7 +19,7 @@ export function batchItem(
   images: string[],
   location: string,
   label = "",
-  id: string = crypto.randomUUID(),
+  id: string = randomUuid(),
 ): BatchItem {
   return {
     id,

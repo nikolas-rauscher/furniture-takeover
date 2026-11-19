@@ -21,8 +21,8 @@ import {
 } from "./ui/dropdown-menu";
 import type { AgentRunState } from "../hooks/useAgentRun";
 import { safeSourceUrl } from "../api/runs";
-import { splitSearchAnswer } from "./agentAnswer";
-import { agentTurnPako, workingLine } from "../pakoMoods";
+import { shownAnswerText, splitSearchAnswer } from "./agentAnswer";
+import { agentTurnPako, workingLine, type StepVoice } from "../pakoMoods";
 import "./agent-run-panel.css";
 
 type AgentRunPanelProps = AgentActionHandlers & {
@@ -37,6 +37,8 @@ type AgentRunPanelProps = AgentActionHandlers & {
   quickReplies?: ReactNode;
   /** The search area as Pako names it while he searches. */
   place?: string;
+  /** Whose words Pako's steps are told in. */
+  voice?: StepVoice;
   showHistory?: boolean;
   splitSearchResults?: boolean;
   conversational?: boolean;
@@ -59,6 +61,7 @@ export default function AgentRunPanel({
   outcome,
   quickReplies,
   place,
+  voice = "search",
   showHistory = true,
   splitSearchResults = false,
   conversational = false,
@@ -76,12 +79,13 @@ export default function AgentRunPanel({
 }: AgentRunPanelProps) {
   const compact = conversational || splitSearchResults;
   const headingId = useId();
+  const answerText = shownAnswerText(state.text, state.questions);
   const displayText = useStreamingText(
-    state.text,
+    answerText,
     state.turnKey || state.id || "",
     state.status === "running" || state.status === "complete",
   );
-  const textArriving = state.status === "running" || displayText !== state.text;
+  const textArriving = state.status === "running" || displayText !== answerText;
   if (!state.id && state.status === "idle") return null;
   const running = state.status === "running";
   const stopped = state.status === "idle";
@@ -104,17 +108,11 @@ export default function AgentRunPanel({
   const standaloneActions = state.actions.filter(
     (action) => !priceSuggestions.includes(action),
   );
-  const questionOnlyAnswer = state.questions.some(
-    (question) => question.question.trim() === state.text.trim(),
-  );
   const waitingForAnswer = state.questions.some(
     (question) => !state.answers[question.id],
   );
 
-  const searchAnswer = splitSearchAnswer(
-    questionOnlyAnswer ? "" : displayText,
-    textArriving,
-  );
+  const searchAnswer = splitSearchAnswer(displayText, textArriving);
   const sourceLinks =
     safeSources.length > 0 ? <AgentSources sources={safeSources} /> : null;
   const statusLabel = waitingForAnswer
@@ -135,8 +133,11 @@ export default function AgentRunPanel({
 
   // Without steps or reasoning, the activity line itself names the status.
   // Only the live turn moves; earlier turns keep a resting Pako beside them.
-  const pako = agentTurnPako(state, { textShown: displayText, typing });
-  const pakoLine = running ? workingLine(state, place) : undefined;
+  const pako = agentTurnPako(
+    { ...state, text: answerText },
+    { textShown: displayText, typing },
+  );
+  const pakoLine = running ? workingLine(state, place, voice) : undefined;
   const avatar = (
     <span className="agent-pako" aria-hidden="true">
       <PakoReaction
@@ -237,6 +238,8 @@ export default function AgentRunPanel({
           reasoning={state.reasoning}
           steps={state.steps}
           place={place}
+          voice={voice}
+          sourceCount={safeSources.length}
           workingLine={pakoLine}
           heading={heading}
           actions={actions}
@@ -261,7 +264,12 @@ export default function AgentRunPanel({
               {turn.request && (
                 <p className="agent-run-history-request">{turn.request}</p>
               )}
-              <AgentRunDetails reasoning={turn.reasoning} steps={turn.steps} />
+              <AgentRunDetails
+                reasoning={turn.reasoning}
+                steps={turn.steps}
+                voice={voice}
+                sourceCount={turn.sources.length}
+              />
               {turn.text && (
                 <div className="agent-run-answer">
                   {answerBlocks(turn.text, turn.sources)}
@@ -300,6 +308,8 @@ export default function AgentRunPanel({
           reasoning={state.reasoning}
           steps={state.steps}
           place={place}
+          voice={voice}
+          sourceCount={safeSources.length}
           workingLine={pakoLine}
         />
       )}
@@ -347,7 +357,7 @@ export default function AgentRunPanel({
             </AgentWebResults>
           </div>
         )}
-      {!splitSearchResults && state.text && !questionOnlyAnswer && (
+      {!splitSearchResults && answerText && (
         <>
           <div className={compact ? "agent-search-result-message" : undefined}>
             <div className="agent-run-answer">

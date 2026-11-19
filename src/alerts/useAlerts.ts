@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useLayoutEffect } from "react";
 import type { Product, SearchJob } from "../../shared/marketplace";
 import { useSaved } from "../hooks/useSaved";
 import {
@@ -25,7 +25,8 @@ export function useAlerts(
     emptyAlerts(),
     isAlertsState,
   );
-  useEffect(() => {
+  // Before paint, so new matches show up in the same frame as the listings that raised them.
+  useLayoutEffect(() => {
     if (ready)
       setState((current) => updateAlerts(current, jobs, listings, new Date()));
   }, [jobs, listings, ready, setState]);

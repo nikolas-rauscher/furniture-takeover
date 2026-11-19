@@ -12,6 +12,7 @@ import { listingPhotos } from "../../shared/listingPhotos";
 import { useListings } from "../hooks/useListings";
 import { fail, photoUrl, type Listing } from "./client";
 import { listingPhotoBlob } from "./listingPhoto";
+import { randomUuid } from "../randomUuid";
 import type { AccountConnection } from "./AccountSession";
 
 export function toProduct(
@@ -153,7 +154,7 @@ export function useMarketplaceListings(account?: AccountConnection) {
             const blob = listingPhotoBlob(image);
             const extension =
               blob.type === "image/jpeg" ? "jpg" : blob.type.slice(6);
-            path = `${userId}/${crypto.randomUUID()}.${extension}`;
+            path = `${userId}/${randomUuid()}.${extension}`;
             fail(
               (
                 await client.storage

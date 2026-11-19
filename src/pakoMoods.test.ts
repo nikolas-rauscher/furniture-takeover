@@ -7,7 +7,9 @@ import {
   foundNothing,
   homeGuide,
   isReaction,
+  settledSteps,
   showedResults,
+  stepsSummary,
   stepWords,
   turnAnnouncement,
   workingLine,
@@ -254,7 +256,7 @@ test("a photo search speaks first on home: Pako listens to a drag, looks at the 
 
 test("Pako's working line reads the request, names the latest search in the intro's words and then writes", () => {
   const line = (steps: AgentRunStep[], text = "") =>
-    workingLine({ steps, text }, "Vortex");
+    workingLine({ steps, text, sources: [] }, "Vortex");
   assert.equal(line([]), "Reading your request…");
   assert.equal(
     line([catalogChecked, reading]),
@@ -272,7 +274,7 @@ test("Pako's working line reads the request, names the latest search in the intr
     "Searching student listings near Vortex…",
   );
   assert.equal(
-    workingLine({ steps: [reading, listings], text: "" }),
+    workingLine({ steps: [reading, listings], text: "", sources: [] }),
     "Searching student listings…",
   );
   const reviewing = [
@@ -360,6 +362,7 @@ test("a turn is announced step by step while Pako works, then once with his answ
         status: "complete",
         steps: [],
         text: "",
+        sources: [],
         questions: [],
         answers: {},
         ...overrides,
@@ -458,4 +461,136 @@ test("the activity list names each step in the intro's words, without raw querie
     ),
     "Offering to keep watch",
   );
+});
+
+const comparable = (id: string) => ({
+  id,
+  title: "Desk",
+  url: "https://www.ricardo.ch/de/a/desk",
+  snippet: "Asking CHF 40.",
+});
+
+test("a listing turn says what Pako does in the server's plain words, with the offers he compares", () => {
+  const line = (
+    steps: AgentRunStep[],
+    { text = "", offers = 0 }: { text?: string; offers?: number } = {},
+  ) =>
+    workingLine(
+      {
+        steps,
+        text,
+        sources: Array.from({ length: offers }, (_, index) =>
+          comparable(`web-${index + 1}`),
+        ),
+      },
+      undefined,
+      "listing",
+    );
+  const readingDetails = step(
+    "step-0",
+    "running",
+    undefined,
+    "Reading your listing details",
+  );
+  const research = step(
+    "web",
+    "running",
+    "web",
+    "Checking comparable prices online",
+  );
+  assert.equal(line([]), "Reading your photos and notes…");
+  assert.equal(line([readingDetails]), "Reading your listing details…");
+  assert.equal(
+    line([readingDetails, research]),
+    "Checking comparable prices online…",
+  );
+  const researched = [
+    { ...readingDetails, state: "complete" as const },
+    { ...research, state: "complete" as const },
+    step("step-1", "running", undefined, "Writing your listing"),
+  ];
+  assert.equal(line(researched, { offers: 3 }), "Comparing 3 offers…");
+  assert.equal(
+    line(researched),
+    "Writing your listing…",
+    "without offers there is nothing to compare",
+  );
+  assert.equal(
+    line([
+      ...researched,
+      step("price", "running", "listing", "Suggesting a price"),
+    ]),
+    "Suggesting a price…",
+  );
+  assert.equal(
+    line(researched, { text: "Desks like this ask", offers: 3 }),
+    "Writing my answer…",
+  );
+  assert.equal(
+    turnAnnouncement(
+      {
+        id: "run-1",
+        status: "running",
+        steps: [readingDetails],
+        text: "",
+        sources: [],
+        questions: [],
+        answers: {},
+      },
+      undefined,
+      "listing",
+    ),
+    "Reading your listing details…",
+  );
+});
+
+test("listing steps name what they looked at, while search steps keep the intro's words", () => {
+  const research = {
+    ...step("web", "complete", "web", "Checking comparable prices online"),
+    detail: "IKEA desk 120×60",
+  };
+  assert.equal(
+    stepWords(research, undefined, "listing"),
+    "Checking comparable prices online · IKEA desk 120×60",
+  );
+  assert.equal(
+    stepWords(
+      step("price", "complete", "listing", "Suggesting a price"),
+      undefined,
+      "listing",
+    ),
+    "Suggesting a price",
+  );
+  assert.equal(stepWords(research), "Checking other second-hand sites");
+});
+
+test("a step the agent corrected itself disappears once the same step completed", () => {
+  const rejected = step(
+    "price-1",
+    "needs_input",
+    "listing",
+    "Suggesting a price",
+  );
+  const accepted = step("price-2", "complete", "listing", "Suggesting a price");
+  const unanswered = step(
+    "update",
+    "needs_input",
+    "listing",
+    "Filling in your listing",
+  );
+  assert.deepEqual(settledSteps([rejected, accepted]), [accepted]);
+  assert.deepEqual(settledSteps([rejected]), [rejected]);
+  assert.deepEqual(
+    settledSteps([unanswered, accepted]),
+    [unanswered, accepted],
+    "a different step does not heal it",
+  );
+});
+
+test("a finished listing turn sums up the offers it compared, other turns their steps", () => {
+  assert.equal(stepsSummary(4, 3, "listing"), "Compared 3 offers");
+  assert.equal(stepsSummary(4, 1, "listing"), "Compared 1 offer");
+  assert.equal(stepsSummary(2, 0, "listing"), "2 steps");
+  assert.equal(stepsSummary(4, 3, "search"), "4 steps");
+  assert.equal(stepsSummary(1, 0, "search"), "1 step");
 });

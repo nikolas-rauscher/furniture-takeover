@@ -189,11 +189,24 @@ export function agentTurnPako(
 /** The server's quick look through all student listings before the agent starts. */
 const CATALOG_STEP_ID = "takeover-catalog";
 
+/** Whose words a turn's steps are told in: a buyer's search or a seller's listing. */
+export type StepVoice = "search" | "listing";
+
+const offerCount = (count: number) =>
+  count === 1 ? "1 offer" : `${count} offers`;
+
 /**
  * A step in the intro's words, for the live line and the activity list alike: the
- * searches name what Pako looks through, any other tool keeps its own label.
+ * searches name what Pako looks through, any other tool keeps its own label. A
+ * listing step keeps the server's plain label and names what it looked at.
  */
-export function stepWords(step: AgentRunStep, place?: string): string {
+export function stepWords(
+  step: AgentRunStep,
+  place?: string,
+  voice: StepVoice = "search",
+): string {
+  if (voice === "listing")
+    return step.detail ? `${step.label} · ${step.detail}` : step.label;
   if (step.id === CATALOG_STEP_ID) return "Checking student listings";
   if (step.task === "web") return "Checking other second-hand sites";
   if (step.label.startsWith("Searching takeover listings"))
@@ -207,18 +220,64 @@ export function stepWords(step: AgentRunStep, place?: string): string {
   return step.label;
 }
 
+type WorkingFacts = Pick<TurnFacts, "steps" | "text" | "sources">;
+
+/**
+ * While Pako writes a listing he names the tool at work, then how many offers the
+ * research brought back, then what the model step is doing.
+ */
+function listingWorkingLine(turn: WorkingFacts): string {
+  const tools = turn.steps.filter(isToolStep);
+  const running = tools.filter((step) => step.state === "running").at(-1);
+  if (running) return `${running.label}…`;
+  if (tools.at(-1)?.task === "web" && turn.sources.length)
+    return `Comparing ${offerCount(turn.sources.length)}…`;
+  const latest = turn.steps.at(-1);
+  return latest ? `${latest.label}…` : "Reading your photos and notes…";
+}
+
 /**
  * The one line Pako says while the agent works, like the steps of the intro's
  * search: he reads the request, names the tool the agent reached for last (the
  * one his mood follows) and writes once the answer streams in.
  */
 export function workingLine(
-  turn: Pick<TurnFacts, "steps" | "text">,
+  turn: WorkingFacts,
   place?: string,
+  voice: StepVoice = "search",
 ): string {
   if (turn.text !== "" && !toolRunning(turn.steps)) return "Writing my answer…";
+  if (voice === "listing") return listingWorkingLine(turn);
   const latest = agentToolSteps(turn.steps).at(-1);
   return latest ? `${stepWords(latest, place)}…` : "Reading your request…";
+}
+
+/**
+ * The steps worth keeping once a turn moves on: a listing tool the agent corrected
+ * itself first reports that it needs details, and that report goes once a later
+ * step with the same label completed.
+ */
+export function settledSteps(steps: readonly AgentRunStep[]): AgentRunStep[] {
+  return steps.filter(
+    (step, index) =>
+      step.state !== "needs_input" ||
+      !steps
+        .slice(index + 1)
+        .some(
+          (later) => later.label === step.label && later.state === "complete",
+        ),
+  );
+}
+
+/** The collapsed activity line: the offers a listing turn compared, otherwise its step count. */
+export function stepsSummary(
+  stepCount: number,
+  sourceCount: number,
+  voice: StepVoice,
+): string {
+  if (voice === "listing" && sourceCount > 0)
+    return `Compared ${offerCount(sourceCount)}`;
+  return stepCount === 1 ? "1 step" : `${stepCount} steps`;
 }
 
 /**
@@ -228,11 +287,12 @@ export function workingLine(
 export function turnAnnouncement(
   turn: Pick<
     AgentRunState,
-    "id" | "status" | "steps" | "text" | "questions" | "answers"
+    "id" | "status" | "steps" | "text" | "sources" | "questions" | "answers"
   >,
   place?: string,
+  voice: StepVoice = "search",
 ): string {
-  if (turn.status === "running") return workingLine(turn, place);
+  if (turn.status === "running") return workingLine(turn, place, voice);
   if (turn.status === "error") return "";
   if (turn.status === "idle") return turn.id ? "Pako stopped." : "";
   const answer = plainAnswer(turn.text);

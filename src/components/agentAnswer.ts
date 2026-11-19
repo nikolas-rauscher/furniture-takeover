@@ -157,3 +157,18 @@ export function plainAnswer(text: string): string {
     .map(asSentence)
     .join(" ");
 }
+
+/**
+ * Pako's answer beside the questions he asks in their own place: a question is not
+ * repeated at the end of the answer, and an answer that is only that question goes.
+ */
+export function shownAnswerText(
+  text: string,
+  questions: readonly { question: string }[],
+): string {
+  const answer = text.trim();
+  const repeated = questions
+    .map(({ question }) => question.trim())
+    .find((question) => question && answer.endsWith(question));
+  return repeated ? answer.slice(0, -repeated.length).trim() : answer;
+}
