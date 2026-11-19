@@ -3,7 +3,8 @@ const furnitureTitle =
 const cargoEnvelopeCm = [180, 105, 80];
 
 type TransportGuidance = {
-  label: string;
+  /** What the item fits in, or unknown until the seller confirms its measurements. */
+  vehicle: "car" | "van" | "unknown";
   message: string;
   note: string;
 };
@@ -55,19 +56,19 @@ export function transportGuidance(
   const measured = dimensionsInCentimetres(dimensions);
   if (!measured)
     return {
-      label: "Transport estimate",
+      vehicle: "unknown",
       message: "Confirm the width × depth × height in cm with the seller.",
       note: "Vehicle choice depends on the item's largest transport dimensions.",
     };
 
   return fitsCargoEnvelope(measured)
     ? {
-        label: "Transport estimate",
+        vehicle: "car",
         message: "An estate car may be enough.",
         note: "Check your vehicle's usable cargo space and loading opening; this is only an estimate.",
       }
     : {
-        label: "Transport estimate",
+        vehicle: "van",
         message: "A van is likely needed.",
         note: "Check the item's largest transport dimensions against the vehicle's usable cargo space and loading opening.",
       };

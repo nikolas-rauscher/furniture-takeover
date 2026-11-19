@@ -58,6 +58,7 @@ export {
   Bike,
   Building2,
   CalendarCheck,
+  Car,
   Clock,
   CookingPot,
   GraduationCap,
@@ -71,6 +72,7 @@ export {
   PartyPopper,
   Sofa,
   Store,
+  Truck,
   Zap,
 } from "lucide-react";
 
