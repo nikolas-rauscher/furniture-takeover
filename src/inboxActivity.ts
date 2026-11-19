@@ -116,8 +116,9 @@ export function pickupActivity(deal: Deal | undefined | null, role: DealRole, no
   const day = pickupDay(deal, role, now);
   const pickupSoon = day?.phase === "pickup_soon";
   const due = !!day && day.phase !== "booked";
-  const needsYou = due || Boolean(day?.pickupCheck && !day.pickupCheck.expired) || day?.change === "received" ||
-    (role === "seller" && !!day?.buyerReportedPickup);
+  const needsYou = !day?.pickupCheck?.expired && (
+    due || day?.change === "received" || (role === "seller" && !!day?.buyerReportedPickup)
+  );
   return { pickupSoon, due, needsYou, label: needsYou ? "Your turn" as const : dealActivity(deal, role) };
 }
 

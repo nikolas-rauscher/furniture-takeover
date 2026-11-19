@@ -5,18 +5,23 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import Pako from "../components/onboarding/Pako";
 import { fail } from "./client";
 
-type AuthMode = "login" | "reset" | "password" | "complete";
+type AuthMode = "login" | "signup" | "reset" | "password" | "complete";
 
 /** What a failed step tells the student; the provider's own wording varies by deployment. */
+export const universityEmail = (email: string) =>
+  /^[^@\s]+@(epfl|unil)\.ch$/i.test(email.trim());
+
 const AUTH_FAILURES: Record<Exclude<AuthMode, "complete">, string> = {
   login:
     "Couldn't sign in. Check your email and password, or reset your password.",
+  signup: "Couldn't create your account. Check your university email and try again.",
   reset: "Couldn't send a reset link. Check your email and try again.",
   password: "Couldn't save your password. Try again.",
 };
 
 const BUSY_LABELS: Record<Exclude<AuthMode, "complete">, string> = {
   login: "Signing in…",
+  signup: "Creating your account…",
   reset: "Sending reset link…",
   password: "Saving password…",
 };
@@ -62,12 +67,11 @@ export default function Auth({
           ? "Reset password"
           : mode === "password"
             ? "Choose a new password"
-            : "Welcome back"}
+            : mode === "signup" ? "Create your account" : "Welcome back"}
       </h1>
-      {mode === "login" && (
+      {mode === "signup" && (
         <p className="quiet-caption">
-          You need an invitation to sign in to takeover. Open your invite email
-          to set a password.
+          Use your @epfl.ch or @unil.ch address.
         </p>
       )}
       <form
@@ -75,6 +79,10 @@ export default function Auth({
           e.preventDefault();
           if (mode === "password" && password !== confirmation) {
             setNotice("The passwords don't match.");
+            return;
+          }
+          if (mode === "signup" && !universityEmail(email)) {
+            setNotice("Sign up with your @epfl.ch or @unil.ch address.");
             return;
           }
           setBusy(true);
@@ -101,6 +109,16 @@ export default function Auth({
               setPassword("");
               setConfirmation("");
               setMode("complete");
+            } else if (mode === "signup") {
+              const { error } = await client.auth.signUp({
+                email: email.trim(),
+                password,
+                options: { emailRedirectTo: location.origin },
+              });
+              fail(error);
+              setMode("login");
+              setPassword("");
+              setNotice("Check your university inbox. Open the confirmation link in this browser.");
             } else {
               fail(
                 (await client.auth.signInWithPassword({ email, password }))
@@ -174,15 +192,28 @@ export default function Auth({
               ? "Send reset link"
               : mode === "password"
                 ? "Save password"
-                : "Sign in"}
+                : mode === "signup" ? "Create account" : "Sign in"}
         </Button>
       </form>
       {notice && <p role="status">{notice}</p>}
       {!recovery && (
         <div className="account-actions">
-          {mode === "reset" ? (
+          {mode === "login" && (
             <Button
               className="button quiet"
+              disabled={busy}
+              onClick={() => {
+                setMode("signup");
+                setNotice("");
+              }}
+            >
+              Create account
+            </Button>
+          )}
+          {mode === "reset" || mode === "signup" ? (
+            <Button
+              className="button quiet"
+              disabled={busy}
               onClick={() => {
                 setMode("login");
                 setNotice("");
@@ -193,6 +224,7 @@ export default function Auth({
           ) : (
             <Button
               className="button quiet"
+              disabled={busy}
               onClick={() => {
                 setMode("reset");
                 setNotice("");

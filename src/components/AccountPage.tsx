@@ -30,7 +30,7 @@ import {
   Image as ImageIcon,
 } from "@/components/icons";
 import { cn } from "@/lib/utils";
-import { money, type Product } from "../../shared/marketplace";
+import { money, type Product, type SavedListing } from "../../shared/marketplace";
 import { useMomentPassed } from "../hooks/useMomentPassed";
 import Confetti from "./onboarding/Confetti";
 import Pako, { PAKO_FLIGHT_MS } from "./onboarding/Pako";
@@ -210,7 +210,7 @@ type AccountPageProps = {
   accountTab: AccountTab;
   setAccountTab(tab: AccountTab): void;
   visibleListings: Product[];
-  savedListings: Product[];
+  savedListings: SavedListing[];
   archivedListings: Product[];
   onSell(): void;
   onBrowse(): void;

@@ -399,12 +399,13 @@ create policy saved_listing_read on public.listings for select to authenticated 
   )
 );
 
--- App metadata is set by the trusted catalogue seeder, never by self-signup.
+-- App metadata is set only by trusted server paths (catalogue seeder, admin API), never by self-signup.
 create function takeover_admin.require_university_signup() returns trigger
 language plpgsql set search_path='' as $$
 begin
   if new.raw_app_meta_data->>'demo_seed'='takeover-demo-v2'
     and new.raw_app_meta_data->>'synthetic'='true' then return new; end if;
+  if new.raw_app_meta_data->>'qa_account'='true' then return new; end if;
   if new.email is null or new.email !~* '^[^@[:space:]]+@(epfl|unil)[.]ch$' then
     raise exception 'Sign up with your @epfl.ch or @unil.ch address.';
   end if;

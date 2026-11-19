@@ -10,6 +10,7 @@ import {
   listingReviewSearch,
   newSearch,
   preferenceSearch,
+  refilterCatalog,
   restoreSearch,
   type SavedSearch,
 } from "./searchRequest.ts";
@@ -301,4 +302,15 @@ test("buyer constraints survive the header, request and radius-only follow-up", 
   }
   const unspecified = newSearch("desk with free delivery", defaults, "EPFL");
   assert.equal(agentSearchRequest(unspecified, []).context?.maxPrice, undefined);
+});
+
+test("changing preferences filters available catalog items and preserves their existing ranking", () => {
+  const desk = { ...products[0], title: "Study desk", price: 40, condition: "Used", status: "active" } as Product;
+  const other = { ...desk, id: "another-desk", title: "Wood desk", price: 55 };
+  const excluded = { ...desk, id: "out-of-budget", price: 100 };
+  const initial = newSearch("desk under CHF 80", defaults, "Lausanne");
+  const filtered = refilterCatalog([desk, other, excluded], [other, excluded], {
+    ...initial.criteria, condition: "Used",
+  });
+  assert.deepEqual(filtered.map(({ id }) => id), [other.id, desk.id]);
 });

@@ -6,7 +6,7 @@ import { historyPosition, readRoute, type View } from "./navigation";
 import { formatPickup } from "../shared/pickupTime";
 import type { AccountConnection } from "./cloud/AccountSession";
 import { useMarketplaceListings } from "./cloud/useMarketplaceListings";
-import { useFavorites } from "./cloud/useFavorites";
+import { savedListing, useFavorites } from "./cloud/useFavorites";
 import { useAppViewport } from "./hooks/useAppViewport";
 import { useWindowScrolled } from "./hooks/useWindowScrolled";
 import AccountPage, {
@@ -146,6 +146,7 @@ import {
   isSearchArea,
   newSearch,
   preferenceSearch,
+  refilterCatalog,
   restoreSearch,
   sameCriteria,
   type SavedSearch,
@@ -160,6 +161,7 @@ import {
   type PreferenceChanges,
 } from "./agentActions";
 import type { AgentPreferencesPatchEvent } from "../shared/actions";
+import { searchChangeSummary } from "./searchChanges";
 import { useAgentHealth } from "./hooks/useAgentHealth";
 import { useNoticeableWait } from "./hooks/useNoticeableWait";
 import { useFocused } from "./hooks/useFocused";
@@ -321,6 +323,7 @@ export default function App({
         turn.proposal.draft,
     ),
   );
+  const [localPreferences, setLocalPreferences] = useState("");
   const searchRunToken = useRef(0);
   const committedSearchRef = useRef<SearchSnapshot | null>(null);
   const [searchChanges, setSearchChanges] = useState<
@@ -398,6 +401,7 @@ export default function App({
   const {
     favorites,
     setFavorites,
+    prices: savedPrices,
     error: favoriteError,
   } = useFavorites(account);
   const [jobs, setJobs] = useSaved<SavedSearch[]>(
@@ -408,6 +412,12 @@ export default function App({
   const database = useMarketplaceListings(account);
   const own = database.listings;
   const setOwn = database.setListings;
+  const reloadListings = database.retry;
+  const accountDealStatuses = !account?.session ? null : messages.deals
+    .map(({ listingId, status }) => `${listingId}:${status}`).sort().join(",");
+  useEffect(() => {
+    if (accountDealStatuses !== null && !database.pending) void reloadListings();
+  }, [accountDealStatuses, database.pending, reloadListings]);
   /** What demo deals reserved or made available again, as it was before; clearing the workspace puts it back. */
   const [dealStatusBefore, setDealStatusBefore] = useSaved<
     Record<string, Product["status"]>
@@ -529,7 +539,24 @@ export default function App({
   const imageReader = useRef<AbortController | null>(null);
 
   // Preserve old browser records, but never show seeded inventory as real offers.
-  const localListings = own.filter((item) =>
+  const expiredReleases = new Set(messages.deals
+    .filter((deal) => deal.outcome?.kind === "pickup_expired")
+    .filter((deal) => !messages.deals.some((other) =>
+      other.listingId === deal.listingId && other.status === "agreed"))
+    .map(({ listingId }) => listingId));
+  const releasePending = !account && own.some((item) =>
+    item.status === "reserved" && expiredReleases.has(item.id));
+  const releaseKey = releasePending ? [...expiredReleases].sort().join(",") : "";
+  useEffect(() => {
+    if (!releaseKey) return;
+    const ids = new Set(releaseKey.split(","));
+    void setOwn((items) => items.map((item) =>
+      item.status === "reserved" && ids.has(item.id) ? { ...item, status: "active" } : item));
+  }, [releaseKey, setOwn]);
+  const localListings = own.map((item): Product =>
+    releasePending && item.status === "reserved" && expiredReleases.has(item.id)
+      ? { ...item, status: "active" } : item
+  ).filter((item) =>
     account
       ? true
       : item.own && (item.demo || !item.image.startsWith("/images/")),
@@ -553,9 +580,9 @@ export default function App({
     ready: database.ready,
     location,
   });
-  const savedListings = visibleListings.filter((item) =>
-    favorites.includes(item.id),
-  );
+  const savedListings = visibleListings
+    .filter((item) => favorites.includes(item.id))
+    .map((item) => savedListing(item, savedPrices));
   const selected = localListings.find((item) => item.id === selectedId);
   /** The student's deals in the inbox of the mode the app runs in, each from their side. */
   const accountRows = messages.accountInbox.rows;
@@ -1185,10 +1212,11 @@ export default function App({
       return;
     }
     const adding = !favorites.includes(id);
-    const stored = await setFavorites((current) =>
-      current.includes(id)
+    const stored = await setFavorites(
+      (current) => current.includes(id)
         ? current.filter((item) => item !== id)
         : [...current, id],
+      localListings.find((item) => item.id === id),
     );
     if (!stored) return;
     if (adding)
@@ -1250,6 +1278,29 @@ export default function App({
       [id]: "Search again to refresh the results.",
     }));
   }
+  function applyFilterForm() {
+    const current = committedSearchRef.current;
+    const next = preferenceSearch(
+      normalizedFilterDraft, current?.location ?? location, current ?? undefined,
+    );
+    if (!current || next.criteria.query !== current.criteria.query) {
+      void performSearch(next);
+      return;
+    }
+    const { criteria: before } = current;
+    const { criteria: after } = next;
+    const change = searchChangeSummary({
+      ...(before.maxPrice === after.maxPrice ? {} : { maxPrice: after.maxPrice }),
+      ...(before.radius === after.radius ? {} : { radius: after.radius }),
+      ...(before.pickup === after.pickup ? {} : { pickupBy: after.pickup }),
+      ...(before.condition === after.condition ? {} : { condition: after.condition }),
+      ...(before.source === after.source ? {} : { source: after.source }),
+    });
+    setModal(null);
+    if (!change) return;
+    storeSearch({ ...current, criteria: { ...after, category: before.category } });
+    setLocalPreferences(change);
+  }
   async function performSearch(
     search: SearchSnapshot,
     question?: string,
@@ -1261,6 +1312,16 @@ export default function App({
       navigate("settings");
       return;
     }
+    let currentProposal = proposal;
+    if (!currentProposal && (preserveConversation || search.originalRequest === committedSearchRef.current?.originalRequest)) {
+      try {
+        currentProposal = negotiations.current();
+      } catch (error) {
+        setToast(error instanceof Error ? error.message : "Couldn't load your offer draft.");
+        return;
+      }
+    }
+    setLocalPreferences("");
     const token = ++searchRunToken.current;
     const previousSearch = committedSearchRef.current;
     const preserveHistory =
@@ -1286,8 +1347,6 @@ export default function App({
     );
     storeSearch(search);
 
-    const currentProposal =
-      proposal ?? (preserveHistory ? negotiations.current() : undefined);
     const request = agentSearchRequest(
       search,
       activeListings,
@@ -1488,8 +1547,8 @@ export default function App({
               negotiation: discardNegotiation(proposal, proposal.version),
             });
             forgetMessageDraft(proposal.listingId);
-          } catch {
-            /* repository exposes the error */
+          } catch (error) {
+            setToast(error instanceof Error ? error.message : "Couldn't discard the offer draft.");
           }
         }}
       />
@@ -2598,7 +2657,7 @@ export default function App({
                       }
                     >
                       {(turn, archived) => {
-                        const localMatches = (
+                        const ranked = (
                           turn.inventoryMatchIds ?? []
                         ).flatMap((id) => {
                           const item = activeListings.find(
@@ -2606,6 +2665,10 @@ export default function App({
                           );
                           return item ? [item] : [];
                         });
+                        const locallyFiltered = !archived && Boolean(localPreferences) && committedSearch;
+                        const localMatches = locallyFiltered
+                          ? refilterCatalog(activeListings, ranked, committedSearch.criteria)
+                          : ranked;
                         const nextReplies = quickReplies({
                           turn,
                           latest: !archived,
@@ -2693,15 +2756,32 @@ export default function App({
                               (archived || !negotiations.active)
                             }
                             localListings={
-                              !reviewingListing &&
-                              turn.inventoryMatchIds !== null &&
-                              localMatches.length > 0 ? (
-                                <AgentListings
-                                  listings={localMatches}
-                                  order={resultOrder(turn.status)}
-                                  onOpen={openProduct}
-                                  onOffer={openOfferCard}
-                                />
+                              !reviewingListing && ((turn.inventoryMatchIds !== null && localMatches.length > 0) || locallyFiltered) ? (
+                                <>
+                                  {locallyFiltered && (
+                                    <div className="agent-run-changes">
+                                      <p role="status">
+                                        {localPreferences} {localMatches.length} takeover{" "}
+                                        {localMatches.length === 1 ? "match" : "matches"}.
+                                      </p>
+                                      <details>
+                                        <summary>Why?</summary>
+                                        <p>
+                                          Your new preferences were applied to the takeover catalog.
+                                          Earlier web links and Pako's reply are from the original search.
+                                        </p>
+                                      </details>
+                                    </div>
+                                  )}
+                                  {localMatches.length > 0 && (
+                                    <AgentListings
+                                      listings={localMatches}
+                                      order={resultOrder(turn.status)}
+                                      onOpen={openProduct}
+                                      onOffer={openOfferCard}
+                                    />
+                                  )}
+                                </>
                               ) : undefined
                             }
                             onCancel={agentRun.cancel}
@@ -3127,13 +3207,7 @@ export default function App({
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              void performSearch(
-                preferenceSearch(
-                  normalizedFilterDraft,
-                  location,
-                  committedSearch ?? undefined,
-                ),
-              );
+              applyFilterForm();
             }}
           >
             <SearchPreferencesFields
@@ -3148,8 +3222,8 @@ export default function App({
               >
                 Reset
               </Button>
-              <Button animateIcon className="button primary" type="submit">
-                Search with these preferences
+              <Button animateIcon className="button primary" type="submit" disabled={running}>
+                Apply preferences
               </Button>
             </div>
           </form>

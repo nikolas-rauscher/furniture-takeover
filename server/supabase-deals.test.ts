@@ -605,7 +605,9 @@ test("the signup trigger checks exact university domains and preserves trusted d
     for (const email of ["personal@gmail.com", "x@eng.epfl.ch", "x@epfl.ch.example.org", "x@home-unil.ch", null])
       await assert.rejects(create(email, demoMeta), /Sign up with your @epfl.ch or @unil.ch address/);
     await create("catalogue@example.invalid", {}, demoMeta);
-    assert.equal(await count(db, "select * from auth.users"), 6);
+    await create("qa@example.invalid", {}, { qa_account: true });
+    await assert.rejects(create("self@example.invalid", { qa_account: true }), /Sign up with your @epfl.ch or @unil.ch address/);
+    assert.equal(await count(db, "select * from auth.users"), 7);
   } finally {
     await db.close();
   }

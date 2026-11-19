@@ -1,6 +1,7 @@
 import { listingInventory } from "../shared/listingInventory.ts";
 import {
   defaults,
+  filterProducts,
   isMine,
   extractSearchConstraints,
   takeoverOnlyPattern,
@@ -156,6 +157,16 @@ export function preferenceSearch(
     criteria: value,
     location,
   };
+}
+
+/** Reuse the existing ranking, plus catalog items a relaxed filter may bring back. */
+export function refilterCatalog(inventory: Product[], ranked: Product[], criteria: Criteria) {
+  const rankedIds = new Set(ranked.map(({ id }) => id));
+  const remaining = inventory.filter((item) => !isMine(item) && !rankedIds.has(item.id));
+  return [
+    ...filterProducts(ranked, { ...criteria, query: "", category: "All" }),
+    ...filterProducts(remaining, criteria),
+  ];
 }
 
 export function restoreSearch(
