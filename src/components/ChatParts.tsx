@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { useSaved } from "../hooks/useSaved";
 import { fitTextarea } from "../textarea";
 import Confetti from "./onboarding/Confetti";
-import Pako from "./onboarding/Pako";
+import Pako, { PAKO_FLIGHT_MS } from "./onboarding/Pako";
 import { Button } from "./ui/button";
 import {
   InputGroup,
@@ -25,8 +25,8 @@ import "./messages.css";
 const ARRIVAL = { type: "spring", stiffness: 460, damping: 34 } as const;
 /** Thread cards rise in one after another, capped so long inboxes stay quick. */
 const MAX_STAGGERED_THREADS = 8;
-/** How long the thread celebrates a sent offer before it settles again. */
-const CELEBRATION_MS = 4200;
+/** A sent offer is celebrated for two delivery flights, so Pako has landed when it settles. */
+const CELEBRATION_MS = 2 * PAKO_FLIGHT_MS;
 /** Enough history to label recent threads; older messages lose the label. */
 const MAX_REMEMBERED_DRAFTS = 300;
 
@@ -287,7 +287,7 @@ export function useSentCelebration() {
   return [recipient, setRecipient] as const;
 }
 
-/** A short cheer once an offer Pako drafted is sent, like the intro's booked pickup. */
+/** A short celebration once an offer Pako drafted is sent: he flies it over on beating lids. */
 export function SentCelebration({ recipient }: { recipient: string }) {
   return (
     <motion.p
@@ -299,7 +299,7 @@ export function SentCelebration({ recipient }: { recipient: string }) {
       transition={ARRIVAL}
     >
       <span className="chat-celebration-pako" aria-hidden="true">
-        <Pako mood="cheer" size={40} />
+        <Pako mood="deliver" size={40} />
         <span className="chat-celebration-burst">
           <Confetti />
         </span>

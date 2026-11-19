@@ -35,13 +35,14 @@ export function useFavorites(account?: AccountConnection) {
       alive = false;
     };
   }, [client, userId]);
-  async function update(value: SetStateAction<string[]>) {
+  /** Resolves to whether the change was stored; a failed save shows as `error`. */
+  async function update(value: SetStateAction<string[]>): Promise<boolean> {
     if (!client) {
       setLocal(value);
-      return;
+      return true;
     }
     if (!userId) throw Error("Sign in to save items.");
-    if (working.current) return;
+    if (working.current) return false;
     working.current = true;
     setError("");
     const previous = current.current;
@@ -65,8 +66,10 @@ export function useFavorites(account?: AccountConnection) {
         );
       current.current = next;
       setSaved(next);
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save item.");
+      return false;
     } finally {
       working.current = false;
     }

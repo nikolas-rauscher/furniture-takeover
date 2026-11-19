@@ -71,7 +71,7 @@ export default function SavedSearchesPage({
         </div>
       ) : (
         <div className="saved-searches-empty">
-          <Pako mood="idle" size={80} />
+          <Pako mood="wave" size={80} />
           <h2>No saved searches yet</h2>
           <p>Tell Pako what you need, then save the search to run it again.</p>
           <Button animateIcon className="button primary" onClick={onFind}>

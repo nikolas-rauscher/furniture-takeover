@@ -126,6 +126,7 @@ import Onboarding, {
 } from "./components/onboarding/Onboarding";
 import OnboardingInvite from "./components/onboarding/OnboardingInvite";
 import Pako from "./components/onboarding/Pako";
+import type { PakoMood } from "./components/onboarding/storyTypes";
 import {
   firstVisitMode,
   readOnboarding,
@@ -322,7 +323,11 @@ export default function App({
   const [busy, setBusy] = useState(false);
   const [toastNotice, setToastNotice] = useState<{
     message: string;
+    /** How Pako brings the note; he stands calmly unless the news is a small joy. */
+    mood?: PakoMood;
     deletedSearch?: { job: SavedSearch; index: number };
+    /** The favourite this note confirms; removing it again takes the note back. */
+    savedFavorite?: string;
   } | null>(null);
   const toast = toastNotice?.message || "";
   function setToast(message: string) {
@@ -717,16 +722,28 @@ export default function App({
       `#listing/${encodeURIComponent(item.id)}`,
     );
   }
-  function toggleFavorite(id: string) {
+  async function toggleFavorite(id: string) {
     if (!signedIn) {
       navigate("settings");
       return;
     }
-    void setFavorites((current) =>
+    const adding = !favorites.includes(id);
+    const stored = await setFavorites((current) =>
       current.includes(id)
         ? current.filter((item) => item !== id)
         : [...current, id],
     );
+    if (!stored) return;
+    if (adding)
+      setToastNotice({
+        message: "Saved to your favourites.",
+        mood: "love",
+        savedFavorite: id,
+      });
+    else
+      setToastNotice((notice) =>
+        notice?.savedFavorite === id ? null : notice,
+      );
   }
   function openComparison() {
     comparisonOrigin.current = view;
@@ -2330,6 +2347,7 @@ export default function App({
       />
       <Toast
         message={toast}
+        mood={toastNotice?.mood}
         action={
           toastNotice?.deletedSearch
             ? {

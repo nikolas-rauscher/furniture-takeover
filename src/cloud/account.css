@@ -827,7 +827,7 @@
   font-size: var(--type-caption);
 }
 
-/* Publishing: Pako cheers in the progress card, confetti leaves his box, a stamp lands on the new card. */
+/* Publishing: Pako flies into the progress card and cheers as confetti leaves his box; a stamp lands on the new card. */
 .items-page .selling-progress-pako {
   position: relative;
   flex: none;
