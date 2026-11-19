@@ -28,11 +28,14 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import "./listing-tray.css";
 
-/** The tray's content settles in place of the last one, like the listing card's details. */
+/**
+ * The tray's content settles in place of the last one, like the listing card's
+ * details. The last one fades out over it at once, so the tray never stands empty.
+ */
 const SWAP = {
   initial: { opacity: 0, y: 6 },
   animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -4 },
+  exit: { opacity: 0, y: -4, transition: { duration: 0.12 } },
   transition: { type: "spring", stiffness: 420, damping: 34 },
 } as const;
 /** A tapped answer fills and shows its check this long before the next question comes. */
@@ -462,7 +465,7 @@ export default function ListingTray({
         <PakoReaction size={44} mood={mood} />
       </span>
       <AutoHeight className="listing-tray-bubble">
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key={contentKey}
             className="listing-tray-content"
