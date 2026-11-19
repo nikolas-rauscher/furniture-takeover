@@ -27,6 +27,8 @@ type HeaderNavProps = {
   savedSearches: number;
   /** Matches for saved searches the student has not opened yet. */
   unreadMatches: number;
+  /** Conversations with news from the other student. */
+  unreadMessages: number;
   onNavigate: (destination: HeaderDestination) => void;
 };
 
@@ -35,13 +37,23 @@ function searchesName(label: string, saved: number, unread: number) {
   return `${label} (${saved} saved, ${unread} new ${unread === 1 ? "match" : "matches"})`;
 }
 
+/** What each tab says to assistive technology; tabs without news keep their label. */
+function itemName(
+  id: HeaderDestination,
+  label: string,
+  { savedSearches, unreadMatches, unreadMessages }: HeaderNavProps,
+) {
+  if (id === "searches")
+    return searchesName(label, savedSearches, unreadMatches);
+  if (id === "messages" && unreadMessages)
+    return `${label} (${unreadMessages} new)`;
+  return undefined;
+}
+
 /** Desktop navigation: a pill glides to the page on screen, like the phone tab bar. */
-export default function HeaderNav({
-  active,
-  savedSearches,
-  unreadMatches,
-  onNavigate,
-}: HeaderNavProps) {
+export default function HeaderNav(props: HeaderNavProps) {
+  const { active, savedSearches, unreadMatches, unreadMessages, onNavigate } =
+    props;
   return (
     <nav aria-label="Main navigation">
       {items.map(({ id, label }) => (
@@ -49,11 +61,7 @@ export default function HeaderNav({
           key={id}
           className="header-nav-item"
           aria-current={active === id ? "page" : undefined}
-          aria-label={
-            id === "searches"
-              ? searchesName(label, savedSearches, unreadMatches)
-              : undefined
-          }
+          aria-label={itemName(id, label, props)}
           onClick={() => onNavigate(id)}
         >
           {active === id && (
@@ -75,6 +83,11 @@ export default function HeaderNav({
               aria-hidden="true"
             >
               {unreadMatches > 0 ? `${unreadMatches} new` : savedSearches}
+            </span>
+          )}
+          {id === "messages" && unreadMessages > 0 && (
+            <span className="nav-count" data-new aria-hidden="true">
+              {unreadMessages} new
             </span>
           )}
         </Button>

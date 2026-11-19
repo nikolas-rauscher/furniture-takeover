@@ -68,3 +68,15 @@ export function photoUrl(client: SupabaseClient, path: string) {
 export function fail(error: { message: string } | null) {
   if (error) throw new Error(error.message);
 }
+/** PostgREST and Postgres codes for a table, column or function that no update has created yet. */
+const MISSING_FROM_SCHEMA = new Set([
+  "PGRST202",
+  "PGRST204",
+  "PGRST205",
+  "42P01",
+  "42703",
+  "42883",
+]);
+/** Whether a query failed only because the server lacks a database update. */
+export const missingFromSchema = (error: { code?: string } | null) =>
+  Boolean(error?.code && MISSING_FROM_SCHEMA.has(error.code));

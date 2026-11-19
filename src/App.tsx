@@ -22,7 +22,11 @@ import { randomUuid } from "./randomUuid";
 import type { PhotoGroup } from "../shared/agent";
 import WorkspacePage from "./components/WorkspacePage";
 import WorkspaceHeader from "./components/WorkspaceHeader";
-import MessagesPage from "./components/MessagesPage";
+import MessagesPage, {
+  type MessagesInboxProps,
+} from "./components/MessagesPage";
+import PakoReadingSetting from "./components/PakoReadingSetting";
+import { useMessagesInbox } from "./hooks/useMessagesInbox";
 import { useNegotiations } from "./hooks/useNegotiations";
 import NegotiationSummary, {
   MessageDraftPreview,
@@ -84,7 +88,7 @@ import SellFlow, {
   type ListingDraft,
 } from "./components/SellFlow";
 import ListingConversation from "./components/ListingConversation";
-import AskPakoMenu from "./components/AskPakoMenu";
+import AskPakoMenu, { LISTING_REQUESTS } from "./components/AskPakoMenu";
 import DeveloperSettings from "./components/DeveloperSettings";
 import { useDeveloperMode } from "./availability/useDeveloperMode";
 import {
@@ -105,6 +109,7 @@ import type { PakoAbsence } from "./sellGuide";
 import { useListingConversation } from "./hooks/useListingConversation";
 import { useSaved } from "./hooks/useSaved";
 import { useWatches } from "./alerts/useWatches";
+import type { WatchTarget } from "./alerts/watch";
 import { demandLadder, similarListings } from "./alerts/matching";
 import SellerInsight from "./alerts/SellerInsight";
 import {
@@ -258,6 +263,17 @@ export default function App({
     refresh: refreshHealth,
   } = useAgentHealth();
   const [view, setView] = useState<View>(readRoute(window.location.hash).view);
+  const messages = useMessagesInbox({
+    account,
+    open: view === "messages",
+    aiConfigured: agentHealth?.configured,
+  });
+  /** A thread's note on Pako's reading led to Settings, which then open where that choice is. */
+  const [readingSettingsRequested, setReadingSettingsRequested] =
+    useState(false);
+  useEffect(() => {
+    if (view !== "settings") setReadingSettingsRequested(false);
+  }, [view]);
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState("");
   const searchField = useRef<HTMLTextAreaElement>(null);
@@ -1176,7 +1192,7 @@ export default function App({
   function chooseQuickReply(reply: TappableReply, shown: Product[]) {
     if (reply.kind === "ask") void runSearch(reply.text, criteria, true);
     else if (reply.kind === "compare") compareListings(reply.listingIds);
-    else if (reply.kind === "watch") keepWatch(reply.query, reply.maxPrice);
+    else if (reply.kind === "watch") keepWatch(reply);
     else {
       const item = shown.find((listing) => listing.id === reply.listingId);
       if (!item)
@@ -1227,8 +1243,8 @@ export default function App({
     return true;
   }
   /** Pako keeps watch for an item, or says the watch is running already. */
-  function keepWatch(query: string, maxPrice?: number) {
-    if (!watches.watch(query, maxPrice)) {
+  function keepWatch({ query, maxPrice, radius }: WatchTarget) {
+    if (!watches.watch({ query, maxPrice, radius })) {
       setToastNotice({
         message: `I'm already keeping an eye out for “${query}”.`,
         mood: "search",
@@ -1581,8 +1597,19 @@ export default function App({
           : undefined,
     });
   }
+  /** The inbox Messages shows, in the mode the app runs in. */
+  const messagesInbox: MessagesInboxProps = account?.session
+    ? {
+        mode: "account",
+        account: { client: account.client, session: account.session },
+        inbox: messages.accountInbox,
+      }
+    : account
+      ? { mode: "signed-out" }
+      : { mode: "demo", inbox: messages.demoInbox, reads: messages.reads };
   const listingTools = (
     <AskPakoMenu
+      requests={LISTING_REQUESTS}
       disabled={!configured || listing.running}
       onAsk={(request) => void listing.send(request, {}, true)}
     />
@@ -1710,6 +1737,7 @@ export default function App({
           active={headerDestination(currentDestination)}
           savedSearches={savedSearches.length}
           unreadMatches={watches.unread}
+          unreadMessages={messages.unread}
           onNavigate={openDestination}
         />
         <div className="header-actions">
@@ -1773,6 +1801,16 @@ export default function App({
                   <AccountSettings
                     client={account.client}
                     session={account.session}
+                    startSection={
+                      readingSettingsRequested ? "privacy" : "profile"
+                    }
+                    pakoSetting={
+                      <PakoReadingSetting
+                        enabled={messages.autoRead}
+                        unavailable={messages.autoReadUnavailable}
+                        onEnabledChange={messages.setAutoRead}
+                      />
+                    }
                     onProfileSaved={setPickupRegion}
                     browserTools={
                       <DeveloperSettings
@@ -1792,6 +1830,12 @@ export default function App({
                 ) : (
                   <LocalSettings
                     connectionStatus={connectionStatus}
+                    pakoSetting={
+                      <PakoReadingSetting
+                        enabled={messages.autoRead}
+                        onEnabledChange={messages.setAutoRead}
+                      />
+                    }
                     developerSettings={
                       <DeveloperSettings
                         enabled={developerMode}
@@ -1865,7 +1909,18 @@ export default function App({
                 onDeleted={() => replaceRoute("#messages")}
                 threadBanner={availability?.threadBanner}
                 listings={own}
-                account={account}
+                {...messagesInbox}
+                pako={{
+                  available: messages.available,
+                  autoRead: messages.autoRead,
+                  remaining: messages.remaining,
+                  onRemaining: messages.setRemaining,
+                  onOpenSettings: () => {
+                    setReadingSettingsRequested(true);
+                    openDestination("settings");
+                  },
+                  onFindSimilar: (title) => void runSearch(title),
+                }}
                 listing={own.find((item) => item.id === messageListingId)}
                 onOpenListing={(id) => {
                   const item = own.find((item) => item.id === id);
@@ -2181,10 +2236,11 @@ export default function App({
                           negotiating: Boolean(negotiations.active),
                           watching:
                             turn.watchSuggestion !== undefined &&
-                            watches.isWatching(
-                              turn.watchSuggestion.query,
-                              turn.watchSuggestion.maxPrice,
-                            ),
+                            committedSearch !== null &&
+                            watches.isWatching({
+                              ...turn.watchSuggestion,
+                              radius: committedSearch.criteria.radius,
+                            }),
                           listings: localMatches.map((item) => ({
                             id: item.id,
                             title: item.title,
@@ -2365,7 +2421,9 @@ export default function App({
                   onDismissMatch={({ alert }) => watches.dismiss(alert.id)}
                   onMarkAllSeen={watches.markAllRead}
                   onTogglePause={watches.togglePause}
-                  onWatch={keepWatch}
+                  onWatch={(query, maxPrice) =>
+                    keepWatch({ query, maxPrice, radius: searchArea.radius })
+                  }
                   onFind={goHome}
                   onRun={(job) => {
                     const search = restoreSearch(job, location);
@@ -2621,6 +2679,7 @@ export default function App({
         pageKey={pageKey}
         onNavigate={openDestination}
         newMatches={watches.unread}
+        unreadMessages={messages.unread}
       />
       <CompareTray
         count={comparison.length}
