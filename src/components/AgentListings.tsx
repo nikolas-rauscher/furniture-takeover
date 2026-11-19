@@ -11,11 +11,95 @@ import {
 } from "./ui/carousel";
 import { useReducedMotion } from "motion/react";
 import type { CSSProperties } from "react";
+import { cn } from "@/lib/utils";
+import { useEntrance } from "../hooks/useEntrance";
 import "./agent-listings.css";
 
 /** Pako can draft an offer only for someone else's listing that is still active. */
 export const canOffer = (item: Product) =>
   !item.own && item.status === "active";
+
+type AgentProductCardProps = {
+  item: Product;
+  /** Place among the results; later cards rise a little later. */
+  index: number;
+  /** Pako's first pick once he has ranked his matches. */
+  best: boolean;
+  onOpen: (item: Product) => void;
+  onOffer: (item: Product) => void;
+};
+
+/**
+ * A result in the chat. Cards rise in one after another as Pako's results
+ * arrive; the delay stops growing after a few. They rise once: back in the
+ * chat after opening a listing, they are simply there.
+ */
+function AgentProductCard({
+  item,
+  index,
+  best,
+  onOpen,
+  onOffer,
+}: AgentProductCardProps) {
+  const entrance = useEntrance(true);
+  const offerable = canOffer(item);
+  const details = [
+    item.condition,
+    item.dimensions,
+    item.available?.split(";")[0],
+  ]
+    .filter((value) => value && value !== "Not specified")
+    .join(" · ");
+  return (
+    <article
+      className={cn(
+        "agent-product-card linked-card",
+        entrance.entering && "arriving",
+      )}
+      style={{ "--stagger": Math.min(index, 4) } as CSSProperties}
+      onAnimationEnd={entrance.onAnimationEnd}
+    >
+      {best && <span className="agent-product-best">Best match</span>}
+      <span className="agent-product-photo">
+        {item.image ? (
+          <img src={item.image} alt="" loading="lazy" draggable={false} />
+        ) : (
+          <ImageIcon size={28} aria-hidden="true" />
+        )}
+      </span>
+      <div className="agent-product-content">
+        <h4>
+          <Button
+            className="agent-product-title card-link"
+            variant="link"
+            onClick={() => onOpen(item)}
+          >
+            {item.title}
+          </Button>
+        </h4>
+        <p>{item.location}</p>
+        {details && <p>{details}</p>}
+        <div className="agent-product-footer">
+          <strong className="agent-product-price">
+            {item.price === 0 ? "Free" : money(item.price)}
+          </strong>
+          <Button
+            className="agent-product-offer"
+            variant="outline"
+            size="sm"
+            onClick={() => (offerable ? onOffer(item) : onOpen(item))}
+          >
+            {!offerable
+              ? "View listing"
+              : item.price === 0
+                ? "Plan pickup with Pako"
+                : "Draft an offer with Pako"}
+          </Button>
+        </div>
+      </div>
+    </article>
+  );
+}
 
 export default function AgentListings({
   listings,
@@ -31,64 +115,15 @@ export default function AgentListings({
 }) {
   const multiple = listings.length > 1;
   const reducedMotion = useReducedMotion();
-  /** Cards rise in one after another; the delay stops growing after a few. */
-  const card = (item: Product, index: number) => {
-    const offerable = canOffer(item);
-    const details = [
-      item.condition,
-      item.dimensions,
-      item.available?.split(";")[0],
-    ]
-      .filter((value) => value && value !== "Not specified")
-      .join(" · ");
-    return (
-      <article
-        className="agent-product-card linked-card"
-        style={{ "--stagger": Math.min(index, 4) } as CSSProperties}
-      >
-        {ranked && multiple && index === 0 && (
-          <span className="agent-product-best">Best match</span>
-        )}
-        <span className="agent-product-photo">
-          {item.image ? (
-            <img src={item.image} alt="" loading="lazy" draggable={false} />
-          ) : (
-            <ImageIcon size={28} aria-hidden="true" />
-          )}
-        </span>
-        <div className="agent-product-content">
-          <h4>
-            <Button
-              className="agent-product-title card-link"
-              variant="link"
-              onClick={() => onOpen(item)}
-            >
-              {item.title}
-            </Button>
-          </h4>
-          <p>{item.location}</p>
-          {details && <p>{details}</p>}
-          <div className="agent-product-footer">
-            <strong className="agent-product-price">
-              {item.price === 0 ? "Free" : money(item.price)}
-            </strong>
-            <Button
-              className="agent-product-offer"
-              variant="outline"
-              size="sm"
-              onClick={() => (offerable ? onOffer(item) : onOpen(item))}
-            >
-              {!offerable
-                ? "View listing"
-                : item.price === 0
-                  ? "Plan pickup with Pako"
-                  : "Draft an offer with Pako"}
-            </Button>
-          </div>
-        </div>
-      </article>
-    );
-  };
+  const card = (item: Product, index: number) => (
+    <AgentProductCard
+      item={item}
+      index={index}
+      best={ranked && multiple && index === 0}
+      onOpen={onOpen}
+      onOffer={onOffer}
+    />
+  );
   return (
     <section
       className={`agent-listings${multiple ? " has-carousel" : " has-single-product"}`}

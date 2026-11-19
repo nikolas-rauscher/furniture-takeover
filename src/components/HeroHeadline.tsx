@@ -6,28 +6,30 @@ const headlines = [
   "Your next find starts here.",
   "Good things deserve a second home.",
 ];
+const STORAGE_KEY = "takeover-last-headline";
 
-// One selection per page load, including React's development double render.
-let pageHeadline: string | undefined;
-function selectHeadline() {
-  if (pageHeadline) return pageHeadline;
-  let previous = "";
+/**
+ * The headline of this browser session: chosen on its first visit and kept
+ * across reloads, so a reload shows the same home page.
+ */
+function sessionHeadline(): string {
+  const fresh = headlines[Math.floor(Math.random() * headlines.length)];
   try {
-    previous = sessionStorage.getItem("takeover-last-headline") ?? "";
+    const kept = sessionStorage.getItem(STORAGE_KEY);
+    if (kept !== null && headlines.includes(kept)) return kept;
+    sessionStorage.setItem(STORAGE_KEY, fresh);
+    return fresh;
   } catch {
-    // The headline still works when browser storage is unavailable.
+    // Where the browser blocks storage, the headline holds for this page load:
+    // a decoration is no reason to fail the home page.
+    return fresh;
   }
-  const choices = headlines.filter((headline) => headline !== previous);
-  pageHeadline = choices[Math.floor(Math.random() * choices.length)];
-  try {
-    sessionStorage.setItem("takeover-last-headline", pageHeadline);
-  } catch {
-    // No persistence is needed for the rest of the interface.
-  }
-  return pageHeadline;
 }
 
+// Chosen once per page load, React's development double render included.
+let pageHeadline: string | undefined;
+
 export function HeroHeadline({ compact }: { compact: boolean }) {
-  const text = selectHeadline();
-  return <h1 id="agent-title">{compact ? "Your search" : text}</h1>;
+  pageHeadline ??= sessionHeadline();
+  return <h1 id="agent-title">{compact ? "Your search" : pageHeadline}</h1>;
 }

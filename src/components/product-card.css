@@ -29,11 +29,20 @@
 .product-card:hover {
   border-color: var(--lip);
 }
-/* Opening a listing presses the whole card onto its lip. It moves with `translate`,
-   which a card's arrival (a transform) leaves alone. */
+/* Opening a listing presses the whole card onto its lip. */
 .product-card:has(.product-title:active) {
   translate: 0 3px;
   box-shadow: 0 1px 0 var(--card-lip);
+}
+/* A listing that joins a grid already on screen rises into place. */
+.product-card.arriving {
+  animation: product-card-rise 560ms var(--ease-out) both;
+}
+@keyframes product-card-rise {
+  from {
+    opacity: 0;
+    translate: 0 16px;
+  }
 }
 
 .product-card .product-photo {
@@ -268,6 +277,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .product-card.arriving,
   .product-card .favorite-button.favorited svg {
     animation: none;
   }

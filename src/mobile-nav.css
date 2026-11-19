@@ -101,7 +101,8 @@
     letter-spacing: -0.01em;
     transition:
       color 160ms ease,
-      scale 120ms var(--ease-out);
+      scale 120ms var(--ease-out),
+      padding-top 300ms var(--ease-out);
   }
   .mobile-nav-item:active {
     scale: 0.92;
@@ -117,17 +118,23 @@
       --mobile-nav-sell-size: 52px;
     }
   }
-  .mobile-nav-item[data-minimized] .mobile-nav-label {
-    position: absolute;
-    opacity: 0;
-  }
   .mobile-nav-item > svg {
     flex-shrink: 0;
   }
+  /*
+   * The primitive folds a label's height on the bar's own spring, so the icon
+   * glides to the middle. Its text fades out at once as the bar minimises, and
+   * back in only once the tab is nearly wide again, so it never shows clipped.
+   */
   .mobile-nav-label {
     display: block;
     padding-top: 3px;
     white-space: nowrap;
+    transition: opacity 120ms ease 200ms;
+  }
+  .mobile-nav-item[data-minimized] .mobile-nav-label {
+    opacity: 0;
+    transition: opacity 90ms ease;
   }
   .mobile-nav-item[aria-current="page"] {
     color: var(--blue-dark);
@@ -195,6 +202,7 @@
   .mobile-nav-items > li,
   .mobile-nav-accessory,
   .mobile-nav-item,
+  .mobile-nav-label,
   .mobile-nav-sell {
     transition: none;
   }

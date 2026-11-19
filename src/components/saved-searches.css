@@ -13,19 +13,6 @@
   border-radius: var(--radius-card);
   background: var(--surface);
   box-shadow: 0 4px 0 var(--lip);
-  animation: search-job-rise 480ms var(--ease-out) both;
-}
-.search-job:nth-child(2) {
-  animation-delay: 50ms;
-}
-.search-job:nth-child(n + 3) {
-  animation-delay: 100ms;
-}
-@keyframes search-job-rise {
-  from {
-    opacity: 0;
-    translate: 0 12px;
-  }
 }
 .job-icon {
   display: grid;
@@ -101,11 +88,5 @@
   .job-actions > button {
     min-width: 44px;
     min-height: 44px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .search-job {
-    animation: none;
   }
 }
