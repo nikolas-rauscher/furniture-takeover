@@ -216,6 +216,17 @@
 .ob-bubble-word {
   display: inline-block;
 }
+/* Every line Pako may say on a step shares one cell: the bubble keeps the size of the
+   longest, and a reaction crossfades in where the question was. */
+.ob-bubble-lines {
+  display: grid;
+}
+.ob-bubble-lines > * {
+  grid-area: 1 / 1;
+}
+.ob-bubble-sizer {
+  visibility: hidden;
+}
 
 /* Welcome burst: die-cut stickers with a white edge. */
 .ob-burst {

@@ -1,4 +1,9 @@
-import { AnimatePresence, motion, type Variants } from "motion/react";
+import {
+  AnimatePresence,
+  motion,
+  useReducedMotion,
+  type Variants,
+} from "motion/react";
 import { useRef, type KeyboardEvent } from "react";
 import { Check } from "@/components/icons";
 import type { IntroIcon } from "./onboardingIcons";
@@ -52,6 +57,8 @@ export default function ChoiceList<Id extends string>({
   onToggle,
 }: ChoiceListProps<Id>) {
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
+  // With reduced motion the cards arrive together, with the step's own fade.
+  const reduced = useReducedMotion() === true;
   const focusable = multiple
     ? -1
     : Math.max(
@@ -82,7 +89,7 @@ export default function ChoiceList<Id extends string>({
           <motion.div
             key={option.id}
             className="ob-choice-cell"
-            initial={{ opacity: 0, y: 14 }}
+            initial={reduced ? false : { opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{
               type: "spring",

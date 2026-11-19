@@ -9,6 +9,7 @@ import {
   flowSteps,
   stepAt,
   stepBubble,
+  stepLines,
 } from "./onboardingFlow.ts";
 
 test("every intent tells all three scenes between the questions and the send-off", () => {
@@ -48,6 +49,23 @@ test("Pako asks first and reacts once a question is answered", () => {
     "What's still in your room?",
   );
   assert.equal(stepBubble("welcome", { items: [] }), undefined);
+});
+
+test("Pako's bubble keeps room for every line he may say on a question", () => {
+  const intentLines = stepLines("intent", { items: [] });
+  for (const intent of ["sell", "find", "both"] as const) {
+    const reaction = stepBubble("intent", { intent, items: [] });
+    assert.ok(intentLines.some((line) => line.id === reaction?.id));
+  }
+  assert.equal(intentLines[0].title, "What brings you to takeover?");
+  const placeLines = stepLines("place", { place: "vortex", items: [] });
+  assert.equal(placeLines.length, 9);
+  assert.ok(placeLines.some((line) => line.title === "Bourdonnette it is!"));
+  assert.deepEqual(
+    stepLines("items", { intent: "sell", items: [] }).map(({ id }) => id),
+    ["items-sell"],
+  );
+  assert.deepEqual(stepLines("welcome", { items: [] }), []);
 });
 
 test("questions need an answer and scenes need to be played through", () => {

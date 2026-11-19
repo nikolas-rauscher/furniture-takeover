@@ -4,12 +4,15 @@ import {
   actCopy,
   exampleSearch,
   intentById,
+  intentOptions,
   placeById,
+  places,
   storyActs,
   type Act,
   type Answers,
   type CompleteAnswers,
   type Intent,
+  type PlaceId,
 } from "./onboardingContent.ts";
 import type { PakoMood } from "./storyTypes.ts";
 
@@ -90,6 +93,17 @@ export function itemsQuestion(intent: Intent | undefined) {
   return intent === "sell" ? questions.sellItems : questions.findItems;
 }
 
+const intentReaction = (intent: Intent): GuideBubble => ({
+  id: `intent-${intent}`,
+  text: intentById(intent).reaction,
+});
+
+const placeReaction = (place: PlaceId): GuideBubble => ({
+  id: `place-${place}`,
+  title: `${placeById(place).name} it is!`,
+  text: "I'll look around there first.",
+});
+
 /** What Pako says on a step: the question, or a reaction once it is answered. */
 export function stepBubble(
   step: StepId,
@@ -103,24 +117,29 @@ export function stepBubble(
       text: "I'm your moving box with superpowers. I list your things, find what you need and sort out the details with other students.",
     };
   if (step === "intent")
-    return answers.intent
-      ? {
-          id: `intent-${answers.intent}`,
-          text: intentById(answers.intent).reaction,
-        }
-      : questions.intent;
-  if (step === "place") {
-    if (!answers.place) return questions.place;
-    return {
-      id: `place-${answers.place}`,
-      title: `${placeById(answers.place).name} it is!`,
-      text: "I'll look around there first.",
-    };
-  }
+    return answers.intent ? intentReaction(answers.intent) : questions.intent;
+  if (step === "place")
+    return answers.place ? placeReaction(answers.place) : questions.place;
   if (step === "items") return itemsQuestion(answers.intent);
   if (!answers.intent)
     throw new Error("The story starts after the visitor picked an intent.");
   return { id: step, ...actCopy(step, answers.intent) };
+}
+
+/**
+ * Everything Pako may say on a step, the question and each reaction to an answer, so
+ * his bubble keeps the size of the longest line and the answers below never move.
+ */
+export function stepLines(step: StepId, answers: Answers): GuideBubble[] {
+  if (step === "intent")
+    return [
+      questions.intent,
+      ...intentOptions.map(({ id }) => intentReaction(id)),
+    ];
+  if (step === "place")
+    return [questions.place, ...places.map(({ id }) => placeReaction(id))];
+  const bubble = stepBubble(step, answers);
+  return bubble ? [bubble] : [];
 }
 
 export function canContinue(
