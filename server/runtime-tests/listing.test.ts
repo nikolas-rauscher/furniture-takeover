@@ -421,7 +421,7 @@ test("listing specification research returns actual sources but cannot authorize
       text: "Research manufacturer specifications",
       context: {
         intent: "listing_assist",
-        currentDraft: { ...blankDraft, title: "Desk" },
+        currentDraft: { ...blankDraft, title: "Desk", price: 60 },
       },
     },
   );
@@ -441,7 +441,7 @@ test("listing specification research returns actual sources but cannot authorize
       (event) =>
         event.type === "status" &&
         event.id === "invalid-spec-price" &&
-        event.state === "error",
+        event.state === "needs_input",
     ),
   );
 });

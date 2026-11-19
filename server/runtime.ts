@@ -1,3 +1,5 @@
+import { listingKeyFacts } from "./listing-facts.ts";
+import { askingPriceQuestion } from "./listing-questions.ts";
 import {
   createAgentTools,
   inventorySearch,
@@ -12,7 +14,7 @@ import type { Product } from "../shared/marketplace.ts";
 import { negotiationSchema } from "../shared/negotiation.ts";
 import { createNegotiationTools } from "./negotiation-tools.ts";
 import { buildAgentInstructions } from "./agent-instructions.ts";
-import { ToolLoopAgent, stepCountIs, type LanguageModel } from "ai";
+import { ToolChoiceViolationError, ToolLoopAgent, stepCountIs, type LanguageModel } from "ai";
 import { createDeepSeek } from "@ai-sdk/deepseek";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
@@ -72,6 +74,11 @@ const requestSchema = z.object({
       intent: z
         .enum(["search", "listing_review", "listing_assist", "negotiation"])
         .optional(),
+      listingStart: z.boolean().optional(),
+      photoAnalysis: z.object({
+        missingDetails: z.array(z.string().trim().min(1).max(240)).max(12).optional(),
+        keywords: z.array(z.string().trim().min(1).max(120)).max(12).optional(),
+      }).strict().optional(),
       currentDraft: listingDraftSchema.optional(),
       previousQuestion: z.string().max(500).optional(),
       negotiation: negotiationSchema.optional(),
@@ -155,14 +162,20 @@ const toolActivity: Record<string, { label: string; task: AgentTaskKind }> = {
   prepare_offer_draft: { label: "Preparing your draft", task: "proposal" },
   discard_offer_draft: { label: "Discarding your draft", task: "proposal" },
   ask_user: { label: "Asking a question", task: "request" },
-  update_listing: { label: "Preparing listing changes", task: "listing" },
+  propose_price: { label: "Suggesting a price", task: "listing" },
+  update_listing: { label: "Filling in your listing", task: "listing" },
   update_search_preferences: {
     label: "Updating search preferences",
     task: "request",
   },
 };
 const toolLabel = (name: string) => toolActivity[name]?.label ?? "Using a tool";
-const toolStepLabel = (name: string, input: unknown) => {
+const toolStepLabel = (name: string, input: unknown, listingMode: boolean) => {
+  if (listingMode) {
+    if (name === "web_search") return "Checking comparable prices online";
+    if (name === "ask_user") return "Preparing a quick question";
+    return toolLabel(name);
+  }
   const label = toolLabel(name);
   if (
     (name === "web_search" || name === "inventory_search") &&
@@ -205,6 +218,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
       const statuses = new Map<string, string>();
       const statusTasks = new Map<string, AgentTaskKind>();
       let publicBuffer = "";
+      let publicText = "";
       let outputLength = 0;
       let toolCalls = 0;
       let reasoningLength = 0;
@@ -215,6 +229,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
       const workSignal = AbortSignal.any([signal, questionController.signal]);
       let streamFailed: unknown;
       const send = async (event: AgentRunEvent) => {
+        if (event.type === "text_delta") publicText += event.text;
         if (!callerSignal?.aborted) await emit(event);
       };
       const status = async (
@@ -223,6 +238,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
         state: "running" | "complete" | "error" | "needs_input",
         task?: AgentTaskKind,
         failure?: AgentToolFailure,
+        detail?: string,
       ) => {
         task ??= statusTasks.get(id);
         if (task) statusTasks.set(id, task);
@@ -234,6 +250,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
           label,
           state,
           ...(task ? { task } : {}),
+          ...(detail ? { detail } : {}),
           ...(failure ? { failure } : {}),
         });
       };
@@ -294,6 +311,10 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
           Boolean(request.context?.negotiation);
         const ownOnly = request.context?.source?.toLowerCase() === "takeover";
         const state: AgentToolState = {
+          firstDraft: listingAssist && request.context?.currentDraft?.price === null &&
+            (request.context.listingStart === true ||
+              (!request.context.previousQuestion && !request.context.previousAnswer &&
+               !request.context.answeredQuestions?.length && !request.context.recentMessages?.length)),
           ownInventoryOnly: ownOnly,
           allowWebSearch: Boolean(braveApiKey) && !ownOnly && !negotiationMode,
           listingNeedsInput: false,
@@ -387,11 +408,19 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
           fetchImpl: config.fetchImpl,
           workSignal,
         });
+        const needsPriceDecision = () => state.firstDraft && request.context?.currentDraft?.price == null;
+        const keyFacts = listingAssist ? listingKeyFacts(request) : undefined;
+        const stepLabel = (step: number) => listingMode
+          ? (step === 0 ? "Reading your listing details" : "Writing your listing")
+          : (step === 0 ? "Reading your request" : "Reviewing tool results");
+        const searchDetail = (name: string) => listingMode && name === "web_search"
+          ? request.context?.currentDraft?.title : undefined;
         const agent = new ToolLoopAgent({
           model: config.modelImpl ?? provider(model),
           instructions: buildAgentInstructions({
             listingMode,
             listingAssist,
+            keyFacts,
             localInventory,
             previousMatches,
             allowWebSearch: state.allowWebSearch,
@@ -405,6 +434,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
             const instructions = buildAgentInstructions({
               listingMode,
               listingAssist,
+              keyFacts,
               localInventory,
               previousMatches,
               allowWebSearch: state.allowWebSearch,
@@ -463,6 +493,15 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
                       stepNumber > 0
                     ? "show_takeover_listings"
                     : undefined;
+            const awaitingPrice = needsPriceDecision();
+            if (awaitingPrice && state.allowWebSearch && !state.webSearched)
+              requiredTool = "web_search";
+            else if (
+              awaitingPrice &&
+              (state.proposedPrice !== undefined || stepNumber === 7 ||
+                (state.webSearched && sources.length < 2))
+            )
+              requiredTool = "ask_user";
             // A selected external scope promises a real lookup during discovery.
             // Once a proposal is active, ordinary handover replies stay focused.
             if (
@@ -479,7 +518,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
             )
               requiredTool = "web_search";
             const requiresTool = Boolean(
-              requiredTool ||
+              requiredTool || awaitingPrice ||
               (negotiations.getCurrent()?.status === "draft" &&
                 !negotiations.getCurrent()?.draft) ||
               (stepNumber === 0 && (!listingMode || listingAssist)),
@@ -528,27 +567,25 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
                 : "Model step " + (stepNumber + 1);
             return status(
               `step-${stepNumber}`,
-              stepNumber === 0
-                ? "Reading your request"
-                : "Reviewing tool results",
+              stepLabel(stepNumber),
               "running",
             );
           },
           onStepEnd: async ({ stepNumber }) =>
             status(
               `step-${stepNumber}`,
-              stepNumber === 0
-                ? "Reading your request"
-                : "Reviewing tool results",
+              stepLabel(stepNumber),
               "complete",
             ),
           onToolExecutionStart: async ({ toolCall }) => {
             lastStage = toolLabel(toolCall.toolName);
             return status(
               toolCall.toolCallId,
-              toolStepLabel(toolCall.toolName, toolCall.input),
+              toolStepLabel(toolCall.toolName, toolCall.input, listingMode),
               "running",
               toolActivity[toolCall.toolName]?.task,
+              undefined,
+              searchDetail(toolCall.toolName),
             );
           },
           onToolExecutionEnd: async ({ toolCall, toolOutput }) => {
@@ -593,16 +630,19 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
               "needsInput" in output &&
               Array.isArray(output.needsInput) &&
               output.needsInput.length > 0;
+            const needsCorrection = listingAssist &&
+              ["ask_user", "update_listing", "propose_price"].includes(toolCall.toolName);
             return status(
               toolCall.toolCallId,
-              toolStepLabel(toolCall.toolName, toolCall.input),
+              toolStepLabel(toolCall.toolName, toolCall.input, listingMode),
               toolOutput.type === "tool-error"
-                ? "error"
+                ? (needsCorrection ? "needs_input" : "error")
                 : needsInput
                   ? "needs_input"
                   : "complete",
               toolActivity[toolCall.toolName]?.task,
               failure,
+              searchDetail(toolCall.toolName),
             );
           },
         });
@@ -686,11 +726,19 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
           // Raw provider chunks and tool input fragments stay server-side.
         }
         signal.throwIfAborted();
-        if (streamFailed) throw streamFailed;
+        if (streamFailed && !(needsPriceDecision() && ToolChoiceViolationError.isInstance(streamFailed)))
+          throw streamFailed;
+        if (!state.pendingQuestion && needsPriceDecision()) {
+          state.pendingQuestion = askingPriceQuestion(`${runId}-price`, state.proposedPrice);
+          await send(state.pendingQuestion);
+        }
         if (state.pendingQuestion) {
+          await streamPublicText("", true);
+          const rationale = state.priceReason && !publicText.includes(state.priceReason)
+            ? state.priceReason : "";
           await send({
             type: "complete",
-            text: state.pendingQuestion.question,
+            text: [publicText.trim(), rationale].filter(Boolean).join("\n\n") || state.pendingQuestion.question,
             sources: [...sources],
             runId,
           });

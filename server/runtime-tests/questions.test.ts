@@ -74,8 +74,8 @@ test("ask_user transports a typed price control through the actual SDK loop", as
   const events = await eventsFor(
     createAgentRuntime({ apiKey: "slider-test", modelImpl: model }),
     {
-      text: "Help choose my price",
-      context: { intent: "listing_assist", currentDraft: blankDraft },
+      text: "Help adjust my price",
+      context: { intent: "listing_assist", currentDraft: { ...blankDraft, price: 20 } },
     },
   );
   assert.deepEqual(

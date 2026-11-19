@@ -49,7 +49,13 @@ const sourceEvidenceSchema = z
   })
   .strict();
 const reasonSchema = z.string().trim().min(1).max(500);
-export const questionSchema = z
+const answerLabel = z.string().trim().min(1).max(120);
+const tapAnswer = z.object({
+  label: answerLabel,
+  patch: z.object(listingFields).partial().strict().optional(),
+  appendDescription: z.string().trim().min(1).max(160).optional(),
+}).strict();
+const questionFields = z
   .object({
     question: z.string().trim().min(1).max(500),
     listingField: z
@@ -91,12 +97,15 @@ export const questionSchema = z
       )
       .optional(),
     choices: z
-      .array(z.string().trim().min(1).max(120))
+      .array(z.union([answerLabel, tapAnswer]))
       .min(1)
       .max(5)
       .optional(),
   })
   .strict();
+export const questionSchema = questionFields.extend({
+  followUps: z.array(questionFields.omit({ input: true })).max(2).optional(),
+});
 export const listingUpdateSchema = z
   .object({
     patch: z
@@ -232,20 +241,20 @@ function wantsClear(field: string, text: string) {
 }
 
 function chfPrices(text: string): number[] {
-  const amount = "(\\d+(?:[’' ]\\d{3})*(?:[.,]\\d{1,2})?)";
+  const amount = String.raw`(\d{1,3}(?:[’',. ]\d{3})+(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)`;
   return [
     ...text.matchAll(
       new RegExp(`(?:CHF|Fr\\.?)\\s*${amount}|${amount}\\s*CHF`, "gi"),
     ),
   ]
     .map((match) =>
-      Number((match[1] ?? match[2]).replace(/[’' ]/g, "").replace(",", ".")),
+      Number((match[1] ?? match[2]).replace(/[’' ]|[.,](?=\d{3}(?:\D|$))/g, "").replace(",", ".")),
     )
     .filter((price) => Number.isFinite(price) && price >= 0 && price <= 10_000);
 }
 
 export const priceProposalSchema = z.object({
-  price: z.number().finite().positive().max(10_000),
+  price: z.number().finite().positive().max(10_000).multipleOf(0.01),
   sourceIds: z.array(z.string().min(1).max(160)).min(2).max(4),
 }).strict();
 
@@ -265,7 +274,7 @@ export function proposePrice(
     if (!source || !offerSourceIds.has(sourceId))
       fail("Choose individual offers returned by this search.");
     const text = source.title + " " + source.snippet;
-    if (/\b(?:sold|retail|original(?:ly)?|new price|previous price|starting (?:bid|price)|auction start|startpreis|neupreis|verkauft|vendu|prix neuf|mise à prix)\b/i.test(text))
+    if (/\b(?:sold|retail|original price|originally|new price|previous price|starting (?:bid|price)|start(?:ing)? at|auction start|startpreis|neupreis|verkauft|vendu|prix neuf|mise à prix)\b/i.test(text))
       fail("Use fixed asking prices, excluding auction starts, retail and sold prices.");
     const amounts = [...new Set(chfPrices(text))];
     if (amounts.length !== 1 || amounts[0] <= 0)
