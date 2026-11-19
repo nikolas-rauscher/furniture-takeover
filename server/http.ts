@@ -316,9 +316,10 @@ export function createAgentServer(
         );
         return;
       }
-      if (pathname === "/api/messages" || pathname === "/api/messages/deal") {
-        const dealRoute=pathname.endsWith("/deal");
-        if(dealRoute && request.method!=="POST")throw new AgentError(405,"METHOD_NOT_ALLOWED","Use POST.");
+      if (pathname === "/api/messages" || pathname === "/api/messages/deal" || pathname === "/api/messages/pickup") {
+        const actionRoute = pathname !== "/api/messages";
+        if (actionRoute && request.method !== "POST")
+          throw new AgentError(405, "METHOD_NOT_ALLOWED", "Use POST.");
         if (!options.messages)
           throw new AgentError(
             503,
@@ -355,8 +356,13 @@ export function createAgentServer(
             )
           )
             throw new AgentError(415, "UNSUPPORTED_MEDIA_TYPE", "Send JSON.");
-          const body = await readBody(request,dealRoute?65536:undefined);
-          send(response, 200, dealRoute ? options.messages.act(workspace,body) : {conversation:options.messages.send(workspace,body)});
+          const body = await readBody(request, actionRoute ? 65536 : undefined);
+          const result = pathname === "/api/messages/pickup"
+            ? options.messages.actPickup(workspace, body)
+            : pathname === "/api/messages/deal"
+              ? options.messages.act(workspace, body)
+              : { conversation: options.messages.send(workspace, body) };
+          send(response, 200, result);
         } else
           throw new AgentError(405, "METHOD_NOT_ALLOWED", "Use GET or POST.");
         return;

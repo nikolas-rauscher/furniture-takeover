@@ -1,4 +1,4 @@
-import type { Deal, DealRole } from "../../shared/deal";
+import type { Deal, DealRole, LateMinutes, PickupSignals } from "../../shared/deal";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 export type CloudConfig = { supabaseUrl: string; supabaseKey: string };
 /** Supabase dashboard invitations use a token fragment, rather than a PKCE code. */
@@ -103,4 +103,13 @@ export type DealRow = {
   updated_at: string;
   outcome: NonNullable<Deal["outcome"]>["kind"] | null;
   outcome_by: DealRole | null;
+  buyer_on_way_at?: string | null;
+  seller_on_way_at?: string | null;
+  late_minutes?: LateMinutes | null;
+  late_by?: DealRole | null;
+  late_at?: string | null;
+  buyer_picked_up_at?: string | null;
+  no_show_by?: DealRole | null;
+  no_show_at?: string | null;
+  pickup_cancel_reason?: PickupSignals["cancelReason"];
 };

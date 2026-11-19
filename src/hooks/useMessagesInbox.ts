@@ -5,12 +5,15 @@ import { useAccountInbox } from "../cloud/useAccountInbox";
 import {
   accountInboxThread,
   demoInboxThread,
+  inboxBadge,
+  pickupActivity,
   unreadCount,
 } from "../inboxActivity";
 import type { PakoAvailability } from "./usePakoThread";
 import { useDemoInbox } from "./useDemoInbox";
 import { useSaved } from "./useSaved";
 import { useThreadReads } from "./useThreadReads";
+import { useNow } from "./useNow";
 
 const isBoolean = (value: unknown): value is boolean =>
   typeof value === "boolean";
@@ -49,6 +52,7 @@ export function useMessagesInbox({
   );
   const [remaining, setRemaining] = useState<number>();
   const rows = accountInbox.rows;
+  const now = useNow(!account);
   const missing =
     rows?.reads === null || accountAutoRead.state.status === "missing";
   const available: PakoAvailability =
@@ -57,16 +61,30 @@ export function useMessagesInbox({
       : account && missing
         ? "missing"
         : "ready";
-  const unread = !account
-    ? unreadCount(demoInbox.conversations.map(demoInboxThread), reads.reads)
-    : rows?.reads && userId
-      ? unreadCount(
-          rows.threads.map((thread) =>
-            accountInboxThread(thread.id, rows.latest[thread.id], userId, rows.systemLatest[thread.id]),
-          ),
-          rows.reads,
-        )
-      : 0;
+  const threads = !account ? demoInbox.conversations.map(demoInboxThread)
+    : rows?.reads && userId ? rows.threads.map((thread) =>
+      accountInboxThread(thread.id, rows.latest[thread.id], userId, rows.systemLatest[thread.id]),
+    ) : [];
+  const markers = account ? rows?.reads ?? {} : reads.reads;
+  const activityByConversation: Record<string, ReturnType<typeof pickupActivity>> = {};
+  const pickupReadKeys = new Set<string>();
+  if (!account) {
+    for (const { id, deal } of demoInbox.conversations) {
+      const activity = pickupActivity(deal, "buyer", now);
+      activityByConversation[id] = activity;
+      if (activity.needsYou) pickupReadKeys.add(id + ":buyer");
+    }
+  } else if (rows && userId) {
+    for (const thread of rows.threads) {
+      const deal = rows.deals?.[thread.id];
+      const other = thread.buyer_id === userId ? thread.seller_id : thread.buyer_id;
+      if (!deal?.pickup || rows.archived.includes(thread.id) || rows.blocked.includes(other))
+        continue;
+      const activity = pickupActivity(deal, thread.buyer_id === userId ? "buyer" : "seller", now);
+      activityByConversation[thread.id] = activity;
+      if (activity.needsYou) pickupReadKeys.add(thread.id);
+    }
+  }
   return {
     deals: account
       ? Object.values(rows?.deals ?? {})
@@ -74,8 +92,11 @@ export function useMessagesInbox({
     demoInbox,
     reads,
     accountInbox,
-    /** Conversations with news from the other student, for the Messages badge. */
-    unread,
+    /** Conversations with news or pickup actions, for the Messages badge. */
+    unread: inboxBadge(threads, markers, pickupReadKeys),
+    messageUnread: unreadCount(threads, markers),
+    pickupActivity: activityByConversation,
+    now,
     available,
     // Until an account's choice has loaded, Pako waits for a tap.
     autoRead: account

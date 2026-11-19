@@ -1,4 +1,4 @@
-import type { Deal, DealRole } from "../shared/deal.ts";
+import { pickupDay, type Deal, type DealRole } from "../shared/deal.ts";
 import type { Product } from "../shared/marketplace.ts";
 import type { SellerConversation } from "../shared/messages.ts";
 
@@ -112,17 +112,48 @@ export function dealActivity(deal: Deal | undefined | null, role: DealRole) {
     return deal.proposal.by === role ? "Waiting" : "Your turn";
 }
 
+export function pickupActivity(deal: Deal | undefined | null, role: DealRole, now: Date) {
+  const day = pickupDay(deal, role, now);
+  const pickupSoon = day?.phase === "pickup_soon";
+  const due = !!day && day.phase !== "booked";
+  const needsYou = due || day?.change === "received" ||
+    (role === "seller" && !!day?.buyerReportedPickup);
+  return { pickupSoon, due, needsYou, label: needsYou ? "Your turn" as const : dealActivity(deal, role) };
+}
+
+/** Count an actionable pickup once, even if its thread also has an unread message. */
+export function inboxBadge(
+  threads: readonly InboxThread[],
+  reads: Readonly<Record<string, string>>,
+  pickupReadKeys: ReadonlySet<string>,
+): number {
+  return threads.filter((thread) => isUnread(thread, reads) || pickupReadKeys.has(thread.readKey)).length;
+}
+
 /** The three live deals for Home, prioritising a response before an upcoming handover. */
 export function homeDeals(
   deals: readonly Deal[],
   roleFor: (deal: Deal) => DealRole,
 ) {
+  return orderHomeDeals(deals, roleFor);
+}
+
+export function pickupHomeDeals(deals: readonly Deal[], roleFor: (deal: Deal) => DealRole, now: Date) {
+  return orderHomeDeals(deals, roleFor, now);
+}
+
+function orderHomeDeals(deals: readonly Deal[], roleFor: (deal: Deal) => DealRole, now?: Date) {
+  const scheduled = (deal: Deal) => now && pickupDay(deal, roleFor(deal), now);
+  const isCurrent = (deal: Deal) => {
+    const day = scheduled(deal);
+    return day && (day.phase === "pickup_soon" || day.phase === "pickup_now");
+  };
   const priority = (deal: Deal) =>
-    deal.proposal && deal.proposal.by !== roleFor(deal)
-      ? 0
-      : deal.status === "agreed"
-        ? 1
-        : 2;
+    isCurrent(deal) ? 0
+      : (now && pickupActivity(deal, roleFor(deal), now).needsYou) ||
+          (deal.proposal && deal.proposal.by !== roleFor(deal)) ? 1
+        : deal.status === "agreed" ? 2
+          : 3;
   return deals
     .filter(
       (deal) =>

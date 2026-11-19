@@ -1,5 +1,5 @@
 import { formatPickup } from "./pickupTime.ts";
-import type { DealRole, DealTerms } from "./deal.ts";
+import type { DealRole, DealTerms, LateMinutes } from "./deal.ts";
 import type { NegotiationTerms } from "./negotiation.ts";
 
 /** The words students send about a deal, in one place so every screen says the same. */
@@ -114,3 +114,26 @@ export const cancelDealMessage = () =>
   "Sorry, I have to cancel our deal. Thanks for understanding.";
 export const reservedElsewhereMessage = (title: string) =>
   `Sorry, the ${title} is now reserved for someone else. I'll let you know if that changes.`;
+
+export const changeTimeMessage = (terms: DealTerms) =>
+  `Could we move pickup to ${pickupWords(terms)}? Still ${priceWords(terms)}.`;
+export const acceptNewTimeMessage = (terms: DealTerms) =>
+  `The new time works for me. See you ${pickupWords(terms)} for ${priceWords(terms)}.`;
+export const keepTimeMessage = (terms: DealTerms) =>
+  `Sorry, that doesn't work for me. Can we keep ${pickupWords(terms)} for ${priceWords(terms)}?`;
+export const onMyWayMessage = (terms: DealTerms) =>
+  `On my way! See you ${pickupWords(terms)}.`;
+export const lateMessage = (minutes: LateMinutes) =>
+  `Running about ${minutes} minutes late, sorry! See you soon.`;
+export const cantMakeItMessage = () =>
+  "Sorry, I can't make it anymore and need to cancel. Thanks for understanding.";
+export const noShowCheckMessage = (terms: DealTerms) =>
+  `Hi, I've been waiting at ${terms.pickupPoint} since ${terms.pickupAt ? formatPickup(terms.pickupAt) : terms.pickupTime}. Are you still coming?`;
+export const noShowReleaseMessage = (title: string, role: DealRole) =>
+  role === "seller"
+    ? `We didn't manage to meet, so I'm making the ${title} available again.`
+    : "We didn't manage to meet, so I'm cancelling our pickup.";
+export const pickedUpMessage = (role: DealRole, title: string) =>
+  role === "seller" ? `Thanks, enjoy the ${title}!` : "Got it, thanks a lot!";
+export const availableAgainMessage = (title: string) =>
+  `Hi! The ${title} is available again. Are you still interested?`;

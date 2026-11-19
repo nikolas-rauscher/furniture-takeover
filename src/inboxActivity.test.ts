@@ -3,10 +3,14 @@ import assert from "node:assert/strict";
 import {
   accountInboxThread,
   demoInboxThread,
+  inboxBadge,
   isUnread,
   nextReadMarker,
   unreadCount,
+  pickupActivity,
+  pickupHomeDeals,
 } from "./inboxActivity.ts";
+import type { Deal } from "../shared/deal.ts";
 
 const reply = (at: string) => ({
   readKey: "c1",
@@ -107,4 +111,30 @@ test("a system event counts as new activity until the viewer reads it",()=>{
  assert.ok(isUnread(thread,{}));
  assert.equal(isUnread(thread,{[thread.readKey]:at}),false);
  assert.deepEqual(accountInboxThread("c",undefined,"buyer",{sender_id:null,created_at:at}).latest,thread.latest);
+});
+
+test("a pickup due in 90 minutes is your turn and counts once in the badge", () => {
+  const now = new Date("2026-11-19T10:30:00Z");
+  const agreed = {
+    terms: {
+      fulfillment: "pickup" as const, amount: 30, pickupAt: "2026-11-19T12:00:00Z",
+      pickupTime: "Thu 19 Nov, 13:00", pickupPoint: "Vortex",
+    },
+    at: "2026-11-18T12:00:00Z",
+  };
+  const deal: Deal = {
+    conversationId: "c1", listingId: "desk", status: "agreed",
+    agreed, version: 2, updatedAt: agreed.at, outcome: null, proposal: null,
+  };
+  const offer: Deal = {
+    ...deal, conversationId: "c2", status: "open", agreed: null,
+    proposal: { by: "seller", terms: agreed.terms, messageId: null },
+  };
+  assert.deepEqual(pickupActivity(deal, "buyer", now), {
+    pickupSoon: true, due: true, needsYou: true, label: "Your turn",
+  });
+  const threads = [reply("2026-11-19T10:00:00Z"), { readKey: "c2" }];
+  assert.equal(inboxBadge(threads, {}, new Set(["c1"])), 1);
+  assert.equal(inboxBadge(threads, { c1: now.toISOString() }, new Set(["c1"])), 1);
+  assert.deepEqual(pickupHomeDeals([offer, deal], () => "buyer", now), [deal, offer]);
 });

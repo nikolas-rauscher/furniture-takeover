@@ -6,9 +6,14 @@ import type { SellerConversation, ChatMessage } from "../shared/messages.ts";
 
 import {
   applyDealAction,
+  applyPickupAction,
   dealActionSchema,
   DealError,
+  isoInstantSchema,
+  pickupActionSchema,
   type DealAction,
+  type PickupAction,
+  type PickupStatusChange,
 } from "../shared/deal.ts";
 import { dealErrorMessage } from "../shared/dealErrors.ts";
 const inputSchema = z
@@ -74,14 +79,18 @@ export function createMessagesStore(path: string) {
     expectedVersion: z.number().int().nonnegative(),
     listingStatus: z.enum(["active", "reserved", "sold", "withdrawn"]),
   });
+  const pickupInput = dealInput.extend({
+    action: pickupActionSchema,
+    demoNow: isoInstantSchema.optional(),
+  });
+  type Command = Pick<z.infer<typeof dealInput>, "listingStatus" | "expectedVersion"> & (
+    { pickup?: false; action: DealAction } |
+    { pickup: true; action: PickupAction; demoNow?: string }
+  );
   function append(
     workspace: string,
     value: z.infer<typeof inputSchema>,
-    command?: {
-      action: DealAction;
-      expectedVersion: number;
-      listingStatus: z.infer<typeof dealInput>["listingStatus"];
-    },
+    command?: Command,
   ) {
     db.exec("BEGIN IMMEDIATE");
     try {
@@ -121,6 +130,7 @@ export function createMessagesStore(path: string) {
         c.messages.some((m) => m.id === value.messageId),
       );
       let statusChange: "active" | "reserved" | undefined;
+      let pickupStatusChange: PickupStatusChange | undefined;
       if (duplicate) {
         const previous = duplicate.messages.find(
           (m) => m.id === value.messageId,
@@ -129,7 +139,8 @@ export function createMessagesStore(path: string) {
           duplicate.id !== conversation.id ||
           previous.sender !== value.sender ||
           previous.text !== value.text ||
-          Boolean(previous.deal) !== Boolean(command)
+          Boolean(previous.deal) !== Boolean(command && !command.pickup) ||
+          Boolean(previous.pickupEvent) !== Boolean(command?.pickup)
         )
           throw new DealError("message_conflict");
         if (command && conversation.messages.at(-1)?.id === previous.id) {
@@ -148,6 +159,12 @@ export function createMessagesStore(path: string) {
           )
             statusChange = "active";
         }
+        if (previous.pickupStatusChange === "sold" && conversation.deal?.status === "completed")
+          pickupStatusChange = "sold";
+        if (previous.pickupStatusChange === "active" && conversation.deal?.status === "cancelled" &&
+            !peers.some((c) => c.listingId === value.listingId &&
+              (c.deal?.status === "agreed" || c.deal?.status === "completed")))
+          pickupStatusChange = "active";
       } else {
         const now = new Date();
         const message: ChatMessage = {
@@ -162,8 +179,13 @@ export function createMessagesStore(path: string) {
           const others = peers.filter(
             (c) => c.listingId === value.listingId && c.id !== conversation.id,
           );
-          const result = applyDealAction({
-            ...command,
+          const hasCompletedPickup = others.some((c) =>
+            c.deal?.status === "completed" && c.messages.some((m) => m.pickupStatusChange === "sold"));
+          const listingStatus = hasCompletedPickup ? "sold"
+            : peers.some((c) => c.listingId === value.listingId && c.deal?.status === "agreed")
+              ? "reserved"
+              : command.listingStatus;
+          const input = {
             deal: conversation.deal ?? null,
             actor: value.sender,
             body: value.text,
@@ -171,13 +193,27 @@ export function createMessagesStore(path: string) {
             listingId: value.listingId,
             messageId: value.messageId,
             now,
-            listingStatus: others.some((c) => c.deal?.status === "agreed")
-              ? "reserved"
-              : command.listingStatus,
-          });
-          conversation.deal = result.deal;
-          message.deal = result.event;
-          statusChange = result.statusChange;
+            listingStatus,
+          };
+          if (command.pickup) {
+            const { action } = command;
+            const result = applyPickupAction({
+              ...input, action,
+              now: command.demoNow ? new Date(command.demoNow) : now,
+              releasedDeal: action.type === "offer_again"
+                ? peers.find((peer) => peer.id === action.releasedConversationId)?.deal
+                : undefined,
+            });
+            conversation.deal = result.deal;
+            message.pickupEvent = result.event;
+            if (result.statusChange) message.pickupStatusChange = result.statusChange;
+            pickupStatusChange = result.statusChange;
+          } else {
+            const result = applyDealAction({ ...input, action: command.action });
+            conversation.deal = result.deal;
+            message.deal = result.event;
+            statusChange = result.statusChange;
+          }
           if (statusChange === "reserved")
             for (const other of others) {
               if (other.deal?.status !== "open" || !other.deal.proposal)
@@ -211,7 +247,7 @@ export function createMessagesStore(path: string) {
         );
       }
       db.exec("COMMIT");
-      return { conversation, statusChange };
+      return { conversation, statusChange, pickupStatusChange };
     } catch (error) {
       db.exec("ROLLBACK");
       if (error instanceof DealError)
@@ -243,7 +279,26 @@ export function createMessagesStore(path: string) {
             : dealErrorMessage(key),
         );
       }
-      return append(workspace, parsed.data, parsed.data);
+      const { conversation, statusChange } = append(workspace, parsed.data, parsed.data);
+      return { conversation, statusChange };
+    },
+    actPickup(workspace: string, input: unknown) {
+      const parsed = pickupInput.safeParse(input);
+      if (!parsed.success) {
+        const path = parsed.error.issues[0].path;
+        const key = path[0] === "text" ? "message_invalid"
+          : path.includes("terms") ? "terms_invalid"
+          : path.includes("minutes") ? "minutes_invalid"
+          : path.includes("reason") ? "reason_invalid"
+          : path[0] === "action" ? "action_invalid"
+          : "INVALID_PICKUP";
+        throw new AgentError(400, key,
+          key === "INVALID_PICKUP" ? "Check the pickup details and try again." : dealErrorMessage(key));
+      }
+      const { conversation, pickupStatusChange } = append(
+        workspace, parsed.data, { ...parsed.data, pickup: true },
+      );
+      return { conversation, statusChange: pickupStatusChange };
     },
     setDeleted(
       workspace: string,

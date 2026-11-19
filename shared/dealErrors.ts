@@ -13,5 +13,11 @@ const messages: Record<string, string> = {
   sign_in_required: "Sign in to update the deal.",
   reason_invalid: "Choose a reason for cancelling.",
   action_invalid: "Choose an available deal action.",
+  pickup_unavailable: "This conversation has no booked pickup.",
+  pickup_terms_changed: "Choose a new time and keep the price and meeting point.",
+  too_early: "This action is not available yet. Check the pickup time.",
+  pickup_window_ended: "The window for pickup updates has passed.",
+  minutes_invalid: "Choose 10, 20 or 30 minutes.",
+  next_buyer_unavailable: "Choose another interested buyer for this item.",
 };
 export const dealErrorMessage = (key: string) => messages[key] ?? key;

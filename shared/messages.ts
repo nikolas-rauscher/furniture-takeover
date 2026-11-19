@@ -1,7 +1,9 @@
-import type { Deal, DealEvent } from "./deal.ts";
+import type { Deal, DealEvent, PickupEvent, PickupStatusChange } from "./deal.ts";
 export type ChatMessage = {
   id: string;
   deal?: DealEvent;
+  pickupEvent?: PickupEvent;
+  pickupStatusChange?: PickupStatusChange;
   sender: "buyer" | "seller";
   text: string;
   createdAt: string;
