@@ -179,14 +179,18 @@ export function startsNewDay(createdAt: string, previous?: string) {
   );
 }
 
+/** Dates read like the rest of the app ("19 Nov"); other years add the year. */
 export function ChatDate({ createdAt }: { createdAt: string }) {
+  const date = new Date(createdAt);
   return (
     <div className="chat-date">
       <span>
-        {new Date(createdAt).toLocaleDateString([], {
+        {date.toLocaleDateString("en-GB", {
           day: "numeric",
           month: "short",
-          year: "numeric",
+          ...(date.getFullYear() === new Date().getFullYear()
+            ? {}
+            : { year: "numeric" }),
         })}
       </span>
     </div>

@@ -334,11 +334,12 @@ export function actCopy(act: Act, intent: Intent): ActCopy {
     return selling
       ? {
           title: "Just take photos",
-          text: "Snap what's left in your room. I write the title, description and price. You only tap Publish.",
+          // The last sentence moves to a new line as a whole rather than breaking mid-phrase.
+          text: "Snap what's left in your room. I write the title, description and price. You\u00a0only\u00a0tap\u00a0Publish.",
         }
       : {
           title: "And when you move out…",
-          text: "…just take a photo. I write the listing and suggest a price. You only tap Publish.",
+          text: "…just take a photo. I write the listing and suggest a price. You\u00a0only\u00a0tap\u00a0Publish.",
         };
   if (act === "ask")
     return selling

@@ -1,4 +1,5 @@
 import type { AgentTaskKind } from "../shared/runs";
+import { plainAnswer } from "./components/agentAnswer.ts";
 import type { PakoMood } from "./components/onboarding/storyTypes";
 import type { AgentRunState, AgentRunStep } from "./hooks/useAgentRun";
 
@@ -36,7 +37,13 @@ export function homeGuide({
 type ToolStep = AgentRunStep & { task: AgentTaskKind };
 type TurnFacts = Pick<
   AgentRunState,
-  "status" | "steps" | "text" | "inventoryMatchIds" | "sources"
+  | "status"
+  | "steps"
+  | "text"
+  | "inventoryMatchIds"
+  | "sources"
+  | "questions"
+  | "answers"
 >;
 
 const isToolStep = (step: AgentRunStep): step is ToolStep =>
@@ -93,10 +100,15 @@ function endingMood(turn: TurnFacts): PakoMood {
   return "idle";
 }
 
+/** Pako asked something the student has not answered yet. */
+const awaitingAnswer = (turn: Pick<TurnFacts, "questions" | "answers">) =>
+  turn.questions.some((question) => !turn.answers[question.id]);
+
 /**
  * Pako beside an agent turn: he thinks until the agent reaches for a tool,
  * searches or works while it does, talks while the answer appears and then
- * reacts to how the turn ended. After that he listens while a follow-up is typed.
+ * reacts to how the turn ended. After that he listens while a follow-up is typed
+ * or while his question waits for an answer.
  */
 export function agentTurnPako(
   turn: TurnFacts,
@@ -116,19 +128,29 @@ export function agentTurnPako(
     (running ? !toolRunning(turn.steps) : textShown !== turn.text);
   if (talking) return { mood: "idle", talking: true };
   if (running) return { mood: workingMood(turn.steps), talking: false };
-  return { mood: typing ? "listen" : endingMood(turn), talking: false };
+  return {
+    mood: typing || awaitingAnswer(turn) ? "listen" : endingMood(turn),
+    talking: false,
+  };
 }
 
-/** The intro's words for the agent's searches; any other tool keeps its own label. */
-function toolLine(step: ToolStep, place: string | undefined): string {
-  if (step.task === "web") return "Checking other second-hand sites…";
+/** The server's quick look through all student listings before the agent starts. */
+const CATALOG_STEP_ID = "takeover-catalog";
+
+/**
+ * A step in the intro's words, for the live line and the activity list alike: the
+ * searches name what Pako looks through, any other tool keeps its own label.
+ */
+export function stepWords(step: AgentRunStep, place?: string): string {
+  if (step.id === CATALOG_STEP_ID) return "Checking student listings";
+  if (step.task === "web") return "Checking other second-hand sites";
   if (step.label.startsWith("Searching takeover listings"))
     return place
-      ? `Searching student listings near ${place}…`
-      : "Searching student listings…";
+      ? `Searching student listings near ${place}`
+      : "Searching student listings";
   if (step.label === "Selecting takeover matches")
-    return "Picking the best matches…";
-  return `${step.label}…`;
+    return "Picking the best matches";
+  return step.label;
 }
 
 /**
@@ -142,5 +164,30 @@ export function workingLine(
 ): string {
   if (turn.text !== "" && !toolRunning(turn.steps)) return "Writing my answer…";
   const latest = agentToolSteps(turn.steps).at(-1);
-  return latest ? toolLine(latest, place) : "Reading your request…";
+  return latest ? `${stepWords(latest, place)}…` : "Reading your request…";
+}
+
+/**
+ * What a turn tells a screen reader, once per change: each step while Pako works, then his
+ * whole answer and any question he is waiting on. A failure is announced by its own alert.
+ */
+export function turnAnnouncement(
+  turn: Pick<
+    AgentRunState,
+    "id" | "status" | "steps" | "text" | "questions" | "answers"
+  >,
+  place?: string,
+): string {
+  if (turn.status === "running") return workingLine(turn, place);
+  if (turn.status === "error") return "";
+  if (turn.status === "idle") return turn.id ? "Pako stopped." : "";
+  const answer = plainAnswer(turn.text);
+  const question = turn.questions.find(
+    (item) => !turn.answers[item.id],
+  )?.question;
+  const spoken =
+    question && !answer.includes(question.trim())
+      ? `${answer} ${question}`.trim()
+      : answer;
+  return spoken ? `Pako: ${spoken}` : "";
 }

@@ -40,6 +40,7 @@ function SourcePreview({ source }: { source: AgentRunSource }) {
     >
       {showImage && (
         <ItemMedia className="agent-source-thumbnail">
+          <Globe size={18} aria-hidden="true" />
           <img
             src={imageUrl}
             alt=""

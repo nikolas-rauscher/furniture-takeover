@@ -4,6 +4,13 @@ import { searchText, type SavedSearch } from "../searchRequest";
 import Pako from "./onboarding/Pako";
 import "./saved-searches.css";
 
+/** What the card says under the title: the request, or its criteria when the title is the request. */
+function searchDetails(job: SavedSearch, location: string) {
+  return job.request && job.request.trim() !== job.title.trim()
+    ? job.request
+    : searchText(job.criteria, job.location || location);
+}
+
 type SavedSearchesPageProps = {
   searches: SavedSearch[];
   location: string;
@@ -36,10 +43,7 @@ export default function SavedSearchesPage({
               </div>
               <div className="job-main">
                 <h2>{job.title}</h2>
-                <p>
-                  {job.request ||
-                    searchText(job.criteria, job.location || location)}
-                </p>
+                <p>{searchDetails(job, location)}</p>
                 <div className="job-actions">
                   <Button
                     className="button secondary small"

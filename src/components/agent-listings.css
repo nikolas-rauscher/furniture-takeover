@@ -128,7 +128,7 @@
   object-fit: cover;
   transition: scale 260ms var(--ease-out);
 }
-.agent-product-photo:hover img {
+.agent-product-card:hover .agent-product-photo img {
   scale: 1.04;
 }
 .agent-product-content {
@@ -183,9 +183,6 @@
 }
 .agent-product-card .agent-product-offer {
   color: var(--blue);
-}
-.agent-product-photo:focus-visible {
-  outline-offset: -3px;
 }
 @container agent-listings (max-width: 22rem) {
   .agent-product-card {

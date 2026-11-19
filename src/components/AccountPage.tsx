@@ -225,13 +225,12 @@ export default function AccountPage({
     `${item.title} ${item.location}`
       .toLowerCase()
       .includes(query.trim().toLowerCase());
-  const items = (
-    isSaved
-      ? savedListings
-      : accountTab === "archive"
-        ? archivedListings
-        : visibleListings
-  ).filter(
+  const tabListings = isSaved
+    ? savedListings
+    : accountTab === "archive"
+      ? archivedListings
+      : visibleListings;
+  const items = tabListings.filter(
     (item) =>
       matchesQuery(item) &&
       (accountTab !== "listings" || status === "all" || item.status === status),
@@ -274,7 +273,7 @@ export default function AccountPage({
         {items.map((item) => (
           <article
             className={cn(
-              "own-listing",
+              "own-listing linked-card",
               item.id === publishedId && "is-published",
             )}
             key={item.id}
@@ -282,26 +281,18 @@ export default function AccountPage({
             {item.id === publishedId && (
               <PublishedStamp label={cloud ? "Live" : "Saved"} />
             )}
-            {item.status === "withdrawn" ? (
-              <div
-                className="own-listing-image listing-archived-image"
-                aria-hidden="true"
-              >
-                <Archive size={24} />
-              </div>
-            ) : (
-              <Button
-                className="own-listing-image"
-                aria-label={`Open ${item.title}`}
-                onClick={() => onOpen(item)}
-              >
-                {item.image ? (
-                  <img src={item.image} alt="" />
-                ) : (
-                  <ImageIcon size={28} />
-                )}
-              </Button>
-            )}
+            <div
+              className={cn(
+                "own-listing-image",
+                item.status === "withdrawn" && "listing-archived-image",
+              )}
+            >
+              {item.image ? (
+                <img src={item.image} alt="" />
+              ) : (
+                <ImageIcon size={28} aria-hidden="true" />
+              )}
+            </div>
             <div className="own-listing-body">
               <div className="own-listing-heading">
                 <h2>
@@ -309,7 +300,7 @@ export default function AccountPage({
                     item.title
                   ) : (
                     <Button
-                      className="own-listing-title"
+                      className="own-listing-title card-link"
                       onClick={() => onOpen(item)}
                     >
                       {item.title}
@@ -455,7 +446,7 @@ export default function AccountPage({
         </div>
         {isSaved ? (
           <>
-            {toolbar}
+            {tabListings.length > 0 && toolbar}
             {content}
           </>
         ) : (
@@ -464,11 +455,17 @@ export default function AccountPage({
             onValueChange={(value) => setAccountTab(value as AccountTab)}
           >
             <TabsList className="account-tabs" aria-label="Your listings">
-              <TabsTrigger value="listings">
-                Listings<span>{visibleListings.length}</span>
+              <TabsTrigger
+                value="listings"
+                aria-label={`Listings (${visibleListings.length})`}
+              >
+                Listings<span aria-hidden="true">{visibleListings.length}</span>
               </TabsTrigger>
-              <TabsTrigger value="archive">
-                Archive<span>{archivedListings.length}</span>
+              <TabsTrigger
+                value="archive"
+                aria-label={`Archive (${archivedListings.length})`}
+              >
+                Archive<span aria-hidden="true">{archivedListings.length}</span>
               </TabsTrigger>
             </TabsList>
             {/* While a search or status filter is on, the matches come first. */}
@@ -487,8 +484,11 @@ export default function AccountPage({
                   }
                 />
               )}
-            {toolbar}
-            <TabsContent value={accountTab}>{content}</TabsContent>
+            {tabListings.length > 0 && toolbar}
+            {/* The panel's cards are the stops; the panel itself is not one. */}
+            <TabsContent value={accountTab} tabIndex={-1}>
+              {content}
+            </TabsContent>
           </Tabs>
         )}
       </section>

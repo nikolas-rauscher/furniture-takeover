@@ -358,6 +358,50 @@ textarea {
 .text-button:hover {
   color: var(--blue);
 }
+/*
+ * A listing card opens through its title, whose tap area stretches over the whole card:
+ * one large target and one tab stop per card. The card's own buttons stay on top of it,
+ * and the focus ring outlines the card.
+ */
+.linked-card {
+  position: relative;
+}
+/* A number field that names its unit inside, like "5 km". */
+.input-with-unit {
+  position: relative;
+  display: block;
+}
+.input-with-unit > input {
+  width: 100%;
+  padding-right: 48px;
+}
+.input-with-unit > .input-unit {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  translate: 0 -50%;
+  color: var(--muted);
+  font-size: var(--type-label);
+  font-weight: 600;
+  pointer-events: none;
+}
+.linked-card .card-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.linked-card :where(button:not(.card-link), a) {
+  position: relative;
+  z-index: 2;
+}
+.linked-card .card-link:focus-visible {
+  outline: none;
+}
+.linked-card:has(.card-link:focus-visible) {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
 .back-link {
   display: flex;
   align-items: center;

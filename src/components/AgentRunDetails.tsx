@@ -16,6 +16,7 @@ import {
 export default function AgentRunDetails({
   reasoning = [],
   steps = [],
+  place,
   workingLine,
   heading,
   actions,
@@ -23,6 +24,8 @@ export default function AgentRunDetails({
 }: {
   reasoning?: readonly AgentReasoningPart[];
   steps?: readonly AgentRunStep[];
+  /** The search area as Pako names it in the steps. */
+  place?: string;
   /** What Pako is doing while the agent works; absent once the turn has stopped. */
   workingLine?: string;
   heading?: ReactNode;
@@ -89,7 +92,7 @@ export default function AgentRunDetails({
               "Activity"
             )
           ) : hasReasoning ? (
-            "Reasoning"
+            "Pako's thoughts"
           ) : (
             (status ?? "Activity")
           )}
@@ -114,7 +117,7 @@ export default function AgentRunDetails({
           keepMounted
           className="agent-run-details-content"
         >
-          <AgentActivity steps={steps} running={running} />
+          <AgentActivity steps={steps} running={running} place={place} />
           <AgentReasoning parts={reasoning} running={running} />
         </TraceCollapsibleContent>
       </TraceCollapsible>

@@ -132,3 +132,28 @@ export function parseAnswerInline(
       return { kind: "text", text: part };
     });
 }
+
+/** Ends a line that stops without punctuation, so lines read aloud stay apart. */
+const asSentence = (line: string) =>
+  /[.!?:…]$/.test(line) ? line : `${line}.`;
+
+/** The answer as plain sentences for one screen reader announcement: no markup, no citations. */
+export function plainAnswer(text: string): string {
+  return parseAnswerBlocks(text)
+    .flatMap((block) =>
+      block.kind === "list"
+        ? block.items.map((item) => item.text)
+        : [block.kind === "heading" ? `${block.text}:` : block.text],
+    )
+    .map((line) =>
+      parseAnswerInline(line)
+        .filter((part) => part.kind !== "citation")
+        .map((part) => part.text)
+        .join("")
+        .replace(/\s+([.,;:!?])/g, "$1")
+        .trim(),
+    )
+    .filter(Boolean)
+    .map(asSentence)
+    .join(" ");
+}

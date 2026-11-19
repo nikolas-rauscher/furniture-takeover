@@ -50,23 +50,16 @@ export default function ProductCard({
     .slice(0, 3);
   const sticker = productSticker(product);
   return (
-    <article className="product-card">
+    <article className="product-card linked-card">
       <div className="product-photo">
-        <Button
-          className="photo-link"
-          type="button"
-          onClick={onOpen}
-          aria-label={`${product.title} view`}
-        >
-          {product.image ? (
-            <img src={product.image} alt={product.title} loading="lazy" />
-          ) : (
-            <span className="listing-no-photo">
-              <ImageIcon size={32} />
-              <span>No photo</span>
-            </span>
-          )}
-        </Button>
+        {product.image ? (
+          <img src={product.image} alt="" loading="lazy" />
+        ) : (
+          <span className="listing-no-photo">
+            <ImageIcon size={32} aria-hidden="true" />
+            <span>No photo</span>
+          </span>
+        )}
         {showFavorite && (
           <SaveToggle
             title={product.title}
@@ -93,7 +86,7 @@ export default function ProductCard({
           ))}
         </div>
         <Button
-          className="text-button product-title"
+          className="text-button product-title card-link"
           type="button"
           onClick={onOpen}
         >
@@ -105,6 +98,7 @@ export default function ProductCard({
             className={`compare-button ${compared ? "selected" : ""}`}
             type="button"
             aria-label={`${product.title} ${compared ? "remove from comparison" : "compare"}`}
+            title={compared ? "Remove from comparison" : "Compare"}
             aria-pressed={compared}
             onClick={onToggleCompare}
           >

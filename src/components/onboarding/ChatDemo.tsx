@@ -22,11 +22,11 @@ import { useRevealOnMount, useTimeline } from "./useStory";
 import "./agent-demos.css";
 
 /** A moment to read Pako's bubble before the first message. */
-const INTRO_MS = 500;
-const TYPING_MS = 550;
-const READ_BASE_MS = 300;
-const READ_MS_PER_CHAR = 10;
-const READ_MAX_MS = 1100;
+const INTRO_MS = 400;
+const TYPING_MS = 400;
+const READ_BASE_MS = 200;
+const READ_MS_PER_CHAR = 8;
+const READ_MAX_MS = 900;
 const MESSAGE_SPRING = { type: "spring", stiffness: 500, damping: 38 } as const;
 
 /** Every line takes two beats: its sender types, then it stays long enough to read. */

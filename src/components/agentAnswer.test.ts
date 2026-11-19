@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   parseAnswerBlocks,
   parseAnswerInline,
+  plainAnswer,
   splitSearchAnswer,
 } from "./agentAnswer.ts";
 
@@ -145,4 +146,14 @@ test("verified Markdown citations omit duplicate URLs while unmatched links stay
       ],
     );
   }
+});
+
+test("a plain answer drops markup and citations and keeps lines apart", () => {
+  assert.equal(
+    plainAnswer(
+      "## Takeover\nTwo desks **fit** your budget.\n\n## Web search\n- A desk on Ricardo [web-1]\n- No price on the other [web-2].",
+    ),
+    "Takeover: Two desks fit your budget. Web search: A desk on Ricardo. No price on the other.",
+  );
+  assert.equal(plainAnswer(""), "");
 });

@@ -16,11 +16,11 @@ const animations = {
     line1: {
       initial: {
         rotate: 0,
-        transition: { ease: "easeInOut", duration: 0.4, delay: 0.1 },
+        transition: { ease: "easeInOut", duration: 0.4 },
       },
       animate: {
         rotate: 90,
-        transition: { ease: "easeInOut", duration: 0.4, delay: 0.1 },
+        transition: { ease: "easeInOut", duration: 0.4 },
       },
     },
     line2: {

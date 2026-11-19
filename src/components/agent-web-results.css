@@ -110,14 +110,22 @@
   flex-shrink: 0;
   margin-top: 2px;
 }
+/* Until the preview image arrives, the tile shows a globe instead of an empty space. */
 .agent-source-thumbnail {
+  position: relative;
+  display: grid;
+  place-items: center;
   width: 48px;
   height: 48px;
   flex-shrink: 0;
   overflow: hidden;
   border-radius: 10px;
+  background: var(--sky);
+  color: var(--blue);
 }
 .agent-source-thumbnail img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;

@@ -19,8 +19,8 @@ export default function SaveToggle({
       className={`save-toggle ${iconOnly ? "favorite-button" : ""} ${saved ? "favorited" : ""}`}
       pressed={saved}
       onPressedChange={onToggle}
-      aria-label={`Save to favourites: ${title}`}
-      title={saved ? "Remove from favourites" : "Save to favourites"}
+      aria-label={`Save ${title}`}
+      title={saved ? "Remove from saved items" : "Save item"}
     >
       <Heart
         initial={false}

@@ -118,16 +118,6 @@ export function AgentQuestion({
     >
       <div className="agent-question-heading">
         <h3>{question.question}</h3>
-        {!response && !readOnly && externalComposer && onSkip && (
-          <Button
-            type="button"
-            className="text-button question-skip"
-            disabled={disabled}
-            onClick={skip}
-          >
-            Skip for now
-          </Button>
-        )}
       </div>
       {response ? (
         !externalComposer && (
@@ -187,6 +177,16 @@ export function AgentQuestion({
                 </Suggestion>
               ))}
             </Suggestions>
+          )}
+          {externalComposer && onSkip && (
+            <Button
+              type="button"
+              className="text-button question-skip"
+              disabled={disabled}
+              onClick={skip}
+            >
+              Skip for now
+            </Button>
           )}
           {onAnswer && !externalComposer && (
             <div className="agent-run-question-input">

@@ -25,12 +25,19 @@ export default function OnboardingInvite({
     const timer = setTimeout(() => setShown(true), APPEAR_DELAY_MS);
     return () => clearTimeout(timer);
   }, []);
+  const inviting = shown && choice === null;
   return (
     <MotionConfig reducedMotion="user">
+      {/* Present from the start, so the card is announced politely once it appears. */}
+      <p className="sr-only" role="status">
+        {inviting
+          ? "New to takeover? Pako can show you how it works in about a minute."
+          : ""}
+      </p>
       <AnimatePresence
         onExitComplete={() => (choice === "start" ? onStart() : onDismiss())}
       >
-        {shown && choice === null && (
+        {inviting && (
           <motion.aside
             key="invite"
             className="ob-invite"

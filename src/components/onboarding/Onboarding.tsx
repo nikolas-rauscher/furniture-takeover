@@ -59,6 +59,8 @@ import {
   type StepId,
 } from "./onboardingFlow";
 import { intentIcons, itemIcons, placeIcons } from "./onboardingIcons";
+import { useInertApp } from "../../hooks/useInertApp";
+import { wrapTabInDialog } from "../../dialogFocus";
 import type { PakoMood, SceneProps } from "./storyTypes";
 import "./onboarding.css";
 import "./onboarding-shell.css";
@@ -70,6 +72,8 @@ type OnboardingProps = {
   accountAction: boolean;
   /** Called as soon as the visitor decides how the intro ends. */
   onComplete: (outcome: OnboardingOutcome) => void;
+  /** Where focus goes once the intro has closed this way, unless a page already took it. */
+  finalFocus: (outcome: OnboardingOutcome) => HTMLElement | null;
   /** Called once the closing animation has finished. */
   onClosed: () => void;
 };
@@ -245,15 +249,17 @@ function StepFooter({
 export default function Onboarding({
   accountAction,
   onComplete,
+  finalFocus,
   onClosed,
 }: OnboardingProps) {
   const [open, setOpen] = useState(true);
+  useInertApp(open);
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(0);
   const [answers, setAnswers] = useState<Answers>({ items: [] });
   const [finishedActs, setFinishedActs] = useState<Act[]>([]);
   const [mood, setMood] = useState<PakoMood>(stepMood("welcome"));
-  const settled = useRef(false);
+  const outcome = useRef<OnboardingOutcome | null>(null);
   const navigated = useRef(false);
   const moodTimer = useRef(0);
   const body = useRef<HTMLDivElement>(null);
@@ -279,11 +285,23 @@ export default function Onboarding({
     setFinishedActs((done) => (done.includes(step) ? done : [...done, step]));
   }, [step]);
 
-  function finish(outcome: OnboardingOutcome) {
-    if (settled.current) return;
-    settled.current = true;
-    onComplete(outcome);
+  function finish(ending: OnboardingOutcome) {
+    if (outcome.current) return;
+    outcome.current = ending;
+    onComplete(ending);
     setOpen(false);
+  }
+
+  /** The page the intro opened may have focused its heading already; then focus stays there. */
+  function returnFocus() {
+    if (!outcome.current)
+      throw new Error("The intro closed without an outcome.");
+    const focused = document.activeElement;
+    const pageTookFocus =
+      focused instanceof HTMLElement &&
+      focused !== document.body &&
+      !focused.closest(".ob");
+    return pageTookFocus ? false : finalFocus(outcome.current);
   }
 
   function goTo(next: number) {
@@ -385,8 +403,10 @@ export default function Onboarding({
     }
   }
 
-  // Number keys pick answers and Enter moves on, as long as no control has the key.
+  // Tab stays inside the sheet; number keys pick answers and Enter moves on, as long as
+  // no control has the key.
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    wrapTabInDialog(event);
     if (
       event.defaultPrevented ||
       event.altKey ||
@@ -441,6 +461,8 @@ export default function Onboarding({
         <Dialog.Popup
           ref={popup}
           initialFocus={popup}
+          finalFocus={returnFocus}
+          aria-modal="true"
           className="ob"
           data-step={step}
           data-layout={hero ? "hero" : "guide"}

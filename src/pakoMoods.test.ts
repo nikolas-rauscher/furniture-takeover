@@ -8,6 +8,8 @@ import {
   homeGuide,
   isReaction,
   showedResults,
+  stepWords,
+  turnAnnouncement,
   workingLine,
 } from "./pakoMoods.ts";
 
@@ -36,6 +38,8 @@ const turn = (
   text: "",
   inventoryMatchIds: null,
   sources: [],
+  questions: [],
+  answers: {},
   ...overrides,
 });
 const quiet = { textShown: "", typing: false };
@@ -288,5 +292,109 @@ test("a turn found nothing only after searching, and showed results once it ende
     showedResults(turn({ inventoryMatchIds: ["desk-1"] })),
     false,
     "results only count once the turn has ended",
+  );
+});
+
+test("a turn is announced step by step while Pako works, then once with his answer", () => {
+  const announced = (
+    overrides: Partial<Parameters<typeof turnAnnouncement>[0]>,
+  ) =>
+    turnAnnouncement(
+      {
+        id: "run-1",
+        status: "complete",
+        steps: [],
+        text: "",
+        questions: [],
+        answers: {},
+        ...overrides,
+      },
+      "EPFL",
+    );
+  assert.equal(
+    announced({ status: "running", steps: [reading] }),
+    "Reading your request…",
+  );
+  assert.equal(
+    announced({ text: "Two desks fit [web-1]." }),
+    "Pako: Two desks fit.",
+  );
+  const question = {
+    type: "question" as const,
+    id: "q1",
+    question: "Is a 27-inch monitor wide enough?",
+  };
+  assert.equal(
+    announced({ text: question.question, questions: [question] }),
+    "Pako: Is a 27-inch monitor wide enough?",
+    "a question that is the whole answer is said once",
+  );
+  assert.equal(
+    announced({ text: "I found two desks.", questions: [question] }),
+    "Pako: I found two desks. Is a 27-inch monitor wide enough?",
+  );
+  assert.equal(
+    announced({ text: "Okay.", questions: [question], answers: { q1: "Yes" } }),
+    "Pako: Okay.",
+    "an answered question is not asked again",
+  );
+  assert.equal(
+    announced({ status: "error" }),
+    "",
+    "its alert says what failed",
+  );
+  assert.equal(announced({ status: "idle" }), "Pako stopped.");
+  assert.equal(announced({ status: "idle", id: null }), "");
+});
+
+test("Pako listens while his question waits for an answer", () => {
+  const question = {
+    type: "question" as const,
+    id: "q1",
+    question: "Is a 27-inch monitor wide enough?",
+  };
+  const asked = turn({
+    status: "complete",
+    steps: [reading, step("ask", "complete", "request")],
+    text: question.question,
+    questions: [question],
+  });
+  assert.deepEqual(
+    agentTurnPako(asked, { textShown: asked.text, typing: false }),
+    {
+      mood: "listen",
+      talking: false,
+    },
+  );
+  const answered = { ...asked, answers: { q1: "Yes" } };
+  assert.notEqual(
+    agentTurnPako(answered, { textShown: asked.text, typing: false }).mood,
+    "listen",
+  );
+});
+
+test("the activity list names each step in the intro's words, without raw queries", () => {
+  assert.equal(stepWords(catalogChecked, "EPFL"), "Checking student listings");
+  assert.equal(
+    stepWords(
+      step(
+        "inventory",
+        "complete",
+        "listings",
+        "Searching takeover listings: desk",
+      ),
+      "EPFL",
+    ),
+    "Searching student listings near EPFL",
+  );
+  assert.equal(
+    stepWords(
+      step("web", "complete", "web", "Searching the web: bureau d'occasion"),
+    ),
+    "Checking other second-hand sites",
+  );
+  assert.equal(
+    stepWords(step("draft", "running", "proposal", "Preparing your draft")),
+    "Preparing your draft",
   );
 });

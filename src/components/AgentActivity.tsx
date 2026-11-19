@@ -1,4 +1,5 @@
 import type { AgentRunStep } from "../hooks/useAgentRun";
+import { stepWords } from "../pakoMoods";
 import { Check, LoaderCircle, X } from "./icons";
 import {
   Trace,
@@ -31,9 +32,11 @@ export function StepMark({ state }: { state: StepMarkState }) {
 function ActivityStep({
   step,
   running,
+  place,
 }: {
   step: AgentRunStep;
   running: boolean;
+  place?: string;
 }) {
   const active = running && step.state === "running";
   const failed = step.state === "error";
@@ -66,7 +69,7 @@ function ActivityStep({
                 : "done"
         }
       />
-      <TraceTitle>{step.label}</TraceTitle>
+      <TraceTitle>{stepWords(step, place)}</TraceTitle>
       <TraceDescription
         className={visibleStatus ? "agent-step-status" : "sr-only"}
       >
@@ -87,16 +90,24 @@ export function visibleTaskSteps(steps: readonly AgentRunStep[]) {
 export default function AgentActivity({
   steps,
   running,
+  place,
 }: {
   steps: readonly AgentRunStep[];
   running: boolean;
+  /** The search area as Pako names it. */
+  place?: string;
 }) {
   const visible = visibleTaskSteps(steps);
   if (!visible.length) return null;
   return (
     <Trace className="agent-activity-list" role="list" aria-label="Agent steps">
       {visible.map((step) => (
-        <ActivityStep key={step.id} step={step} running={running} />
+        <ActivityStep
+          key={step.id}
+          step={step}
+          running={running}
+          place={place}
+        />
       ))}
     </Trace>
   );
