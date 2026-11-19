@@ -6,10 +6,6 @@
   color: var(--ink);
   overflow-wrap: anywhere;
 }
-.listing-detail > .back-link {
-  margin-bottom: 22px;
-  font-size: 13px;
-}
 .listing-detail-main {
   display: grid;
   grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
@@ -388,9 +384,6 @@
   }
   .listing-detail-main {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .listing-detail > .back-link {
-    margin-bottom: 16px;
   }
   .listing-detail .photo-gallery-stage {
     max-height: 52dvh;

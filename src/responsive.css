@@ -136,9 +136,6 @@
   .own-listing h2 {
     font-size: var(--type-item);
   }
-  .listing-actions :is(.text-button, .button) {
-    min-height: 44px;
-  }
   body:has(.compare-tray)
     .app-layout:not(
       .chat-layout,

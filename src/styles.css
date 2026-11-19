@@ -1481,20 +1481,6 @@ textarea {
   color: #939aab;
   margin-top: 7px;
 }
-.listing-actions {
-  display: flex;
-  gap: 7px;
-  flex-wrap: wrap;
-  margin-top: 16px;
-}
-.listing-actions .text-button {
-  font-size: 10px;
-  color: #969eae;
-  padding: 5px;
-}
-.listing-actions .button {
-  font-size: 10px;
-}
 .inbox {
   border: 1px solid var(--line);
   border-radius: 11px;
@@ -2445,15 +2431,6 @@ textarea {
   }
   .own-listing p {
     font-size: 10px;
-  }
-  .listing-actions {
-    margin-left: -103px;
-    margin-top: 24px;
-    gap: 7px;
-  }
-  .listing-actions .button {
-    font-size: 9px;
-    padding: 7px 8px;
   }
   .inbox {
     display: block;

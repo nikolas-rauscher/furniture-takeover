@@ -131,7 +131,7 @@ export default function Auth({
       {notice && <p role="status">{notice}</p>}
       {!recovery && (
         <div className="account-actions">
-          {mode === "reset" && (
+          {mode === "reset" ? (
             <Button
               className="button quiet"
               onClick={() => {
@@ -141,16 +141,17 @@ export default function Auth({
             >
               Back to sign in
             </Button>
+          ) : (
+            <Button
+              className="button quiet"
+              onClick={() => {
+                setMode("reset");
+                setNotice("");
+              }}
+            >
+              Forgot password?
+            </Button>
           )}
-          <Button
-            className="button quiet"
-            onClick={() => {
-              setMode("reset");
-              setNotice("");
-            }}
-          >
-            Forgot password?
-          </Button>
         </div>
       )}
     </section>

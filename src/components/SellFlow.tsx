@@ -34,7 +34,7 @@ import type { AgentQuota } from "../../shared/agent";
 import Modal from "./Modal";
 import PhotoGallery from "./PhotoGallery";
 import SnapTarget from "./SnapTarget";
-import ListingChecklist from "./ListingChecklist";
+import ListingChecklist, { detailsToComplete } from "./ListingChecklist";
 import WorkspaceHeader from "./WorkspaceHeader";
 import Guide, { type GuideBubble } from "./onboarding/Guide";
 import type { PakoMood } from "./onboarding/storyTypes";
@@ -422,7 +422,7 @@ export default function SellFlow({
                 <span>Required details</span>
                 <small>
                   {missing.length
-                    ? `${missing.length} details to complete`
+                    ? detailsToComplete(missing.length)
                     : "Complete"}
                 </small>
               </Button>

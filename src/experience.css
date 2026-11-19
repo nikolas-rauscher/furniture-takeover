@@ -191,11 +191,11 @@ label > textarea {
   line-height: 1.6;
   max-width: var(--measure-prose);
 }
-/* Back is a soft pill that lights up under the pointer. */
+/* Back is a soft pill that lights up under the pointer, close to the page it leads from. */
 .back-link {
   display: inline-flex;
   min-height: 36px;
-  margin: 0 0 32px -8px;
+  margin: 0 0 22px -8px;
   padding: 6px 12px 6px 8px;
   border-radius: 999px;
   font-size: 13px;
@@ -1096,6 +1096,9 @@ label > textarea {
     gap: 4px;
     margin-right: -8px;
   }
+  .back-link {
+    margin-bottom: 16px;
+  }
   .focused-layout .main-content,
   .main-content {
     padding: var(--space-section) var(--space-page) calc(2 * var(--space-section));
@@ -1231,9 +1234,6 @@ label > textarea {
   }
   .page-title p {
     font-size: 15px;
-  }
-  .back-link {
-    margin-bottom: 28px;
   }
   .detail-layout {
     grid-template-columns: 1fr;

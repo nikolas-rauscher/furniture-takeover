@@ -11,6 +11,11 @@ import {
   TraceTitle,
 } from "./ui/trace";
 
+/** The number of required details still missing, in words. */
+export function detailsToComplete(count: number) {
+  return `${count} detail${count === 1 ? "" : "s"} to complete`;
+}
+
 export default function ListingChecklist({
   checks,
 }: {
@@ -24,7 +29,7 @@ export default function ListingChecklist({
           <TraceLine>
             <TraceTitle>
               {missing
-                ? `${missing} detail${missing === 1 ? "" : "s"} to complete`
+                ? detailsToComplete(missing)
                 : "Required details complete"}
             </TraceTitle>
             <TraceDescription>
