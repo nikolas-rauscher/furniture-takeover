@@ -14,6 +14,7 @@ import { useId, useState, useRef, useLayoutEffect } from "react";
 import type { AgentRunSource } from "../../shared/runs";
 import type { AgentQuestionEvent } from "../../shared/actions";
 import type { AgentRunAction } from "../hooks/useAgentRun";
+import { searchChangeSummary } from "../searchChanges";
 import { motionBehavior } from "../uiMotion";
 import { answerParts } from "./AgentAnswerContent";
 
@@ -267,8 +268,10 @@ function changedValue(field: string, value: unknown) {
 const LONG_FIELDS = new Set(["title", "description"]);
 
 /** What Pako changed, in his words: one short value is named, long texts are not repeated. */
-export function changeSummary(patch: AgentRunAction["patch"]): string {
-  const fields = Object.entries(patch);
+export function changeSummary(action: AgentRunAction): string {
+  if (action.type === "preferences_patch")
+    return searchChangeSummary(action.patch);
+  const fields = Object.entries(action.patch);
   const name = (field: string) => (fieldLabels[field] ?? field).toLowerCase();
   if (fields.length === 1) {
     const [[field, value]] = fields;
@@ -303,9 +306,7 @@ export function AgentChangeLine({
   return (
     <div className="agent-change-line" data-undone={undone || undefined}>
       <p>
-        {undone
-          ? `Undone: ${changeSummary(action.patch)}`
-          : changeSummary(action.patch)}
+        {undone ? `Undone: ${changeSummary(action)}` : changeSummary(action)}
       </p>
       <div className="agent-change-line-actions">
         {!applied && !undone && onApply && (

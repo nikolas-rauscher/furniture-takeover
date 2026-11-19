@@ -109,9 +109,13 @@ export default function AgentRunPanel({
   const webSearches = state.steps.filter((step) => step.task === "web");
   const webRetry = !readOnly && state.status !== "error" ? onRetry : undefined;
   // The tray carries Pako's suggested price with its evidence until it is decided.
-  const shownActions = questionsInTray
-    ? state.actions.filter((action) => !isPriceSuggestion(action))
-    : state.actions;
+  // Search changes apply as they arrive, so one that changed nothing has nothing to report.
+  const shownActions = state.actions.filter((action) =>
+    questionsInTray
+      ? !isPriceSuggestion(action)
+      : action.type !== "preferences_patch" ||
+        appliedActionIds.includes(action.id),
+  );
   const steps = settledSteps(state.steps);
   // Queued questions wait their turn: only the next one shows beside the answered ones.
   const nextQuestion = state.questions.find(
@@ -395,7 +399,7 @@ export default function AgentRunPanel({
       {shownActions.length > 0 && (
         <div className="agent-run-changes">
           {shownActions.map((action) =>
-            questionsInTray ? (
+            questionsInTray || action.type === "preferences_patch" ? (
               <AgentChangeLine
                 key={action.id}
                 action={action}
