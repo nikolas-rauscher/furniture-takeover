@@ -354,11 +354,11 @@ export function actCopy(act: Act, intent: Intent): ActCopy {
   return selling
     ? {
         title: "I answer the buyers",
-        text: "When someone wants your things, I agree on a price and set a pickup time and place. You just confirm.",
+        text: "When someone wants your things, I read their message and write your answer. You\u00a0just\u00a0tap\u00a0Send.",
       }
     : {
         title: "I handle the messages",
-        text: "Price, pickup time, meeting point: I sort it out with the seller. You just confirm.",
+        text: "I read every reply and write your answer: price, pickup time, meeting point. You\u00a0just\u00a0tap\u00a0Send.",
       };
 }
 

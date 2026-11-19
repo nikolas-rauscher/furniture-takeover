@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { isSearchArea } from "../../searchRequest.ts";
 import {
   PICKUP_TIME,
+  actCopy,
   chatScene,
   exampleSearch,
   intentOptions,
@@ -112,4 +113,12 @@ test("Pako names an intro place by its own name and any other area by its first 
     placeName("Avenue de Morges 12, Lausanne"),
     "Avenue de Morges 12",
   );
+});
+
+test("the intro promises what Pako does in Messages: he writes the answer, the student taps Send", () => {
+  for (const intent of ["find", "sell"] as const) {
+    const { text } = actCopy("chat", intent);
+    assert.match(text, /You\u00a0just\u00a0tap\u00a0Send\.$/);
+    assert.doesNotMatch(text, /sort it out|agree on a price/);
+  }
 });
