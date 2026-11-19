@@ -350,7 +350,10 @@ export default function OfferEditor({
       ? [named, ...offered.filter((slot) => slot.pickupAt !== named.pickupAt)]
       : offered;
   }, [entry.terms, listing.available, now]);
-  const [slot, setSlot] = useState(() => futureSlot(entry.terms, now));
+  // Pako proposes the earliest slot that fits; confirming a deal waits for the student's own pick.
+  const [slot, setSlot] = useState<Slot | null>(() =>
+    mode === "confirm" ? futureSlot(entry.terms, now) : (slots[0] ?? null),
+  );
   const suggestedPlaces = meetingPointChoices(
     entry.terms.pickupPoint,
     listing.pickupPoint?.name,

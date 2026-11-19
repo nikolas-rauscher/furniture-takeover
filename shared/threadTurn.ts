@@ -165,9 +165,13 @@ export const threadTurnSchema = z
         ),
       })
       .strict(),
-    options: z.array(threadOptionSchema).min(1).max(3),
+    options: z.array(threadOptionSchema).max(3),
   })
-  .strict();
+  .strict()
+  .refine((turn) => turn.options.length > 0 || turn.stance === "accepts", {
+    path: ["options"],
+    message: "Only an acceptance can have no suggested replies.",
+  });
 export type ThreadTurn = z.infer<typeof threadTurnSchema>;
 
 export type ThreadTurnResponse = {

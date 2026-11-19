@@ -58,7 +58,7 @@
     transform 90ms var(--ease-out),
     box-shadow 90ms var(--ease-out);
 }
-/* Flat and pale while empty; brand blue on a small lip once there is text. */
+/* Flat and pale while empty; brand blue on the primary lip once there is text. */
 .composer-field .composer-send:disabled {
   background: var(--selected);
   color: color-mix(in srgb, var(--blue) 45%, var(--surface));
@@ -67,14 +67,14 @@
 .composer-field .composer-send:not(:disabled) {
   background: var(--blue);
   color: var(--on-primary);
-  box-shadow: 0 3px 0 var(--blue-dark);
+  box-shadow: 0 4px 0 var(--blue-dark);
 }
 .composer-field .composer-send:not(:disabled):hover {
   background: #3c58c7;
 }
 .composer-field .composer-send:not(:disabled):active {
   scale: 1;
-  transform: translateY(3px);
+  transform: translateY(4px);
   box-shadow: 0 0 0 var(--blue-dark);
 }
 @media (prefers-reduced-motion: reduce) {

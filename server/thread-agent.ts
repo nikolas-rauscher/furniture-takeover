@@ -105,7 +105,6 @@ const proposalSchema = z
                 : ""),
           })),
       )
-      .min(1)
       .max(3),
   })
   .strict();
@@ -572,6 +571,21 @@ function checkedOptions(
   now: Date,
   runId: string,
 ) {
+  if (proposal.stance === "accepts") return [];
+  if (!proposal.options.length)
+    throw new Error(
+      "Supply a conversational reply unless the other student accepts.",
+    );
+  proposal.options.forEach((option, index) => {
+    checkSafeText(option.label, `options[${index}].label`);
+    checkSafeText(option.message, `options[${index}].message`);
+  });
+  const drafts = proposal.options
+    .map((option) => option.message)
+    .filter(Boolean);
+  const distinct = new Set(drafts.map(plainText));
+  if (distinct.size !== drafts.length)
+    throw new Error("options: each option must be a different message.");
   const options: ThreadTurn["options"] = [];
   let firstFailure: Error | undefined;
   for (const [index, option] of proposal.options.entries()) {
@@ -595,6 +609,10 @@ function agreementOf(
   now: Date,
 ): ThreadTurn["agreement"] {
   if (proposal.stance !== "accepts") return { status: "none", missing: [] };
+  if (Object.values(proposal.facts).some((fact) => fact.from === "listing"))
+    throw new Error(
+      "For an acceptance, quote the students' messages for each agreed detail. Omit listing-only details.",
+    );
   const terms = turnTerms(
     { facts: proposal.facts, pickupAt },
     request.deal?.agreed ?? null,
@@ -619,17 +637,7 @@ function groundProposal(
   runId: string,
 ): ThreadTurn {
   checkSafeText(proposal.summary, "summary");
-  proposal.options.forEach((option, index) => {
-    checkSafeText(option.label, `options[${index}].label`);
-    checkSafeText(option.message, `options[${index}].message`);
-  });
   checkFacts(proposal.facts, request);
-  const drafts = proposal.options
-    .map((option) => option.message)
-    .filter(Boolean);
-  const distinct = new Set(drafts.map(plainText));
-  if (distinct.size !== drafts.length)
-    throw new Error("options: each option must be a different message.");
   const pickupAt = proposal.facts.pickupTime
     ? resolvePickupAt(proposal.facts.pickupTime.value, now)
     : null;
@@ -730,7 +738,7 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
           tools: {
             [TOOL_NAME]: tool({
               description:
-                "Save your reading of the conversation: the summary, the facts with their quotes, the stance and 2 or 3 distinct messages the student could send next. Nothing is sent.",
+                "Save your reading of the conversation: the summary, the facts with their quotes, the stance and suggested replies. For accepts, return an empty options array. Nothing is sent.",
               inputSchema: proposalSchema,
               execute: async (proposal) => {
                 try {

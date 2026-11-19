@@ -267,7 +267,8 @@ textarea {
 .button.secondary:not(:disabled):hover {
   --button-face: var(--selected);
 }
-/* Secondary actions rest on a shallow lip; small ones and icon buttons sit flat. */
+/* Primary actions rest on the full lip at every size and secondary actions on a shallow
+   one; small secondary ones and icon buttons sit flat. */
 .button.secondary {
   --button-depth: 2px;
 }
@@ -294,7 +295,6 @@ textarea {
   cursor: not-allowed;
 }
 .button.small {
-  --button-depth: 3px;
   min-height: 36px;
   padding: 6px 13px;
   border-radius: 12px;

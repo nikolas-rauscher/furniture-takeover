@@ -1,9 +1,13 @@
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "@/components/icons";
+import { useMomentPassed } from "../hooks/useMomentPassed";
 import Pako from "./onboarding/Pako";
 import type { PakoMood } from "./onboarding/storyTypes";
 import { Button } from "./ui/button";
 import "./toast.css";
+
+/** How long Pako shows how he feels about the news before he rests. */
+const REACTION_MS = 1800;
 
 export type ToastAction = {
   label: string;
@@ -15,13 +19,24 @@ export type ToastAction = {
 type ToastProps = {
   /** An empty message hides the toast. */
   message: string;
-  /** Pages with a composer or main action at the bottom take notes under the header. */
+  /**
+   * Pages with a composer or main action at the bottom keep it free: notes rest above a
+   * conversation's composer, elsewhere under the header.
+   */
   placement: "top" | "bottom";
   /** How Pako brings the note: calm by default, in love when a favourite is saved. */
   mood?: PakoMood;
   action?: ToastAction;
   onDismiss: () => void;
 };
+
+/** Pako reacts to the news once, then rests for as long as the note stays. */
+function ToastPako({ mood }: { mood: PakoMood }) {
+  const rested = useMomentPassed({ id: mood, ms: REACTION_MS });
+  return (
+    <Pako mood={rested ? "idle" : mood} size={34} className="toast-pako" />
+  );
+}
 
 /** Pako brings a short note that springs in over the page and leaves on its own. */
 export default function Toast({
@@ -31,10 +46,8 @@ export default function Toast({
   action,
   onDismiss,
 }: ToastProps) {
-  // It pops up solid from just short of its place, on the side of the edge it
-  // rests against, so it stays clear of the tab bar and the page never shows
-  // through it; it fades only as it leaves the same way.
-  const away = placement === "top" ? -1 : 1;
+  // It pops up solid, growing out of the edge it rests against, so it stays clear of
+  // the tab bar and the page never shows through it; it fades only as it leaves.
   return (
     <AnimatePresence>
       {message && (
@@ -43,17 +56,16 @@ export default function Toast({
           className="toast"
           data-placement={placement}
           role="status"
-          initial={{ y: 8 * away, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
+          initial={{ scale: 0.94 }}
+          animate={{ opacity: 1, scale: 1 }}
           exit={{
             opacity: 0,
-            y: 8 * away,
-            scale: 0.98,
+            scale: 0.97,
             transition: { duration: 0.16 },
           }}
           transition={{ type: "spring", stiffness: 420, damping: 30 }}
         >
-          <Pako mood={mood} size={34} className="toast-pako" />
+          <ToastPako mood={mood} />
           <span className="toast-message">{message}</span>
           {action && (
             <Button

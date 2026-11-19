@@ -34,6 +34,7 @@ export function useDemoInbox({
       setLoaded(true);
       setError("");
     } catch (failure) {
+      if (startedAt !== revision.current) return;
       setError(
         failure instanceof Error
           ? failure.message
@@ -57,6 +58,13 @@ export function useDemoInbox({
     refresh,
     loaded,
     error,
+    async reset() {
+      revision.current++;
+      setConversations([]);
+      setError("");
+      setLoaded(false);
+      if (enabled) await refresh();
+    },
     /** Shows a conversation the server returned after a change, on top. */
     put(conversation: SellerConversation) {
       revision.current++;

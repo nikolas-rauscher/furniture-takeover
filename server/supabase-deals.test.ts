@@ -9,7 +9,8 @@ import {
   count,
 } from "./supabase-fixture.ts";
 import { dealScenarios } from "../shared/dealScenarios.ts";
-import type { DealAction } from "../shared/deal.ts";
+import { offerMessage, counterMessage, acceptMessage, confirmAgreementMessage } from "../shared/dealMessages.ts";
+import { messageStatesTerms, type DealTerms, type DealAction } from "../shared/deal.ts";
 async function setup() {
   const fixture = await marketplace();
   async function act(
@@ -204,4 +205,57 @@ test("an action cannot reuse a plain message or bypass participant grants",async
  assert.equal(await count(db,"select * from public.deals where proposal_message_id is null"),1);
  assert.equal(await count(db,"select * from public.deal_events where message_id is null"),1);
  }finally{await db.close();}
+});
+
+test("every terms message states its terms in the demo and the deal RPC", async () => {
+  const { db } = await setup();
+  const base: DealTerms = {
+    amount: 60,
+    fulfillment: "pickup",
+    pickupAt: "2026-11-21T10:00:00Z",
+    pickupTime: "tomorrow morning",
+    pickupPoint: "FMEL Atrium · outside entrance",
+  };
+  try {
+    for (const terms of [
+      base,
+      { ...base, amount: 0 },
+      { ...base, amount: null, pickupAt: null },
+      { ...base, pickupTime: null, pickupAt: null },
+      { ...base, pickupPoint: null },
+      {
+        ...base,
+        fulfillment: "shipping" as const,
+        pickupTime: null,
+        pickupAt: null,
+        pickupPoint: null,
+      },
+    ]) {
+      for (const body of [
+        offerMessage("White work desk", terms),
+        counterMessage(terms),
+        acceptMessage("buyer", terms),
+        acceptMessage("seller", terms),
+        confirmAgreementMessage(terms),
+      ]) {
+        assert.deepEqual(messageStatesTerms(body, terms), { ok: true }, body);
+        const { rows } = await db.query<{ ok: boolean }>(
+          "select public.body_states_terms($1, $2) as ok",
+          [
+            body,
+            {
+              amount: terms.amount,
+              fulfillment: terms.fulfillment,
+              pickup_at: terms.pickupAt,
+              pickup_time: terms.pickupTime,
+              pickup_point: terms.pickupPoint,
+            },
+          ],
+        );
+        assert.equal(rows[0].ok, true, body);
+      }
+    }
+  } finally {
+    await db.close();
+  }
 });

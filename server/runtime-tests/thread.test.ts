@@ -6,6 +6,7 @@ import {
   createThreadAgent,
   validateThreadTurnRequest,
 } from "../thread-agent.ts";
+import { dealPhase } from "../../shared/deal.ts";
 import type { ThreadTurnRequest } from "../../shared/threadTurn.ts";
 
 // Wednesday 18 November 2026, 12:00 in Zurich.
@@ -236,15 +237,29 @@ test("acceptance is complete only with a price, a concrete future time and a mee
     },
     options: [
       {
-        label: "Ask about the meeting",
+        label: "Accept CHF 40",
         kind: "accept",
-        message: "Anything else I should bring?",
+        message: "Deal! See you Thursday at 18:00.",
       },
     ],
   };
   const first = agentReading(t, complete);
-  const agreed = await first.agent.turn(
-    acceptance(`Deal! CHF 40, Thursday at 18:00 at the ${vortex} works.`),
+  const thread = acceptance(
+    `Deal! CHF 40, Thursday at 18:00 at the ${vortex} works.`,
+  );
+  const agreed = await first.agent.turn(thread);
+  assert.deepEqual(agreed.options, []);
+  assert.equal(first.model.doStreamCalls.length, 1);
+  assert.equal(
+    dealPhase({
+      deal: null,
+      listing: request.listing,
+      role: thread.role,
+      messages: thread.messages,
+      turn: agreed,
+      now: now(),
+    }),
+    "looks_agreed",
   );
   assert.deepEqual(agreed.agreement, { status: "complete", missing: [] });
   assert.equal(agreed.pickupAt, "2026-11-19T17:00:00.000Z");
@@ -255,22 +270,37 @@ test("acceptance is complete only with a price, a concrete future time and a mee
       amount: complete.facts.amount,
       pickupTime: complete.facts.pickupTime,
     },
-    options: [
-      {
-        label: "Ask where on Thursday",
-        kind: "ask",
-        message: "Great! Where should we meet on Thursday?",
-      },
-    ],
+    options: [],
   };
-  const second = agentReading(t, withoutPlace);
+  const listingPlace = {
+    ...withoutPlace,
+    facts: {
+      ...withoutPlace.facts,
+      pickupPoint: { value: vortex, quote: vortex, from: "listing" },
+    },
+  };
+  const second = agentReading(t, listingPlace, withoutPlace);
   const partial = await second.agent.turn(
     acceptance("CHF 40 on Thursday at 18:00!"),
   );
+  assert.deepEqual(partial.options, []);
+  assert.equal(second.model.doStreamCalls.length, 2);
+  assert.match(promptOf(second.model, 1), /Omit listing-only details/);
   assert.deepEqual(partial.agreement, {
     status: "partial",
     missing: ["pickupPoint"],
   });
+});
+
+test("an empty option list for a counter still needs repair", async (t) => {
+  const { agent, model } = agentReading(
+    t,
+    reading({ options: [] }),
+    counterReading,
+  );
+  const turn = await agent.turn(request);
+  assert.equal(model.doStreamCalls.length, 2);
+  assert.equal(turn.options.length, 3);
 });
 
 test("a free listing has no amount to propose", async (t) => {

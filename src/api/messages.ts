@@ -1,25 +1,34 @@
 import type { DealAction, DealRole } from "../../shared/deal";
 import type { Product } from "../../shared/marketplace";
 import type { SellerConversation } from "../../shared/messages";
-import { randomUuid } from "../randomUuid";
+import { randomUuid } from "../randomUuid.ts";
+
+const workspaceKey = "takeover-message-workspace";
+
+export function resetMessageWorkspace(): void {
+  localStorage.removeItem(workspaceKey);
+}
+
 function workspace() {
-  const key = "takeover-message-workspace";
-  let id = localStorage.getItem(key);
+  let id = localStorage.getItem(workspaceKey);
   if (!id) {
     id = randomUuid();
-    localStorage.setItem(key, id);
+    localStorage.setItem(workspaceKey, id);
   }
   return id;
 }
 async function request(init?: RequestInit, path = "/api/messages") {
+  const workspaceId = workspace();
   const response = await fetch(path, {
     ...init,
     headers: {
       "Content-Type": "application/json",
-      "X-Message-Workspace": workspace(),
+      "X-Message-Workspace": workspaceId,
     },
   });
   const body = await response.json();
+  if (workspaceId !== localStorage.getItem(workspaceKey))
+    throw new Error("The demo workspace changed. Reopen the conversation to continue.");
   if (!response.ok)
     throw Object.assign(
       new Error(body.error?.message ?? "Messages are unavailable. Please try again."),
