@@ -57,11 +57,14 @@ export default function OnboardingInvite({
               Pako shows you how it works. It takes about a minute.
             </p>
             <div className="ob-invite-actions">
-              <Button className="ob-button" onClick={() => setChoice("start")}>
+              <Button
+                className="button primary large"
+                onClick={() => setChoice("start")}
+              >
                 Show me
               </Button>
               <Button
-                className="ob-button quiet"
+                className="button quiet large"
                 onClick={() => setChoice("dismiss")}
               >
                 Not now

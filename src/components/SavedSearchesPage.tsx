@@ -1,6 +1,8 @@
 import { Button } from "./ui/button";
-import { ArrowRight, Bookmark, Pencil, Search, Trash2 } from "@/components/icons";
+import { ArrowRight, Pencil, Search, Trash2 } from "@/components/icons";
 import { searchText, type SavedSearch } from "../searchRequest";
+import Pako from "./onboarding/Pako";
+import "./saved-searches.css";
 
 type SavedSearchesPageProps = {
   searches: SavedSearch[];
@@ -68,10 +70,10 @@ export default function SavedSearchesPage({
           ))}
         </div>
       ) : (
-        <div className="empty-state">
-          <Bookmark size={28} />
+        <div className="saved-searches-empty">
+          <Pako mood="idle" size={80} />
           <h2>No saved searches yet</h2>
-          <p>Start with what you need, then save your search.</p>
+          <p>Tell Pako what you need, then save the search to run it again.</p>
           <Button animateIcon className="button primary" onClick={onFind}>
             Find furniture
           </Button>

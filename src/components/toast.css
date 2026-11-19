@@ -1,0 +1,72 @@
+/* Confirmations rise above the page as a tactile card; only their controls take taps. */
+.toast {
+  position: fixed;
+  right: 0;
+  bottom: 28px;
+  left: 0;
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  max-width: min(560px, calc(100vw - 24px));
+  margin-inline: auto;
+  padding: 8px 8px 8px 10px;
+  border: 2px solid var(--card-line);
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--type-label);
+  font-weight: 600;
+  line-height: 1.4;
+  box-shadow:
+    0 4px 0 var(--lip),
+    0 18px 36px -14px rgb(41 41 41 / 0.28);
+  pointer-events: none;
+}
+.toast button {
+  pointer-events: auto;
+}
+.toast-pako {
+  flex: none;
+  margin: -6px 0 -2px;
+}
+.toast-message {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.toast-action {
+  flex: none;
+  padding: 6px 8px;
+  border-radius: 10px;
+  color: var(--blue);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.toast-action:hover {
+  background: var(--selected);
+}
+.toast > .icon-button {
+  width: 32px;
+  height: 32px;
+  color: var(--muted);
+}
+.toast > .icon-button:hover {
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+/* While picked listings wait in the compare tray, notes rise above it. */
+body:has(.compare-tray) .toast {
+  bottom: 96px;
+}
+
+@media (max-width: 760px) {
+  .toast {
+    bottom: calc(var(--mobile-nav-height) + 16px);
+  }
+  body:has(.compare-tray) .toast {
+    bottom: calc(var(--mobile-nav-height) + 84px);
+  }
+}

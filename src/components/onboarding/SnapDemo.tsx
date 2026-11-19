@@ -288,7 +288,7 @@ function PublishControl({
   return (
     <Button
       ref={publishRef}
-      className={`ob-button ob-snap-publish${ready ? " ob-tap-hint" : ""}`}
+      className={`button primary large ob-snap-publish${ready ? " ob-tap-hint" : ""}`}
       disabled={!ready}
       onClick={onPublish}
     >

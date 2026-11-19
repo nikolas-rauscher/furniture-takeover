@@ -52,9 +52,8 @@ import {
   ArrowRight,
   Bookmark,
   Camera,
-  Check,
   ChevronDown,
-  GitCompareArrows,
+  MapPin,
   Plus,
   Search,
   SquarePen,
@@ -62,6 +61,9 @@ import {
   X,
 } from "@/components/icons";
 import MobileNav, { type MobileDestination } from "./MobileNav";
+import HeaderNav, { headerDestination } from "./components/HeaderNav";
+import CompareTray from "./components/CompareTray";
+import Toast from "./components/Toast";
 import Modal from "./components/Modal";
 import ProductCard from "./components/ProductCard";
 import SearchPreferencesFields from "./components/SearchPreferencesFields";
@@ -118,6 +120,7 @@ import Onboarding, {
   type OnboardingOutcome,
 } from "./components/onboarding/Onboarding";
 import OnboardingInvite from "./components/onboarding/OnboardingInvite";
+import Pako from "./components/onboarding/Pako";
 import {
   firstVisitMode,
   readOnboarding,
@@ -312,6 +315,21 @@ export default function App({
   const toast = toastNotice?.message || "";
   function setToast(message: string) {
     setToastNotice(message ? { message } : null);
+  }
+  /** Puts the saved search the toast reports as deleted back in its place. */
+  function undoSearchDeletion() {
+    const deleted = toastNotice?.deletedSearch;
+    if (!deleted) throw new Error("No deleted saved search to restore.");
+    setJobs((current) => {
+      if (current.some((job) => job.id === deleted.job.id)) return current;
+      const index = Math.max(0, Math.min(deleted.index, current.length));
+      return [
+        ...current.slice(0, index),
+        deleted.job,
+        ...current.slice(index),
+      ];
+    });
+    setToast("Saved search restored.");
   }
   const listingRequest = useRef<AbortController | null>(null);
   const imageReader = useRef<AbortController | null>(null);
@@ -1565,45 +1583,19 @@ export default function App({
         >
           takeover
         </a>
-        <nav aria-label="Main navigation">
-          <Button
-            className={
-              view === "discover" || view === "detail" || view === "compare"
-                ? "active"
-                : ""
-            }
-            onClick={() => openDestination("browse")}
-          >
-            Find
-          </Button>
-          <Button
-            className={view === "searches" ? "active" : ""}
-            onClick={() => openDestination("searches")}
-          >
-            Saved searches
-            <span className="nav-count">{savedSearches.length}</span>
-          </Button>
-          <Button
-            className={view === "messages" ? "active" : ""}
-            onClick={() => openDestination("messages")}
-          >
-            Messages
-          </Button>
-          <Button
-            className={view === "account" ? "active" : ""}
-            onClick={() => openDestination("account")}
-          >
-            My listings
-          </Button>
-        </nav>
+        <HeaderNav
+          active={headerDestination(currentDestination)}
+          savedSearches={savedSearches.length}
+          onNavigate={openDestination}
+        />
         <div className="header-actions">
           <Button
             animateIcon
             className="button primary sell-nav"
             onClick={() => openDestination("sell")}
           >
-            <Plus size={17} />
-            Sell furniture
+            <Plus size={17} aria-hidden="true" />
+            <span className="sell-nav-label">Sell furniture</span>
           </Button>
           <Button
             className={`icon-button${view === "settings" ? " active" : ""}`}
@@ -1770,10 +1762,22 @@ export default function App({
                       </Button>
                     </div>
                     <HeroHeadline compact={false} />
-                    <p>
-                      Describe what you need. Your agent searches around{" "}
-                      {location}.
-                    </p>
+                    <div className="agent-hero-guide">
+                      <Pako
+                        className="agent-hero-pako"
+                        mood={
+                          searchAssist.status === "loading"
+                            ? "work"
+                            : hasSearchDraft
+                              ? "happy"
+                              : "wave"
+                        }
+                        size={64}
+                      />
+                      <p className="ob-bubble agent-hero-bubble">
+                        Tell me what you need. I'll search around {location}.
+                      </p>
+                    </div>
                     <PageTransitionShared name="agent-composer">
                       <form
                         className="agent-search"
@@ -1814,8 +1818,9 @@ export default function App({
                               setModal("location");
                             }}
                           >
-                            {location}
-                            <ChevronDown size={13} />
+                            <MapPin size={15} aria-hidden="true" />
+                            <span>{location}</span>
+                            <ChevronDown size={13} aria-hidden="true" />
                           </Button>
                           <Button
                             animateIcon
@@ -1838,6 +1843,23 @@ export default function App({
                         startSearchFromHome(suggestion);
                       }}
                     />
+                    <div className="home-sell-card">
+                      <span className="home-sell-icon" aria-hidden="true">
+                        <Camera size={22} />
+                      </span>
+                      <div>
+                        <h2>Moving out? Just take photos.</h2>
+                        <p>Pako writes the listing, you tap Publish.</p>
+                      </div>
+                      <Button
+                        animateIcon
+                        className="button quiet"
+                        onClick={startSell}
+                      >
+                        Sell from a photo
+                        <ArrowRight size={16} />
+                      </Button>
+                    </div>
                   </section>
                 ) : (
                   <>
@@ -2082,13 +2104,15 @@ export default function App({
                         </span>
                       </div>
                       <Button
-                        className="browse-filter"
+                        animateIcon
+                        className="button quiet"
                         onClick={() => {
                           setAccountTab("listings");
                           navigate("account");
                         }}
                       >
                         Manage listings
+                        <ArrowRight size={16} />
                       </Button>
                     </div>
                     <div className="product-grid">
@@ -2097,17 +2121,15 @@ export default function App({
                   </>
                 )}
                 {searchIsHome && !visibleListings.length && (
-                  <div className="section-heading">
+                  <div className="home-empty">
+                    <Pako mood="idle" size={72} />
                     <div>
-                      <h2>Something to sell?</h2>
-                      <span>
-                        Upload a photo. Your agent prepares the listing.
-                      </span>
+                      <h2>Nothing listed nearby yet</h2>
+                      <p>
+                        Ask me above and I'll check other second-hand sites
+                        too. Or be the first: list something with a photo.
+                      </p>
                     </div>
-                    <Button className="button secondary" onClick={startSell}>
-                      Create a listing
-                      <ArrowRight size={16} />
-                    </Button>
                   </div>
                 )}
               </>
@@ -2294,82 +2316,29 @@ export default function App({
         pageKey={pageKey}
         onNavigate={openDestination}
       />
-      {comparison.length > 0 &&
-        !modal &&
-        (view === "account" || view === "detail" || isHome) && (
-          <div className="compare-tray">
-            <span>
-              <GitCompareArrows size={18} />
-              <strong>{comparison.length}</strong> selected
-            </span>
-            <Button
-              animateIcon
-              className="button primary small"
-              disabled={comparison.length < 2}
-              title={
-                comparison.length < 2
-                  ? "Select one more listing to compare"
-                  : undefined
+      <CompareTray
+        count={comparison.length}
+        visible={
+          comparison.length > 0 &&
+          !modal &&
+          (view === "account" || view === "detail" || isHome)
+        }
+        onCompare={openComparison}
+        onClear={() => setCompared([])}
+      />
+      <Toast
+        message={toast}
+        action={
+          toastNotice?.deletedSearch
+            ? {
+                label: "Undo",
+                description: "Undo saved search deletion",
+                onClick: undoSearchDeletion,
               }
-              onClick={openComparison}
-            >
-              Compare
-              <ArrowRight size={14} />
-            </Button>
-            <Button
-              className="icon-button"
-              aria-label="Clear comparison"
-              onClick={() => setCompared([])}
-            >
-              <X size={16} />
-            </Button>
-          </div>
-        )}
-      {toast && (
-        <div className="toast" role="status">
-          <Check size={18} />
-          {toast}
-          {toastNotice?.deletedSearch && (
-            <Button
-              className="text-button"
-              style={{
-                pointerEvents: "auto",
-                color: "inherit",
-                textDecoration: "underline",
-                whiteSpace: "nowrap",
-              }}
-              aria-label="Undo saved search deletion"
-              onClick={() => {
-                const deleted = toastNotice.deletedSearch;
-                if (!deleted) return;
-                setJobs((current) => {
-                  if (current.some((job) => job.id === deleted.job.id))
-                    return current;
-                  const index = Math.max(
-                    0,
-                    Math.min(deleted.index, current.length),
-                  );
-                  return [
-                    ...current.slice(0, index),
-                    deleted.job,
-                    ...current.slice(index),
-                  ];
-                });
-                setToast("Saved search restored.");
-              }}
-            >
-              Undo
-            </Button>
-          )}
-          <Button
-            className="icon-button"
-            aria-label="Dismiss notification"
-            onClick={() => setToast("")}
-          >
-            <X size={14} />
-          </Button>
-        </div>
-      )}
+            : undefined
+        }
+        onDismiss={() => setToast("")}
+      />
 
       {modal === "filters" && (
         <Modal title="Search preferences" onClose={() => setModal(null)}>

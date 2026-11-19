@@ -4,42 +4,36 @@
   width: 100%;
   min-width: 0;
   max-width: 100%;
+  /* Room so focus rings and the press stay inside the scrolling row. */
+  padding: 2px 0 4px;
 }
+/* Suggestions are pills the visitor taps to search right away. */
 .ai-suggestions > .ai-suggestion[data-slot="button"] {
   flex: 0 0 auto;
   width: auto;
   max-width: none;
-  min-height: var(--control-size);
-  padding: 8px 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
+  min-height: 40px;
+  padding: 7px 15px;
+  border-radius: 999px;
   color: var(--blue);
   font-size: var(--type-label);
-  line-height: 1.5;
+  font-weight: 650;
+  line-height: 1.4;
   white-space: nowrap;
   text-align: left;
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease;
+  /* Suggestions stay light: an outline pill without the lip of main actions. */
+  box-shadow: none;
 }
-.ai-suggestions > .ai-suggestion:hover:not(:disabled) {
-  border-color: var(--blue);
-  background: var(--mist);
-  text-decoration: none;
+.ai-suggestions > .ai-suggestion:not(:disabled):active {
+  transform: none;
+  scale: 0.97;
 }
 .ai-suggestions > .ai-suggestion:focus-visible {
   outline: 2px solid var(--focus-ring);
-  outline-offset: -2px;
-  box-shadow: none;
+  outline-offset: -4px;
 }
 @supports not (animation-timeline: scroll()) {
   .ai-suggestions {
     mask-image: none;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .ai-suggestion {
-    transition: none;
   }
 }

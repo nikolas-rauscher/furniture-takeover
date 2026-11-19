@@ -1,8 +1,13 @@
 import { Button } from "./ui/button";
 import { listingPhotos } from "../../shared/listingPhotos";
-import { GitCompareArrows, Image as ImageIcon } from "@/components/icons";
+import {
+  GitCompareArrows,
+  Image as ImageIcon,
+  MapPin,
+} from "@/components/icons";
 import SaveToggle from "./SaveToggle";
 import { TODAY, money, type Product } from "../../shared/marketplace";
+import "./product-card.css";
 
 type ProductCardProps = {
   product: Product;
@@ -13,6 +18,13 @@ type ProductCardProps = {
   onToggleFavorite: () => void;
   onToggleCompare: () => void;
 };
+
+/** A sticker on the photo tells what matters before the details: sold, reserved or free. */
+function productSticker(product: Product) {
+  if (product.status === "sold") return "Sold";
+  if (product.status === "reserved") return "Reserved";
+  return product.price === 0 ? "Free" : "";
+}
 
 export default function ProductCard({
   product,
@@ -30,13 +42,13 @@ export default function ProductCard({
         ? itemTags
         : [
             product.condition,
-            product.price === 0 ? "Free" : "",
             product.dimensions.length <= 32 ? product.dimensions : "",
           ],
     ),
   ]
     .filter((tag) => Boolean(tag) && tag !== "Not specified")
     .slice(0, 3);
+  const sticker = productSticker(product);
   return (
     <article className="product-card">
       <div className="product-photo">
@@ -68,7 +80,11 @@ export default function ProductCard({
             {listingPhotos(product).length} photos
           </span>
         )}
-        {product.status === "sold" && <span className="sold-label">Sold</span>}
+        {sticker && (
+          <span className="product-sticker" data-tone={sticker.toLowerCase()}>
+            {sticker}
+          </span>
+        )}
       </div>
       <div className="product-info">
         <div className="product-tags" aria-label="Listing details">
@@ -76,31 +92,15 @@ export default function ProductCard({
             <span key={tag}>{tag}</span>
           ))}
         </div>
-        <div className="product-title-row">
-          <Button
-            className="text-button product-title"
-            type="button"
-            onClick={onOpen}
-          >
-            {product.title}
-          </Button>
+        <Button
+          className="text-button product-title"
+          type="button"
+          onClick={onOpen}
+        >
+          {product.title}
+        </Button>
+        <div className="product-price-row">
           <strong>{money(product.price)}</strong>
-        </div>
-        <p className="product-location">
-          {product.location}
-          <span>Distance unverified</span>
-        </p>
-        {product.pickupPoint && (
-          <p className="product-pickup-address">
-            {product.pickupPoint.address}
-          </p>
-        )}
-        <div className="product-bottom">
-          <span
-            className={`pickup ${product.pickupBy === TODAY ? "today" : ""}`}
-          >
-            {product.available}
-          </span>
           <Button
             className={`compare-button ${compared ? "selected" : ""}`}
             type="button"
@@ -108,9 +108,22 @@ export default function ProductCard({
             aria-pressed={compared}
             onClick={onToggleCompare}
           >
-            <GitCompareArrows size={16} />
+            <GitCompareArrows size={16} aria-hidden="true" />
           </Button>
         </div>
+        <p className="product-location">
+          <MapPin size={14} aria-hidden="true" />
+          <span>{product.location}</span>
+        </p>
+        <p className="product-distance">Distance unverified</p>
+        {product.pickupPoint && (
+          <p className="product-pickup-address">
+            {product.pickupPoint.address}
+          </p>
+        )}
+        <p className={`pickup ${product.pickupBy === TODAY ? "today" : ""}`}>
+          {product.available}
+        </p>
       </div>
     </article>
   );

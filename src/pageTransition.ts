@@ -6,19 +6,16 @@ import {
 
 export type PageDirection = "nav-forward" | "nav-back";
 
-const desktop = window.matchMedia("(min-width: 761px)");
-
 /**
- * Phones push whole pages like a native app. On wide screens a full-width push
- * is too much movement, so pages glide a short distance and fade instead.
- * In development, `?transition=<effect>` swaps the effect to compare variants.
+ * Pages glide a short way and fade on the intro's spring, on phones and wide
+ * screens alike. In development, `?transition=<effect>` swaps the effect to
+ * compare variants.
  */
 function defaultEffect(): PageTransitionEffect {
   const requested = new URLSearchParams(window.location.search).get(
     "transition",
   );
-  if (!import.meta.env.DEV || requested === null)
-    return desktop.matches ? "slide" : "push";
+  if (!import.meta.env.DEV || requested === null) return "slide";
   if (!isPageTransitionEffect(requested))
     throw new Error(`Unknown page transition "${requested}".`);
   return requested;

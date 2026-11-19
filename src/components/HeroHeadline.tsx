@@ -1,7 +1,7 @@
 const headlines = [
   "Find your next thing.",
   "A new home for good things.",
-  "Tell us what you need.",
+  "From one student room to the next.",
   "Less searching. More finding.",
   "Your next find starts here.",
   "Good things deserve a second home.",

@@ -201,11 +201,11 @@ function StepFooter({
   if (step === "welcome")
     return (
       <>
-        <Button className="ob-button" onClick={onNext}>
+        <Button className="button primary large" onClick={onNext}>
           Get started
         </Button>
         <Button
-          className="ob-button quiet"
+          className="button quiet large"
           onClick={() =>
             onFinish(accountAction ? { next: "sign-in" } : { next: "dismiss" })
           }
@@ -219,11 +219,14 @@ function StepFooter({
     const action = finalAction(complete, accountAction);
     return (
       <>
-        <Button className="ob-button" onClick={() => onFinish(action.outcome)}>
+        <Button
+          className="button primary large"
+          onClick={() => onFinish(action.outcome)}
+        >
           {action.label}
         </Button>
         <Button
-          className="ob-button quiet"
+          className="button quiet large"
           onClick={() => onFinish(exploreOutcome(complete))}
         >
           Look around first
@@ -232,7 +235,7 @@ function StepFooter({
     );
   }
   return (
-    <Button className="ob-button" disabled={!ready} onClick={onNext}>
+    <Button className="button primary large" disabled={!ready} onClick={onNext}>
       Continue
     </Button>
   );

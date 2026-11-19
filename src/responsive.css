@@ -3,8 +3,7 @@
 .app-layout,
 .main-content,
 .title-with-action > div,
-.own-listing > div,
-.job-main {
+.own-listing > div {
   min-width: 0;
 }
 
@@ -46,14 +45,14 @@
      goes with page length would shift the centred tab bar sideways on every tab switch. */
   html {
     scrollbar-width: thin;
-    scrollbar-color: #c7cbd3 transparent;
+    scrollbar-color: var(--lip) transparent;
   }
   html::-webkit-scrollbar {
     width: 5px;
   }
   html::-webkit-scrollbar-thumb {
     border-radius: 4px;
-    background: #c7cbd3;
+    background: var(--lip);
   }
   .app-header .icon-button {
     width: 44px;
@@ -107,7 +106,6 @@
   .title-with-action,
   .section-heading,
   .results-controls,
-  .job-actions,
   .modal-actions {
     flex-wrap: wrap;
   }
@@ -136,18 +134,8 @@
   .own-listing h2 {
     font-size: var(--type-item);
   }
-  .product-grid {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
-  }
-  .listing-actions :is(.text-button, .button),
-  .job-actions > button {
+  .listing-actions :is(.text-button, .button) {
     min-height: 44px;
-  }
-  .compare-tray {
-    bottom: calc(var(--mobile-nav-height) + 12px);
-    max-width: calc(100% - 24px);
-    gap: 8px;
-    flex-wrap: wrap;
   }
   body:has(.compare-tray)
     .app-layout:not(
@@ -158,11 +146,6 @@
     )
     > .main-content {
     padding-bottom: calc(var(--mobile-nav-height) + 104px);
-  }
-  .toast {
-    bottom: calc(var(--mobile-nav-height) + 16px);
-    max-width: calc(100% - 24px);
-    overflow-wrap: anywhere;
   }
   .modal-backdrop {
     padding: 12px;
@@ -236,7 +219,7 @@
   }
   :root[data-compact-viewport]
     .messages-page.has-conversation
-    > :is(.page-title, .account-inbox-notice),
+    > :is(.page-title, .quiet-caption),
   :root[data-compact-viewport] .chat-layout .search-title,
   :root[data-compact-viewport] .chat-layout .results-controls,
   :root[data-compact-viewport] .selling-chat-layout .listing-preview,
@@ -287,63 +270,4 @@
 }
 
 /* Two-column phone grid: every card has the same rhythm, so neighbours line up row by row. */
-@media (max-width: 760px) {
-  .product-grid .product-card {
-    display: flex;
-    flex-direction: column;
-  }
-  .product-grid .product-photo {
-    aspect-ratio: 1;
-    border-radius: 6px;
-    overflow: hidden;
-  }
-  .product-grid .favorite-button {
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    background: rgb(255 255 255 / 0.88);
-    box-shadow: 0 1px 4px rgb(0 0 0 / 0.12);
-  }
-  .product-grid .product-info {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    padding-top: 10px;
-  }
-  .product-grid .product-tags {
-    flex-wrap: nowrap;
-    overflow: hidden;
-    margin-bottom: 6px;
-  }
-  .product-grid .product-tags > span:nth-child(n + 2),
-  .product-grid .product-location > span,
-  .product-grid .product-pickup-address {
-    display: none;
-  }
-  .product-grid .product-title-row {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-  }
-  .product-grid .product-title {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    overflow: hidden;
-    min-height: calc(2lh);
-    line-height: 1.4;
-    text-align: left;
-  }
-  .product-grid .product-location {
-    margin-top: 6px;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-  .product-grid .product-bottom {
-    margin-top: auto;
-    align-items: center;
-  }
-}
+
