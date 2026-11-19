@@ -759,3 +759,65 @@ test("explicit answered-question history remains usable as seller evidence", () 
   // The full unchanged narrative still needs its own evidence quote.
   assert.equal(result.patch.description, "Lamp.\nShipping possible");
 });
+
+test("a seller's answer reaches the description restated with words of Pako's question", () => {
+  const draft = { title: "MacBook Pro", description: "Two small scratches on the lid." };
+  const answer = (description: string, quote = "512 GB") =>
+    listingAction(
+      {
+        patch: { description },
+        reason: "Record the seller's answer.",
+        evidence: [
+          { kind: "seller", quote: draft.description },
+          { kind: "seller", quote },
+        ],
+      },
+      request("512 GB", draft, "How much storage does it have?"),
+      [],
+      new Set(),
+      "storage",
+    );
+  for (const line of ["Storage: 512 GB.", "512 GB storage."])
+    assert.equal(
+      answer(`${draft.description}\n${line}`).patch.description,
+      `${draft.description}\n${line}`,
+    );
+  for (const invented of [
+    "Storage: 1 TB.",
+    "Fast storage: 512 GB.",
+    "Battery: 512 GB.",
+    "Storage: 512 GB SSD.",
+  ])
+    assert.throws(
+      () => answer(`${draft.description}\n${invented}`),
+      /ACTION_REJECTED/,
+    );
+  const later = request("Polish the description", draft);
+  later.context!.answeredQuestions = [
+    { question: "How much storage does it have?", answer: "512 GB" },
+    { question: "Which chip is it?", answer: "Skipped" },
+  ];
+  const polished = (description: string) =>
+    listingAction(
+      {
+        patch: { description },
+        reason: "Polish with the answers so far.",
+        evidence: [
+          { kind: "seller", quote: draft.description },
+          { kind: "seller", quote: "512 GB" },
+        ],
+      },
+      later,
+      [],
+      new Set(),
+      "polish",
+    );
+  assert.equal(
+    polished(`${draft.description} Storage: 512 GB.`).patch.description,
+    `${draft.description} Storage: 512 GB.`,
+  );
+  assert.throws(
+    () => polished(`${draft.description} Chip: Skipped.`),
+    /ACTION_REJECTED/,
+  );
+});
