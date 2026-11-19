@@ -279,3 +279,26 @@ test("the closer reply filters browser and database inventory before the result 
   assert.deepEqual(request.inventory?.map(({ id }) => id), ["boundary"]);
   assert.deepEqual(listingInventory(inventory, request.context), request.inventory);
 });
+
+test("buyer constraints survive the header, request and radius-only follow-up", () => {
+  const desk = newSearch("Find all local Takeover study desks under CHF 80 around EPFL, within 10 km. Use Takeover only. Show all matches.", defaults, "Lausanne");
+  const piano = newSearch("Find a free antique concert grand piano within 1 km of EPFL, Takeover only. Please run the search now without asking questions.", defaults, "Lausanne");
+  const wider = newSearch("Search within 2 km", piano.criteria, "EPFL", piano);
+  for (const [search, query, maxPrice, radius] of [
+    [desk, "study desks", 80, 10],
+    [piano, "antique concert grand piano", 0, 1],
+    [wider, "antique concert grand piano", 0, 2],
+  ] as const) {
+    assert.equal(search.criteria.source, "takeover");
+    assert.equal(search.criteria.maxPrice, maxPrice);
+    const { context } = agentSearchRequest(search, []);
+    assert.equal(context?.location, "EPFL");
+    assert.equal(context?.currentQuery, query);
+    assert.equal(context?.maxPrice, maxPrice);
+    assert.equal(context?.source, "takeover");
+    assert.equal(context?.radius, radius);
+    assert.equal(context?.budgetSpecified, true);
+  }
+  const unspecified = newSearch("desk with free delivery", defaults, "EPFL");
+  assert.equal(agentSearchRequest(unspecified, []).context?.maxPrice, undefined);
+});

@@ -22,7 +22,7 @@ const now = new Date("2026-10-20T10:00:00Z");
 const desk = products.find((item) => item.id === "desk")!;
 const job = {
   id: "job",
-  criteria: { ...defaults, query: "desk" },
+  criteria: { ...defaults, query: "desk", maxPrice: 500 },
   paused: false,
 };
 const listing = (id: string, changes: Partial<Product> = {}): Product => ({

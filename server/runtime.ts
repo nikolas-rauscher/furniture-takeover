@@ -10,7 +10,7 @@ import { buyerWorkflowTools, webEvidenceSkill } from "./agent-skills.ts";
 import { englishListingText, type ListingText } from "./listing-language.ts";
 import { answeredQuestions, isSkippedAnswer } from "./conversation.ts";
 import { listingInventory } from "../shared/listingInventory.ts";
-import type { Product } from "../shared/marketplace.ts";
+import { extractSearchConstraints, parseSearch, takeoverOnlyPattern, type Product } from "../shared/marketplace.ts";
 import { negotiationSchema } from "../shared/negotiation.ts";
 import { createNegotiationTools } from "./negotiation-tools.ts";
 import { buildAgentInstructions } from "./agent-instructions.ts";
@@ -403,6 +403,16 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
         const negotiationMode =
           request.context?.intent === "negotiation" ||
           Boolean(request.context?.negotiation);
+        const constraints = extractSearchConstraints(request.text);
+        if (!listingMode && !negotiationMode) {
+          request.context ??= {};
+          if (constraints.maxPrice !== undefined) {
+            request.context.maxPrice = constraints.maxPrice;
+            if (request.context.budgetSpecified === false) request.context.budgetSpecified = true;
+          }
+          if (constraints.radius !== undefined) request.context.radius = constraints.radius;
+          if (takeoverOnlyPattern.test(request.text)) request.context.source = "takeover";
+        }
         const ownOnly = request.context?.source?.toLowerCase() === "takeover";
         const state: AgentToolState = {
           firstDraft: listingAssist && !request.context?.skippedQuestions?.length && request.context?.currentDraft?.price === null &&
@@ -578,8 +588,8 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
                     !negotiationMode &&
                     !negotiations.getCurrent() &&
                     !state.inventorySearched &&
-                    !request.context?.previousAnswer &&
-                    !request.context?.recentMessages?.length &&
+                    (constraints.radius !== undefined ||
+                      (!request.context?.previousAnswer && !request.context?.recentMessages?.length)) &&
                     request.context?.budgetSpecified !== undefined &&
                     !state.pendingQuestion
                   ? "inventory_search"
@@ -842,16 +852,27 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
           state.pendingQuestion = askingPriceQuestion(`${runId}-price`, state.proposedPrice);
           await send(state.pendingQuestion);
         }
+        const completeSearch = async (text: string) => {
+          if (!listingMode && !negotiationMode && !negotiations.getCurrent() &&
+              !state.displayedInventoryIds.length &&
+              (state.inventoryCurated || state.webSearched || state.watchQuery)) {
+            const query = request.context?.currentQuery?.trim() || state.watchQuery ||
+              parseSearch(request.context?.originalRequest || request.text).query;
+            const price = request.context?.maxPrice;
+            if (query) await send({
+              type: "watch_suggestion",
+              query: query.slice(0, 120),
+              ...(price !== undefined && price < 1_000_000 && request.context?.budgetSpecified !== false
+                ? { maxPrice: price } : {}),
+            });
+          }
+          await send({ type: "complete", text, sources: [...sources], runId });
+        };
         if (state.pendingQuestion) {
           await streamPublicText("", true);
           const rationale = state.priceReason && !publicText.includes(state.priceReason)
             ? state.priceReason : "";
-          await send({
-            type: "complete",
-            text: [publicText.trim(), rationale].filter(Boolean).join("\n\n") || state.pendingQuestion.question,
-            sources: [...sources],
-            runId,
-          });
+          await completeSearch([publicText.trim(), rationale].filter(Boolean).join("\n\n") || state.pendingQuestion.question);
           return;
         }
         const text = cleanReferences(await result.text).trim();
@@ -867,7 +888,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
             "The agent did not finish its answer. Please try again.",
           );
         await streamPublicText("", true);
-        await send({ type: "complete", text, sources: [...sources], runId });
+        await completeSearch(text);
       } catch (error) {
         const providerError =
           error && typeof error === "object"
