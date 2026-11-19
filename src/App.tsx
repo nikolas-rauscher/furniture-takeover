@@ -409,6 +409,8 @@ export default function App({
     results: ("saved" | "skipped")[];
     /** The listings this batch has saved so far, celebrated together at the end. */
     savedIds: string[];
+    /** Pako's line about the listing just finished, which the batch tray shows. */
+    note?: string;
   } | null>(null);
   const [editingListing, setEditingListing] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState("");
@@ -1583,18 +1585,15 @@ export default function App({
     const index = batchQueue.index + 1;
     const total = batchQueue.drafts.length;
     if (index < total) {
-      setBatchQueue({ ...batchQueue, index, results, savedIds });
-      openBatchItem(batchQueue.drafts[index]);
-      setToastNotice({
-        message: batchStepNote({
-          outcome: result,
-          title: saved?.title ?? draftRef.current.title,
-          next: index + 1,
-          total,
-          cloud: Boolean(account),
-        }),
-        mood: result === "saved" ? "happy" : "idle",
+      const note = batchStepNote({
+        outcome: result,
+        title: saved?.title ?? draftRef.current.title,
+        next: index + 1,
+        total,
+        cloud: Boolean(account),
       });
+      setBatchQueue({ ...batchQueue, index, results, savedIds, note });
+      openBatchItem(batchQueue.drafts[index]);
       return;
     }
     setBatchQueue(null);
@@ -1752,6 +1751,7 @@ export default function App({
           index: batchQueue.index,
           covers: batchQueue.drafts.map((item) => item.image),
           results: batchQueue.results,
+          note: batchQueue.note,
           onSkip: () => finishBatchItem("skipped"),
         }
       : undefined;

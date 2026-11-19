@@ -64,8 +64,8 @@
   gap: var(--space-group);
 }
 .batch-items {
-  display: grid;
-  gap: 14px;
+  display: flex;
+  flex-direction: column;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -79,12 +79,21 @@
   background: var(--surface);
   box-shadow: 0 4px 0 var(--lip);
 }
+/* A pile folding away clips what it still holds. */
+.batch-item[data-folding] {
+  overflow: hidden;
+}
 .batch-item h2 {
   font-size: var(--type-item);
   font-weight: 700;
 }
 .batch-item-title {
   margin: 0;
+}
+.batch-item-title-label {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 .batch-item-photos {
   grid-template-columns: repeat(auto-fill, minmax(128px, 148px));

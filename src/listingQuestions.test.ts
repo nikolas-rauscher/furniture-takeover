@@ -314,6 +314,14 @@ test("Pako asks for pickup times once, unless the listing already says how it is
   assert.equal(isPickupQuestion(handover), true);
   assert.equal(isPickupQuestion({ question: "Is shipping possible?" }), true);
   assert.equal(isPickupQuestion(factQuestion), false);
+  assert.equal(
+    isPickupQuestion({
+      ...priceQuestion,
+      question: "What price? Desks for pickup near Lausanne go for CHF 20–50.",
+    }),
+    false,
+    "a price question that names pickup still asks for the price",
+  );
 });
 
 test("Pako's pickup question comes first while he researches, and the run leaves pickup to him", () => {
@@ -350,6 +358,17 @@ test("Pako's pickup question comes first while he researches, and the run leaves
     questionQueue(fromRun, undefined).map((question) => question.id),
     ["ask-1", "ask-1:1", "ask-1:2"],
     "without his question the run may ask about pickup",
+  );
+  const priceNamingPickup = {
+    ...priceQuestion,
+    question: "What price? Desks for pickup near Lausanne go for CHF 20–50.",
+  };
+  assert.deepEqual(
+    questionQueue([priceNamingPickup], PICKUP_QUESTION).map(
+      (question) => question.id,
+    ),
+    ["pako-pickup", "ask-1"],
+    "his pickup question does not hide a price question that names pickup",
   );
 });
 

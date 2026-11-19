@@ -395,8 +395,8 @@ export function useListingConversation({
       value.includes(questionId) ? value : [...value, questionId],
     );
   }
-  /** The price question Pako still waits on, put off or not. */
-  const waitingPriceQuestion = run.state.questions.find(
+  /** The price question the tray still asks, put off or not. */
+  const waitingPriceQuestion = queue.find(
     (question) => asksPrice(question) && !run.state.answers[question.id],
   );
   /** Brings a price question that was put off back to the front of the tray. */

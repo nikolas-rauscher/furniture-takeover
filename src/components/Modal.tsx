@@ -29,6 +29,8 @@ type ModalProps = {
   open?: boolean;
   /** A line under the title. */
   description?: ReactNode;
+  /** The id of the field that takes focus when the dialog opens; the dialog itself by default. */
+  initialFocus?: string;
 };
 
 export default function Modal({
@@ -39,6 +41,7 @@ export default function Modal({
   sheet = false,
   open: openFromOutside = true,
   description,
+  initialFocus,
 }: ModalProps) {
   const [openHere, setOpenHere] = useState(true);
   const open = openFromOutside && openHere;
@@ -84,7 +87,9 @@ export default function Modal({
         className={wide ? "wide" : ""}
         sheet={sheet && phone}
         ref={observeDialog}
-        initialFocus={dialogRef}
+        initialFocus={
+          initialFocus ? () => document.getElementById(initialFocus) : dialogRef
+        }
         onKeyDown={wrapTabInDialog}
         onInputCapture={(event) => {
           if (

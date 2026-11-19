@@ -266,11 +266,16 @@ export function undatedPickup(description: string): string {
     : `${times.slice(0, MAX_PICKUP_LINE - 1).trimEnd()}…`;
 }
 
-/** A question about how or when buyers get the item. */
+/**
+ * A question about how or when buyers get the item. A price question stays one even
+ * when it names pickup on the way, as in "desks for pickup near Lausanne go for…".
+ */
 export const isPickupQuestion = (
-  question: Pick<AgentQuestionEvent, "listingField" | "question">,
+  question: Pick<AgentQuestionEvent, "listingField" | "question" | "input">,
 ) =>
-  question.listingField === "pickup" || HANDOVER_WORDS.test(question.question);
+  !asksPrice(question) &&
+  (question.listingField === "pickup" ||
+    HANDOVER_WORDS.test(question.question));
 
 /**
  * Pako asks for pickup times himself, once per listing, unless the listing

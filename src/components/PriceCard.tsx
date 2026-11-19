@@ -1,11 +1,12 @@
 import { useId, useState } from "react";
-import { ChevronDown, Minus, Plus } from "@/components/icons";
+import { Minus, Plus } from "@/components/icons";
 import { money } from "../../shared/marketplace";
 import type { AgentRunSource } from "../../shared/runs";
 import { niceStep, type PriceSuggestion } from "../listingQuestions";
 import { plainPrice, priceText } from "../priceText";
 import { answerParts } from "./AgentAnswerContent";
 import { plainAnswer } from "./agentAnswer";
+import Modal from "./Modal";
 import { Button } from "./ui/button";
 
 const MAX_PRICE = 10_000;
@@ -19,15 +20,25 @@ function typedPrice(text: string): number | undefined {
     : undefined;
 }
 
+const offersCompared = (count: number) =>
+  `${count} ${count === 1 ? "offer" : "offers"} compared`;
+
 /** Why Pako suggests no price, and what helps him find one. */
-function withoutSuggestion(offersCompared: number) {
+function withoutSuggestion(offerCount: number) {
   const compared =
-    offersCompared === 0
+    offerCount === 0
       ? ""
-      : offersCompared === 1
+      : offerCount === 1
         ? "The one offer I compared showed no clear asking price. "
-        : `None of the ${offersCompared} offers I compared showed a clear asking price. `;
+        : `None of the ${offerCount} offers I compared showed a clear asking price. `;
   return `${compared}Set your own, or add the brand, model or size and choose Suggest a price under Ask Pako.`;
+}
+
+/** The facts behind Pako's suggestion, in one line above the amount. */
+function suggestionFacts(suggested: number, offerCount: number) {
+  const facts = [`${money(suggested)} suggested`];
+  if (offerCount > 0) facts.push(offersCompared(offerCount));
+  return facts.join(" · ");
 }
 
 /** One stepper step up or down, landing on the step's grid: 43 goes to 45 or 40. */
@@ -41,9 +52,66 @@ function stepped(price: number, direction: 1 | -1) {
 }
 
 /**
- * Pako's price question as a card: his suggestion to take as it is, a stepper and
- * a field for another amount, giving it away, why he suggests it, and putting the
- * decision off until the other questions are answered.
+ * Pako's reasons for his price in a sheet, so the tray keeps its size: what he wrote
+ * about the price, why he suggests it and the offers he quotes, with a way to take it.
+ */
+function PriceReasons({
+  suggestion,
+  suggested,
+  reasoning,
+  sources,
+  disabled,
+  onUse,
+  onClose,
+}: {
+  suggestion: PriceSuggestion;
+  suggested: number;
+  reasoning: string;
+  sources: AgentRunSource[];
+  disabled: boolean;
+  onUse: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <Modal
+      sheet
+      title={`Why ${money(suggested)}?`}
+      description={suggestionFacts(suggested, sources.length)}
+      onClose={onClose}
+    >
+      <div className="price-reasons">
+        {reasoning && <p>{answerParts(reasoning, sources)}</p>}
+        <p className="price-reasons-summary">
+          {plainAnswer(suggestion.reason)}
+        </p>
+        {suggestion.evidence.length > 0 && (
+          <ul aria-label="Offers Pako compared">
+            {suggestion.evidence.map((evidence, index) => (
+              <li key={index}>
+                <q>{evidence.quote}</q>
+                {evidence.kind === "source" &&
+                  answerParts(` [${evidence.sourceId}]`, sources)}
+              </li>
+            ))}
+          </ul>
+        )}
+        <Button
+          animateIcon
+          className="button primary full"
+          disabled={disabled}
+          onClick={onUse}
+        >
+          Use {money(suggested)}
+        </Button>
+      </div>
+    </Modal>
+  );
+}
+
+/**
+ * Pako's price question as a card: his suggestion with what it rests on, a stepper
+ * and a field for another amount, then quieter ways to give it away, read why he
+ * suggests it, or decide once the other questions are answered.
  */
 export default function PriceCard({
   start,
@@ -64,12 +132,9 @@ export default function PriceCard({
   onPrice: (price: number) => void;
   onLater: () => void;
 }) {
-  const [text, setText] = useState(
-    start === undefined ? "" : priceText(start),
-  );
+  const [text, setText] = useState(start === undefined ? "" : priceText(start));
   const [whyOpen, setWhyOpen] = useState(false);
   const fieldId = useId();
-  const whyId = useId();
   const price = typedPrice(text);
   const current = price ?? 0;
   const lower = stepped(current, -1);
@@ -80,8 +145,14 @@ export default function PriceCard({
   const suggested = suggestion?.patch.price;
   return (
     <div className="price-card">
-      {start === undefined && (
+      {start === undefined ? (
         <p className="price-card-note">{withoutSuggestion(sources.length)}</p>
+      ) : (
+        suggested !== undefined && (
+          <p className="price-card-facts">
+            {suggestionFacts(suggested, sources.length)}
+          </p>
+        )
       )}
       <div className="price-card-amount">
         <Button
@@ -137,22 +208,20 @@ export default function PriceCard({
       <div className="price-card-more">
         {price !== 0 && (
           <Button
-            className="button secondary small"
+            className="button quiet small"
             disabled={disabled}
             onClick={() => onPrice(0)}
           >
-            Give it away for free
+            Give it away
           </Button>
         )}
         {suggestion && suggested !== undefined && (
           <Button
-            className="button quiet small price-card-why"
-            aria-expanded={whyOpen}
-            aria-controls={whyId}
-            onClick={() => setWhyOpen((open) => !open)}
+            className="button quiet small"
+            aria-haspopup="dialog"
+            onClick={() => setWhyOpen(true)}
           >
             Why {money(suggested)}?
-            <ChevronDown size={14} aria-hidden="true" />
           </Button>
         )}
         <Button
@@ -163,20 +232,19 @@ export default function PriceCard({
           Decide later
         </Button>
       </div>
-      {suggestion && whyOpen && (
-        <div id={whyId} className="price-card-why-panel">
-          {reasoning && <p>{answerParts(reasoning, sources)}</p>}
-          <p>{plainAnswer(suggestion.reason)}</p>
-          <ul>
-            {suggestion.evidence.map((evidence, index) => (
-              <li key={index}>
-                <q>{evidence.quote}</q>
-                {evidence.kind === "source" &&
-                  answerParts(` [${evidence.sourceId}]`, sources)}
-              </li>
-            ))}
-          </ul>
-        </div>
+      {suggestion && suggested !== undefined && whyOpen && (
+        <PriceReasons
+          suggestion={suggestion}
+          suggested={suggested}
+          reasoning={reasoning}
+          sources={sources}
+          disabled={disabled}
+          onUse={() => {
+            setWhyOpen(false);
+            onPrice(suggested);
+          }}
+          onClose={() => setWhyOpen(false)}
+        />
       )}
     </div>
   );

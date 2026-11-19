@@ -23,7 +23,7 @@ type SettingsRowProps = {
   onClick: () => void;
 };
 
-/** A demo tool unfolds under developer mode, like a sheet sliding down. */
+/** A demo tool unfolds inside the developer mode card, like a sheet sliding down. */
 const UNFOLD = { type: "spring", stiffness: 380, damping: 32 } as const;
 
 function SettingsRow({ icon, tone, title, detail, onClick }: SettingsRowProps) {
@@ -59,27 +59,29 @@ export default function LocalSettings({
       {connectionStatus}
       <ul className="settings-rows">
         <li>{pakoSetting}</li>
-        <li>{developerSettings}</li>
-        <AnimatePresence initial={false}>
-          {onAddDemo && (
-            <motion.li
-              key="samples"
-              className="settings-row-unfold"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={UNFOLD}
-            >
-              <SettingsRow
-                icon={<Package size={22} />}
-                tone="sand"
-                title="Add sample listings"
-                detail="Fictional demo items to try things out."
-                onClick={onAddDemo}
-              />
-            </motion.li>
-          )}
-        </AnimatePresence>
+        <li className="settings-group">
+          {developerSettings}
+          <AnimatePresence initial={false}>
+            {onAddDemo && (
+              <motion.div
+                key="samples"
+                className="settings-row-unfold"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={UNFOLD}
+              >
+                <SettingsRow
+                  icon={<Package size={22} />}
+                  tone="sand"
+                  title="Add sample listings"
+                  detail="Fictional demo items to try things out."
+                  onClick={onAddDemo}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </li>
         <li>
           <SettingsRow
             icon={<Sparkles size={22} />}

@@ -1632,7 +1632,7 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
   .selling-chat-layout .view-sell { padding: 8px var(--space-page); }
   .selling-chat-layout .page-title h1 { font-size: 18px; }
   .selling-chat-layout .agent-review-layout { gap: 6px; }
-  .selling-chat-layout .listing-preview { height: 58px; min-height: 58px; flex-shrink: 0; grid-template-columns: 40px minmax(0, 1fr); padding: 6px 10px; gap: 10px; border-radius: var(--radius-card); }
+  .selling-chat-layout .listing-preview { height: 58px; min-height: 58px; flex-shrink: 0; grid-template-columns: 44px minmax(0, 1fr); padding: 6px 10px; gap: 10px; border-radius: var(--radius-card); }
   .selling-chat-layout .listing-preview > div { padding: 0; }
   .selling-chat-layout .listing-preview h2 { font-size: 13px; white-space: nowrap; display: block; text-overflow: ellipsis; overflow: hidden; margin: 0; }
   .selling-chat-layout .listing-preview strong { font-size: 13px; margin: 0; }
@@ -1643,11 +1643,12 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
   .selling-chat-layout .page-title { display: none; }
 }
 
-/* Listing preparation keeps the action visible while the form can scroll. */
+/* Listing preparation keeps the action visible while the form can scroll; on wider
+   screens the action follows the fields, beside a camera card that keeps a 4:3 frame. */
 .app-layout.selling-photo-layout { flex: 1 1 0; min-height: 0; width: 100%; overflow: hidden; }
 .selling-photo-layout .view-sell { height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: var(--space-section) var(--space-page); margin: 0 auto; }
 .selling-photo-layout .workspace-header { margin-bottom: 16px; }
-.selling-photo-layout .sell-layout { flex: 1 1 0; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "photos guide" "photos fields" "photos actions"; gap: 16px 24px; align-items: stretch; }
+.selling-photo-layout .sell-layout { flex: 1 1 0; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "photos guide" "photos fields" "photos actions"; gap: 16px 24px; align-items: start; }
 .sell-photo-content { display: contents; }
 .selling-photo-layout .photo-upload-panel { grid-area: photos; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
 .selling-photo-layout .upload-zone { height: auto; flex: 1 1 0; min-height: 0; padding: 16px; }
@@ -1663,16 +1664,18 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
 .selling-photo-layout .pickup-location-heading button { min-height: 44px; }
 .selling-photo-layout .pickup-location-field input { min-height: 44px; padding: 10px 12px; }
 .selling-photo-layout .pickup-location-help { display: block; }
-.sell-photo-footer { grid-area: actions; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.sell-photo-footer { grid-area: actions; display: flex; flex-direction: column; gap: 6px; min-width: 0; padding-top: 4px; }
 .sell-photo-footer > .button { margin: 0; }
-.sell-photo-help { margin: 8px 0 0; color: var(--muted); font-size: var(--type-caption); line-height: 1.4; }
+.sell-photo-help { margin: 0; color: var(--muted); font-size: var(--type-caption); line-height: 1.4; }
 .selling-photo-layout .form-error { margin: 4px 0; font-size: 12px; }
 .selling-photo-layout .agent-footnote { margin-top: 8px; }
 @media (max-width: 760px) {
   .selling-photo-layout .view-sell { padding: env(safe-area-inset-top, 0px) 12px 4px; }
   .selling-photo-layout .workspace-header { margin-bottom: 4px; }
-  .selling-photo-layout .sell-layout { display: flex; flex-direction: column; gap: 0; }
-  .selling-photo-layout .sell-photo-content { flex: 1 1 0; min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 4px 0 12px; }
+  .selling-photo-layout .sell-layout { display: flex; flex-direction: column; align-items: stretch; gap: 0; }
+  /* A full input height stays free under the last field, so it can always scroll clear of the
+     pinned button and the fade above it. */
+  .selling-photo-layout .sell-photo-content { flex: 1 1 0; min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 4px 0 var(--control-size); }
   .selling-photo-layout .photo-upload-panel { flex: 0 0 auto; }
   .selling-photo-layout .photo-upload-panel > .photo-gallery { flex: 0 0 auto; }
   .selling-photo-layout .photo-gallery.is-editable .upload-zone { flex: 0 0 auto; min-height: 160px; padding: 12px; }

@@ -42,6 +42,29 @@ const SWAP = {
 const CHOSEN_MS = 140;
 /** The tray always offers its own Skip, so Pako's skip answers are not repeated. */
 const SKIP_ANSWER = /^skip(?: for now)?\.?$/i;
+/**
+ * When the student asks to decide the price, the bubble lights up and Pako hops, so
+ * the tap visibly lands even while the question is already on screen.
+ */
+const NUDGE_BUBBLE: Keyframe[] = [
+  {
+    backgroundColor: "var(--selected)",
+    boxShadow: "0 4px 0 var(--lip), inset 0 0 0 2px var(--blue)",
+  },
+  {
+    backgroundColor: "var(--surface)",
+    boxShadow: "0 4px 0 var(--lip), inset 0 0 0 0 var(--blue)",
+  },
+];
+const PAKO_HOP: Keyframe[] = [
+  { translate: "0 0" },
+  { translate: "0 -4px", offset: 0.35 },
+  { translate: "0 0" },
+];
+const NUDGE_TIMING: KeyframeAnimationOptions = {
+  duration: 560,
+  easing: "ease-out",
+};
 
 type Props = {
   phase: TrayPhase;
@@ -73,53 +96,27 @@ type Props = {
   onPolish?: () => void;
 };
 
-/** The most dots the tray shows; the oldest answered questions make room first. */
-const MAX_DOTS = 8;
-
 /**
- * One dot per question of the listing, filled once answered: those of earlier
- * turns first, so a new turn's questions carry on from them.
+ * Where this question stands among the listing's questions, as a short count that
+ * goes on from the questions of earlier turns.
  */
 function Progress({
   queue,
   answeredBefore,
-  answers,
   current,
 }: {
   queue: readonly AgentQuestionEvent[];
   answeredBefore: number;
-  answers: Readonly<Record<string, string>>;
   current: string;
 }) {
   const total = answeredBefore + queue.length;
   if (total < 2) return null;
   const position =
     answeredBefore + queue.findIndex((item) => item.id === current) + 1;
-  const earlierDots = Math.min(
-    answeredBefore,
-    Math.max(0, MAX_DOTS - queue.length),
-  );
   return (
-    <span
-      className="listing-tray-progress"
-      role="img"
-      aria-label={`Question ${position} of ${total}`}
-    >
-      {Array.from({ length: earlierDots }, (_, index) => (
-        <span key={`earlier-${index}`} data-state="answered" />
-      ))}
-      {queue.map((item) => (
-        <span
-          key={item.id}
-          data-state={
-            answers[item.id]
-              ? "answered"
-              : item.id === current
-                ? "current"
-                : "waiting"
-          }
-        />
-      ))}
+    <span className="listing-tray-progress">
+      <span className="sr-only">Question </span>
+      {position} of {total}
     </span>
   );
 }
@@ -273,6 +270,14 @@ export default function ListingTray({
   useEffect(() => setChosen(undefined), [contentKey]);
   useEffect(() => {
     if (!focusRequest) return;
+    const node = tray.current;
+    node
+      ?.querySelector(".listing-tray-bubble")
+      ?.animate(NUDGE_BUBBLE, NUDGE_TIMING);
+    if (!reduced)
+      node
+        ?.querySelector(".listing-tray-pako")
+        ?.animate(PAKO_HOP, NUDGE_TIMING);
     if (titleNode.current?.dataset.content === contentKey)
       titleNode.current.focus({ preventScroll: true });
     else focusNext.current = true;
@@ -328,7 +333,6 @@ export default function ListingTray({
           <Progress
             queue={queue}
             answeredBefore={answeredBefore}
-            answers={turn.answers}
             current={question.id}
           />
         </div>

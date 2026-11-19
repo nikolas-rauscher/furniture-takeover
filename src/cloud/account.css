@@ -263,11 +263,34 @@
   gap: 2px;
   min-width: 0;
 }
-/* A row with a switch toggles it from anywhere on the row; it keeps its lip still. */
+/* A row with a switch toggles it from anywhere on the row; it keeps its lip still. The
+   switch sits on the title's line and the explanation runs underneath across the card. */
 .settings-switch-row {
+  grid-template-areas:
+    "icon title switch"
+    "detail detail detail";
+  row-gap: 10px;
   font-size: var(--type-body);
   font-weight: 400;
   cursor: pointer;
+  transition:
+    border-radius 160ms ease,
+    box-shadow 160ms ease;
+}
+.settings-switch-row > .settings-row-text {
+  display: contents;
+}
+.settings-switch-row > .settings-row-icon {
+  grid-area: icon;
+}
+.settings-switch-row .settings-row-text > strong {
+  grid-area: title;
+}
+.settings-switch-row .settings-row-text > small {
+  grid-area: detail;
+}
+.settings-switch-row > .switch {
+  grid-area: switch;
 }
 .settings-switch-row:active {
   transform: none;
@@ -280,11 +303,26 @@
 .settings-switch-row .switch:focus-visible {
   outline: none;
 }
-/* The demo tool's lip stays inside the space it unfolds into. */
+/* Developer mode holds its demo tool in the same card, under the switch; the tool's
+   lip stays inside the space it unfolds into. */
+.settings-group {
+  display: grid;
+}
+.settings-group:has(> .settings-row-unfold) > .settings-switch-row {
+  border-bottom-width: 0;
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+  box-shadow: none;
+}
 .settings-row-unfold {
   overflow: hidden;
   margin-bottom: -4px;
   padding-bottom: 4px;
+}
+.settings-row-unfold > .settings-row {
+  border-top-style: dashed;
+  border-top-right-radius: 0;
+  border-top-left-radius: 0;
 }
 .settings-row-text strong {
   font-size: var(--type-item);
@@ -586,6 +624,7 @@
     align-items: center;
     gap: 12px;
     flex-shrink: 0;
+    min-height: var(--control-size);
     text-align: left;
     border-bottom: 2px solid var(--card-line);
     padding: 8px 0;

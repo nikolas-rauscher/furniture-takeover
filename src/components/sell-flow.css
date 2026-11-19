@@ -4,16 +4,48 @@
   min-width: 0;
 }
 
-/* The photo step's gallery fills its column; the strip shows covers, not letterboxes. */
+/* The camera, its photo limit and the way to sell several things form one card; the
+   strip shows covers, not letterboxes. */
 .selling-photo-layout .photo-upload-panel {
   display: flex;
+  gap: 8px;
   min-height: 0;
+  max-height: 100%;
+  padding: 8px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-stage);
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--lip);
 }
-.selling-photo-layout .photo-upload-panel > .photo-gallery {
-  flex: 1 1 0;
+.selling-photo-layout .photo-upload-panel > .snap-target {
+  border-radius: calc(var(--radius-stage) - 8px);
 }
 .selling-photo-layout .photo-gallery-thumbnails img {
   object-fit: cover;
+}
+.photo-upload-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 12px;
+  padding-inline: 6px;
+}
+.photo-upload-foot > .sell-several {
+  margin-left: -13px;
+}
+/* On wider screens the viewfinder and the shown photo keep a 4:3 frame instead of
+   stretching to the height of the page. */
+@media (min-width: 761px) {
+  .selling-photo-layout .photo-upload-panel > .snap-target,
+  .selling-photo-layout .photo-upload-panel .photo-gallery-stage {
+    flex: none;
+    aspect-ratio: 4 / 3;
+    min-height: 0;
+  }
+  .selling-photo-layout .photo-upload-panel > .snap-target {
+    --snap-floor: 88%;
+  }
 }
 
 /* The empty photo step is a viewfinder onto a room, with one big shutter. */
@@ -211,12 +243,6 @@
   overflow-wrap: anywhere;
 }
 
-/* Selling several things starts from the snap step, as a quiet second way in. */
-.photo-upload-panel > .sell-several {
-  align-self: flex-start;
-  margin: 2px 0 0 -13px;
-}
-
 /* Listing several things one after another: a tray of covers above the listing. */
 .batch-tray {
   display: flex;
@@ -230,14 +256,34 @@
   background: var(--surface);
   box-shadow: 0 4px 0 var(--lip);
 }
-.batch-tray > p {
+/* Two short lines at most, so the celebration and the count keep the row's height. */
+.batch-tray-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin: 0;
   color: var(--muted);
   font-size: var(--type-support);
+  line-height: 1.35;
+  animation: batch-tray-swap 200ms ease-out both;
 }
-.batch-tray > p strong {
+@keyframes batch-tray-swap {
+  from {
+    opacity: 0;
+  }
+}
+.batch-tray-status > span {
+  display: grid;
+}
+.batch-tray-status strong {
   color: var(--ink);
   font-weight: 700;
+}
+.batch-tray-status small {
+  font-size: inherit;
+}
+.batch-tray-status .ob-pako {
+  flex: none;
 }
 .batch-tray ol {
   display: flex;
@@ -275,6 +321,7 @@
   opacity: 0.4;
   filter: grayscale(1);
 }
+/* A saved listing's stamp pops onto its cover. */
 .batch-tray-check {
   position: absolute;
   right: -5px;
@@ -287,17 +334,34 @@
   border-radius: 50%;
   background: var(--blue);
   color: var(--on-primary);
+  animation: batch-tray-stamp 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes batch-tray-stamp {
+  from {
+    opacity: 0;
+    scale: 0.4;
+  }
 }
 .batch-tray .batch-tray-skip {
   margin-left: auto;
 }
 
 @media (max-width: 760px) {
+  /* A compact viewfinder leaves the first field readable above the pinned button. */
   .snap-target {
     --snap-floor: 88%;
     flex: 0 0 auto;
-    min-height: 232px;
-    padding: 24px 16px;
+    gap: 10px;
+    min-height: 180px;
+    padding: 12px 16px;
+  }
+  .snap-target-shutter {
+    gap: 8px;
+  }
+  .snap-target-lens {
+    width: 76px;
+    height: 76px;
+    border-width: 6px;
   }
   /* A smaller Pako keeps the photos and the button on one screen. */
   .sell-guide .ob-guide[data-layout="guide"] .ob-pako {
@@ -310,13 +374,14 @@
   .selling-chat-layout .listing-preview .seller-insight {
     display: none;
   }
-  /* In the chat the draft shrinks to a thumbnail with a tiny photo count. */
+  /* In the chat the draft shrinks to a thumbnail with a tiny photo count, still a full
+     44 px target. */
   .selling-chat-layout .listing-preview-photos {
-    width: 40px;
+    width: 44px;
     height: 44px;
   }
   .selling-chat-layout .listing-preview-photos > img {
-    width: 40px;
+    width: 44px;
     height: 44px;
     object-fit: cover;
   }
@@ -331,7 +396,8 @@
 @media (prefers-reduced-motion: reduce) {
   .view-sell .photo-attachment,
   .listing-preview-status .chip svg,
-  .snap-target-lens::after {
+  .snap-target-lens::after,
+  .batch-tray-check {
     animation: none;
   }
 }

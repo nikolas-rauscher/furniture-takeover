@@ -10,6 +10,7 @@ import {
   useState,
   type FormEvent,
   type ReactNode,
+  type SyntheticEvent,
 } from "react";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useScrollFade } from "@animate-ui/react/primitives/effects/scroll-fade";
@@ -56,7 +57,9 @@ import ListingFields from "./ListingFields";
 import PhotoSplitQuestion from "./PhotoSplitQuestion";
 import type { PhotoGroup } from "../../shared/agent";
 import Pako from "./onboarding/Pako";
+import PakoReaction from "./PakoReaction";
 import { listingPhotos } from "../../shared/listingPhotos";
+import { motionBehavior } from "../uiMotion";
 import "./sell-flow.css";
 
 /** Where the seller is when creating several listings one after another. */
@@ -66,6 +69,8 @@ export type BatchProgress = {
   covers: string[];
   /** Outcome of the listings before this one. */
   results: ("saved" | "skipped")[];
+  /** Pako's line about the listing just finished, which the tray celebrates for a moment. */
+  note?: string;
   onSkip: () => void;
 };
 
@@ -91,6 +96,15 @@ const previewSwap = {
   exit: { opacity: 0, y: -4 },
   transition: { type: "spring", stiffness: 420, damping: 34 },
 } as const;
+
+/**
+ * The field being filled in on the phone's scrolling photo step stays fully in view,
+ * clear of the faded edge above the pinned button, also when Pako's line above it grows.
+ */
+function revealField({ target }: SyntheticEvent) {
+  if (target instanceof HTMLElement && target.matches("input, textarea"))
+    target.scrollIntoView({ block: "nearest", behavior: motionBehavior() });
+}
 
 /** Accounts publish a listing for other students; the local demo only saves it in this browser. */
 export function listingSaveWords(cloud: boolean) {
@@ -127,23 +141,66 @@ const TRAY_NAMES = {
   upcoming: "next",
 } as const;
 
+/** How long the tray celebrates the listing just finished before it shows the count again. */
+const BATCH_NOTE_MS = 2600;
+
+/**
+ * Where the batch stands: right after a listing it says so with Pako for a moment,
+ * otherwise which listing this is and how many are done. Both fit the tray's row.
+ */
+function BatchStatus({
+  batch,
+  cloud,
+}: {
+  batch: BatchProgress;
+  cloud: boolean;
+}) {
+  const noted = useMomentPassed(
+    batch.note ? { id: batch.note, ms: BATCH_NOTE_MS } : null,
+  );
+  const done = batch.results.filter((result) => result === "saved").length;
+  const position = `${batch.index + 1} of ${batch.covers.length}`;
+  const last = batch.results.at(-1);
+  return (
+    <>
+      {batch.note && !noted && last ? (
+        <p key="note" className="batch-tray-status" aria-hidden="true">
+          <PakoReaction size={28} mood={last === "saved" ? "happy" : "idle"} />
+          <span>
+            <strong>
+              {last === "skipped" ? "Skipped" : cloud ? "Published!" : "Saved!"}
+            </strong>
+            <small>Next: {position}</small>
+          </span>
+        </p>
+      ) : (
+        <p key="count" className="batch-tray-status">
+          <span>
+            <strong>Listing {position}</strong>
+            {done > 0 && <small>{done} done</small>}
+          </span>
+        </p>
+      )}
+      <p className="sr-only" role="status">
+        {batch.note}
+      </p>
+    </>
+  );
+}
+
 /** The things being listed one after another: covers with their state, and a way to skip one. */
 function BatchTray({
   batch,
+  cloud,
   disabled,
 }: {
   batch: BatchProgress;
+  cloud: boolean;
   disabled: boolean;
 }) {
-  const done = batch.results.filter((result) => result === "saved").length;
   return (
     <nav className="batch-tray" aria-label="Your listings">
-      <p>
-        <strong>
-          Listing {batch.index + 1} of {batch.covers.length}
-        </strong>
-        {done > 0 && <span> · {done} done</span>}
-      </p>
+      <BatchStatus batch={batch} cloud={cloud} />
       <ol>
         {batch.covers.map((cover, index) => {
           const state = trayState(batch, index);
@@ -293,6 +350,9 @@ export default function SellFlow({
   batch,
 }: SellFlowProps) {
   const [photosOpen, setPhotosOpen] = useState(false);
+  const [fieldsOpen, setFieldsOpen] = useState(false);
+  /** The field the details dialog opens on, when a missing detail sent the student there. */
+  const [fieldsFocus, setFieldsFocus] = useState<string>();
   const saveWords = listingSaveWords(cloud);
   const photos = listingPhotos(draft);
   const isPhotoStep = step === 1;
@@ -303,10 +363,14 @@ export default function SellFlow({
     price: `${fieldsId}-price`,
     location: `${fieldsId}-location`,
   };
-  /** Opens the details: the dialog, or the field itself while the form is on the page. */
+  function openFields(focus?: string) {
+    setFieldsFocus(focus);
+    setFieldsOpen(true);
+  }
+  /** Opens a detail: the field itself while the form is on the page, else the dialog on it. */
   const fieldOpener = (field: keyof typeof fieldIds) => () => {
     if (manual) document.getElementById(fieldIds[field])?.focus();
-    else setFieldsOpen(true);
+    else openFields(fieldIds[field]);
   };
   const required = (ready: boolean) => (ready ? "ready" : "missing");
   const priceSet =
@@ -356,6 +420,7 @@ export default function SellFlow({
     placeholder: "Size or measurements",
   };
   const unavailable = busy || photoReading;
+  const canSellSeveral = onSellSeveral !== undefined && !editing;
   const formId = useId();
   const notesId = useId();
   const notesField = useRef<HTMLTextAreaElement>(null);
@@ -398,7 +463,6 @@ export default function SellFlow({
       }
     />
   );
-  const [fieldsOpen, setFieldsOpen] = useState(false);
   const saveFormId = useId();
   const manualId = useId();
   /** Pako's note above the details the student fills in: why he steps aside, or just whose turn it is. */
@@ -448,11 +512,7 @@ export default function SellFlow({
       <WorkspaceHeader
         title={isPhotoStep ? "New listing" : "Your listing"}
         subtitle={
-          batch
-            ? `Listing ${batch.index + 1} of ${batch.covers.length}`
-            : isPhotoStep
-              ? "1 of 2 · Photos & details"
-              : undefined
+          isPhotoStep && !batch ? "1 of 2 · Photos & details" : undefined
         }
         titleRef={headingRef}
         backLabel={
@@ -469,11 +529,22 @@ export default function SellFlow({
         quota={quota}
         actions={isPhotoStep || manual ? undefined : agentTools}
       />
-      {batch && <BatchTray batch={batch} disabled={busy || agentWorking} />}
+      {batch && (
+        <BatchTray
+          batch={batch}
+          cloud={cloud}
+          disabled={busy || agentWorking}
+        />
+      )}
 
       {isPhotoStep ? (
         <div className="sell-layout" aria-busy={unavailable}>
-          <div className="sell-photo-content" ref={photoContent}>
+          <div
+            className="sell-photo-content"
+            ref={photoContent}
+            onFocus={revealField}
+            onInput={revealField}
+          >
             <div className="sell-guide">
               <Guide
                 mood={reacted ? "idle" : guide.mood}
@@ -533,20 +604,24 @@ export default function SellFlow({
                   {uploadError}
                 </p>
               )}
-              <p className="sell-photo-help">
-                {photos.length > 0
-                  ? `Review and edit before ${saveWords.gerund}.`
-                  : "Add at least one photo to create your draft."}
-              </p>
-              {onSellSeveral && !editing && (
-                <Button
-                  className="button quiet small sell-several"
-                  disabled={unavailable}
-                  onClick={onSellSeveral}
-                >
-                  <Images size={16} aria-hidden="true" />
-                  Selling several things? Snap them all at once
-                </Button>
+              {(photos.length > 0 || canSellSeveral) && (
+                <div className="photo-upload-foot">
+                  {photos.length > 0 && (
+                    <p className="sell-photo-help">
+                      Review and edit before {saveWords.gerund}.
+                    </p>
+                  )}
+                  {canSellSeveral && (
+                    <Button
+                      className="button quiet small sell-several"
+                      disabled={unavailable}
+                      onClick={onSellSeveral}
+                    >
+                      <Images size={16} aria-hidden="true" />
+                      Several things? Snap them all at once
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
             <form
@@ -632,9 +707,7 @@ export default function SellFlow({
               <Button
                 type="button"
                 className="listing-readiness-mobile"
-                onClick={() =>
-                  missing.length ? missing[0].open() : setFieldsOpen(true)
-                }
+                onClick={() => missing[0].open()}
               >
                 <span>Required details</span>
                 <small>
@@ -671,7 +744,7 @@ export default function SellFlow({
               className="listing-save-form"
               onInvalidCapture={(event) => {
                 event.preventDefault();
-                if (!manual) setFieldsOpen(true);
+                if (!manual) openFields();
                 const form = event.currentTarget;
                 window.requestAnimationFrame(() =>
                   form.querySelector<HTMLElement>(":invalid")?.focus(),
@@ -683,7 +756,7 @@ export default function SellFlow({
                   type="button"
                   className="button secondary listing-edit-button"
                   aria-label="Edit listing details"
-                  onClick={() => setFieldsOpen(true)}
+                  onClick={() => openFields()}
                 >
                   <Pencil size={15} />
                   Edit details
@@ -692,6 +765,7 @@ export default function SellFlow({
               {fieldsOpen && (
                 <Modal
                   title="Listing details"
+                  initialFocus={fieldsFocus}
                   onClose={() => setFieldsOpen(false)}
                 >
                   {fields()}
