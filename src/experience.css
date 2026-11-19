@@ -1621,9 +1621,14 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
 .selling-chat-layout .chat-workspace { flex: 1 1 0; min-height: 0; height: auto; max-width: none; margin: 6px 0; }
 .selling-chat-layout .chat-composer-dock { min-height: 0; padding-top: 8px; }
 .selling-chat-layout .chat-composer-dock textarea { max-height: 100px; overflow-y: auto; }
-.selling-chat-layout .listing-save-form { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 8px 0 0; }
+.selling-chat-layout .listing-save-form { flex-shrink: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; margin: 0; padding: 8px 0 0; container-type: inline-size; }
 .selling-chat-layout .listing-save-form > .button { width: auto; margin: 0; }
-.selling-chat-layout .listing-save-form > .quiet-caption { display: none; }
+/* Who will see the listing: under the save button, or between the buttons where the row has room.
+   Phones leave it to the button's words. */
+.selling-chat-layout .listing-save-form > .quiet-caption { order: 1; flex: 1 0 100%; margin: 0; text-align: right; }
+@container (min-width: 44rem) {
+  .selling-chat-layout .listing-save-form > .quiet-caption { order: 0; flex: 1 1 0; }
+}
 .selling-chat-layout .listing-preview { position: static; align-self: start; max-height: 100%; overflow: hidden; }
 .selling-chat-layout .listing-preview > div { padding: 16px; }
 .selling-chat-layout .listing-preview h2 { font-size: 20px; margin: 0 0 8px; }
@@ -1638,6 +1643,7 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
   .selling-chat-layout .listing-preview strong { font-size: 13px; margin: 0; }
   .selling-chat-layout .listing-preview p, .selling-chat-layout .listing-preview .source-label { display: none; }
   .selling-chat-layout .listing-save-form > .button { padding: 8px 12px; font-size: 12px; }
+  .selling-chat-layout .listing-save-form > .quiet-caption { display: none; }
 }
 @media (max-height: 600px) {
   .selling-chat-layout .page-title { display: none; }

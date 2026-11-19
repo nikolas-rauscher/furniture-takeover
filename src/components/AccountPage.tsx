@@ -153,6 +153,27 @@ function PublishedStamp({ label }: { label: string }) {
   );
 }
 
+type EmptyView = {
+  mood: "sad" | "wave" | "idle";
+  title: string;
+  text: string;
+  action?: ReactNode;
+};
+
+/** A tab without listings: Pako, what it means, and the one way on from it. */
+function EmptyTab({ view }: { view: EmptyView }) {
+  return (
+    <div className="empty-state">
+      <span className="empty-state-pako">
+        <PakoReaction mood={view.mood} size={96} />
+      </span>
+      <h2>{view.title}</h2>
+      <p>{view.text}</p>
+      {view.action}
+    </div>
+  );
+}
+
 type AccountPageProps = {
   cloud?: boolean;
   /** Whether the listings are known; until then the page shows only its title. */
@@ -278,6 +299,63 @@ export default function AccountPage({
       )}
     </div>
   );
+  /** What an empty tab says, and the one way on from it. */
+  function emptyView(): EmptyView {
+    if (filtered)
+      return {
+        mood: "sad",
+        title: isSaved ? "No matching saved items" : "No matching listings",
+        text: "Try another search or clear your filters.",
+        action: (
+          <Button variant="outline" onClick={clearFilters}>
+            Clear filters
+          </Button>
+        ),
+      };
+    if (isSaved)
+      return {
+        mood: "wave",
+        title: "No saved items yet",
+        text: "Save a listing with the heart to find it here later.",
+        action: (
+          <Button variant="default" onClick={onBrowse}>
+            Browse listings
+          </Button>
+        ),
+      };
+    if (accountTab === "archive")
+      return {
+        mood: "wave",
+        title: "No archived listings",
+        text: "Items you archive will appear here.",
+      };
+    const archived = archivedListings.length;
+    if (archived)
+      return {
+        mood: "idle",
+        title:
+          archived === 1
+            ? "Your listing is in Archive"
+            : `Your ${archived} listings are in Archive`,
+        text: "Restore one there to list it again, or create a new listing.",
+        action: (
+          <Button variant="default" onClick={() => setAccountTab("archive")}>
+            <Archive size={16} aria-hidden="true" />
+            Open Archive
+          </Button>
+        ),
+      };
+    return {
+      mood: "wave",
+      title: "Your first listing starts with a photo",
+      text: "Add your item and let the agent prepare the details.",
+      action: (
+        <Button variant="default" onClick={onSell}>
+          Create a listing
+        </Button>
+      ),
+    };
+  }
   const content = items.length ? (
     isSaved ? (
       <ProductGrid items={items} renderProduct={renderProduct} />
@@ -410,46 +488,7 @@ export default function AccountPage({
       </div>
     )
   ) : (
-    <div className="empty-state">
-      <span className="empty-state-pako">
-        <PakoReaction mood={filtered ? "sad" : "wave"} size={96} />
-      </span>
-      <h2>
-        {filtered
-          ? isSaved
-            ? "No matching saved items"
-            : "No matching listings"
-          : isSaved
-            ? "No saved items yet"
-            : accountTab === "archive"
-              ? "No archived listings"
-              : "Your first listing starts with a photo"}
-      </h2>
-      <p>
-        {filtered
-          ? "Try another search or clear your filters."
-          : isSaved
-            ? "Save a listing with the heart to find it here later."
-            : accountTab === "archive"
-              ? "Items you archive will appear here."
-              : "Add your item and let the agent prepare the details."}
-      </p>
-      {filtered ? (
-        <Button variant="outline" onClick={clearFilters}>
-          Clear filters
-        </Button>
-      ) : isSaved ? (
-        <Button variant="default" onClick={onBrowse}>
-          Browse listings
-        </Button>
-      ) : (
-        accountTab !== "archive" && (
-          <Button variant="default" onClick={onSell}>
-            Create a listing
-          </Button>
-        )
-      )}
-    </div>
+    <EmptyTab view={emptyView()} />
   );
   return (
     <MotionConfig reducedMotion="user">

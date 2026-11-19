@@ -127,7 +127,7 @@ type TitleProps = {
   "data-content": string;
 };
 
-/** "Last day to collect…" opens a date field; its date becomes the listing's last pickup day. */
+/** "Until a date…" opens a date field; its date becomes the listing's last pickup day. */
 function PickupDate({
   disabled,
   onSet,
@@ -145,13 +145,13 @@ function PickupDate({
         disabled={disabled}
         onClick={() => setOpen(true)}
       >
-        Last day to collect…
+        Until a date…
       </Button>
     );
   return (
     <span className="listing-tray-date">
       <label htmlFor={fieldId} className="sr-only">
-        Last day to collect
+        Pickup deadline
       </label>
       <Input
         id={fieldId}
@@ -166,7 +166,7 @@ function PickupDate({
         disabled={disabled || !date}
         onClick={() => onSet(date)}
       >
-        Set
+        Set date
       </Button>
     </span>
   );
@@ -190,7 +190,7 @@ function Meanwhile({
   if (turn.status !== "error") return null;
   return (
     <p className="listing-tray-meanwhile" role="alert">
-      I got stuck checking prices. {turn.error}
+      I couldn't check asking prices. {turn.error}
       <Button className="button quiet small" onClick={onRetry}>
         Try again
       </Button>
@@ -320,10 +320,12 @@ export default function ListingTray({
 
   let content: ReactNode;
   if (phase === "asking" && question) {
-    const { ask, aside } = splitQuestion(question.question);
+    const { lead, ask, aside } = splitQuestion(question.question);
     const priceCard = asksPrice(question);
     // Pako's reasoning after a price question belongs with why he suggests that price.
     const reasoning = priceCard && suggestion ? aside : "";
+    // What leads up to the question, and what follows it unless that is his reasoning.
+    const context = [lead, reasoning ? "" : aside].filter(Boolean).join(" ");
     content = (
       <>
         <div className="listing-tray-heading">
@@ -336,9 +338,9 @@ export default function ListingTray({
             current={question.id}
           />
         </div>
-        {aside && !reasoning && (
+        {context && (
           <p className="listing-tray-aside">
-            {answerParts(aside, turn.sources)}
+            {answerParts(context, turn.sources)}
           </p>
         )}
         {priceCard ? (
@@ -408,7 +410,7 @@ export default function ListingTray({
     content = (
       <>
         <p className="listing-tray-title" role="alert" {...titleProps}>
-          Sorry, I got stuck there.
+          I couldn't finish that
           <span>{turn.error}</span>
         </p>
         <div className="listing-tray-actions">
@@ -416,7 +418,7 @@ export default function ListingTray({
             Try again
           </Button>
           <Button className="button quiet small" onClick={onManual}>
-            Fill in myself
+            Fill in details
           </Button>
         </div>
       </>

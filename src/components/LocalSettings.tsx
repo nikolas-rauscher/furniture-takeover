@@ -96,7 +96,7 @@ export default function LocalSettings({
             icon={<Trash2 size={22} />}
             tone="danger"
             title="Clear local workspace"
-            detail="Removes your listings, favourites, saved searches and their alerts from this browser."
+            detail="Removes your listings, favourites, saved searches, conversations and demo deals from this browser."
             onClick={onClear}
           />
         </li>

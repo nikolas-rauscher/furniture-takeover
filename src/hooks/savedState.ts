@@ -20,6 +20,7 @@ const stringFields = (value: Record<string, unknown>, names: string[]) =>
   names.every((name) => typeof value[name] === "string");
 const oneOf = (value: unknown, options: string[]) =>
   typeof value === "string" && options.includes(value);
+const LISTING_STATUSES = ["active", "reserved", "sold", "withdrawn"];
 
 export const isFavoriteIds: SavedValueValidator<string[]> = (
   value,
@@ -91,10 +92,17 @@ export const isProducts: SavedValueValidator<Product[]> = (
       nonNegativeNumber(item.price) &&
       nonNegativeNumber(item.distance) &&
       oneOf(item.source, ["takeover", "Ricardo", "Anibis"]) &&
-      oneOf(item.status, ["active", "reserved", "sold", "withdrawn"]) &&
+      oneOf(item.status, LISTING_STATUSES) &&
       (item.own === undefined || typeof item.own === "boolean") &&
       (item.demo === undefined || typeof item.demo === "boolean"),
   );
+
+/** Listing statuses by listing id, such as the ones demo deals changed. */
+export const isListingStatuses: SavedValueValidator<
+  Record<string, Product["status"]>
+> = (value): value is Record<string, Product["status"]> =>
+  record(value) &&
+  Object.values(value).every((status) => oneOf(status, LISTING_STATUSES));
 
 /** Validate after migration, before any saved value reaches a rendering path. */
 export function restoreSavedValue<T>(

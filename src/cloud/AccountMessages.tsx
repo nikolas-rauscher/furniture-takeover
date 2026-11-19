@@ -7,7 +7,6 @@ import {
 } from "../components/ui/dropdown-menu";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { Skeleton } from "../components/ui/skeleton";
 import { AnimatePresence } from "motion/react";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import {
@@ -26,6 +25,7 @@ import {
   ChatPartner,
   ChatSegment,
   ChatThreadCard,
+  InboxLoading,
   usePakoDrafts,
 } from "../components/ChatParts";
 import {
@@ -35,11 +35,14 @@ import {
 } from "../components/ThreadDeal";
 import { useThreadPako } from "../components/ThreadPako";
 import {
+  CARD_IN_CONVERSATION,
+  sendFailure,
   ThreadComposer,
   ThreadDisclosure,
   ThreadLog,
 } from "../components/ThreadView";
 import Pako from "../components/onboarding/Pako";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import { usePageVisible } from "../hooks/usePageVisible";
 import { accountInboxThread, isUnread } from "../inboxActivity";
 import { newestAt } from "../inboxDeals";
@@ -140,6 +143,8 @@ export default function AccountMessages({
       return;
     openedThread.current = threadRequest;
     setSelected(threadRequest.id);
+    const { id, draft } = threadRequest;
+    if (draft) setDrafts((current) => ({ ...current, [id]: draft }));
   }, [threadRequest, rows]);
   // Once the inbox has loaded, open the conversation the app asked for, or the newest one.
   useEffect(() => {
@@ -207,8 +212,15 @@ export default function AccountMessages({
   const otherBlocked = !!otherId && blocked.includes(otherId);
   /** Sample listings belong to seeded sellers who never reply. */
   const sampleSeller = Boolean(product?.demo);
-  // The opening offer Pako prepared stays labelled as his until the student edits it.
-  const offerDraft = Boolean(initialMessage) && text === initialMessage;
+  // A message the app prepared, the opening offer or a follow-up, stays labelled as Pako's until the student edits it.
+  const appDraft = [initialMessage, threadRequest?.draft].some(
+    (draft) => draft !== undefined && text === draft,
+  );
+  /** Only the opening offer from the search chat carries terms. */
+  const openingTerms =
+    initialMessage !== undefined && text === initialMessage
+      ? initialTerms
+      : undefined;
   const pakoDrafts = usePakoDrafts();
   const thread = useAccountThread(client, current?.id);
   const deal = useAccountDeal(client, inbox, current?.id);
@@ -230,6 +242,17 @@ export default function AccountMessages({
     ...(structured.has(message.id) ? { structured: true } : {}),
   }));
   const pageVisible = usePageVisible();
+  const cardInConversation = useMediaQuery(CARD_IN_CONVERSATION);
+  /** Another thread about the same listing in which the seller already agreed. */
+  const agreedElsewhere =
+    role === "seller" && current
+      ? threads.find(
+          (thread) =>
+            thread.listing_id === current.listing_id &&
+            thread.id !== current.id &&
+            rows?.deals?.[thread.id]?.status === "agreed",
+        )
+      : undefined;
   const visible = Boolean(current);
   const assistant = useThreadPako({
     reading,
@@ -250,6 +273,7 @@ export default function AccountMessages({
     text,
     onText: setText,
     canNudge: !sampleSeller,
+    agreedWith: agreedElsewhere && (names[agreedElsewhere.buyer_id] || "Buyer"),
   });
   /** A first offer starts the conversation, then records the offer with its message. */
   const controller: DealController = current
@@ -308,8 +332,7 @@ export default function AccountMessages({
     openOffer();
   }, [offerRequest, offerThread]);
   // Terms travel with the text from Pako's option or the opening offer while the deal can take them.
-  const attached =
-    assistant.terms ?? (offerDraft ? (initialTerms ?? null) : null);
+  const attached = assistant.terms ?? openingTerms ?? null;
   const termsNote =
     attached && threadDeal.open && !deal.error
       ? attachedTermsNote(text, attached)
@@ -348,9 +371,11 @@ export default function AccountMessages({
         setSelected("");
         if (current) onDeleted?.(current.listing_id);
       }
-    } catch (err) {
+    } catch {
       setError(
-        err instanceof Error ? err.message : "Could not update conversation.",
+        remove
+          ? "Couldn't archive this conversation. Try again."
+          : "Couldn't restore this conversation. Try again.",
       );
     } finally {
       setBusy(false);
@@ -359,8 +384,8 @@ export default function AccountMessages({
   async function toggleBlock(other: string) {
     setBusy(true);
     setError("");
+    const isBlocked = blocked.includes(other);
     try {
-      const isBlocked = blocked.includes(other);
       const r = isBlocked
         ? await client
             .from("blocked_users")
@@ -378,8 +403,10 @@ export default function AccountMessages({
           ? rows.blocked.filter((x) => x !== other)
           : [...rows.blocked, other],
       }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update block.");
+    } catch {
+      setError(
+        `Couldn't ${isBlocked ? "unblock" : "block"} ${otherName}. Try again.`,
+      );
     } finally {
       setBusy(false);
     }
@@ -422,8 +449,8 @@ export default function AccountMessages({
     return id;
   }
   async function send() {
-    const fromPako = offerDraft || assistant.draftedByPako;
-    const celebrates = offerDraft || assistant.celebrates;
+    const fromPako = appDraft || assistant.draftedByPako;
+    const celebrates = Boolean(openingTerms) || assistant.celebrates;
     const withTerms = attached && termsNote?.states ? attached : null;
     setBusy(true);
     setError("");
@@ -456,11 +483,7 @@ export default function AccountMessages({
         new CustomEvent("takeover-message-sent", { detail: conversation.id }),
       );
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Could not send message. Your text is kept.",
-      );
+      setError(sendFailure(err));
     } finally {
       setBusy(false);
     }
@@ -495,13 +518,12 @@ export default function AccountMessages({
             setError("");
           }}
         >
-          {showArchived ? "Back to inbox" : "Archived"}
+          {showArchived ? "Back to Messages" : "Archived"}
         </Button>
       </div>
       {rows && rows.reads === null && (
         <p className="account-notice" role="status">
-          Unread counts and Pako's reply reading arrive with this server's next
-          update. Your messages work as before.
+          Pako can't read replies here yet. You can still send messages.
         </p>
       )}
       <div className="seller-chat-layout">
@@ -573,30 +595,28 @@ export default function AccountMessages({
               note="New conversation"
             />
           )}
-          {!rows && !inbox.loadError && (
-            <div className="inbox-loading" role="status">
-              <span className="sr-only">Loading conversations…</span>
-              <div aria-hidden="true">
-                <Skeleton />
-                <Skeleton />
-                <Skeleton />
-              </div>
-            </div>
-          )}
+          {!rows && !inbox.loadError && <InboxLoading />}
           {rows &&
             !visibleThreads.length &&
             !newThreadShown &&
             (query || filter !== "all" || showArchived ? (
               <p>
                 {query || filter !== "all"
-                  ? "No conversations match this filter."
+                  ? "No matches. Try a different search or filter."
                   : "No archived conversations."}
               </p>
             ) : (
               <InboxEmpty onBrowse={onBrowse} />
             ))}
         </nav>
-        <section className="seller-chat" aria-label="Seller conversation">
+        <section
+          className="seller-chat"
+          aria-label={
+            selected && (current || product)
+              ? `Conversation with ${otherName}`
+              : "Conversation"
+          }
+        >
           {selected && (current || product) ? (
             <>
               <header>
@@ -659,8 +679,8 @@ export default function AccountMessages({
                             onClick={() => void toggleBlock(otherId)}
                           >
                             {blocked.includes(otherId)
-                              ? "Unblock user"
-                              : "Block user"}
+                              ? `Unblock ${otherName}`
+                              : `Block ${otherName}`}
                           </DropdownMenuItem>
                         )}
                       </DropdownMenuContent>
@@ -668,7 +688,7 @@ export default function AccountMessages({
                   )}
                 </div>
               </header>
-              {threadDeal.card}
+              {!cardInConversation && threadDeal.card}
               <ThreadLog
                 threadKey={current?.id ?? selected}
                 messages={messages}
@@ -690,8 +710,17 @@ export default function AccountMessages({
                     />
                   )
                 }
+                after={
+                  <>
+                    {cardInConversation && threadDeal.card}
+                    <AnimatePresence>{threadDeal.celebration}</AnimatePresence>
+                    {!otherBlocked &&
+                      !sampleSeller &&
+                      !threadDeal.celebrating &&
+                      assistant.tray(threadDeal.trayMoment)}
+                  </>
+                }
               />
-              <AnimatePresence>{threadDeal.celebration}</AnimatePresence>
               {otherBlocked && (
                 <p className="inbox-blocked-note" role="status">
                   You blocked this user. Unblock them to send a message.
@@ -708,17 +737,13 @@ export default function AccountMessages({
                   {deal.error}
                 </p>
               )}
-              {!otherBlocked &&
-                !sampleSeller &&
-                !threadDeal.celebrating &&
-                assistant.tray(threadDeal.trayMoment)}
               <ThreadComposer
                 text={text}
                 busy={busy}
                 disabled={otherBlocked}
                 sendBlocked={sampleSeller}
                 error={error}
-                pakoDrafted={offerDraft || assistant.draftedByPako}
+                pakoDrafted={appDraft || assistant.draftedByPako}
                 tools={!otherBlocked && !sampleSeller && assistant.askMenu}
                 terms={termsNote}
                 onTextChange={setText}
@@ -730,7 +755,7 @@ export default function AccountMessages({
             <div className="inbox-empty">
               <Pako mood="idle" size={88} />
               <h2>Your conversations</h2>
-              <p>Choose a conversation to discuss an item or arrange pickup.</p>
+              <p>Choose a conversation.</p>
             </div>
           )}
         </section>

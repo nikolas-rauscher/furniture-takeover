@@ -19,7 +19,7 @@ export type PakoRequest = { label: string; request: string };
 /** What the student can ask about a listing being written. */
 export const LISTING_REQUESTS: readonly PakoRequest[] = [
   {
-    label: "Research this item",
+    label: "Find similar listings",
     request: "Research comparable individual secondhand offers for this item.",
   },
   {

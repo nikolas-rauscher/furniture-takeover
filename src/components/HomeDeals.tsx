@@ -16,11 +16,14 @@ export type HomeDeal = {
   image?: string;
   view: StripView;
   onOpen: () => void;
+  /** The student's offer has waited a day: its thread opens with a follow-up drafted. */
+  onFollowUp?: () => void;
 };
 
 /**
  * The student's live deals on home, at most three: what waits for them
- * first, then booked pickups, then their own offers. Each opens its thread.
+ * first, then booked pickups, then their own offers. Each opens its thread,
+ * an offer that waited a day with a follow-up ready to send.
  */
 export default function HomeDeals({
   deals,
@@ -61,13 +64,23 @@ export default function HomeDeals({
                     .join(" · ")}
                 </span>
               </div>
-              <Button
-                className={`button small ${deal.view.tone === "needs" ? "primary" : "secondary"}`}
-                aria-label={`Open the conversation about ${deal.title}`}
-                onClick={deal.onOpen}
-              >
-                Open
-              </Button>
+              {deal.onFollowUp ? (
+                <Button
+                  className="button secondary small"
+                  aria-label={`Draft a follow-up about ${deal.title}`}
+                  onClick={deal.onFollowUp}
+                >
+                  Follow up
+                </Button>
+              ) : (
+                <Button
+                  className={`button small ${deal.view.tone === "needs" ? "primary" : "secondary"}`}
+                  aria-label={`Open the conversation about ${deal.title}`}
+                  onClick={deal.onOpen}
+                >
+                  Open
+                </Button>
+              )}
             </article>
           </motion.li>
         ))}

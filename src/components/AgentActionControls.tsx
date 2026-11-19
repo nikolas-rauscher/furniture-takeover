@@ -247,7 +247,7 @@ const fieldLabels: Record<string, string> = {
   condition: "Condition",
   dimensions: "Dimensions",
   location: "Location",
-  pickup: "Last day to collect",
+  pickup: "Pickup deadline",
   query: "Looking for",
   maxPrice: "Maximum price",
   radius: "Distance",

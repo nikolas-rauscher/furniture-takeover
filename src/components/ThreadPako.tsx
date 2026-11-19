@@ -43,6 +43,7 @@ export function useThreadPako({
   text,
   onText,
   canNudge,
+  agreedWith,
 }: {
   reading: PakoReading;
   thread: PakoThread | null;
@@ -53,6 +54,8 @@ export function useThreadPako({
   onText: (text: string) => void;
   /** Sample sellers never reply, so they are never nudged. */
   canNudge: boolean;
+  /** The buyer a seller agreed with in another thread about the same listing. */
+  agreedWith: string | undefined;
 }) {
   const pako = usePakoThread({
     thread,
@@ -73,8 +76,10 @@ export function useThreadPako({
   const notice = thread
     ? threadNotice({
         role: thread.role,
+        title: thread.listing.title,
         listingStatus: thread.listing.status,
         dealStatus: thread.deal?.status,
+        agreedWith,
         messages: thread.messages,
         now: new Date(),
         canNudge,

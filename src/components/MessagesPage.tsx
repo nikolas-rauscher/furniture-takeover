@@ -21,22 +21,30 @@ import { attachedTermsNote, threadDealNote } from "../dealWords";
 import { useDemoDeal } from "../hooks/useDemoDeal";
 import type { DemoInbox } from "../hooks/useDemoInbox";
 import { useMediaQuery } from "../hooks/useMediaQuery";
+import { useOnline } from "../hooks/useOnline";
 import { usePageVisible } from "../hooks/usePageVisible";
 import type { ThreadReads } from "../hooks/useThreadReads";
 import { demoInboxThread, isUnread } from "../inboxActivity";
 import { newestAt } from "../inboxDeals";
-import type { ThreadMessage } from "../pakoThread";
+import { demoThreadMessage, type ThreadMessage } from "../pakoThread";
 import { demoTurnCache } from "../pakoTurnCache";
 import InboxEmpty from "./InboxEmpty";
 import {
   ChatPartner,
   ChatSegment,
   ChatThreadCard,
+  InboxLoading,
   usePakoDrafts,
 } from "./ChatParts";
 import { useThreadDeal, type ThreadEvent } from "./ThreadDeal";
 import { useThreadPako, type PakoReading } from "./ThreadPako";
-import { ThreadComposer, ThreadDisclosure, ThreadLog } from "./ThreadView";
+import {
+  CARD_IN_CONVERSATION,
+  sendFailure,
+  ThreadComposer,
+  ThreadDisclosure,
+  ThreadLog,
+} from "./ThreadView";
 import "./messages.css";
 
 /** What both inboxes take from the app. */
@@ -56,6 +64,7 @@ export type MessagesProps = {
   onOpenListing: (id: string) => void;
   /** Leads from an empty inbox to the listings, where conversations start. */
   onBrowse: () => void;
+  /** A message the app prepared for the listing's thread: the opening offer, or a follow-up. */
   initialMessage?: string;
   /** The terms the opening offer states; they travel with it while its text states them. */
   initialTerms?: DealTerms;
@@ -76,8 +85,11 @@ export type MessagesProps = {
   ) => void;
   pako: PakoReading;
 };
-/** A conversation the app asks Messages to open; each tap is a new request. */
-export type ThreadRequest = { id: string };
+/**
+ * A conversation the app asks Messages to open, with a message it prepared
+ * there, such as a follow-up; each tap is a new request.
+ */
+export type ThreadRequest = { id: string; draft?: string };
 /** The inbox the app runs: local, signed in, or waiting for a sign-in. */
 export type MessagesInboxProps =
   | { mode: "demo"; inbox: DemoInbox; reads: ThreadReads }
@@ -90,7 +102,7 @@ export type MessagesInboxProps =
     }
   | { mode: "signed-out" };
 export type MessagesPageProps = MessagesProps & MessagesInboxProps;
-const DEMO_VIEWS = [
+const DEMO_ROLES = [
   ["buyer", "Buyer"],
   ["seller", "Seller"],
 ] as const;
@@ -101,18 +113,11 @@ export default function MessagesPage(props: MessagesPageProps) {
 }
 
 /** A local thread from one side: its messages, who wrote them and the newest one. */
-function threadMessages(
+const threadMessages = (
   conversation: SellerConversation,
   role: "buyer" | "seller",
-): ThreadMessage[] {
-  return conversation.messages.map((message) => ({
-    id: message.id,
-    from: message.sender === role ? "me" : "them",
-    text: message.text,
-    at: message.createdAt,
-    ...(message.deal ? { structured: true } : {}),
-  }));
-}
+): ThreadMessage[] =>
+  conversation.messages.map((message) => demoThreadMessage(message, role));
 
 /** A local thread's deal changes: each with the message that carried it, and news nobody wrote. */
 function threadEvents(conversation: SellerConversation): ThreadEvent[] {
@@ -148,6 +153,10 @@ const threadKeyOf = (conversation: SellerConversation) =>
   conversation.buyerKey
     ? `${conversation.listingId}#${conversation.buyerKey}`
     : conversation.listingId;
+
+/** The buyer of a local thread as its seller sees them: the student, or another demo buyer. */
+const buyerName = (buyerKey: string | undefined) =>
+  buyerKey ? "Another buyer" : "Buyer";
 
 const GONE_NOTES: Record<Exclude<Product["status"], "active">, string> = {
   reserved: "Reserved",
@@ -252,11 +261,11 @@ function DemoMessagesPage({
         setDismissedListing("");
         setSelected(threadKeyOf(updated));
       }
-    } catch (error) {
+    } catch {
       setError(
-        error instanceof Error
-          ? error.message
-          : "Could not update conversation.",
+        remove
+          ? "Couldn't delete this conversation. Try again."
+          : "Couldn't restore this conversation. Try again.",
       );
     } finally {
       setBusy(false);
@@ -279,11 +288,17 @@ function DemoMessagesPage({
       : undefined);
   const product = current && productFor(current.listingId);
   const otherName =
-    role === "buyer"
-      ? (current?.seller ?? "")
-      : saved?.buyerKey
-        ? "Another buyer"
-        : "Buyer";
+    role === "buyer" ? (current?.seller ?? "") : buyerName(saved?.buyerKey);
+  /** Another thread about the same listing in which the seller already agreed. */
+  const agreedElsewhere =
+    role === "seller" && current
+      ? conversations.find(
+          (item) =>
+            item.listingId === current.listingId &&
+            item.id !== current.id &&
+            item.deal?.status === "agreed",
+        )
+      : undefined;
   const messages = current ? threadMessages(current, role) : [];
   const events = current ? threadEvents(current) : [];
   const threadKey = current ? `${current.id}:${role}` : "";
@@ -302,6 +317,8 @@ function DemoMessagesPage({
     role,
   );
   const phone = useMediaQuery("(max-width: 760px)");
+  const cardInConversation = useMediaQuery(CARD_IN_CONVERSATION);
+  const online = useOnline();
   const pageVisible = usePageVisible();
   const visible = Boolean(current) && (!phone || showConversation);
   const assistant = useThreadPako({
@@ -323,6 +340,7 @@ function DemoMessagesPage({
     text,
     onText: setText,
     canNudge: true,
+    agreedWith: agreedElsewhere && buyerName(agreedElsewhere.buyerKey),
   });
   const threadDeal = useThreadDeal({
     threadKey,
@@ -370,16 +388,20 @@ function DemoMessagesPage({
     setSelected(id);
     setShowConversation(true);
     setRole("buyer");
+    setError("");
   };
-  // The opening offer Pako prepared stays labelled as his until the student edits it.
-  const offerDraft =
+  /** An agreed deal keeps its conversation until it is cancelled. */
+  const dealHolds = saved?.deal?.status === "agreed";
+  // A message the app prepared, the opening offer or a follow-up, stays labelled as Pako's until the student edits it.
+  const appDraft =
     Boolean(initialMessage) &&
     role === "buyer" &&
     selected === listingId &&
     text === initialMessage;
+  /** Only the opening offer from the search chat carries terms. */
+  const openingTerms = appDraft ? initialTerms : undefined;
   // Terms travel with the text from Pako's option or the opening offer while the deal can take them.
-  const attached =
-    assistant.terms ?? (offerDraft ? (initialTerms ?? null) : null);
+  const attached = assistant.terms ?? openingTerms ?? null;
   const termsNote =
     attached && threadDeal.open ? attachedTermsNote(text, attached) : null;
   /** A message without terms: the thread's ordinary path. */
@@ -405,11 +427,12 @@ function DemoMessagesPage({
     return messageId;
   }
   async function send(thread: SellerConversation) {
-    const fromPako = offerDraft || assistant.draftedByPako;
-    const celebrates = offerDraft || assistant.celebrates;
+    const fromPako = appDraft || assistant.draftedByPako;
+    const celebrates = Boolean(openingTerms) || assistant.celebrates;
     const withTerms = attached && termsNote?.states ? attached : null;
     setBusy(true);
     setSendError("");
+    setError("");
     try {
       onBeforeSend?.(thread.listingId, role);
       const messageId = withTerms
@@ -422,11 +445,7 @@ function DemoMessagesPage({
       assistant.sent();
       setText("");
     } catch (error) {
-      setSendError(
-        error instanceof Error
-          ? error.message
-          : "Could not send message. Your text is kept.",
-      );
+      setSendError(sendFailure(error));
     } finally {
       setBusy(false);
     }
@@ -454,11 +473,18 @@ function DemoMessagesPage({
         </p>
       </div>
       <p className="quiet-caption">
-        Local workspace inbox · Conversations are linked to this browser.
-        {developerMode && " Seller view previews the other side."}
+        Demo messages are saved in this browser.
+        {developerMode && " The Seller role previews the other side."}
       </p>
       <div className="seller-chat-layout">
         <nav aria-label="Conversations">
+          {inbox.error && (
+            <p className="inbox-error" role="alert">
+              {online
+                ? "Couldn't refresh your conversations. Trying again in a moment."
+                : "You're offline. Your conversations refresh once you're back."}
+            </p>
+          )}
           {conversations.map((item, order) => (
             <ChatThreadCard
               key={item.id}
@@ -466,7 +492,7 @@ function DemoMessagesPage({
               active={selected === threadKeyOf(item)}
               disabled={busy}
               image={imageFor(item)}
-              name={item.buyerKey ? "Another buyer" : item.seller}
+              name={item.buyerKey ? buyerName(item.buyerKey) : item.seller}
               title={item.title}
               preview={item.messages.at(-1)?.text}
               note={threadNote(item)}
@@ -490,12 +516,16 @@ function DemoMessagesPage({
                 onSelect={() => openThread(listing.id)}
               />
             )}
+          {!loaded && !inbox.error && <InboxLoading />}
           {loaded &&
             !conversations.length &&
             (!listing || dismissedListing === listing.id) &&
             !inbox.error && <InboxEmpty onBrowse={onBrowse} />}
         </nav>
-        <section className="seller-chat" aria-label="Seller conversation">
+        <section
+          className="seller-chat"
+          aria-label={current ? `Conversation with ${otherName}` : "Conversation"}
+        >
           {current ? (
             <>
               <header>
@@ -518,13 +548,15 @@ function DemoMessagesPage({
                     <Button
                       className="icon-button chat-delete-button"
                       aria-label="Delete conversation"
-                      title={
-                        saved.deal?.status === "agreed"
-                          ? "Cancel the deal before deleting this conversation"
-                          : "Delete conversation"
+                      aria-disabled={dealHolds || undefined}
+                      disabled={busy}
+                      onClick={() =>
+                        dealHolds
+                          ? setError(
+                              "Cancel the active deal first. Then you can delete this conversation.",
+                            )
+                          : void changeDeleted(saved, true)
                       }
-                      disabled={busy || saved.deal?.status === "agreed"}
-                      onClick={() => void changeDeleted(saved, true)}
                     >
                       <Trash2 size={18} />
                     </Button>
@@ -532,8 +564,8 @@ function DemoMessagesPage({
                 </div>
                 {developerMode && (
                   <ChatSegment
-                    label="Demo view"
-                    options={DEMO_VIEWS}
+                    label="Demo role"
+                    options={DEMO_ROLES}
                     value={role}
                     disabled={busy}
                     onChange={setRole}
@@ -545,7 +577,7 @@ function DemoMessagesPage({
                 role,
                 onConversation: inbox.put,
               })}
-              {threadDeal.card}
+              {!cardInConversation && threadDeal.card}
               <ThreadLog
                 threadKey={threadKey}
                 messages={messages}
@@ -562,16 +594,22 @@ function DemoMessagesPage({
                     />
                   )
                 }
+                after={
+                  <>
+                    {cardInConversation && threadDeal.card}
+                    <AnimatePresence>{threadDeal.celebration}</AnimatePresence>
+                    {!threadDeal.celebrating &&
+                      assistant.tray(threadDeal.trayMoment)}
+                  </>
+                }
               />
-              <AnimatePresence>{threadDeal.celebration}</AnimatePresence>
-              {!threadDeal.celebrating && assistant.tray(threadDeal.trayMoment)}
               <ThreadComposer
                 text={text}
                 busy={busy}
                 disabled={false}
                 sendBlocked={false}
-                error={sendError}
-                pakoDrafted={offerDraft || assistant.draftedByPako}
+                error={sendError || error}
+                pakoDrafted={appDraft || assistant.draftedByPako}
                 tools={assistant.askMenu}
                 terms={termsNote}
                 onTextChange={setText}
@@ -603,7 +641,7 @@ function DemoMessagesPage({
           </Button>
         </div>
       )}
-      {(error || inbox.error) && <p role="alert">{error || inbox.error}</p>}
+      {error && !current && <p role="alert">{error}</p>}
     </section>
   );
 }

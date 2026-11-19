@@ -80,7 +80,7 @@ export default function ListingFields({
           required
           maxLength={180}
           pattern=".*\S.*"
-          title="Enter a title with at least one non-space character."
+          title="Enter a listing title."
           value={draft.title}
           onChange={(event) => onDraftChange({ title: event.target.value })}
         />
@@ -138,7 +138,7 @@ export default function ListingFields({
         </label>
       </div>
       {priceContext}
-      <h2 className="form-section-title collection-title">Collection</h2>
+      <h2 className="form-section-title collection-title">Pickup</h2>
       <div className="form-grid">
         <label>
           Pickup location
@@ -148,7 +148,7 @@ export default function ListingFields({
             required
             maxLength={120}
             pattern=".*\S.*"
-            title="Enter a pickup location with at least one non-space character."
+            title="Enter a pickup location."
             value={draft.location}
             onChange={(event) =>
               onDraftChange({ location: event.target.value })
@@ -156,7 +156,7 @@ export default function ListingFields({
           />
         </label>
         <label>
-          Last day to collect<span className="optional">Optional</span>
+          Pickup deadline<span className="optional">Optional</span>
           <Input
             form={form}
             type="date"

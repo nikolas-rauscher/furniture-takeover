@@ -3,7 +3,9 @@ import {
   NUDGE_AFTER_HOURS,
 } from "../shared/dealConfig.ts";
 import type { Deal, DealRole } from "../shared/deal";
+import { reservedElsewhereMessage } from "../shared/dealMessages.ts";
 import type { Product } from "../shared/marketplace";
+import type { SellerConversation } from "../shared/messages.ts";
 import { OTHER_TOKEN, type ThreadTurn } from "../shared/threadTurn.ts";
 
 /** A message of the open thread, as the student reading it sees it. */
@@ -15,6 +17,20 @@ export type ThreadMessage = {
   /** Sent from the deal card, so its terms are on the card already. */
   structured?: boolean;
 };
+
+/** A message of a local demo thread, as one side of it reads it. */
+export function demoThreadMessage(
+  message: SellerConversation["messages"][number],
+  role: DealRole,
+): ThreadMessage {
+  return {
+    id: message.id,
+    from: message.sender === role ? "me" : "them",
+    text: message.text,
+    at: message.createdAt,
+    ...(message.deal ? { structured: true } : {}),
+  };
+}
 
 /** What Pako does about the latest message: read it, offer to on a tap, explain why not, or wait. */
 export type ReadDecision = "read" | "paused" | "asleep" | "offline" | "idle";
@@ -62,28 +78,36 @@ export function pakoReadDecision({
 
 export type ThreadNotice =
   | { kind: "gone"; status: Exclude<Product["status"], "active"> }
-  | { kind: "no_answer"; hoursWaiting: number };
+  | { kind: "no_answer"; hoursWaiting: number }
+  /** The seller agreed with another buyer of this listing and has not told this one yet. */
+  | { kind: "agreed_elsewhere"; agreedWith: string };
 
 const HOUR = 3_600_000;
 
 /**
  * What Pako points out without reading anything: to a buyer, that the item is
- * no longer available; to either side, that their last message has waited a
+ * no longer available; to a seller who agreed with another buyer, that this
+ * one has not heard yet; to either side, that their last message has waited a
  * day for an answer. Once both agreed, the item is reserved for this buyer
- * and there is nothing to answer, so he points out neither.
+ * and there is nothing to answer, so he points out none of these.
  */
 export function threadNotice({
   role,
+  title,
   listingStatus,
   dealStatus,
+  agreedWith,
   messages,
   now,
   canNudge,
 }: {
   role: DealRole;
+  title: string;
   listingStatus: Product["status"];
   /** The thread's deal, if the students started one. */
   dealStatus: Deal["status"] | undefined;
+  /** The buyer the seller agreed with in another thread about this listing. */
+  agreedWith: string | undefined;
   messages: readonly ThreadMessage[];
   now: Date;
   /** Sample sellers never reply, so nudging them helps nobody. */
@@ -92,6 +116,14 @@ export function threadNotice({
   if (dealStatus === "agreed" || dealStatus === "completed") return null;
   if (role === "buyer" && listingStatus !== "active")
     return { kind: "gone", status: listingStatus };
+  if (role === "seller" && agreedWith) {
+    const told = messages.some(
+      (message) =>
+        message.from === "me" &&
+        message.text === reservedElsewhereMessage(title),
+    );
+    return told ? null : { kind: "agreed_elsewhere", agreedWith };
+  }
   const latest = messages.at(-1);
   if (!canNudge || latest?.from !== "me") return null;
   const hoursWaiting = (now.getTime() - Date.parse(latest.at)) / HOUR;

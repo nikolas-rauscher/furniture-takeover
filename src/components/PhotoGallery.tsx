@@ -123,7 +123,7 @@ export default function PhotoGallery({
             <EmptyContent>
               {addControl("Add photos")}
               <span id={hintId} className="file-hint">
-                Up to {MAX_LISTING_PHOTOS} photos · JPG, PNG or WebP · 25 MB each
+                JPG, PNG or WebP · up to {MAX_LISTING_PHOTOS} photos, 25 MB each
               </span>
             </EmptyContent>
           </Empty>
@@ -173,7 +173,7 @@ export default function PhotoGallery({
                     ])
                   }
                 >
-                  Make cover
+                  Set as cover photo
                 </Button>
               )}
               <span>

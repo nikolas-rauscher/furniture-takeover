@@ -1,8 +1,9 @@
 import type { Deal, DealRole, DealTerms } from "../shared/deal";
+import { money } from "../shared/marketplace.ts";
 import { formatPickup } from "../shared/pickupTime.ts";
 import type { AgentTaskKind } from "../shared/runs";
 import { plainAnswer } from "./components/agentAnswer.ts";
-import { agreedWords, termsSentence } from "./dealWords.ts";
+import { agreedWords, openTermsList } from "./dealWords.ts";
 import type { PakoMood } from "./components/onboarding/storyTypes";
 import type { AgentRunState, AgentRunStep } from "./hooks/useAgentRun";
 import type { TrayPhase } from "./listingQuestions";
@@ -403,6 +404,20 @@ export function listingAnnouncement(
   }
 }
 
+/**
+ * Terms on the deal card from the other student: their offer, complete or
+ * with terms still open, or what Pako read as agreed in their reply. Each
+ * comes with what its price compares to: the asking price, or the price the
+ * student offered last.
+ */
+type OfferMoment = {
+  phase: "deal_offer" | "deal_partial" | "deal_looks_agreed";
+  terms: DealTerms;
+  role: DealRole;
+  asking: number;
+  mine: number | null;
+};
+
 /** A moment beside an open thread, in the tray above its composer. */
 export type ThreadMoment =
   | { phase: "reading" | "asking" | "asleep" | "offline" | "error" }
@@ -411,8 +426,9 @@ export type ThreadMoment =
   | { phase: "unavailable"; reason: "unconfigured" | "missing" }
   | { phase: "gone"; status: "reserved" | "sold" | "withdrawn" }
   | { phase: "no_answer"; hoursWaiting: number }
-  /** The other student's offer on the deal card: complete, or with terms still open. */
-  | { phase: "deal_offer" | "deal_partial"; terms: DealTerms }
+  /** The seller agreed with another buyer; this one has not heard yet. */
+  | { phase: "agreed_elsewhere"; agreedWith: string }
+  | OfferMoment
   /** The student's own offer waits for the other student's confirmation. */
   | { phase: "deal_waiting" }
   | { phase: "deal_agreed"; role: DealRole }
@@ -441,17 +457,50 @@ const CANCELLED: Record<
 
 const GONE: Record<Extract<ThreadMoment, { phase: "gone" }>["status"], string> =
   {
-    reserved: "is reserved now",
+    reserved: "is reserved for someone else",
     sold: "is sold",
     withdrawn: "isn't listed anymore",
   };
 
+/**
+ * What an offer's price means, which the deal card does not say: for a seller
+ * against the asking price, for a buyer against their own last offer, or the
+ * asking price before they made one. A free item has nothing to compare.
+ */
+export function priceComparison({
+  terms,
+  role,
+  asking,
+  mine,
+}: Omit<OfferMoment, "phase">): string {
+  const { amount } = terms;
+  if (amount === null) return "";
+  if (role === "buyer" && mine !== null) {
+    if (amount === mine) return "That's what you offered.";
+    return amount > mine
+      ? `That's ${money(amount - mine)} more than you offered.`
+      : `That's ${money(mine - amount)} less than you offered.`;
+  }
+  if (asking === 0) return "";
+  const whose = role === "seller" ? "your asking price" : "the asking price";
+  if (amount === asking) return `That's ${whose}.`;
+  return amount < asking
+    ? `That's ${money(asking - amount)} under ${whose}.`
+    : `That's ${money(amount - asking)} over ${whose}.`;
+}
+
+const sentences = (...parts: string[]) => parts.filter(Boolean).join(" ");
+
 function waitedFor(other: string, hours: number) {
   const days = Math.floor(hours / 24);
   return days < 2
-    ? `No answer from ${other} since yesterday.`
-    : `No answer from ${other} for ${days} days.`;
+    ? `Still waiting for ${other}.`
+    : `Still waiting for ${other} after ${days} days.`;
 }
+
+/** Who the item is reserved for once both students confirm. */
+const reservedFor = (role: DealRole, other: string) =>
+  role === "seller" ? other : "you";
 
 /**
  * What Pako shows and says beside a thread: he thinks while he reads, is happy
@@ -475,28 +524,31 @@ export function threadGuide(
         mood: "idle",
         line:
           moment.remaining === undefined
-            ? `Want me to read ${other}'s reply?`
-            : `Want me to read ${other}'s reply? (${moment.remaining} left today)`,
+            ? `Read ${other}'s reply?`
+            : `Read ${other}'s reply? ${moment.remaining} ${moment.remaining === 1 ? "read" : "reads"} left today.`,
       };
     case "asleep":
       return {
         mood: "sleep",
-        line: "I'm out of answers for today. You can still reply yourself, and the deal card still works.",
+        line: "I've used today's reads. You can still reply or use the deal card.",
       };
     case "offline":
       return {
         mood: "idle",
-        line: "You're offline. I'll read it when you're back.",
+        line: "You're offline. Reconnect to read replies.",
       };
     case "error":
-      return { mood: "dizzy", line: "Sorry, I couldn't read that one." };
+      return {
+        mood: "dizzy",
+        line: "I couldn't read this reply. Try again or write your own.",
+      };
     case "unavailable":
       return {
         mood: "idle",
         line:
           moment.reason === "missing"
-            ? "I can't read replies here yet: this server still needs its update. You can still reply yourself."
-            : "I'm not set up here, so I can't read replies. You can still reply yourself.",
+            ? "I can't read replies here. You can still write your own."
+            : "I'm not set up here, so I can't read replies. You can still write your own.",
       };
     case "gone":
       return {
@@ -505,21 +557,37 @@ export function threadGuide(
       };
     case "no_answer":
       return { mood: "idle", line: waitedFor(other, moment.hoursWaiting) };
+    case "agreed_elsewhere":
+      return {
+        mood: "listen",
+        line: `You agreed with ${moment.agreedWith}. Let ${other} know?`,
+      };
     case "deal_offer":
       return {
         mood: "listen",
-        line: `${other} offers ${termsSentence(moment.terms)}. Confirm, counter or decline?`,
+        line: sentences(
+          priceComparison(moment),
+          `Confirming reserves the ${title} for ${reservedFor(moment.role, other)}.`,
+        ),
       };
     case "deal_partial":
       return {
         mood: "listen",
-        line: `${other} suggests ${termsSentence(moment.terms)}. Fill in the rest, and they can confirm.`,
+        line: sentences(
+          priceComparison(moment),
+          `Add the ${openTermsList(moment.terms)} to send it back, then ${other} can confirm.`,
+        ),
+      };
+    case "deal_looks_agreed":
+      return {
+        mood: "happy",
+        line: sentences(
+          priceComparison(moment),
+          `Once you both confirm, the ${title} is reserved for ${reservedFor(moment.role, other)}.`,
+        ),
       };
     case "deal_waiting":
-      return {
-        mood: "listen",
-        line: `Now it's ${other}'s turn to confirm. I'll tell you when they answer.`,
-      };
+      return { mood: "listen", line: `Waiting for ${other} to confirm.` };
     case "deal_agreed": {
       const { cheer, meaning } = agreedWords(moment.role, other, title);
       return { mood: "cheer", line: `${cheer} ${meaning}` };

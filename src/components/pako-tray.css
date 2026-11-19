@@ -44,6 +44,20 @@
   font-weight: 700;
   line-height: 1.4;
 }
+/* A long reading can fold; the rest is one tap away. */
+.thread-tray-more {
+  justify-self: start;
+  min-height: 44px;
+  margin: -12px 0 -10px;
+  padding: 0;
+  color: var(--blue);
+  font-size: var(--type-support);
+  font-weight: 700;
+}
+.thread-tray-more:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 /* The other student's words, quoted as they wrote them. */
 .thread-tray-quotes {
   display: -webkit-box;
@@ -107,7 +121,8 @@
   transform: translateY(2px);
   box-shadow: 0 0 0 var(--lip);
 }
-.thread-tray .thread-tray-choice[data-chosen] {
+.thread-tray .thread-tray-choice[data-chosen],
+.thread-tray .thread-tray-choice[data-chosen]:hover:not(:disabled) {
   border-color: var(--blue);
   background: var(--blue);
   color: var(--on-primary);
@@ -187,6 +202,16 @@
     min-height: 34px;
     padding-left: 42px;
     font-size: var(--type-label);
+  }
+  /* A long reading keeps two lines on phones until the student asks for the rest. */
+  .thread-tray-line[data-folds] {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  .thread-tray-more {
+    margin-left: 42px;
   }
   /* The composer needs the room: the other student's words keep one line. */
   .thread-tray-quotes {

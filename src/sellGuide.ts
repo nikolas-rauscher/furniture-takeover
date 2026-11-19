@@ -48,16 +48,30 @@ export function buyerQuestions(missingDetails: readonly string[]): string[] {
     .map(inSentence);
 }
 
+/** Conditions that read "in good condition"; others, such as "used", stand on their own. */
+const QUALITY_CONDITION = /^(?:excellent|very good|good|fair)$/i;
+
+const conditionPhrase = (condition: string) =>
+  QUALITY_CONDITION.test(condition)
+    ? `in ${condition.toLowerCase()} condition`
+    : inSentence(condition);
+
 /** What Pako recognised, in one sentence: the item, then facts from the note it does not name yet. */
 export function recognisedLine(
   metadata: Pick<AgentMetadata, "title" | "dimensions" | "condition" | "price">,
 ): string {
   const title = metadata.title?.trim() ?? "";
   const named = title.toLowerCase();
-  const facts = [metadata.dimensions, metadata.condition]
-    .map((fact) => fact?.trim() ?? "")
-    .filter((fact) => fact && !named.includes(fact.toLowerCase()))
-    .map(inSentence);
+  const unnamed = (fact: string | null | undefined) => {
+    const text = fact?.trim() ?? "";
+    return named.includes(text.toLowerCase()) ? "" : text;
+  };
+  const dimensions = unnamed(metadata.dimensions);
+  const condition = unnamed(metadata.condition);
+  const facts = [
+    dimensions && inSentence(dimensions),
+    condition && conditionPhrase(condition),
+  ].filter(Boolean);
   const item = [title, ...facts].join(", ");
   if (metadata.price == null) return item;
   return metadata.price === 0
@@ -75,13 +89,13 @@ function recognised(
       mood: "think",
       bubble: {
         id: "unrecognised",
-        title: "Nice photo!",
-        text: "I can't tell what it is yet. Add a note with its name and I'll take it from there.",
+        title: "I can't tell what it is",
+        text: "Add its name under Details and I'll draft the listing.",
       },
     };
   const next =
     metadata.price == null
-      ? `Tap ${WRITE_ACTION} and I'll check what similar ones sell for.`
+      ? `Tap ${WRITE_ACTION} and I'll check what others ask for similar items.`
       : `Tap ${WRITE_ACTION} and I'll ask you a couple of quick things.`;
   const hints = buyerQuestions(response.missingDetails);
   const hint = hints.length ? ` Buyers often ask about ${both(hints)}.` : "";
@@ -95,8 +109,6 @@ function recognised(
     },
   };
 }
-
-const things = (count: number) => (count === 1 ? "1 thing" : `${count} things`);
 
 function insightGuide(
   insight: PhotoInsight,
@@ -118,7 +130,7 @@ function insightGuide(
         mood: "happy",
         bubble: {
           id: `several:${count}`,
-          title: `I spotted ${things(count)}`,
+          title: `These look like ${count} items`,
           text:
             `Shall I make ${count} listings, one for each?` +
             (covered === undefined
@@ -135,7 +147,7 @@ function insightGuide(
           text: insight.noteOnly
             ? "Reading your note…"
             : sortFailed
-              ? "I couldn't sort these photos, so I'll treat them as one item."
+              ? "I couldn't group these photos, so I'll read them as one item."
               : "Let me have a look…",
         },
       };
@@ -146,8 +158,8 @@ function insightGuide(
         mood: "dizzy",
         bubble: {
           id: "failed",
-          title: "Hmm, that didn't work",
-          text: "I couldn't read your photos. Try again, or fill in the details yourself.",
+          title: "I couldn't read your photos",
+          text: "Try again, or fill in the details yourself.",
         },
       };
     case "unavailable":
@@ -184,7 +196,7 @@ export function absenceGuide(
       mood: "sleep",
       bubble: {
         id: "allowance",
-        title: "I'm resting today",
+        title: "I've used today's requests",
         text: `You can still ${saveVerb}: fill in the details yourself.${back ? ` I'm back after ${back}.` : ""}`,
       },
     };
@@ -192,7 +204,7 @@ export function absenceGuide(
     mood: "idle",
     bubble: {
       id: "offline",
-      title: "I can't reach my tools right now",
+      title: "I'm unavailable right now",
       text: `You can still ${saveVerb} by filling in the details yourself.`,
     },
   };
@@ -239,7 +251,7 @@ export function sellGuide({
       bubble: {
         id: "writing",
         title: "Writing your listing…",
-        text: "I'm looking at your photos and notes.",
+        text: "I'm drafting it from your photos and notes.",
       },
     };
   if (photoReading)
@@ -253,8 +265,8 @@ export function sellGuide({
       mood: typing ? "listen" : "wave",
       bubble: {
         id: "empty",
-        title: "Snap what's left in your room",
-        text: "Add a few photos. I'll write the listing and suggest a price.",
+        title: "Add photos of your item",
+        text: "I'll draft the listing from them and suggest an asking price.",
       },
     };
   if (!hasPlace)

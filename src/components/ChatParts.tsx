@@ -22,6 +22,7 @@ import {
   InputGroupAddon,
   InputGroupTextarea,
 } from "./ui/input-group";
+import { Skeleton } from "./ui/skeleton";
 import "./composer.css";
 import "./messages.css";
 
@@ -122,7 +123,10 @@ export function ChatThreadCard({
   );
 }
 
-/** Who the conversation is with and about which listing. */
+/**
+ * Who the conversation is with and about which listing: one target the size
+ * of the photo and the names beside it, which opens the listing.
+ */
 export function ChatPartner({
   name,
   image,
@@ -137,16 +141,18 @@ export function ChatPartner({
   onOpenListing: () => void;
 }) {
   return (
-    <>
+    <Button className="chat-partner" onClick={onOpenListing}>
       <ChatIdentity image={image} name={name} />
-      <div className="chat-header-copy">
+      <span className="chat-header-copy">
         <strong>{name}</strong>
-        <Button className="chat-listing-link" onClick={onOpenListing}>
-          {title} ↗
-        </Button>
+        <span className="chat-partner-listing">
+          <span className="sr-only">Open the listing </span>
+          {title}
+          <span aria-hidden="true"> ↗</span>
+        </span>
         {detail && <small>{detail}</small>}
-      </div>
-    </>
+      </span>
+    </Button>
   );
 }
 
@@ -183,7 +189,7 @@ export function ChatMessage({
       transition={ARRIVAL}
     >
       <span className="chat-message-meta" data-drafted={drafted || undefined}>
-        {drafted ? "Pako for you" : author} ·{" "}
+        {drafted ? "Drafted with Pako" : author} ·{" "}
         <time dateTime={createdAt}>{clock(createdAt)}</time>
       </span>
       <p className="chat-bubble">{text}</p>
@@ -218,14 +224,26 @@ export function ChatDate({ createdAt }: { createdAt: string }) {
   );
 }
 
+/** The inbox while its conversations load: rows the size of the real ones. */
+export function InboxLoading() {
+  return (
+    <div className="inbox-loading" role="status">
+      <span className="sr-only">Loading conversations…</span>
+      <div aria-hidden="true">
+        <Skeleton />
+        <Skeleton />
+      </div>
+    </div>
+  );
+}
+
 /** An empty thread: Pako suggests how to open the conversation. */
 export function ChatStart() {
   return (
     <div className="chat-start">
       <Pako mood="wave" size={56} />
       <p className="chat-start-note">
-        Ask about this item or propose a pickup time. Your message will appear
-        here once sent.
+        Ask about the item or suggest a pickup time.
       </p>
     </div>
   );
@@ -334,13 +352,13 @@ function celebrationWords(moment: ChatMoment): ReactNode {
     case "sent":
       return (
         <>
-          <strong>Offer sent to {moment.other}!</strong> Now it's their turn.
+          <strong>Offer sent!</strong> Waiting for {moment.other}.
         </>
       );
     case "confirmed":
       return (
         <>
-          <strong>You confirmed!</strong> Now it's {moment.other}'s turn.
+          <strong>You confirmed!</strong> Waiting for {moment.other}.
         </>
       );
     case "agreed": {

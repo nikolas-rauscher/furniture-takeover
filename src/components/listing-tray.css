@@ -375,7 +375,7 @@
    page actions or over the details above. */
 .listing-conversation .agent-message-scroller {
   flex: 1 1 0;
-  min-height: 5rem;
+  min-height: 4rem;
 }
 .listing-conversation .chat-composer-dock {
   flex-shrink: 1;
@@ -384,6 +384,8 @@
 .listing-conversation .chat-composer-content {
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;
+  align-self: stretch;
   min-height: 0;
 }
 .listing-conversation .chat-composer-content > .listing-tray {
@@ -429,6 +431,10 @@
   }
   .listing-tray-heading > h3 {
     font-size: var(--type-label);
+  }
+  /* What Pako wrote around the question keeps to two lines, so the answers stay in view. */
+  .listing-tray-aside {
+    -webkit-line-clamp: 2;
   }
   .price-card-amount > .price-card-use {
     max-width: none;

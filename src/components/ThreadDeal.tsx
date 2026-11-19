@@ -13,6 +13,7 @@ import type { ThreadTurn } from "../../shared/threadTurn";
 import {
   cardPhase,
   counterPrices,
+  lookedAgreedTerms,
   type DealOption,
   type OfferEntry,
 } from "../dealOptions";
@@ -97,17 +98,30 @@ function dealFailure(failure: unknown, other: string, title: string) {
   }
 }
 
-/** What Pako says about the deal while he has no reply to read. */
+/**
+ * What Pako says about the deal: what the card does not show, such as how an
+ * offer compares with the asking price. Terms he read as agreed replace his
+ * reading of the reply, which the card already quotes.
+ */
 function dealMoment(
   phase: DealPhase,
   deal: Deal | null,
   role: DealRole,
+  turn: ThreadTurn | null,
+  prices: { asking: number; mine: number | null },
 ): ThreadMoment | null {
   const proposal = deal?.proposal;
+  if (phase === "looks_agreed" && turn)
+    return {
+      phase: "deal_looks_agreed",
+      terms: lookedAgreedTerms(turn, deal),
+      role,
+      ...prices,
+    };
   if (phase === "offer_received" && proposal)
-    return { phase: "deal_offer", terms: proposal.terms };
+    return { phase: "deal_offer", terms: proposal.terms, role, ...prices };
   if (phase === "partial_received" && proposal)
-    return { phase: "deal_partial", terms: proposal.terms };
+    return { phase: "deal_partial", terms: proposal.terms, role, ...prices };
   if (phase === "you_confirmed") return { phase: "deal_waiting" };
   if (phase === "cancelled" && deal?.outcome)
     return {
@@ -317,6 +331,7 @@ export function useThreadDeal({
 
   const ready = Boolean(listing) && controller.loaded && !controller.error && enabled;
   const theirs = deal?.proposal && deal.proposal.by !== role ? deal.proposal.terms : null;
+  const mineBefore = myLatestAmount(events, messages);
   const counter =
     listing &&
     editor?.entry.mode === "counter" &&
@@ -325,7 +340,7 @@ export function useThreadDeal({
       ? counterPrices({
           role,
           theirs: theirs.amount,
-          mineBefore: myLatestAmount(events, messages),
+          mineBefore,
           asking: listing.price,
         })
       : undefined;
@@ -381,7 +396,13 @@ export function useThreadDeal({
     /** Celebrates a message that went out without the card, such as Pako's counter in words. */
     celebrate,
     /** Where the deal stands, for Pako's tray. */
-    trayMoment: ready ? dealMoment(phase, deal, role) : null,
+    trayMoment:
+      ready && listing
+        ? dealMoment(phase, deal, role, turn, {
+            asking: listing.price,
+            mine: mineBefore,
+          })
+        : null,
     /** Opens the offer card for a first offer, as from the listing page. */
     openOffer: openEditor,
     /** Sends composed text whose terms it states as an offer; a failure is thrown in the student's words. */

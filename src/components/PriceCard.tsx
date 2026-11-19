@@ -24,15 +24,8 @@ const offersCompared = (count: number) =>
   `${count} ${count === 1 ? "offer" : "offers"} compared`;
 
 /** Why Pako suggests no price, and what helps him find one. */
-function withoutSuggestion(offerCount: number) {
-  const compared =
-    offerCount === 0
-      ? ""
-      : offerCount === 1
-        ? "The one offer I compared showed no clear asking price. "
-        : `None of the ${offerCount} offers I compared showed a clear asking price. `;
-  return `${compared}Set your own, or add the brand, model or size and choose Suggest a price under Ask Pako.`;
-}
+const WITHOUT_SUGGESTION =
+  "I couldn't find a clear asking price. Enter yours, or add a detail and ask again.";
 
 /** The facts behind Pako's suggestion, in one line above the amount. */
 function suggestionFacts(suggested: number, offerCount: number) {
@@ -146,7 +139,7 @@ export default function PriceCard({
   return (
     <div className="price-card">
       {start === undefined ? (
-        <p className="price-card-note">{withoutSuggestion(sources.length)}</p>
+        <p className="price-card-note">{WITHOUT_SUGGESTION}</p>
       ) : (
         suggested !== undefined && (
           <p className="price-card-facts">
@@ -199,7 +192,7 @@ export default function PriceCard({
           onClick={use}
         >
           {price === 0
-            ? "Give it away for free"
+            ? "List for free"
             : price === undefined
               ? "Use this price"
               : `Use ${money(price)}`}
@@ -212,7 +205,7 @@ export default function PriceCard({
             disabled={disabled}
             onClick={() => onPrice(0)}
           >
-            Give it away
+            List for free
           </Button>
         )}
         {suggestion && suggested !== undefined && (

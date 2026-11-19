@@ -67,7 +67,9 @@ export default function SnapTarget({
         Add photos
       </Button>
       <p id={hintId} className="snap-target-hint">
-        Up to {maxPhotos} photos · JPG, PNG or WebP · 25&nbsp;MB each
+        JPG, PNG or WebP
+        <br />
+        Up to {maxPhotos} photos, 25&nbsp;MB each
       </p>
       <Input
         ref={fileInput}

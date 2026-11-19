@@ -29,7 +29,7 @@ const facts = (overrides: Partial<Parameters<typeof sellGuide>[0]> = {}) =>
 test("before photos Pako waves, and listens while the student writes", () => {
   const empty = facts({ photoCount: 0, insight: { status: "empty" } });
   assert.equal(empty.mood, "wave");
-  assert.equal(empty.bubble.title, "Snap what's left in your room");
+  assert.equal(empty.bubble.title, "Add photos of your item");
   assert.equal(
     facts({ photoCount: 0, typing: true, insight: { status: "empty" } }).mood,
     "listen",
@@ -66,7 +66,7 @@ test("Pako names what he recognised and invites the tap that writes the listing"
   assert.equal(desk.bubble.title, "Oh, nice!");
   assert.equal(
     desk.bubble.text,
-    "Desk with a wood-look top. Tap Write my listing and I'll check what similar ones sell for. Buyers often ask about screen size and RAM.",
+    "Desk with a wood-look top. Tap Write my listing and I'll check what others ask for similar items. Buyers often ask about screen size and RAM.",
   );
   const noted = facts({
     insight: {
@@ -108,7 +108,7 @@ test("without a name or a place Pako says what he needs; a failure and the used 
     insight: { status: "ready", response: analysis({}), note: "" },
   });
   assert.equal(unknown.mood, "think");
-  assert.equal(unknown.bubble.title, "Nice photo!");
+  assert.equal(unknown.bubble.title, "I can't tell what it is");
   const noPlace = facts({ hasPlace: false });
   assert.equal(noPlace.mood, "listen");
   assert.equal(noPlace.bubble.title, "Where can buyers pick it up?");
@@ -116,7 +116,7 @@ test("without a name or a place Pako says what he needs; a failure and the used 
     insight: { status: "failed", error: "Offline", retry: () => {} },
   });
   assert.equal(failed.mood, "dizzy");
-  assert.equal(failed.bubble.title, "Hmm, that didn't work");
+  assert.equal(failed.bubble.title, "I couldn't read your photos");
   const resting = facts({ absence: "allowance", back: "19 Nov, 18:00" });
   assert.equal(resting.mood, "sleep");
   assert.equal(
@@ -124,7 +124,7 @@ test("without a name or a place Pako says what he needs; a failure and the used 
     "You can still save: fill in the details yourself. I'm back after 19 Nov, 18:00.",
   );
   const offline = facts({ absence: "offline", saveVerb: "publish" });
-  assert.equal(offline.bubble.title, "I can't reach my tools right now");
+  assert.equal(offline.bubble.title, "I'm unavailable right now");
   assert.equal(
     offline.bubble.text,
     "You can still publish by filling in the details yourself.",
@@ -178,6 +178,15 @@ test("the recognised line names the item and the facts its title leaves out", ()
     "IKEA desk, 120x60 cm, used",
   );
   assert.equal(recognisedLine({ title: "Lamp", price: 0 }), "Lamp for free");
+  assert.equal(
+    recognisedLine({
+      title: "Walnut desk",
+      dimensions: "120 x 60 cm",
+      condition: "Good",
+    }),
+    "Walnut desk, 120 x 60 cm, in good condition",
+    "a quality condition reads as a phrase",
+  );
 });
 
 test("several photos are sorted first, and several things become Pako's question", () => {
@@ -196,7 +205,7 @@ test("several photos are sorted first, and several things become Pako's question
     insight: { status: "several", groups },
   });
   assert.equal(several.mood, "happy");
-  assert.equal(several.bubble.title, "I spotted 2 things");
+  assert.equal(several.bubble.title, "These look like 2 items");
   assert.equal(several.bubble.text, "Shall I make 2 listings, one for each?");
   assert.equal(
     facts({
@@ -208,6 +217,6 @@ test("several photos are sorted first, and several things become Pako's question
   );
   assert.equal(
     facts({ photoCount: 3, sortFailed: true }).bubble.text,
-    "I couldn't sort these photos, so I'll treat them as one item.",
+    "I couldn't group these photos, so I'll read them as one item.",
   );
 });

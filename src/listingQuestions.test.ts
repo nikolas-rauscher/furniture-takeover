@@ -250,27 +250,38 @@ test("Pako's closing line names what is still missing before saving", () => {
   );
 });
 
-test("a question keeps the asked sentence as its heading and what Pako wrote after it apart", () => {
+test("a question keeps the asked sentence as its heading, with what Pako wrote around it apart", () => {
   assert.deepEqual(
     splitQuestion(
       "What asking price would you like? Recent listings ask CHF 1,090 [web-3], so CHF 1,250 is a fair start.",
     ),
     {
+      lead: "",
       ask: "What asking price would you like?",
       aside:
         "Recent listings ask CHF 1,090 [web-3], so CHF 1,250 is a fair start.",
     },
   );
   assert.deepEqual(splitQuestion("Is the charger included?"), {
+    lead: "",
     ask: "Is the charger included?",
     aside: "",
   });
   assert.deepEqual(
-    splitQuestion("Recent listings ask CHF 40. What would you like to ask?"),
+    splitQuestion(
+      'Your draft is ready: "Walnut desk, 120 x 60 cm", good condition. What asking price would you like?',
+    ),
     {
-      ask: "Recent listings ask CHF 40. What would you like to ask?",
+      lead: 'Your draft is ready: "Walnut desk, 120 x 60 cm", good condition.',
+      ask: "What asking price would you like?",
       aside: "",
     },
+    "the sentences before the question lead up to it",
+  );
+  assert.deepEqual(
+    splitQuestion("A desk at e.g. 120 cm. Is yours wider?"),
+    { lead: "A desk at e.g. 120 cm.", ask: "Is yours wider?", aside: "" },
+    "an abbreviation inside a sentence does not end it",
   );
 });
 

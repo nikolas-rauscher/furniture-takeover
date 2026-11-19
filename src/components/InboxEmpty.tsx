@@ -8,8 +8,8 @@ export default function InboxEmpty({ onBrowse }: { onBrowse: () => void }) {
       <Pako mood="wave" size={112} />
       <h2>No conversations yet</h2>
       <p>
-        Open a listing and choose Message seller to start one. Pako reads the
-        replies and drafts your answers; you tap Send.
+        Open a listing and choose Message seller. Pako can suggest replies for
+        you to review.
       </p>
       <Button variant="default" onClick={onBrowse}>
         Browse listings

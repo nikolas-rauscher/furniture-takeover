@@ -33,7 +33,7 @@ export function tapOutcome(
 
 export class DescriptionFullError extends Error {
   constructor() {
-    super("Your description is full. Shorten it in Edit details.");
+    super("The description has no room for this. Shorten it in Edit details.");
     this.name = "DescriptionFullError";
   }
 }
@@ -198,16 +198,26 @@ export function closingLine(missing: readonly string[], action: string) {
       };
 }
 
+/** Where one sentence ends and the next begins with a capital letter or a quote. */
+const SENTENCE_BREAK = /(?<=[.!])\s+(?=["“A-Z])/;
+
 /**
- * A question as asked, and what Pako wrote after it: the tray shows the asked
- * sentence as the heading and keeps the rest, such as his reasoning, apart.
+ * A question as asked, and what Pako wrote around it: the tray shows the asked
+ * sentence as the heading, the sentences leading up to it as its context, and
+ * keeps what follows, such as his reasoning, apart.
  */
-export function splitQuestion(text: string): { ask: string; aside: string } {
+export function splitQuestion(text: string): {
+  lead: string;
+  ask: string;
+  aside: string;
+} {
   const end = text.search(/\?\s+\S/);
-  if (end < 0) return { ask: text.trim(), aside: "" };
+  const asked = (end < 0 ? text : text.slice(0, end + 1)).trim();
+  const sentences = asked.split(SENTENCE_BREAK);
   return {
-    ask: text.slice(0, end + 1).trim(),
-    aside: text.slice(end + 1).trim(),
+    lead: sentences.slice(0, -1).join(" "),
+    ask: sentences.at(-1) ?? asked,
+    aside: end < 0 ? "" : text.slice(end + 1).trim(),
   };
 }
 
@@ -315,7 +325,7 @@ export function questionQueue(
 /** Pako's line when his allowance runs out while he writes the listing. */
 export function restingLine(action: string) {
   return {
-    title: "I'm out of help for today",
+    title: "I've used today's requests",
     text: `Your card keeps what I wrote so far. Fill in the rest and tap ${action}.`,
   };
 }

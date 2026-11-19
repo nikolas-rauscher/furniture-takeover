@@ -9,6 +9,7 @@ import {
   homeGuide,
   isReaction,
   listingAnnouncement,
+  priceComparison,
   settledSteps,
   showedResults,
   stepsSummary,
@@ -709,23 +710,24 @@ test("Pako's thread lines name the other student and never guess their pronouns"
   assert.equal(line({ phase: "reading" }), "Reading Léa's reply…");
   assert.equal(
     line({ phase: "paused", remaining: 4 }),
-    "Want me to read Léa's reply? (4 left today)",
+    "Read Léa's reply? 4 reads left today.",
   );
   assert.equal(
     line({ phase: "paused", remaining: undefined }),
-    "Want me to read Léa's reply?",
+    "Read Léa's reply?",
   );
+  assert.equal(line({ phase: "paused", remaining: 1 }), "Read Léa's reply? 1 read left today.");
   assert.equal(
     line({ phase: "gone", status: "reserved" }),
-    "The White study desk is reserved now. Shall I look for something similar?",
+    "The White study desk is reserved for someone else. Shall I look for something similar?",
   );
   assert.equal(
     line({ phase: "no_answer", hoursWaiting: 30 }),
-    "No answer from Léa since yesterday.",
+    "Still waiting for Léa.",
   );
   assert.equal(
     line({ phase: "no_answer", hoursWaiting: 80 }),
-    "No answer from Léa for 3 days.",
+    "Still waiting for Léa after 3 days.",
   );
   const every: ThreadMoment[] = [
     { phase: "reading" },
@@ -754,14 +756,34 @@ test("on the deal card Pako listens while the other side decides, cheers once bo
     pickupPoint: "FMEL Vortex · outside reception",
   };
   const guide = (moment: ThreadMoment) => threadGuide(moment, names);
-  assert.deepEqual(guide({ phase: "deal_offer", terms }), {
+  const offer = { terms, role: "seller" as const, asking: 50, mine: null };
+  assert.deepEqual(guide({ phase: "deal_offer", ...offer }), {
     mood: "listen",
-    line: "Léa offers CHF 45 on Fri 20 Nov, 19:30 at FMEL Vortex · outside reception. Confirm, counter or decline?",
+    line: "That's CHF 5 under your asking price. Confirming reserves the White study desk for Léa.",
   });
   assert.equal(
-    guide({ phase: "deal_partial", terms: { ...terms, pickupAt: null, pickupTime: null, pickupPoint: null } }).line,
-    "Léa suggests CHF 45. Fill in the rest, and they can confirm.",
+    guide({ phase: "deal_offer", ...offer, role: "buyer", mine: 40 }).line,
+    "That's CHF 5 more than you offered. Confirming reserves the White study desk for you.",
   );
+  assert.equal(
+    guide({
+      phase: "deal_partial",
+      ...offer,
+      role: "buyer",
+      asking: 45,
+      terms: { ...terms, pickupAt: null, pickupTime: null, pickupPoint: null },
+    }).line,
+    "That's the asking price. Add the time and place to send it back, then Léa can confirm.",
+  );
+  assert.deepEqual(guide({ phase: "deal_looks_agreed", ...offer, role: "buyer", asking: 50 }), {
+    mood: "happy",
+    line: "That's CHF 5 under the asking price. Once you both confirm, the White study desk is reserved for you.",
+  });
+  assert.equal(
+    guide({ phase: "deal_looks_agreed", ...offer }).line,
+    "That's CHF 5 under your asking price. Once you both confirm, the White study desk is reserved for Léa.",
+  );
+  assert.equal(guide({ phase: "deal_waiting" }).line, "Waiting for Léa to confirm.");
   assert.equal(guide({ phase: "deal_waiting" }).mood, "listen");
   assert.deepEqual(guide({ phase: "deal_agreed", role: "buyer" }), {
     mood: "cheer",
@@ -772,16 +794,40 @@ test("on the deal card Pako listens while the other side decides, cheers once bo
     "Deal with Léa! The White study desk is reserved until pickup.",
   );
   assert.equal(guide({ phase: "deal_cancelled", by: "them" }).line, "Léa cancelled the deal.");
+  assert.equal(
+    guide({ phase: "agreed_elsewhere", agreedWith: "Arjun" }).line,
+    "You agreed with Arjun. Let Léa know?",
+  );
   assert.equal(guide({ phase: "deal_cancelled", by: "me" }).mood, "sad");
   assert.equal(threadReactionMs({ phase: "deal_agreed", role: "buyer" }, "cheer"), 2400);
   assert.equal(threadReactionMs({ phase: "deal_waiting" }, "listen"), null);
   assert.equal(threadReactionMs({ phase: "error" }, "dizzy"), 2600);
   for (const moment of [
     { phase: "deal_waiting" },
-    { phase: "deal_partial", terms },
+    { phase: "deal_partial", ...offer },
+    { phase: "deal_looks_agreed", ...offer },
     { phase: "deal_cancelled", by: "listing" },
   ] as ThreadMoment[])
     assert.doesNotMatch(guide(moment).line, /\b(?:he|she|him|her|his|hers)\b/i);
+});
+
+test("Pako compares an offer's price with what the card does not show", () => {
+  const terms = {
+    amount: 40,
+    fulfillment: "pickup" as const,
+    pickupAt: null,
+    pickupTime: null,
+    pickupPoint: null,
+  };
+  const compare = (changes: Partial<Parameters<typeof priceComparison>[0]>) =>
+    priceComparison({ terms, role: "seller", asking: 40, mine: null, ...changes });
+  assert.equal(compare({}), "That's your asking price.");
+  assert.equal(compare({ asking: 35 }), "That's CHF 5 over your asking price.");
+  assert.equal(compare({ role: "buyer", asking: 50 }), "That's CHF 10 under the asking price.");
+  assert.equal(compare({ role: "buyer", mine: 40 }), "That's what you offered.");
+  assert.equal(compare({ role: "buyer", mine: 45 }), "That's CHF 5 less than you offered.");
+  assert.equal(compare({ asking: 0, terms: { ...terms, amount: 0 } }), "");
+  assert.equal(compare({ terms: { ...terms, amount: null } }), "");
 });
 
 test("Pako mentions an offer waiting for the student, or a booked pickup, on home", () => {

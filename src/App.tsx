@@ -28,6 +28,7 @@ import MessagesPage, {
 } from "./components/MessagesPage";
 import PakoReadingSetting from "./components/PakoReadingSetting";
 import { useMessagesInbox } from "./hooks/useMessagesInbox";
+import { useDealCheers } from "./hooks/useDealCheers";
 import { useNegotiations } from "./hooks/useNegotiations";
 import NegotiationSummary, {
   MessageDraftPreview,
@@ -39,7 +40,12 @@ import {
   type Negotiation,
 } from "../shared/negotiation";
 import { nearbyMeetingPoint } from "./dealOptions";
-import { dealView, reservedForChip } from "./dealWords";
+import {
+  agreedWords,
+  awayPhase,
+  dealView,
+  reservedForChip,
+} from "./dealWords";
 import { effectiveStatus, homeDeals } from "./inboxActivity";
 import {
   accountInboxDeals,
@@ -51,7 +57,8 @@ import {
 } from "./inboxDeals";
 import type { Deal } from "../shared/deal";
 import HomeDeals from "./components/HomeDeals";
-import { draftMessage } from "../shared/dealMessages";
+import { draftMessage, nudgeMessage } from "../shared/dealMessages";
+import { resetMessageWorkspace } from "./api/messages";
 import AgentConversation, {
   focusConversation,
 } from "./components/AgentConversation";
@@ -123,6 +130,7 @@ import { useListingAnalysis } from "./hooks/useListingAnalysis";
 import type { PakoAbsence } from "./sellGuide";
 import { useListingConversation } from "./hooks/useListingConversation";
 import { useSaved } from "./hooks/useSaved";
+import { isListingStatuses } from "./hooks/savedState";
 import { useSessionIds } from "./hooks/useSessionIds";
 import { useWatches } from "./alerts/useWatches";
 import type { WatchTarget } from "./alerts/watch";
@@ -358,6 +366,10 @@ export default function App({
   const database = useMarketplaceListings(account);
   const own = database.listings;
   const setOwn = database.setListings;
+  /** What demo deals reserved or made available again, as it was before; clearing the workspace puts it back. */
+  const [dealStatusBefore, setDealStatusBefore] = useSaved<
+    Record<string, Product["status"]>
+  >("takeover-deal-original-status", {}, isListingStatuses);
   /** Listings show once they have loaded, or once loading failed and the status says why. */
   const listingsSettled = database.ready || database.error !== "";
   const slowListings = useNoticeableWait(
@@ -386,6 +398,8 @@ export default function App({
   const [messageProposal, setMessageProposal] = useState<
     Negotiation | undefined
   >();
+  /** A message the app prepared for a buyer's thread without an offer, such as a follow-up. */
+  const [messageDraft, setMessageDraft] = useState<string>();
   const [jobTitle, setJobTitle] = useState("");
   const [editingJob, setEditingJob] = useState<string | null>(null);
   const draftId = useRef(randomUuid());
@@ -488,6 +502,16 @@ export default function App({
     if (!item) throw new Error(`Deal ${deal.conversationId} is not in the inbox.`);
     return item;
   }
+  // An agreement that arrives while the student is elsewhere in the app gets Pako's cheer.
+  useDealCheers({
+    inbox: account ? (account.session?.user.id ?? "") : "local",
+    deals: inboxDeals,
+    loaded:
+      database.ready &&
+      (account ? accountRows !== null : messages.demoInbox.loaded),
+    elsewhere: view !== "messages",
+    onCheer: cheerAgreement,
+  });
   /** A listing as students see it: an agreed deal reserves it while its own status catches up. */
   const shownListing = (item: Product): Product => ({
     ...item,
@@ -512,16 +536,18 @@ export default function App({
   ).flatMap((deal) => {
     const item = inboxDealOf(deal);
     const listing = own.find((entry) => entry.id === item.listingId);
-    const view =
-      listing &&
-      dealView({
-        deal,
-        role: item.role,
-        other: item.otherName,
-        listing: shownListing(listing),
-        now: new Date(),
-      });
-    return listing && view ? [{ item, listing, view }] : [];
+    if (!listing) return [];
+    const away = {
+      deal,
+      role: item.role,
+      listing: shownListing(listing),
+      latest: item.latest,
+      now: new Date(),
+    };
+    const view = dealView({ ...away, other: item.otherName });
+    return view
+      ? [{ item, listing, view, waited: awayPhase(away) === "no_answer" }]
+      : [];
   });
   const [firstHomeDeal] = homeDealItems;
   /** In the order they were picked, so Pako's best match leads when he compares the top two. */
@@ -659,7 +685,7 @@ export default function App({
       case "messages":
         return "Messages";
       case "sell":
-        if (sellMode === "batch") return "Sell several things";
+        if (sellMode === "batch") return "Sell several items";
         return sellStep === 1 ? "New listing" : "Your listing";
       case "detail":
         return selected?.title ?? "Listing not found";
@@ -867,6 +893,7 @@ export default function App({
     }
     if (listingId) {
       setMessageProposal(proposal);
+      setMessageDraft(undefined);
       setMessageListingId(listingId);
     }
     navigate("messages");
@@ -877,14 +904,38 @@ export default function App({
     openMessages(item.id);
     setOfferRequest(Date.now());
   }
-  /** Opens the conversation a deal is in: a buyer's by its listing, a seller's by itself. */
-  function openDealThread(item: InboxDeal) {
+  /**
+   * Opens the conversation a deal is in, a buyer's by its listing and a
+   * seller's by itself, with a message prepared in its composer if given.
+   */
+  function openDealThread(item: InboxDeal, draft?: string) {
     if (item.role === "buyer") {
       openMessages(item.listingId);
+      setMessageDraft(draft);
       return;
     }
-    setThreadRequest({ id: item.threadId });
+    setThreadRequest({ id: item.threadId, draft });
     navigate("messages");
+  }
+  /** The other student confirmed while this one was elsewhere in the app: Pako cheers, with a way to the chat. */
+  function cheerAgreement(item: InboxDeal) {
+    const listing = own.find((entry) => entry.id === item.listingId);
+    // A deal whose listing is gone has no reservation left to cheer about.
+    if (!listing) return;
+    const { cheer, meaning } = agreedWords(
+      item.role,
+      item.otherName,
+      listing.title,
+    );
+    setToastNotice({
+      message: `${cheer} ${meaning}`,
+      mood: "cheer",
+      action: {
+        label: "Open chat",
+        description: `Open the conversation about ${listing.title}`,
+        onClick: () => openDealThread(item),
+      },
+    });
   }
   function goHome() {
     scrollPositions.current.delete("home");
@@ -1447,7 +1498,7 @@ export default function App({
         setUploadError(
           error instanceof Error
             ? error.message
-            : "Could not read these photos. Try again.",
+            : "I couldn't read these photos. Try different ones.",
         );
     } finally {
       if (imageReader.current === controller) {
@@ -1460,7 +1511,7 @@ export default function App({
   async function generateDraft({ keepTitle = false } = {}) {
     // The ref, not state: a batch item may start right after a cancelled read.
     if (imageReader.current) {
-      setUploadError("Your photo is still loading.");
+      setUploadError("Wait for the photo to load.");
       return;
     }
     const start = draftRef.current;
@@ -1496,7 +1547,7 @@ export default function App({
       setUploadError(
         error instanceof Error
           ? error.message
-          : "Could not prepare the listing. Try again.",
+          : "I couldn't draft the listing. Try again.",
       );
     } finally {
       if (listingRequest.current === controller) setBusy(false);
@@ -1510,7 +1561,9 @@ export default function App({
       return;
     }
     if (!listingDraftReady(draft, editingItem)) {
-      setToast("Check the listing details before saving.");
+      setToast(
+        `Check the listing details before ${listingSaveWords(Boolean(account)).gerund}.`,
+      );
       return;
     }
     const item = listingFromDraft(
@@ -1529,7 +1582,7 @@ export default function App({
     );
     if (!saved) {
       setToast(
-        "Could not save the listing. Your draft is still here; check the error above and try again.",
+        `Couldn't ${listingSaveWords(Boolean(account)).verb.toLowerCase()} the listing. Your draft is still here; see the note above and try again.`,
       );
       return;
     }
@@ -1544,8 +1597,8 @@ export default function App({
     if (editingListing)
       setToast(
         account
-          ? "Listing published to Takeover."
-          : "Listing saved in this browser.",
+          ? "Listing updated."
+          : "Changes saved on this device.",
       );
     else setPublishedListings([item.id]);
   }
@@ -1701,8 +1754,45 @@ export default function App({
       database.retry();
       return;
     }
+    const before = own.find((item) => item.id === id)?.status;
+    if (before && !Object.hasOwn(dealStatusBefore, id))
+      setDealStatusBefore((current) => ({ ...current, [id]: before }));
     if (!(await applyListingStatus(id, status)))
       setToast("Could not save this status change. Please try again.");
+  }
+  /**
+   * Clears this browser's workspace: the student's listings and choices, then
+   * the demo's conversations and deals, after giving the sample listings back
+   * the statuses those deals changed.
+   */
+  async function clearWorkspace() {
+    const restored = own.flatMap((item) =>
+      item.demo && Object.hasOwn(dealStatusBefore, item.id)
+        ? [{ ...item, status: dealStatusBefore[item.id] }]
+        : [],
+    );
+    setOwn(restored);
+    // A sample listing that has not loaded yet keeps its record for the next clear.
+    setDealStatusBefore((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(
+          ([id]) => !restored.some((item) => item.id === id),
+        ),
+      ),
+    );
+    setFavorites([]);
+    setJobs([]);
+    watches.clear();
+    setCompared([]);
+    setSearchArea({
+      location: "Lausanne",
+      radius: defaults.radius,
+    });
+    goHome();
+    setCriteria({ ...defaults });
+    resetMessageWorkspace();
+    await messages.demoInbox.reset();
+    setToast("Local workspace cleared.");
   }
   async function setStatus(id: string, status: Product["status"]) {
     const listing = own.find((item) => item.id === id);
@@ -1998,7 +2088,7 @@ export default function App({
                           ?.title ?? "Listing",
                         messageProposal.terms,
                       ))
-                    : undefined
+                    : messageDraft
                 }
                 initialTerms={
                   messageProposal &&
@@ -2504,13 +2594,22 @@ export default function App({
                     .map((proposal) => proposalSummary(proposal))}
                 {searchIsHome && (
                   <HomeDeals
-                    deals={homeDealItems.map(({ item, listing, view }) => ({
-                      id: item.threadId,
-                      title: listing.title,
-                      image: listing.image,
-                      view,
-                      onOpen: () => openDealThread(item),
-                    }))}
+                    deals={homeDealItems.map(
+                      ({ item, listing, view, waited }) => ({
+                        id: item.threadId,
+                        title: listing.title,
+                        image: listing.image,
+                        view,
+                        onOpen: () => openDealThread(item),
+                        onFollowUp: waited
+                          ? () =>
+                              openDealThread(
+                                item,
+                                nudgeMessage(item.role, listing.title),
+                              )
+                          : undefined,
+                      }),
+                    )}
                     onSeeAll={() => openDestination("messages")}
                   />
                 )}
@@ -3057,8 +3156,8 @@ export default function App({
       {modal === "clear" && (
         <Modal title="Clear local workspace?" onClose={() => setModal(null)}>
           <p className="modal-intro">
-            This removes your listings, favourites, saved searches and their
-            alerts from this browser.
+            This removes your listings, favourites, saved searches,
+            conversations and demo deals from this browser.
           </p>
           <div className="modal-actions">
             <Button className="button secondary" onClick={() => setModal(null)}>
@@ -3067,20 +3166,7 @@ export default function App({
             <Button
               animateIcon
               className="button danger"
-              onClick={() => {
-                setOwn([]);
-                setFavorites([]);
-                setJobs([]);
-                watches.clear();
-                setCompared([]);
-                setSearchArea({
-                  location: "Lausanne",
-                  radius: defaults.radius,
-                });
-                goHome();
-                setCriteria({ ...defaults });
-                setToast("Local workspace cleared.");
-              }}
+              onClick={() => void clearWorkspace()}
             >
               Clear workspace
             </Button>

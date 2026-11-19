@@ -1,6 +1,7 @@
 import type { Deal, DealRole } from "../shared/deal.ts";
 import type { SellerConversation } from "../shared/messages.ts";
 import type { InboxRows } from "./cloud/accountInbox.ts";
+import { demoThreadMessage, type ThreadMessage } from "./pakoThread.ts";
 
 /** A deal in the student's inbox: the side they play, its listing, its thread and the other student. */
 export type InboxDeal = {
@@ -10,25 +11,28 @@ export type InboxDeal = {
   /** The conversation the deal belongs to. */
   threadId: string;
   otherName: string;
+  /** The thread's newest message, which tells whether an offer still waits for an answer. */
+  latest: ThreadMessage | undefined;
 };
 
 /** The local workspace's deals; the student plays the buyer in every local thread. */
 export function demoInboxDeals(
   conversations: readonly SellerConversation[],
 ): InboxDeal[] {
-  return conversations.flatMap((conversation) =>
-    conversation.deal && !conversation.buyerKey
-      ? [
-          {
-            deal: conversation.deal,
-            role: "buyer" as const,
-            listingId: conversation.listingId,
-            threadId: conversation.id,
-            otherName: conversation.seller,
-          },
-        ]
-      : [],
-  );
+  return conversations.flatMap((conversation) => {
+    if (!conversation.deal || conversation.buyerKey) return [];
+    const latest = conversation.messages.at(-1);
+    return [
+      {
+        deal: conversation.deal,
+        role: "buyer" as const,
+        listingId: conversation.listingId,
+        threadId: conversation.id,
+        otherName: conversation.seller,
+        latest: latest && demoThreadMessage(latest, "buyer"),
+      },
+    ];
+  });
 }
 
 /**
@@ -36,7 +40,7 @@ export function demoInboxDeals(
  * A student without a profile name is called by their side, as in the inbox.
  */
 export function accountInboxDeals(
-  rows: Pick<InboxRows, "threads" | "deals" | "names">,
+  rows: Pick<InboxRows, "threads" | "deals" | "names" | "latest">,
   userId: string,
 ): InboxDeal[] {
   return rows.threads.flatMap((thread) => {
@@ -44,6 +48,7 @@ export function accountInboxDeals(
     if (!deal) return [];
     const role: DealRole = thread.seller_id === userId ? "seller" : "buyer";
     const other = role === "seller" ? thread.buyer_id : thread.seller_id;
+    const latest = rows.latest[thread.id];
     return [
       {
         deal,
@@ -52,6 +57,12 @@ export function accountInboxDeals(
         threadId: thread.id,
         otherName:
           rows.names[other] || (role === "seller" ? "Buyer" : "Seller"),
+        latest: latest && {
+          id: latest.id,
+          from: latest.sender_id === userId ? "me" : "them",
+          text: latest.body,
+          at: latest.created_at,
+        },
       },
     ];
   });

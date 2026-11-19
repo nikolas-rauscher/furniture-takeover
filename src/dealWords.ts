@@ -10,6 +10,7 @@ import {
 } from "../shared/deal.ts";
 import { money, type Product } from "../shared/marketplace.ts";
 import { formatPickup, zurichClockTime } from "../shared/pickupTime.ts";
+import type { ThreadMessage } from "./pakoThread.ts";
 
 /** The terms as students read them; null where nothing is settled yet. */
 export type ShownTerms = {
@@ -94,28 +95,8 @@ export function termsSummary(terms: DealTerms, length: Length): string {
   return parts.filter(Boolean).join(" · ");
 }
 
-/** The terms inside a sentence: "CHF 45 on Fri 20 Nov, 19:30 at FMEL Vortex · outside reception". */
-export function termsSentence(terms: DealTerms): string {
-  const price =
-    terms.amount === null
-      ? null
-      : terms.amount === 0
-        ? "it free"
-        : termPrice(terms.amount);
-  if (terms.fulfillment === "shipping")
-    return [price, "with shipping"].filter(Boolean).join(" ");
-  const time = pickupWords(terms, "full");
-  return [
-    price ?? (time && "a pickup"),
-    time && `on ${time}`,
-    terms.pickupPoint && `at ${terms.pickupPoint}`,
-  ]
-    .filter(Boolean)
-    .join(" ");
-}
-
-/** What an offer leaves open, in a few words: "time and place open". */
-export function openTerms(terms: DealTerms): string {
+/** The terms an offer leaves open, listed: "time and place". */
+export function openTermsList(terms: DealTerms): string {
   const missing = missingTerms(terms);
   const words = [
     missing.includes("amount") && "price",
@@ -125,12 +106,15 @@ export function openTerms(terms: DealTerms): string {
     missing.includes("pickupTime") && "time",
     missing.includes("pickupPoint") && "place",
   ].filter((word): word is string => Boolean(word));
-  if (!words.length) return "";
-  const listed =
-    words.length === 1
-      ? words[0]
-      : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`;
-  return `${listed} open`;
+  return words.length < 2
+    ? words.join("")
+    : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`;
+}
+
+/** What an offer leaves open, in a few words: "time and place open". */
+export function openTerms(terms: DealTerms): string {
+  const listed = openTermsList(terms);
+  return listed && `${listed} open`;
 }
 
 /** The terms of an offer that is still missing some, with what it leaves open. */
@@ -316,31 +300,37 @@ export function threadDealNote(
   return proposal.by === role ? `Your offer${price}` : `Offer${price}`;
 }
 
-/**
- * A deal in one line where its thread is not open, such as on Home or on its
- * listing: the strip's words, read from the deal alone.
- */
-export function dealView({
-  deal,
-  role,
-  other,
-  listing,
-  now,
-}: {
+type AwayDeal = {
   deal: Deal;
   role: DealRole;
-  other: string;
   listing: Pick<Product, "price" | "status">;
+  /** The thread's newest message, which tells whether an offer still waits; unknown on a listing page. */
+  latest?: ThreadMessage;
   now: Date;
-}): StripView | null {
-  const phase = dealPhase({
+};
+
+/** Where a deal stands where its thread is not open, such as on Home. */
+export const awayPhase = ({ deal, role, listing, latest, now }: AwayDeal) =>
+  dealPhase({
     deal,
     listing,
     role,
-    messages: [],
+    messages: latest ? [latest] : [],
     turn: null,
     now,
   });
+
+/**
+ * A deal in one line where its thread is not open, such as on Home or on its
+ * listing: the strip's words, read from the deal and, where known, the
+ * thread's newest message.
+ */
+export function dealView({
+  other,
+  ...away
+}: AwayDeal & { other: string }): StripView | null {
+  const { deal, role, listing } = away;
+  const phase = awayPhase(away);
   const view = dealStrip({ phase, deal, role, other, listing });
   return view?.tone === "start" ? null : view;
 }

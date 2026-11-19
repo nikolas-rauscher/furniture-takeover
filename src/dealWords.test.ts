@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import type { Deal, DealTerms } from "../shared/deal.ts";
 import {
   attachedTermsNote,
+  awayPhase,
   dealStrip,
   dealView,
   eventChip,
@@ -255,6 +256,25 @@ test("away from its thread a deal reads as its strip, and a thread without an of
     "booked",
   );
   assert.equal(view({}), null);
+});
+
+test("away from its thread, an offer whose message waited a day says so", () => {
+  const offer = deal({ proposal: { by: "buyer", terms, messageId: "m1" } });
+  const sent = (at: string) => ({ id: "m1", from: "me" as const, text: "CHF 40?", at, structured: true });
+  const away = (latest?: ReturnType<typeof sent>) => ({
+    deal: offer,
+    role: "buyer" as const,
+    listing,
+    latest,
+    now: new Date("2026-11-19T13:05:00.000Z"),
+  });
+  assert.equal(awayPhase(away(sent("2026-11-18T12:00:00.000Z"))), "no_answer");
+  assert.equal(
+    dealView({ ...away(sent("2026-11-18T12:00:00.000Z")), other: "Léa" })?.status,
+    "No answer yet",
+  );
+  assert.equal(awayPhase(away(sent("2026-11-19T09:00:00.000Z"))), "you_confirmed");
+  assert.equal(awayPhase(away()), "you_confirmed");
 });
 
 test("a seller's reserved listing names the buyer and the pickup", () => {

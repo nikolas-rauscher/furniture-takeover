@@ -43,6 +43,12 @@
   background: rgb(255 255 255 / 0.92);
   box-shadow: 0 1px 4px rgb(41 41 41 / 0.14);
 }
+/* The round button stays small on the photo; a finger still gets a 44 px target. */
+.batch-photo-remove::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
 .batch-photo-actions {
   display: flex;
   flex-wrap: wrap;

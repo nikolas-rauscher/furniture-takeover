@@ -106,11 +106,26 @@ function revealField({ target }: SyntheticEvent) {
     target.scrollIntoView({ block: "nearest", behavior: motionBehavior() });
 }
 
-/** Accounts publish a listing for other students; the local demo only saves it in this browser. */
+/**
+ * Accounts publish a listing for other students; the local demo only saves it on
+ * this device, and its button says so.
+ */
 export function listingSaveWords(cloud: boolean) {
   return cloud
-    ? { verb: "Publish", gerund: "publishing", action: "Publish listing" }
-    : { verb: "Save", gerund: "saving", action: "Save listing" };
+    ? {
+        verb: "Publish",
+        gerund: "publishing",
+        action: "Publish listing",
+        andNext: "Publish & next",
+        audience: "Students can find it on takeover. You can edit or archive it later.",
+      }
+    : {
+        verb: "Save",
+        gerund: "saving",
+        action: "Save on this device",
+        andNext: "Save & next",
+        audience: "It stays on this device. Other students can't see it.",
+      };
 }
 
 /** The save button's words: an edit is saved, a new listing published or saved, then the next one. */
@@ -124,8 +139,9 @@ export function saveActionLabel({
   batch?: Pick<BatchProgress, "index" | "covers">;
 }) {
   if (editing) return "Save changes";
+  const words = listingSaveWords(cloud);
   const more = batch !== undefined && batch.index + 1 < batch.covers.length;
-  return listingSaveWords(cloud).action + (more ? " & next" : "");
+  return more ? words.andNext : words.action;
 }
 
 /** Where a listing stands in the batch tray. */
@@ -146,7 +162,8 @@ const BATCH_NOTE_MS = 2600;
 
 /**
  * Where the batch stands: right after a listing it says so with Pako for a moment,
- * otherwise which listing this is and how many are done. Both fit the tray's row.
+ * otherwise which listing this is and how many are done. Both share one place, so
+ * the tray keeps its size when the moment passes.
  */
 function BatchStatus({
   batch,
@@ -159,32 +176,31 @@ function BatchStatus({
     batch.note ? { id: batch.note, ms: BATCH_NOTE_MS } : null,
   );
   const done = batch.results.filter((result) => result === "saved").length;
-  const position = `${batch.index + 1} of ${batch.covers.length}`;
   const last = batch.results.at(-1);
+  const cheering = Boolean(batch.note && !noted && last);
   return (
-    <>
-      {batch.note && !noted && last ? (
-        <p key="note" className="batch-tray-status" aria-hidden="true">
-          <PakoReaction size={28} mood={last === "saved" ? "happy" : "idle"} />
-          <span>
-            <strong>
-              {last === "skipped" ? "Skipped" : cloud ? "Published!" : "Saved!"}
-            </strong>
-            <small>Next: {position}</small>
-          </span>
-        </p>
-      ) : (
-        <p key="count" className="batch-tray-status">
-          <span>
-            <strong>Listing {position}</strong>
-            {done > 0 && <small>{done} done</small>}
-          </span>
-        </p>
-      )}
+    <div className="batch-tray-status" data-cheering={cheering || undefined}>
+      <p className="batch-tray-count" aria-hidden={cheering || undefined}>
+        <strong>
+          Listing {batch.index + 1} of {batch.covers.length}
+        </strong>
+        {done > 0 && <small>{done} done</small>}
+      </p>
+      <p className="batch-tray-cheer" aria-hidden="true">
+        {/* A new note mounts him again, so he reacts to each listing just finished. */}
+        <PakoReaction
+          key={batch.note}
+          size={28}
+          mood={last === "skipped" ? "idle" : "happy"}
+        />
+        <strong>
+          {last === "skipped" ? "Skipped" : cloud ? "Published!" : "Saved!"}
+        </strong>
+      </p>
       <p className="sr-only" role="status">
         {batch.note}
       </p>
-    </>
+    </div>
   );
 }
 
@@ -520,7 +536,7 @@ export default function SellFlow({
             ? "Back to my listings"
             : isPhotoStep
               ? batch
-                ? "Back to sorting"
+                ? "Back to photo groups"
                 : "Back to search"
               : "Back to photos"
         }
@@ -560,7 +576,7 @@ export default function SellFlow({
                     Try again
                   </Button>
                   <Button className="button quiet small" onClick={onFillIn}>
-                    Fill in myself
+                    Fill in details
                   </Button>
                 </div>
               )}
@@ -570,7 +586,7 @@ export default function SellFlow({
                     className="button quiet small"
                     onClick={onSortYourself}
                   >
-                    Several things? Sort them yourself
+                    Several items? Group them yourself
                   </Button>
                 </div>
               )}
@@ -608,7 +624,7 @@ export default function SellFlow({
                 <div className="photo-upload-foot">
                   {photos.length > 0 && (
                     <p className="sell-photo-help">
-                      Review and edit before {saveWords.gerund}.
+                      Check your draft before {saveWords.gerund}.
                     </p>
                   )}
                   {canSellSeveral && (
@@ -618,7 +634,7 @@ export default function SellFlow({
                       onClick={onSellSeveral}
                     >
                       <Images size={16} aria-hidden="true" />
-                      Several things? Snap them all at once
+                      Sell several items
                     </Button>
                   )}
                 </div>
@@ -648,7 +664,7 @@ export default function SellFlow({
                     onDraftChange({ raw: event.target.value })
                   }
                   onBlur={onNotesDone}
-                  placeholder="Anything Pako can't see? Model, size, defects…"
+                  placeholder="Brand, size or wear…"
                 />
               </Field>
               <PickupLocationInput
@@ -670,7 +686,7 @@ export default function SellFlow({
                   Make {piles.length} listings
                 </Button>
                 <Button className="button quiet" onClick={onKeepTogether}>
-                  It's one thing
+                  One item
                 </Button>
               </>
             ) : (
@@ -711,8 +727,8 @@ export default function SellFlow({
               >
                 <span>Required details</span>
                 <small>
-                  {onlyPriceToConfirm && suggestedPrice !== undefined
-                    ? `Price: confirm ${money(suggestedPrice)}`
+                  {onlyPriceToConfirm
+                    ? "Choose price"
                     : detailsToComplete(missing.length)}
                 </small>
               </Button>
@@ -779,6 +795,9 @@ export default function SellFlow({
                   </Button>
                 </Modal>
               )}
+              {!editing && (
+                <span className="quiet-caption">{saveWords.audience}</span>
+              )}
               <Button
                 animateIcon
                 className="button primary large"
@@ -788,11 +807,6 @@ export default function SellFlow({
                 <Check size={18} />
                 {busy ? "Saving…" : saveActionLabel({ cloud, editing, batch })}
               </Button>
-              <span className="quiet-caption">
-                {cloud
-                  ? "Your listing will be visible on Takeover. You can edit or archive it later."
-                  : "Saved in this browser."}
-              </span>
             </form>
           </div>
           <aside className="listing-preview">
@@ -868,7 +882,7 @@ export default function SellFlow({
                       key="suggested"
                       type="button"
                       className="chip listing-price-suggested"
-                      aria-label={`Suggested by Pako: ${money(suggestedPrice)}. Decide the price`}
+                      aria-label={`Suggested price ${money(suggestedPrice)}. Choose your asking price.`}
                       disabled={!onReviewPrice}
                       onClick={onReviewPrice}
                       initial={{ opacity: 0 }}
@@ -912,7 +926,7 @@ export default function SellFlow({
               <p>
                 <CalendarDays size={14} />
                 {draft.pickup
-                  ? `Last day to collect ${shortDate(draft.pickup)}`
+                  ? `Pickup by ${shortDate(draft.pickup)}`
                   : undatedPickup(draft.description)}
               </p>
             </div>

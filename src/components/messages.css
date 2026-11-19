@@ -258,8 +258,37 @@
   gap: 14px;
   min-width: 0;
 }
+/* Who the thread is with: the photo and both names are one target that opens the listing. */
+.chat-partner {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  min-height: 52px;
+  margin: -2px 0;
+  padding: 2px 10px 2px 2px;
+  border-radius: 18px;
+  text-align: left;
+  transition: background-color 160ms ease;
+}
+.chat-partner:hover {
+  background: var(--canvas);
+}
 .chat-header-copy {
   flex: 1;
+}
+.chat-partner-listing {
+  overflow: hidden;
+  color: var(--blue);
+  font-size: var(--type-support);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-partner:hover .chat-partner-listing {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .chat-header-copy strong {
   overflow: hidden;
@@ -295,6 +324,13 @@
   background: #fff0f0;
   color: var(--danger);
 }
+/* An agreed deal keeps its conversation: the button stays reachable to say why. */
+.chat-delete-button[aria-disabled="true"],
+.chat-delete-button[aria-disabled="true"]:hover {
+  background: transparent;
+  color: var(--muted);
+  opacity: 0.45;
+}
 .messages-page .inbox-back {
   display: none;
 }
@@ -302,18 +338,76 @@
   flex: none;
 }
 
-.messages-page .seller-chat-messages {
+/* Only the conversation scrolls: the messages, then whatever follows them, such as Pako's
+   tray. The header above and the composer below stay where they are. */
+.thread-scroll-frame {
+  position: relative;
   display: flex;
   flex: 1 1 0;
   flex-direction: column;
-  gap: 10px;
-  min-height: 260px;
-  padding: 18px 4px 12px;
+  min-height: 140px;
+}
+.thread-scroll {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior-y: contain;
   scrollbar-width: thin;
   scrollbar-color: var(--lip) transparent;
+}
+.thread-scroll-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+/* What follows the messages keeps one rhythm, whatever shows: the deal on phones, a
+   celebration, Pako's tray. */
+.thread-after {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 10px;
+}
+.thread-after > * {
+  margin-block: 0;
+}
+.messages-page .seller-chat-messages {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 4px 12px;
+}
+.messages-page .seller-chat-messages:focus-visible {
+  border-radius: var(--radius-card);
+  outline-offset: -3px;
+}
+/* Back to the newest message: a thumb-sized pill over the conversation's lower edge. */
+.thread-latest {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  z-index: 2;
+  translate: -50% 0;
+}
+.thread-latest-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 44px;
+  padding: 0 16px 0 12px;
+  border: 2px solid var(--card-line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--blue);
+  font-size: var(--type-support);
+  font-weight: 700;
+  box-shadow: 0 8px 18px -10px rgb(41 41 41 / 0.35);
+}
+.thread-latest-button:hover {
+  background: var(--selected);
 }
 .messages-page .message-entry {
   display: flex;
@@ -459,6 +553,33 @@
 .messages-page .composer-field textarea {
   max-height: min(160px, 24dvh);
 }
+/* Ask Pako stands at the start of the field's row, level with Send. */
+.composer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+.composer-row > .composer-field {
+  flex: 1;
+  min-width: 0;
+}
+.composer-row > .ask-pako {
+  flex: none;
+  min-height: 40px;
+  margin-bottom: 7px;
+}
+/* A failed Send says why right above the field that keeps the text. */
+.composer-error,
+.composer-offline {
+  margin: 0;
+  padding: 0 4px;
+  font-size: var(--type-support);
+  line-height: 1.4;
+}
+.composer-offline {
+  color: var(--muted);
+}
 /* Terms that travel with a message: blue while its text states them, a quiet note once it doesn't. */
 .composer-terms {
   margin: 0;
@@ -476,7 +597,7 @@
 }
 .seller-message-meta {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
   color: var(--muted);
   font-size: var(--type-caption);
@@ -506,13 +627,24 @@
   color: var(--danger);
   font-size: var(--type-support);
 }
+/* The inbox could not refresh: said in the list, where the conversations would be. */
+.inbox-error {
+  flex: none;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff3f2;
+  color: var(--danger);
+  font-size: var(--type-support);
+  line-height: 1.45;
+}
 
 .inbox-loading > div {
   display: grid;
   gap: 12px;
 }
 .inbox-loading [data-slot="skeleton"] {
-  height: 72px;
+  height: 92px;
   border-radius: var(--radius-card);
   background: var(--mist);
 }
@@ -651,15 +783,23 @@
     padding-bottom: 10px;
   }
   .chat-header-item {
+    gap: 6px;
+  }
+  .chat-partner {
     gap: 10px;
+  }
+  .chat-segment > button {
+    min-height: 44px;
   }
   .messages-page .chat-delete-button {
     width: 44px;
     height: 44px;
   }
+  .thread-scroll-frame {
+    min-height: 0;
+  }
   .messages-page .seller-chat-messages {
     gap: 8px;
-    min-height: 0;
     padding: 12px 2px 8px;
   }
   .chat-message {
@@ -672,6 +812,13 @@
   .messages-page .conversation-composer {
     gap: 6px;
     padding-top: 8px;
+  }
+  /* About three lines of a draft show before it scrolls inside the field. */
+  .messages-page .composer-field textarea {
+    max-height: calc(4.5em + 16px);
+  }
+  .composer-row > .ask-pako {
+    min-height: 44px;
   }
   .composer-keyboard-hint {
     display: none;

@@ -18,8 +18,8 @@ const photoCount = (count: number) =>
   count === 1 ? "1 photo" : `${count} photos`;
 
 /**
- * The piles Pako sorted the photos into, under his question whether to make one
- * listing each, with a way to tell him how many things they really show.
+ * The groups Pako sorted the photos into, under his question whether to make one
+ * listing each, with a way to tell him how many items they really show.
  */
 export default function PhotoSplitQuestion({
   photos,
@@ -35,7 +35,7 @@ export default function PhotoSplitQuestion({
   const countLabel = useId();
   useEffect(() => () => request.current?.abort(), []);
 
-  /** The seller's own count: one listing, one per photo, Pako's piles, or a new sort. */
+  /** The seller's own count: one listing, one per photo, Pako's groups, or a new sort. */
   async function applyCount() {
     if (sorting) return;
     if (count === 1) return onTogether();
@@ -59,7 +59,7 @@ export default function PhotoSplitQuestion({
       setError(
         error instanceof Error
           ? error.message
-          : "Could not sort the photos. Try again.",
+          : "I couldn't group the photos. Try again, or keep one listing.",
       );
       setSorting(false);
     }
@@ -68,7 +68,7 @@ export default function PhotoSplitQuestion({
   return (
     <section
       className="split-question"
-      aria-label="Your piles"
+      aria-label="Photo groups"
       aria-busy={sorting}
     >
       <ul className="split-question-groups">
@@ -85,7 +85,7 @@ export default function PhotoSplitQuestion({
               ))}
             </span>
             <span className="split-question-name">
-              <strong>{group.label || `Thing ${index + 1}`}</strong>
+              <strong>{group.label || `Item ${index + 1}`}</strong>
               <small>{photoCount(group.photos.length)}</small>
             </span>
           </li>
@@ -99,7 +99,7 @@ export default function PhotoSplitQuestion({
             void applyCount();
           }}
         >
-          <span id={countLabel}>How many things are in these photos?</span>
+          <span id={countLabel}>How many items are in these photos?</span>
           <div
             className="split-question-stepper"
             role="group"
@@ -107,7 +107,7 @@ export default function PhotoSplitQuestion({
           >
             <Button
               className="icon-button"
-              aria-label="One thing fewer"
+              aria-label="One item fewer"
               disabled={sorting || count <= 1}
               onClick={() => setCount((current) => current - 1)}
             >
@@ -116,7 +116,7 @@ export default function PhotoSplitQuestion({
             <output aria-live="polite">{count}</output>
             <Button
               className="icon-button"
-              aria-label="One thing more"
+              aria-label="One item more"
               disabled={sorting || count >= photos.length}
               onClick={() => setCount((current) => current + 1)}
             >
@@ -125,14 +125,14 @@ export default function PhotoSplitQuestion({
           </div>
           <Button type="submit" className="button secondary" disabled={sorting}>
             {sorting
-              ? "Sorting…"
+              ? "Grouping…"
               : count === 1
                 ? "Use one listing"
-                : `Sort into ${count}`}
+                : `Group into ${count} items`}
           </Button>
           <p className="quiet-caption" role={error ? "alert" : undefined}>
             {error ||
-              "You can check and move photos before the listings are written."}
+              "You can check and move photos before I draft the listings."}
           </p>
         </form>
       ) : (
@@ -141,7 +141,7 @@ export default function PhotoSplitQuestion({
           disabled={sorting}
           onClick={() => setRecounting(true)}
         >
-          Not right? Tell me how many
+          Change item count
         </Button>
       )}
     </section>

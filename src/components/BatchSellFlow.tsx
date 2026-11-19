@@ -67,40 +67,40 @@ type Props = {
   start?: BatchStart;
 };
 
-/** A photo glides to the pile it was moved to. */
+/** A photo glides to the item it was moved to. */
 const GLIDE = { type: "spring", stiffness: 420, damping: 34 } as const;
+/** The space between two items, which a folding item takes back with it. */
+const ITEM_GAP = 14;
 /**
- * A pile that lost its last photo keeps its place until the photo has landed in its
- * new pile, then folds away, so the piles and the button below follow the finished
+ * An item that lost its last photo keeps its place until the photo has landed in its
+ * new item, then folds away, so the items and the button below follow the finished
  * layout instead of jumping under the moving photo.
  */
-/** The space between two piles, which a folding pile takes back with it. */
-const PILE_GAP = 14;
 const FOLD = {
   opacity: 0,
   height: 0,
   paddingTop: 0,
   paddingBottom: 0,
   borderWidth: 0,
-  marginBottom: -PILE_GAP,
+  marginBottom: -ITEM_GAP,
   transition: {
     delay: 0.3,
     duration: 0.34,
     ease: [0.65, 0, 0.35, 1],
   },
 } as const;
-/** With reduced motion the pile only fades, and the layout settles at once. */
+/** With reduced motion the item only fades, and the layout settles at once. */
 const FADE = { opacity: 0, transition: { duration: 0.16 } } as const;
 
-/** What a pile is called: the name Pako gave its item, or its number. */
-const pileName = (item: BatchItem, index: number) =>
-  item.label.trim() || `Pile ${index + 1}`;
+/** What an item is called: the name Pako gave it, or its number. */
+const itemName = (item: BatchItem, index: number) =>
+  item.label.trim() || `Item ${index + 1}`;
 
-/** What Pako says above the photos or piles: what to do next, or what he is busy with. */
+/** What Pako says above the photos or items: what to do next, or what he is busy with. */
 function batchGuide({
   stage,
   photoCount,
-  pileCount,
+  itemCount,
   reading,
   sorting,
   sortFailed,
@@ -108,7 +108,7 @@ function batchGuide({
 }: {
   stage: Stage;
   photoCount: number;
-  pileCount: number;
+  itemCount: number;
   reading: boolean;
   sorting: boolean;
   sortFailed: boolean;
@@ -120,8 +120,8 @@ function batchGuide({
       mood: "work",
       bubble: {
         id: "sorting",
-        title: "Sorting your photos…",
-        text: "I'm finding which photos show the same thing.",
+        title: "Grouping your photos…",
+        text: "I'm finding which photos show the same item.",
       },
     };
   if (reading)
@@ -129,23 +129,23 @@ function batchGuide({
       mood: "work",
       bubble: { id: "reading", text: "Loading your photos…" },
     };
-  const piles = pileCount === 1 ? "1 pile" : `${pileCount} piles`;
+  const items = itemCount === 1 ? "1 item" : `${itemCount} items`;
   if (stage === "items")
     return manual
       ? {
           mood: "idle",
           bubble: {
-            id: `manual-piles-${pileCount}`,
-            title: piles,
-            text: "Move a photo if two piles show the same thing. Then you fill in each listing, one at a time.",
+            id: `manual-items-${itemCount}`,
+            title: items,
+            text: "Move a photo if two of these show the same item. Then you fill in each listing, one at a time.",
           },
         }
       : {
           mood: "happy",
           bubble: {
-            id: `piles-${pileCount}`,
-            title: piles,
-            text: "Move a photo if I mixed something up. Then I'll write the listings.",
+            id: `items-${itemCount}`,
+            title: items,
+            text: "Move a photo if I mixed something up. Then I'll draft the listings.",
           },
         };
   if (sortFailed)
@@ -153,7 +153,7 @@ function batchGuide({
       mood: "think",
       bubble: {
         id: "sort-failed",
-        text: "I couldn't sort these. Try again, or make one listing per photo.",
+        text: "I couldn't group these photos. Try again, or make one listing per photo.",
       },
     };
   if (photoCount)
@@ -163,8 +163,8 @@ function batchGuide({
         id: manual ? "manual-photos" : "photos",
         title: photoCount === 1 ? "1 photo" : `${photoCount} photos`,
         text: manual
-          ? "I can't sort photos right now. Make one listing per photo, then move any that belong together."
-          : "Add more, or let me sort them into one pile per item.",
+          ? "I can't group photos right now. Make one listing per photo, then move any that belong together."
+          : "Add more, or let me group them by item.",
       },
     };
   return {
@@ -172,16 +172,16 @@ function batchGuide({
     bubble: {
       id: "empty",
       title: "Snap everything you're selling",
-      text: "One thing or many: I'll sort the photos into one pile per item.",
+      text: "One item or many: I'll group the photos by item.",
     },
   };
 }
 
 /**
- * One pile as a card: its name, an optional title, and its photos, each with a way
- * to move it to another pile or remove it. A pile folding away clips what it holds.
+ * One item as a card: its name, an optional title, and its photos, each with a way
+ * to move it to another item or remove it. An item folding away clips what it holds.
  */
-function BatchPile({
+function BatchItemCard({
   item,
   name,
   targets,
@@ -193,12 +193,12 @@ function BatchPile({
 }: {
   item: BatchItem;
   name: string;
-  /** The other piles a photo can move to. */
+  /** The other items a photo can move to. */
   targets: { id: string; name: string; full: boolean }[];
   liveAgent: boolean;
   photoKey: (photo: string) => string;
   onTitle: (title: string) => void;
-  /** Moves a photo to the pile with that id, or to a new pile. */
+  /** Moves a photo to the item with that id, or to a new item. */
   onMove: (photo: string, target: string | null) => void;
   onRemove: (photo: string) => void;
 }) {
@@ -252,7 +252,7 @@ function BatchPile({
                     </DropdownMenuItem>
                   ))}
                   <DropdownMenuItem onClick={() => onMove(photo, null)}>
-                    To a new pile
+                    To a new item
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -271,21 +271,19 @@ function BatchPile({
   );
 }
 
-/** The button that starts the listings: Pako writes them, or the student fills them in. */
+/** The button that starts the listings: Pako drafts them, or the student fills them in. */
 function startLabel(count: number, liveAgent: boolean) {
   if (liveAgent)
-    return count === 1
-      ? "Write the listing with Pako"
-      : `Write ${count} listings with Pako`;
+    return count === 1 ? "Draft the listing" : `Draft ${count} listings`;
   return count === 1 ? "Fill in the listing" : `Fill in ${count} listings`;
 }
 
-/** How many of the piles today's AI allowance can still draft, when it cannot draft them all. */
-function allowanceNote(quota: AgentQuota | undefined, piles: number) {
-  const drafts = itemsCovered(quota?.remaining, piles);
+/** How many of the items today's AI allowance can still draft, when it cannot draft them all. */
+function allowanceNote(quota: AgentQuota | undefined, items: number) {
+  const drafts = itemsCovered(quota?.remaining, items);
   return drafts === undefined
     ? ""
-    : `Today's AI allowance covers about ${drafts} of ${piles} drafts. You can finish the others by hand.`;
+    : `Today's AI allowance covers about ${drafts} of ${items} drafts. You can finish the others by hand.`;
 }
 
 export default function BatchSellFlow({
@@ -345,7 +343,7 @@ export default function BatchSellFlow({
         setError(
           error instanceof Error
             ? error.message
-            : "Could not read these photos. Try again.",
+            : "I couldn't read these photos. Try different ones.",
         );
     } finally {
       setReading(false);
@@ -366,7 +364,7 @@ export default function BatchSellFlow({
       setError(
         error instanceof Error
           ? error.message
-          : "Could not sort the photos. Try again.",
+          : "I couldn't group the photos. Try again, or choose one listing per photo.",
       );
       setSortFailed(true);
     } finally {
@@ -408,7 +406,7 @@ export default function BatchSellFlow({
   const guide = batchGuide({
     stage,
     photoCount: photos.length,
-    pileCount: items.length,
+    itemCount: items.length,
     reading,
     sorting,
     sortFailed,
@@ -420,10 +418,10 @@ export default function BatchSellFlow({
   return (
     <>
       <WorkspaceHeader
-        title="Sell several things"
-        subtitle={stage === "photos" ? "1 of 2 · Photos" : "2 of 2 · Piles"}
+        title="Sell several items"
+        subtitle={stage === "photos" ? "1 of 2 · Photos" : "2 of 2 · Photo groups"}
         titleRef={headingRef}
-        backLabel={stage === "photos" ? "Sell one thing" : "Back to photos"}
+        backLabel={stage === "photos" ? "Sell one item" : "Back to photos"}
         onBack={back}
         onAccount={onAccount}
         quota={quota}
@@ -520,7 +518,7 @@ export default function BatchSellFlow({
                 onClick={() => void sortPhotos()}
               >
                 <Sparkles size={18} aria-hidden="true" />
-                {sorting ? "Sorting photos…" : "Sort into piles"}
+                {sorting ? "Grouping photos…" : "Group photos"}
               </Button>
             ) : (
               <Button
@@ -541,7 +539,7 @@ export default function BatchSellFlow({
             <p className="quiet-caption">
               {liveAgent
                 ? "Smaller copies of your photos are sent to the AI service to find which ones show the same item."
-                : "Each photo starts as its own pile. You can move photos of one thing together next."}
+                : "Each photo starts as its own listing. You can move photos of one item together next."}
             </p>
           </div>
         </div>
@@ -549,17 +547,17 @@ export default function BatchSellFlow({
 
       {stage === "items" && (
         <div className="batch-review">
-          <ol className="batch-items" style={{ gap: PILE_GAP }}>
+          <ol className="batch-items" style={{ gap: ITEM_GAP }}>
             <AnimatePresence initial={false}>
               {items.map((item, index) => (
-                <BatchPile
+                <BatchItemCard
                   key={item.id}
                   item={item}
-                  name={pileName(item, index)}
+                  name={itemName(item, index)}
                   targets={items
                     .map((target, targetIndex) => ({
                       id: target.id,
-                      name: pileName(target, targetIndex),
+                      name: itemName(target, targetIndex),
                       full: target.draft.images!.length >= MAX_LISTING_PHOTOS,
                     }))
                     .filter((target) => target.id !== item.id)}

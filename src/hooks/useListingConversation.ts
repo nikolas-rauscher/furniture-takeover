@@ -189,11 +189,9 @@ export function useListingConversation({
     setNotices((value) => ({
       ...value,
       [action.id]: result.skipped.length
-        ? "Kept your newer or unsupported details: " +
-          result.skipped.join(", ") +
-          "."
+        ? "I kept your latest edits and left any details I couldn't check as they were."
         : Object.keys(result.changes).length
-          ? "Updated your draft. Nothing has been saved yet."
+          ? "I updated your draft."
           : "Your draft already has these details.",
     }));
   }
@@ -217,8 +215,8 @@ export function useListingConversation({
     setNotices((value) => ({
       ...value,
       [id]: result.preserved.length
-        ? "Undone where unchanged. Your later edits were kept."
-        : "Undone. Previous details restored.",
+        ? "I undid my changes and kept your edits."
+        : "I undid my changes.",
     }));
   }
   /**
@@ -359,7 +357,7 @@ export function useListingConversation({
   function choosePrice(questionId: string, price: number): boolean {
     const question = waitingQuestion(questionId);
     if (!question) return false;
-    const label = price === 0 ? "Give it away for free" : money(price);
+    const label = price === 0 ? "Free" : money(price);
     const suggested = question.choiceActions?.find(
       (item) => item.acceptsProposal && item.patch?.price === price,
     );
@@ -376,7 +374,7 @@ export function useListingConversation({
   function choosePickupDate(questionId: string, date: string): boolean {
     const question = waitingQuestion(questionId);
     if (!question) return false;
-    const label = `Collect by ${shortDate(date)}`;
+    const label = `Pickup by ${shortDate(date)}`;
     recordAnswer(
       question,
       label,

@@ -243,12 +243,13 @@
   overflow-wrap: anywhere;
 }
 
-/* Listing several things one after another: a tray of covers above the listing. */
+/* Listing several items one after another: a tray of covers above the listing. The
+   status, two covers and Skip share one row down to 360 px wide phones. */
 .batch-tray {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px 16px;
+  gap: 10px 12px;
   margin: 0 0 var(--space-group);
   padding: 10px 14px;
   border: 2px solid var(--card-line);
@@ -256,24 +257,34 @@
   background: var(--surface);
   box-shadow: 0 4px 0 var(--lip);
 }
-/* Two short lines at most, so the celebration and the count keep the row's height. */
+/* The count and Pako's short cheer lie on top of each other and cross-fade, so the
+   status keeps the width and height of the larger one. */
 .batch-tray-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
+  display: grid;
   color: var(--muted);
   font-size: var(--type-support);
   line-height: 1.35;
-  animation: batch-tray-swap 200ms ease-out both;
 }
-@keyframes batch-tray-swap {
-  from {
-    opacity: 0;
-  }
+.batch-tray-status > :is(.batch-tray-count, .batch-tray-cheer) {
+  grid-area: 1 / 1;
+  align-self: center;
+  margin: 0;
+  transition:
+    opacity 200ms ease-out,
+    visibility 200ms;
 }
-.batch-tray-status > span {
+.batch-tray-count {
   display: grid;
+}
+.batch-tray-cheer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.batch-tray-status[data-cheering] > .batch-tray-count,
+.batch-tray-status:not([data-cheering]) > .batch-tray-cheer {
+  opacity: 0;
+  visibility: hidden;
 }
 .batch-tray-status strong {
   color: var(--ink);
@@ -282,7 +293,7 @@
 .batch-tray-status small {
   font-size: inherit;
 }
-.batch-tray-status .ob-pako {
+.batch-tray-cheer .ob-pako {
   flex: none;
 }
 .batch-tray ol {
@@ -342,11 +353,17 @@
     scale: 0.4;
   }
 }
-.batch-tray .batch-tray-skip {
+.batch-tray > .button.batch-tray-skip {
   margin-left: auto;
+  padding-inline: 8px;
 }
 
 @media (max-width: 760px) {
+  /* A slimmer tray of covers leaves Pako's question its room on small phones. */
+  .batch-tray {
+    margin-bottom: 8px;
+    padding-block: 6px;
+  }
   /* A compact viewfinder leaves the first field readable above the pinned button. */
   .snap-target {
     --snap-floor: 88%;
@@ -417,6 +434,7 @@
   color: var(--muted);
 }
 .listing-preview-price > .listing-price-suggested {
+  position: relative;
   min-height: 28px;
   padding: 3px 10px;
   border: 0;
@@ -425,6 +443,13 @@
   font-size: var(--type-caption);
   font-weight: 700;
   cursor: pointer;
+}
+/* The chip looks slim; a finger still gets a 44 px target, reaching up over the title
+   since the phone's compact card ends just below the chip. */
+.listing-preview-price > .listing-price-suggested::after {
+  content: "";
+  position: absolute;
+  inset: -13px -2px -3px;
 }
 .listing-preview-price > .listing-price-suggested:disabled {
   cursor: default;

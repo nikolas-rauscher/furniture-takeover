@@ -1,9 +1,19 @@
-import type { CSSProperties, ReactNode } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { AutoHeight } from "@animate-ui/react/primitives/effects/auto-height";
 import { Check, Search } from "@/components/icons";
 import type { DealRole } from "../../shared/deal";
-import { askToBeNextMessage, nudgeMessage } from "../../shared/dealMessages";
+import {
+  askToBeNextMessage,
+  nudgeMessage,
+  reservedElsewhereMessage,
+} from "../../shared/dealMessages";
 import type { ThreadOption, ThreadTurn } from "../../shared/threadTurn";
 import { useMomentPassed } from "../hooks/useMomentPassed";
 import type { PakoTrayState } from "../hooks/usePakoThread";
@@ -18,13 +28,27 @@ import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
 import "./pako-tray.css";
 
-/** The tray's content settles in place of the last one, like the listing tray's. */
+/**
+ * The tray's content settles in place of the last one, like the deal card's:
+ * the old content leaves at once, so a tap is answered without an empty bubble.
+ */
 const SWAP = {
   initial: { opacity: 0, y: 6 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -4 },
-  transition: { type: "spring", stiffness: 420, damping: 34 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 420, damping: 34 },
+  },
+  exit: { opacity: 0, y: -4, transition: { duration: 0.1 } },
 } as const;
+
+/** The terms an acceptance can still leave open, as the tray names them. */
+const OPEN_WORDS: Record<ThreadTurn["agreement"]["missing"][number], string> = {
+  amount: "the price",
+  fulfillment: "the handover",
+  pickupTime: "the time",
+  pickupPoint: "the meeting point",
+};
 
 /** A message Pako put in the composer: one of his options, a nudge or a request to be next. */
 export type PakoWriting = { key: string; text: string };
@@ -62,12 +86,15 @@ function trayMoment(
         return { phase: "gone", status: notice.status };
       if (notice?.kind === "no_answer")
         return { phase: "no_answer", hoursWaiting: notice.hoursWaiting };
+      if (notice?.kind === "agreed_elsewhere")
+        return { phase: "agreed_elsewhere", agreedWith: notice.agreedWith };
       return dealMoment;
     case "ready":
-      return {
-        phase: "ready",
-        summary: withName(state.turn.summary, otherName),
-      };
+      // Terms that look agreed are on the deal card with the words behind them,
+      // so Pako says what the card does not instead of reading them out again.
+      return dealMoment?.phase === "deal_looks_agreed"
+        ? dealMoment
+        : { phase: "ready", summary: withName(state.turn.summary, otherName) };
     case "paused":
       return { phase: "paused", remaining };
     case "unavailable":
@@ -77,9 +104,50 @@ function trayMoment(
   }
 }
 
-/** What the student can do with Pako's reading: tap a message to put it in the composer. */
+/** A list in words: "the time and the meeting point". */
+const listed = (words: string[]) =>
+  words.length < 2
+    ? words.join("")
+    : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`;
+
+/**
+ * What Pako says under a reading that suggests nothing to send, as for an
+ * acceptance: the deal card confirms it, or the terms still open need words.
+ */
+function noReplyHint(turn: ThreadTurn, looksAgreed: boolean) {
+  if (looksAgreed)
+    return "Confirm on the deal card if that's right, or write to change something.";
+  const open = turn.agreement.missing.map((field) => OPEN_WORDS[field]);
+  return open.length
+    ? `Still open: ${listed(open)}. Write to settle ${open.length === 1 ? "it" : "them"}.`
+    : "No reply needed. You can still write if you like.";
+}
+
+/** How the tray invites a tap, for one suggestion or a few. */
+function choiceHint(count: number, chosenHere: boolean, draft: string) {
+  if (chosenHere)
+    return count === 1
+      ? "Reply added to your draft."
+      : "Reply added to your draft. Tap another to swap it.";
+  if (draft.trim())
+    return count === 1
+      ? "Choosing it replaces your draft."
+      : "Choosing a reply replaces your draft.";
+  return count === 1
+    ? "Tap it to add it to your draft. You can edit it before sending."
+    : "Tap one to add it to your draft. You can edit it before sending.";
+}
+
+/**
+ * What the student can do with Pako's reading: tap a message to put it in the
+ * composer. Each suggestion shows its whole label, however many there are.
+ * Where the deal card shows terms that look agreed, it also quotes the words
+ * behind them, so the tray leaves the quotes to the card.
+ */
 function Suggestions({
   turn,
+  turnKey,
+  looksAgreed,
   otherName,
   draft,
   chosen,
@@ -87,6 +155,9 @@ function Suggestions({
   onWrite,
 }: {
   turn: ThreadTurn;
+  /** Tells this reading's suggestions from another reading's with the same ids. */
+  turnKey: string;
+  looksAgreed: boolean;
   otherName: string;
   draft: string;
   chosen: string | undefined;
@@ -94,10 +165,11 @@ function Suggestions({
   onWrite: Props["onWrite"];
 }) {
   const quotes = theirQuotes(turn);
-  const chosenHere = turn.options.some((option) => option.id === chosen);
+  const keyOf = (option: ThreadOption) => `${turnKey}:${option.id}`;
+  const chosenHere = turn.options.some((option) => keyOf(option) === chosen);
   return (
     <>
-      {quotes.length > 0 && (
+      {quotes.length > 0 && !looksAgreed && (
         <p className="thread-tray-quotes">
           What {otherName} said:{" "}
           {quotes.map((quote, index) => (
@@ -108,42 +180,86 @@ function Suggestions({
           ))}
         </p>
       )}
-      <div
-        className="thread-tray-choices"
-        role="group"
-        aria-label="Messages Pako suggests"
-      >
-        {turn.options.map((option, index) => (
-          <Button
-            key={option.id}
-            className="thread-tray-choice"
-            data-chosen={chosen === option.id || undefined}
-            style={{ "--stagger": index } as CSSProperties}
-            onClick={() =>
-              onWrite(
-                { key: option.id, text: withName(option.message, otherName) },
-                option,
-              )
-            }
-          >
-            {chosen === option.id && (
-              <Check size={15} aria-hidden="true" animate />
-            )}
-            {withName(option.label, otherName)}
-          </Button>
-        ))}
-      </div>
+      {turn.options.length > 0 && (
+        <div
+          className="thread-tray-choices"
+          role="group"
+          aria-label="Suggested replies"
+        >
+          {turn.options.map((option, index) => (
+            <Button
+              key={option.id}
+              className="thread-tray-choice"
+              data-chosen={chosen === keyOf(option) || undefined}
+              style={{ "--stagger": index } as CSSProperties}
+              onClick={() =>
+                onWrite(
+                  {
+                    key: keyOf(option),
+                    text: withName(option.message, otherName),
+                  },
+                  option,
+                )
+              }
+            >
+              {chosen === keyOf(option) && (
+                <Check size={15} aria-hidden="true" animate />
+              )}
+              {withName(option.label, otherName)}
+            </Button>
+          ))}
+        </div>
+      )}
       <small className="thread-tray-hint">
-        {chosenHere
-          ? "It's in your message now. Tap another one to swap it."
-          : draft.trim()
-            ? "Tapping one replaces what you wrote."
-            : "Tap one to put it in your message. You can edit it before sending."}
+        {turn.options.length
+          ? choiceHint(turn.options.length, chosenHere, draft)
+          : noReplyHint(turn, looksAgreed)}
       </small>
       {unsaved && (
         <small className="thread-tray-hint">
-          I couldn't keep this reading, so I'll read the reply again next time.
+          I couldn't save these suggestions.
         </small>
+      )}
+    </>
+  );
+}
+
+/**
+ * Pako's line. A long reading folds to two lines on phones, where a tap shows
+ * the rest; the whole line is always announced.
+ */
+function TrayLine({ text, folds }: { text: string; folds: boolean }) {
+  const line = useRef<HTMLParagraphElement>(null);
+  const [open, setOpen] = useState(false);
+  const [cut, setCut] = useState(false);
+  useLayoutEffect(() => {
+    const element = line.current;
+    if (!element || !folds) return;
+    const measure = () =>
+      setCut(element.scrollHeight > element.clientHeight + 1);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [folds, text]);
+  return (
+    <>
+      <p
+        ref={line}
+        className="thread-tray-line"
+        data-folds={(folds && !open) || undefined}
+        aria-hidden="true"
+      >
+        {text}
+      </p>
+      {folds && (cut || open) && (
+        <Button
+          className="thread-tray-more"
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+        >
+          {open ? "Show less" : "Show more"}
+        </Button>
       )}
     </>
   );
@@ -193,7 +309,7 @@ export default function PakoTray({
   if (!moment || !guide) return null;
   const mood = !reacted
     ? guide.mood
-    : moment.phase === "ready"
+    : moment.phase === "ready" || moment.phase === "deal_looks_agreed"
       ? "listen"
       : "idle";
   const chosenHere = (key: string) => chosen === key || undefined;
@@ -203,6 +319,8 @@ export default function PakoTray({
     actions = (
       <Suggestions
         turn={state.turn}
+        turnKey={contentKey}
+        looksAgreed={moment.phase === "deal_looks_agreed"}
         otherName={otherName}
         draft={draft}
         chosen={chosen}
@@ -216,7 +334,7 @@ export default function PakoTray({
     actions = (
       <div className="thread-tray-actions">
         <Button className="button secondary small" onClick={onRead}>
-          Read it
+          Read reply
         </Button>
       </div>
     );
@@ -268,6 +386,20 @@ export default function PakoTray({
         </Button>
       </div>
     );
+  else if (moment.phase === "agreed_elsewhere")
+    actions = (
+      <div className="thread-tray-actions">
+        <Button
+          className="thread-tray-choice"
+          data-chosen={chosenHere("let-know")}
+          onClick={() =>
+            onWrite({ key: "let-know", text: reservedElsewhereMessage(title) })
+          }
+        >
+          Let {otherName} know
+        </Button>
+      </div>
+    );
   else if (moment.phase === "no_answer")
     actions = (
       <div className="thread-tray-actions">
@@ -278,7 +410,7 @@ export default function PakoTray({
             onWrite({ key: "nudge", text: nudgeMessage(role, title) })
           }
         >
-          Nudge {otherName}
+          Draft a follow-up
         </Button>
         {role === "buyer" && (
           <Button className="button quiet small" onClick={onFindSimilar}>
@@ -307,9 +439,7 @@ export default function PakoTray({
             className="thread-tray-content"
             {...SWAP}
           >
-            <p className="thread-tray-line" aria-hidden="true">
-              {guide.line}
-            </p>
+            <TrayLine text={guide.line} folds={moment.phase === "ready"} />
             {actions}
           </motion.div>
         </AnimatePresence>

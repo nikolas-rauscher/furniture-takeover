@@ -36,11 +36,18 @@ test("local threads are the student's purchases; other demo buyers are left out"
     messages: [],
     ...extra,
   });
+  const offer = {
+    id: "m1",
+    sender: "buyer" as const,
+    text: "Would you take CHF 40?",
+    createdAt: "2026-11-18T10:00:00.000Z",
+  };
   assert.deepEqual(
     demoInboxDeals([
       conversation("l1", { deal: deal("l1", "agreed") }),
       conversation("l2"),
       conversation("l3", { deal: deal("l3"), buyerKey: "b2" }),
+      conversation("l4", { deal: deal("l4"), messages: [offer] }),
     ]),
     [
       {
@@ -49,6 +56,20 @@ test("local threads are the student's purchases; other demo buyers are left out"
         listingId: "l1",
         threadId: "c-l1",
         otherName: "Demo seller",
+        latest: undefined,
+      },
+      {
+        deal: deal("l4"),
+        role: "buyer",
+        listingId: "l4",
+        threadId: "c-l4",
+        otherName: "Demo seller",
+        latest: {
+          id: "m1",
+          from: "me",
+          text: "Would you take CHF 40?",
+          at: "2026-11-18T10:00:00.000Z",
+        },
       },
     ],
   );
@@ -81,17 +102,37 @@ test("account deals are seen from the student's side, named like the inbox", () 
     ],
     deals: { "c-l1": deal("l1"), "c-l2": deal("l2", "agreed") },
     names: { lea: "Léa" },
+    latest: {
+      "c-l1": {
+        id: "m1",
+        conversation_id: "c-l1",
+        sender_id: "lea",
+        body: "45 and it's yours.",
+        created_at: "2026-11-19T12:00:00.000Z",
+      },
+    },
   };
   const deals = accountInboxDeals(rows, "me");
   assert.deepEqual(
-    deals.map(({ role, otherName, threadId }) => ({
+    deals.map(({ role, otherName, threadId, latest }) => ({
       role,
       otherName,
       threadId,
+      latest,
     })),
     [
-      { role: "buyer", otherName: "Léa", threadId: "c-l1" },
-      { role: "seller", otherName: "Buyer", threadId: "c-l2" },
+      {
+        role: "buyer",
+        otherName: "Léa",
+        threadId: "c-l1",
+        latest: {
+          id: "m1",
+          from: "them",
+          text: "45 and it's yours.",
+          at: "2026-11-19T12:00:00.000Z",
+        },
+      },
+      { role: "seller", otherName: "Buyer", threadId: "c-l2", latest: undefined },
     ],
   );
   assert.deepEqual(accountInboxDeals({ ...rows, deals: null }, "me"), []);

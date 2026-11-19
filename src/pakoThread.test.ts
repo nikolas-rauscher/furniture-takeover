@@ -57,8 +57,10 @@ test("a buyer hears when the item is gone, and either side can nudge after a day
   const notice = (changes: Partial<Parameters<typeof threadNotice>[0]>) =>
     threadNotice({
       role: "buyer",
+      title: "White study desk",
       listingStatus: "active",
       dealStatus: undefined,
+      agreedWith: undefined,
       messages: [mine(25)],
       now,
       canNudge: true,
@@ -86,6 +88,30 @@ test("a buyer hears when the item is gone, and either side can nudge after a day
     notice({ messages: [mine(30), { ...mine(25), id: "m2", from: "them" }] }),
     null,
   );
+});
+
+test("a seller who agreed with another buyer is reminded to tell this one, once", () => {
+  const notice = (changes: Partial<Parameters<typeof threadNotice>[0]>) =>
+    threadNotice({
+      role: "seller",
+      title: "White study desk",
+      listingStatus: "reserved",
+      dealStatus: "open",
+      agreedWith: "Arjun",
+      messages: [{ ...mine(2), from: "them" }],
+      now,
+      canNudge: true,
+      ...changes,
+    });
+  assert.deepEqual(notice({}), { kind: "agreed_elsewhere", agreedWith: "Arjun" });
+  const told = {
+    ...mine(1),
+    id: "m2",
+    text: "Sorry, the White study desk is now reserved for someone else. I'll let you know if that changes.",
+  };
+  assert.equal(notice({ messages: [{ ...mine(30), from: "them" }, told] }), null);
+  assert.equal(notice({ agreedWith: undefined }), null);
+  assert.equal(notice({ role: "buyer" })?.kind, "gone");
 });
 
 test("Pako's words name the other student, and quote only what they said", () => {
