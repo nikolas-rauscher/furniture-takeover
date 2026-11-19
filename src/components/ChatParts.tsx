@@ -25,8 +25,8 @@ import "./messages.css";
 const ARRIVAL = { type: "spring", stiffness: 460, damping: 34 } as const;
 /** Thread cards rise in one after another, capped so long inboxes stay quick. */
 const MAX_STAGGERED_THREADS = 8;
-/** A sent offer is celebrated for two delivery flights, so Pako has landed when it settles. */
-const CELEBRATION_MS = 2 * PAKO_FLIGHT_MS;
+/** A sent offer is celebrated for one delivery flight: the note leaves once Pako has landed. */
+const CELEBRATION_MS = PAKO_FLIGHT_MS;
 /** Enough history to label recent threads; older messages lose the label. */
 const MAX_REMEMBERED_DRAFTS = 300;
 
@@ -299,12 +299,12 @@ export function SentCelebration({ recipient }: { recipient: string }) {
       transition={ARRIVAL}
     >
       <span className="chat-celebration-pako" aria-hidden="true">
-        <Pako mood="deliver" size={40} />
+        <Pako mood="deliver" size={52} />
         <span className="chat-celebration-burst">
           <Confetti />
         </span>
       </span>
-      <span>
+      <span className="chat-celebration-text">
         <strong>Offer sent to {recipient}!</strong> Now it's their turn.
       </span>
     </motion.p>

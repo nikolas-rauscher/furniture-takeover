@@ -363,7 +363,7 @@ export function actCopy(act: Act, intent: Intent): ActCopy {
 
 const capitalize = (text: string) => text[0].toUpperCase() + text.slice(1);
 
-/** A first request in the visitor's own words, built from up to two picked items. */
+/** A first request in the visitor's own words: up to two picked items within a student budget. */
 export function exampleSearch(selected: ItemId[]): string {
   if (selected.length === 0)
     throw new Error("An example search needs at least one item.");
@@ -371,7 +371,7 @@ export function exampleSearch(selected: ItemId[]): string {
   const budget =
     Math.ceil(chosen.reduce((sum, item) => sum + item.budget, 0) / 10) * 10;
   const wanted = chosen.map((item) => item.phrase).join(" and ");
-  return `${capitalize(wanted)} under CHF ${budget}, pickup this week`;
+  return `${capitalize(wanted)} under CHF ${budget}`;
 }
 
 export function searchSteps(placeId: PlaceId): string[] {

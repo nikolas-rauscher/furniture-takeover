@@ -46,12 +46,6 @@ const STATUS_LABELS: Record<Product["status"], string> = {
   withdrawn: "Archived",
 };
 
-function statusLabel(status: Product["status"], cloud: boolean) {
-  return status === "active" && !cloud
-    ? "Active locally"
-    : STATUS_LABELS[status];
-}
-
 type Celebration = { title: string; text: string };
 type PublishCelebration = Celebration & { listingId: string };
 
@@ -109,8 +103,8 @@ function SellingProgress({
           {celebration
             ? celebration.title
             : sold === total
-              ? `All ${total} passed on!`
-              : `${sold} of ${total} passed on`}
+              ? `All ${total} sold!`
+              : `${sold} of ${total} sold`}
         </h2>
         {celebration && (
           <motion.p
@@ -326,7 +320,7 @@ export default function AccountPage({
                   className="chip own-listing-status"
                   data-status={item.status}
                 >
-                  {statusLabel(item.status, cloud)}
+                  {STATUS_LABELS[item.status]}
                 </span>
               </div>
               <strong>{money(item.price)}</strong>
@@ -477,19 +471,22 @@ export default function AccountPage({
                 Archive<span>{archivedListings.length}</span>
               </TabsTrigger>
             </TabsList>
-            {accountTab === "listings" && visibleListings.length > 0 && (
-              <SellingProgress
-                listings={visibleListings}
-                celebration={
-                  publishedId && items.some((item) => item.id === publishedId)
-                    ? {
-                        ...CELEBRATIONS[cloud ? "cloud" : "local"],
-                        listingId: publishedId,
-                      }
-                    : null
-                }
-              />
-            )}
+            {/* While a search or status filter is on, the matches come first. */}
+            {accountTab === "listings" &&
+              visibleListings.length > 0 &&
+              !filtered && (
+                <SellingProgress
+                  listings={visibleListings}
+                  celebration={
+                    publishedId && items.some((item) => item.id === publishedId)
+                      ? {
+                          ...CELEBRATIONS[cloud ? "cloud" : "local"],
+                          listingId: publishedId,
+                        }
+                      : null
+                  }
+                />
+              )}
             {toolbar}
             <TabsContent value={accountTab}>{content}</TabsContent>
           </Tabs>

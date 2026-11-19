@@ -18,15 +18,12 @@ import {
 test("an example search reads like a request and rounds the budget up to tens", () => {
   assert.equal(
     exampleSearch(["desk", "lamp"]),
-    "A desk and a desk lamp under CHF 70, pickup this week",
+    "A desk and a desk lamp under CHF 70",
   );
-  assert.equal(
-    exampleSearch(["kitchen"]),
-    "Kitchen basics under CHF 30, pickup this week",
-  );
+  assert.equal(exampleSearch(["kitchen"]), "Kitchen basics under CHF 30");
   assert.equal(
     exampleSearch(["bike", "sofa", "desk"]),
-    "A city bike and a small sofa under CHF 250, pickup this week",
+    "A city bike and a small sofa under CHF 250",
   );
   assert.throws(() => exampleSearch([]));
 });

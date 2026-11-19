@@ -70,11 +70,14 @@ import {
 import MobileNav, { type MobileDestination } from "./MobileNav";
 import HeaderNav, { headerDestination } from "./components/HeaderNav";
 import CompareTray from "./components/CompareTray";
-import Toast from "./components/Toast";
+import Toast, { type ToastAction } from "./components/Toast";
 import Modal from "./components/Modal";
 import ProductCard from "./components/ProductCard";
 import SearchPreferencesFields from "./components/SearchPreferencesFields";
-import SellFlow, { type ListingDraft } from "./components/SellFlow";
+import SellFlow, {
+  listingSaveWords,
+  type ListingDraft,
+} from "./components/SellFlow";
 import AgentSuggestions from "./components/AgentSuggestions";
 import AgentRunPanel from "./components/AgentRunPanel";
 import { useAgentRun } from "./hooks/useAgentRun";
@@ -110,6 +113,7 @@ import type {
 } from "../shared/actions";
 import { useAgentHealth } from "./hooks/useAgentHealth";
 import { useFocused } from "./hooks/useFocused";
+import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import { homeGuide, showedResults } from "./pakoMoods";
 import {
   TODAY,
@@ -153,18 +157,28 @@ const DESTINATION_ORDER: Destination[] = [
 
 type Dialog =
   "filters" | "save" | "edit-search" | "location" | "help" | "clear" | null;
-const emptyDraft: ListingDraft = {
-  image: "",
-  images: [],
-  raw: "",
-  title: "",
-  description: "",
-  price: "",
-  condition: "",
-  dimensions: "",
-  location: "Lausanne",
-  pickup: "",
-  category: "All",
+/** A blank listing, picked up where the student lives or searches. */
+function newDraft(location: string): ListingDraft {
+  return {
+    image: "",
+    images: [],
+    raw: "",
+    title: "",
+    description: "",
+    price: "",
+    condition: "",
+    dimensions: "",
+    location,
+    pickup: "",
+    category: "All",
+  };
+}
+/** What changing a listing's status tells the seller. */
+const STATUS_NOTICES: Record<Product["status"], string> = {
+  active: "Listing is active again.",
+  reserved: "Marked as reserved.",
+  sold: "Marked as sold.",
+  withdrawn: "Listing archived. You can restore it from Archive.",
 };
 
 export default function App({
@@ -247,6 +261,8 @@ export default function App({
   const searchFocused = useFocused(searchField);
   const [followUp, setFollowUp] = useState("");
 
+  /** A search asked for in the step that also moved the search area; it runs once the area is in state. */
+  const [pendingSearch, setPendingSearch] = useState<string | null>(null);
   const [onboardingRecord] = useState(readOnboarding);
   const [onboarding, setOnboarding] = useState(() =>
     firstVisitMode(
@@ -310,7 +326,7 @@ export default function App({
   const [jobTitle, setJobTitle] = useState("");
   const [editingJob, setEditingJob] = useState<string | null>(null);
   const draftId = useRef(crypto.randomUUID());
-  const draftRef = useRef<ListingDraft>({ ...emptyDraft });
+  const draftRef = useRef<ListingDraft>(newDraft(searchArea.location));
   const [draft, setDraftState] = useState<ListingDraft>(draftRef.current);
   function setDraft(value: SetStateAction<ListingDraft>) {
     const next = typeof value === "function" ? value(draftRef.current) : value;
@@ -331,7 +347,8 @@ export default function App({
     message: string;
     /** How Pako brings the note; he stands calmly unless the news is a small joy. */
     mood?: PakoMood;
-    deletedSearch?: { job: SavedSearch; index: number };
+    /** A way to act on the news, such as undoing it; the note then stays longer. */
+    action?: ToastAction;
     /** The favourite this note confirms; removing it again takes the note back. */
     savedFavorite?: string;
   } | null>(null);
@@ -339,18 +356,12 @@ export default function App({
   function setToast(message: string) {
     setToastNotice(message ? { message } : null);
   }
-  /** Puts the saved search the toast reports as deleted back in its place. */
-  function undoSearchDeletion() {
-    const deleted = toastNotice?.deletedSearch;
-    if (!deleted) throw new Error("No deleted saved search to restore.");
+  /** Puts a deleted saved search back where it was. */
+  function restoreSavedSearch(job: SavedSearch, index: number) {
     setJobs((current) => {
-      if (current.some((job) => job.id === deleted.job.id)) return current;
-      const index = Math.max(0, Math.min(deleted.index, current.length));
-      return [
-        ...current.slice(0, index),
-        deleted.job,
-        ...current.slice(index),
-      ];
+      if (current.some((item) => item.id === job.id)) return current;
+      const at = Math.max(0, Math.min(index, current.length));
+      return [...current.slice(0, at), job, ...current.slice(at)];
     });
     setToast("Saved search restored.");
   }
@@ -384,6 +395,9 @@ export default function App({
   );
   const searchIsHome = !searching;
   const isHome = view === "discover" && searchIsHome;
+  /** Pages whose composer or main action rests at the bottom of the screen. */
+  const bottomDocked =
+    (view === "discover" && !isHome) || view === "messages" || view === "sell";
   const mainContent = useRef<HTMLElement>(null);
   const pageKey =
     view === "discover"
@@ -467,6 +481,30 @@ export default function App({
   const running = agentRun.state.status === "running";
   const hasSearchDraft = query.trim().length > 0;
   const searchHeading = "Your search";
+  /** The page on screen as the browser tab names it; home keeps the app's own title. */
+  function pageName(): string | null {
+    switch (view) {
+      case "discover":
+        if (isHome) return null;
+        return reviewingListing ? "Listing review" : searchHeading;
+      case "searches":
+        return "Saved searches";
+      case "account":
+        return accountTab === "favorites" ? "Saved items" : "My listings";
+      case "messages":
+        return "Messages";
+      case "sell":
+        return sellStep === 1 ? "New listing" : "Your listing";
+      case "detail":
+        return selected?.title ?? "Listing not found";
+      case "compare":
+        return "Compare items";
+      case "settings":
+        if (!account) return "Workspace settings";
+        return signedIn ? "Account settings" : "Sign in";
+    }
+  }
+  useDocumentTitle(pageName());
   const quotaExhausted = agentHealth?.quota?.remaining === 0;
   const quotaResets = agentHealth?.quota
     ? new Date(agentHealth.quota.resetAt).toLocaleString([], {
@@ -530,7 +568,7 @@ export default function App({
     if (!toastNotice) return;
     const timer = setTimeout(
       () => setToastNotice(null),
-      toastNotice.deletedSearch ? 10000 : 5000,
+      toastNotice.action ? 10000 : 5000,
     );
     return () => clearTimeout(timer);
   }, [toastNotice]);
@@ -575,6 +613,8 @@ export default function App({
       listingRequest.current?.abort();
       cancelPhotoRead();
       setBusy(false);
+      // A note belongs to the page it was raised on.
+      setToastNotice(null);
     }
     setView(next);
     if (!fromHistory) {
@@ -659,7 +699,7 @@ export default function App({
     navigate("sell");
     resetListingConversation();
     listingRevisions.current = {};
-    setDraft({ ...emptyDraft, location: pickupLocation });
+    setDraft(newDraft(pickupLocation));
     setSellStep(1);
     setEditingListing(null);
     setUploadError("");
@@ -675,6 +715,7 @@ export default function App({
       // The intro also opens from the header on other pages; the query belongs on home.
       goHome();
       setQuery(outcome.query);
+      setPendingSearch(outcome.query);
     }
   }
   function declineOnboarding() {
@@ -724,6 +765,11 @@ export default function App({
   function startSearchFromHome(text: string) {
     transitionPage("nav-forward", () => void runSearch(text), "fade");
   }
+  useEffect(() => {
+    if (pendingSearch === null) return;
+    setPendingSearch(null);
+    void runSearch(pendingSearch);
+  }, [pendingSearch]);
   function openBrowse() {
     navigate("discover");
   }
@@ -755,9 +801,14 @@ export default function App({
     if (!stored) return;
     if (adding)
       setToastNotice({
-        message: "Saved to your favourites.",
+        message: "Added to your saved items.",
         mood: "love",
         savedFavorite: id,
+        action: {
+          label: "View",
+          description: "View your saved items",
+          onClick: () => openDestination("favorites"),
+        },
       });
     else
       setToastNotice((notice) =>
@@ -1443,6 +1494,8 @@ export default function App({
     setUploadError("");
   }
   async function setStatus(id: string, status: Product["status"]) {
+    const listing = own.find((item) => item.id === id);
+    if (!listing) throw new Error(`Listing ${id} is not among your listings.`);
     const saved = await setOwn((current) =>
       current.map((item) => (item.id === id ? { ...item, status } : item)),
     );
@@ -1452,11 +1505,17 @@ export default function App({
     }
     if (status === "withdrawn")
       setCompared((current) => current.filter((item) => item !== id));
-    setToast(
-      status === "withdrawn"
-        ? "Listing archived. You can restore it from Archive."
-        : "Listing status updated.",
-    );
+    setToastNotice({
+      message: STATUS_NOTICES[status],
+      action:
+        status === "withdrawn"
+          ? {
+              label: "Undo",
+              description: `Undo archiving ${listing.title}`,
+              onClick: () => void setStatus(id, listing.status),
+            }
+          : undefined,
+    });
   }
   const listingTools = (
     <DropdownMenu>
@@ -1896,8 +1955,8 @@ export default function App({
                       <p>
                         <strong>Moving out?</strong>{" "}
                         <span>
-                          Just take photos. Pako writes the listing, you tap
-                          Publish.
+                          Just take photos. Pako writes the listing, you tap{" "}
+                          {listingSaveWords(Boolean(account)).verb}.
                         </span>
                       </p>
                       <Button
@@ -2015,7 +2074,7 @@ export default function App({
                                   ? "Ask about your listing…"
                                   : !negotiations.active &&
                                       showedResults(agentRun.state)
-                                    ? "Ask Pako for cheaper, closer or bigger…"
+                                    ? "Cheaper, closer or bigger?"
                                     : "Ask a follow-up…"
                               }
                               sendLabel="Send to Pako"
@@ -2185,7 +2244,7 @@ export default function App({
                       <p>
                         {account
                           ? "Items shared on Takeover"
-                          : "Personal browser listings & demo database"}
+                          : "Saved in this browser."}
                       </p>
                     </div>
                     <div className="product-grid">
@@ -2229,14 +2288,16 @@ export default function App({
                     setModal("edit-search");
                   }}
                   onDelete={(job) => {
+                    const index = jobs.findIndex((item) => item.id === job.id);
                     setJobs((current) =>
                       current.filter((item) => item.id !== job.id),
                     );
                     setToastNotice({
                       message: "Saved search deleted.",
-                      deletedSearch: {
-                        job,
-                        index: jobs.findIndex((item) => item.id === job.id),
+                      action: {
+                        label: "Undo",
+                        description: "Undo saved search deletion",
+                        onClick: () => restoreSavedSearch(job, index),
                       },
                     });
                   }}
@@ -2403,16 +2464,9 @@ export default function App({
       />
       <Toast
         message={toast}
+        placement={bottomDocked ? "top" : "bottom"}
         mood={toastNotice?.mood}
-        action={
-          toastNotice?.deletedSearch
-            ? {
-                label: "Undo",
-                description: "Undo saved search deletion",
-                onClick: undoSearchDeletion,
-              }
-            : undefined
-        }
+        action={toastNotice?.action}
         onDismiss={() => setToast("")}
       />
 

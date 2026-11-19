@@ -69,12 +69,6 @@
   translate: 0 4px;
   box-shadow: 0 0 0 var(--lip);
 }
-.chat-thread.active,
-.chat-thread.active:not(:disabled):hover {
-  border-color: var(--blue);
-  background: var(--selected);
-  box-shadow: 0 4px 0 var(--blue-dark);
-}
 .chat-thread:disabled {
   opacity: 0.7;
 }
@@ -82,6 +76,22 @@
   from {
     opacity: 0;
     transform: translateY(10px);
+  }
+}
+/* The open thread stands out in the inbox beside it. Phones show the inbox or a thread,
+   never both, so there no row looks selected. */
+@media (min-width: 761px) {
+  .chat-thread.active,
+  .chat-thread.active:not(:disabled):hover {
+    border-color: var(--blue);
+    background: var(--selected);
+    box-shadow: 0 4px 0 var(--blue-dark);
+  }
+  .chat-thread.active .chat-thread-copy strong {
+    color: var(--blue-dark);
+  }
+  .chat-thread.active .chat-avatar {
+    box-shadow: 0 0 0 2px var(--selected);
   }
 }
 .chat-thread-copy,
@@ -95,9 +105,6 @@
   color: var(--ink);
   font-size: var(--type-label);
   font-weight: 700;
-}
-.chat-thread.active .chat-thread-copy strong {
-  color: var(--blue-dark);
 }
 .chat-thread-copy > span,
 .thread-preview,
@@ -157,9 +164,6 @@
   font-weight: 700;
   line-height: 1;
   box-shadow: 0 0 0 2px var(--surface);
-}
-.chat-thread.active .chat-avatar {
-  box-shadow: 0 0 0 2px var(--selected);
 }
 
 /* Search and the buying / selling views stay put while the inbox scrolls. */
@@ -403,8 +407,13 @@
 }
 .chat-celebration-burst {
   position: absolute;
-  top: 12px;
+  top: 16px;
   left: 50%;
+}
+/* The news stays readable while the confetti flies behind it. */
+.chat-celebration-text {
+  position: relative;
+  z-index: 1;
 }
 
 /* Composer */

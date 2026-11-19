@@ -1,10 +1,13 @@
-/* Confirmations rise above the page as a tactile card; only their controls take taps. */
+/*
+ * Confirmations rise above the page as a tactile card; only their controls take taps.
+ * They stay under open menus and dialogs, and above the tab bar and the compare tray.
+ */
 .toast {
   position: fixed;
   right: 0;
   bottom: 28px;
   left: 0;
-  z-index: 110;
+  z-index: 45;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -61,6 +64,11 @@
 body:has(.compare-tray) .toast {
   bottom: 96px;
 }
+/* Where a composer or the page's main action rests at the bottom, notes drop in under the header. */
+.toast[data-placement="top"] {
+  top: calc(var(--app-header-height) + 12px);
+  bottom: auto;
+}
 
 @media (max-width: 760px) {
   .toast {
@@ -68,5 +76,16 @@ body:has(.compare-tray) .toast {
   }
   body:has(.compare-tray) .toast {
     bottom: calc(var(--mobile-nav-height) + 84px);
+  }
+  /* A listing's contact bar stays tappable: notes rise above it, and above the tray too. */
+  body:has(.listing-detail.has-mobile-contact) .toast {
+    bottom: calc(
+      var(--mobile-nav-height) + var(--listing-contact-height) + 16px
+    );
+  }
+  body:has(.listing-detail.has-mobile-contact):has(.compare-tray) .toast {
+    bottom: calc(
+      var(--mobile-nav-height) + var(--listing-contact-height) + 84px
+    );
   }
 }

@@ -62,9 +62,11 @@
     --mobile-nav-height: 0px;
   }
   /* The keyboard and an open thread (which has its own way back) make the tab bar
-     step aside. It is hidden rather than removed: its animations need a rendered element. */
-  :root[data-keyboard-open] .mobile-nav,
+     step aside. It is hidden rather than removed: its animations need a rendered element.
+     Taken out of the flow, it leaves no empty strip below a docked composer. */
+  :root[data-keyboard-open] #root > .mobile-nav,
   #root:has(.messages-layout .messages-page.has-conversation) > .mobile-nav {
+    position: fixed;
     visibility: hidden;
   }
   .mobile-nav-item {

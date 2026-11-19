@@ -109,6 +109,14 @@
   .mobile-nav-item[data-minimized] {
     padding: 0 !important;
   }
+  /* On narrow phones the bar gives its tabs a few more pixels, so the labels keep apart. */
+  @media (max-width: 370px) {
+    .mobile-nav {
+      --mobile-nav-gutter: 8px;
+      --mobile-nav-gap: 8px;
+      --mobile-nav-sell-size: 52px;
+    }
+  }
   .mobile-nav-item[data-minimized] .mobile-nav-label {
     position: absolute;
     opacity: 0;
