@@ -512,7 +512,7 @@ test("a filter-only follow-up closes after curation and one external lookup", as
       toolCall("show_takeover_listings", { ids: [] }, "select"),
     ];
     if (external) steps.push(toolCall("web_search", { query: "bureau Lausanne" }, "web"));
-    const model = new MockLanguageModelV4({ doStream: [...steps, answer("No matches.")] });
+    const model = new MockLanguageModelV4({ doStream: [...steps, toolCall("finish_search", { text: "No matches." }, "finish")] });
     const events = await eventsFor(createAgentRuntime({
       apiKey: "test", braveApiKey: "test", modelImpl: model,
       fetchImpl: async () => Response.json({ web: { results: [] } }),
@@ -521,7 +521,7 @@ test("a filter-only follow-up closes after curation and one external lookup", as
       maxPrice: 80, location: "EPFL", budgetSpecified: true,
     } });
     assert.deepEqual(model.doStreamCalls.map(call => call.tools?.map(tool => tool.name)),
-      [["inventory_search"], ["show_takeover_listings"], ...(external ? [["web_search"]] : []), ["ask_user"]], text);
+      [["inventory_search"], ["show_takeover_listings"], ...(external ? [["web_search"]] : []), ["ask_user", "finish_search"]], text);
     assert.equal(events.at(-1)?.type, "complete", text);
     assert.ok(events.some(event => event.type === "watch_suggestion"));
   }
@@ -541,4 +541,35 @@ test("repeating the current query and budget preserves the selected cards", asyn
   assert.deepEqual(events.filter(event => event.type === "inventory_matches").at(-1),
     { type: "inventory_matches", ids: [ownDesk.id] });
   assert.equal(events.at(-1)?.type, "complete");
+});
+
+test("a Takeover-only refinement closes with a comparison and an offer action", async () => {
+  const closing = "## Takeover\nThe white desk fits.";
+  const model = new MockLanguageModelV4({ doStream: [
+    toolCall("inventory_search", { query: "desk" }, "find"),
+    toolCall("show_takeover_listings", { ids: [ownDesk.id] }, "select"),
+    toolCall("finish_search", { text: closing }, "finish"),
+  ] });
+  const events = await eventsFor(createAgentRuntime({ apiKey: "test", modelImpl: model }), {
+    text: "only on Takeover", context: { currentQuery: "desk", previousAnswer: "Here are desks." },
+    inventory: [ownDesk],
+  });
+  assert.deepEqual(model.doStreamCalls[2].tools?.map(tool => tool.name), ["finish_search"]);
+  assert.equal(model.doStreamCalls.length, 3);
+  assert.ok(events.some(event => event.type === "offer_suggestion" && event.listingId === ownDesk.id));
+  assert.ok(events.some(event => event.type === "complete" && event.text === closing));
+});
+
+test("provider tool markup in ordinary text never becomes a buyer reply", async () => {
+  const model = new MockLanguageModelV4({ doStream: [
+    toolCall("inventory_search", { query: "desk" }, "find"),
+    toolCall("show_takeover_listings", { ids: [ownDesk.id] }, "select"),
+    answer('<｜｜DSML｜｜ invoke name="suggest_takeover_offer">'),
+  ] });
+  const events = await eventsFor(createAgentRuntime({ apiKey: "test", modelImpl: model }), {
+    text: "only on Takeover", context: { currentQuery: "desk", previousAnswer: "A desk." },
+    inventory: [ownDesk],
+  });
+  assert.equal(events.at(-1)?.type, "error");
+  assert.ok(events.every(event => event.type !== "text_delta" && event.type !== "complete"));
 });

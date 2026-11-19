@@ -14,7 +14,7 @@ import { extractSearchConstraints, parseSearch, takeoverOnlyPattern, type Produc
 import { negotiationSchema } from "../shared/negotiation.ts";
 import { createNegotiationTools } from "./negotiation-tools.ts";
 import { buildAgentInstructions } from "./agent-instructions.ts";
-import { ToolChoiceViolationError, ToolLoopAgent, type LanguageModel } from "ai";
+import { tool, ToolChoiceViolationError, ToolLoopAgent, type LanguageModel } from "ai";
 import { createDeepSeek } from "@ai-sdk/deepseek";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
@@ -174,6 +174,7 @@ const toolActivity: Record<string, { label: string; task: AgentTaskKind }> = {
     label: "Selecting takeover matches",
     task: "listings",
   },
+  finish_search: { label: "Summarizing your matches", task: "request" },
   suggest_takeover_offer: { label: "Suggesting an offer", task: "listings" },
   suggest_watch: {
     label: "Offering to watch for this item",
@@ -537,6 +538,17 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
           fetchImpl: config.fetchImpl,
           workSignal,
         });
+        let refinementReply: string | undefined;
+        if (refinement) tools.finish_search = tool({
+          description: "Give the student the final comparison using the current cards and web evidence. The app already provides the matching cards and their actions.",
+          inputSchema: z.object({ text: z.string().trim().min(1).max(18_000)
+            .refine(text => !text.includes("｜｜DSML｜｜"), "Provide only the comparison in ordinary Markdown.") }),
+          execute: ({ text }) => {
+            claimTool();
+            refinementReply = text;
+            return { completed: true };
+          },
+        });
         const needsPriceDecision = () => state.firstDraft && request.context?.currentDraft?.price == null;
         const keyFacts = listingAssist ? listingKeyFacts(request) : undefined;
         const stepLabel = (step: number) => listingMode
@@ -560,7 +572,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
           stopWhen: [
             ({ steps }) =>
               steps.length >= MAX_STEPS + Number(negotiations.isReadyToFinish()),
-            () => Boolean(state.pendingQuestion),
+            () => Boolean(state.pendingQuestion || refinementReply),
           ],
           prepareStep: ({ stepNumber, steps }) => {
             // Preferences can change through a tool in this same reply. Rebuild
@@ -608,8 +620,9 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
                 !steps.some(step => step.toolCalls.some(call => call.toolName === "ask_user"));
               return {
                 ...languageInstructions,
-                activeTools: canAsk ? ["ask_user"] : [],
-                toolChoice: canAsk ? "auto" : "none",
+                activeTools: canAsk ? ["ask_user", "finish_search"] : ["finish_search"],
+                toolChoice: "required",
+                providerOptions: { deepseek: { thinking: { type: "disabled" } } },
               };
             }
             const needsBudget =
@@ -894,7 +907,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
                 "The response was too long. Try a more focused request.",
               );
             }
-            await streamPublicText(part.text);
+            if (!refinement) await streamPublicText(part.text);
           } else if (part.type === "error") streamFailed = part.error;
           else if (part.type === "abort")
             throw new RunError(
@@ -933,6 +946,15 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
           await completeSearch([publicText.trim(), rationale].filter(Boolean).join("\n\n") || state.pendingQuestion.question);
           return;
         }
+        if (refinementReply) {
+          const text = cleanReferences(refinementReply);
+          if (state.displayedInventoryIds.length) await send({
+            type: "offer_suggestion", listingId: state.displayedInventoryIds[0],
+          });
+          await send({ type: "text_delta", text });
+          await completeSearch(text);
+          return;
+        }
         const text = cleanReferences(await result.text).trim();
         const finishReason = await result.finishReason;
         if (finishReason === "tool-calls")
@@ -940,7 +962,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
             "STEP_LIMIT",
             "The agent reached its eight-step limit. Try a narrower request.",
           );
-        if (!text || finishReason !== "stop")
+        if (refinement || !text || finishReason !== "stop")
           throw new RunError(
             "INCOMPLETE_RESPONSE",
             "The agent did not finish its answer. Please try again.",
