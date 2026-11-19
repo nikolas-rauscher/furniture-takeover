@@ -4,7 +4,7 @@ import AccountMessages from "../cloud/AccountMessages";
 import { ArrowLeft, Trash2, X } from "@/components/icons";
 import { motionBehavior } from "../uiMotion";
 import { AnimatePresence } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { SellerConversation } from "../../shared/messages";
 import {
   listMessages,
@@ -31,7 +31,15 @@ import {
 import "./messages.css";
 export type MessagesPageProps = {
   account?: AccountConnection;
+  /** Enables local role previews only; account inboxes always use real identity. */
+  developerMode?: boolean;
   onDeleted?: (id: string) => void;
+  /** Feature-flagged availability prototype shown above the open thread. */
+  threadBanner?: (thread: {
+    listingId: string;
+    role: "buyer" | "seller";
+    onConversation: (conversation: SellerConversation) => void;
+  }) => ReactNode;
   listingId?: string;
   listing?: Product;
   listings: Product[];
@@ -65,6 +73,7 @@ export default function MessagesPage(props: MessagesPageProps) {
   return <DemoMessagesPage {...props} />;
 }
 function DemoMessagesPage({
+  developerMode = false,
   listingId,
   listing,
   listings,
@@ -74,13 +83,19 @@ function DemoMessagesPage({
   onBeforeSend,
   onSent,
   onDeleted,
+  threadBanner,
 }: MessagesPageProps) {
   const [conversations, setConversations] = useState<SellerConversation[]>([]);
   /** The inbox calls itself empty only once it has heard back. */
   const [loaded, setLoaded] = useState(false);
   const [selected, setSelected] = useState(listingId ?? "");
   const [showConversation, setShowConversation] = useState(Boolean(listingId));
-  const [role, setRole] = useState<"buyer" | "seller">("buyer");
+  const [previewRole, setRole] = useState<"buyer" | "seller">("buyer");
+  // Use buyer immediately on disable, including before the effect runs.
+  const role = developerMode ? previewRole : "buyer";
+  useEffect(() => {
+    if (!developerMode) setRole("buyer");
+  }, [developerMode]);
   const [drafts, setDrafts] = useState<Record<string, string>>(
     listingId && initialMessage
       ? { [`${listingId}:buyer`]: initialMessage }
@@ -229,8 +244,8 @@ function DemoMessagesPage({
         <p>Talk to sellers and arrange your pickup.</p>
       </div>
       <p className="quiet-caption">
-        Local demo inbox · Seller view previews the other side. Real accounts
-        are not connected yet.
+        Local workspace inbox · Conversations are linked to this browser.
+        {developerMode && " Seller view previews the other side."}
       </p>
       <div className="seller-chat-layout">
         <nav aria-label="Conversations">
@@ -297,17 +312,30 @@ function DemoMessagesPage({
                     </Button>
                   )}
                 </div>
-                <ChatSegment
-                  label="Demo view"
-                  options={DEMO_VIEWS}
-                  value={role}
-                  disabled={busy}
-                  onChange={(view) => {
-                    setRole(view);
-                    setCelebration(null);
-                  }}
-                />
+                {developerMode && (
+                  <ChatSegment
+                    label="Demo view"
+                    options={DEMO_VIEWS}
+                    value={role}
+                    disabled={busy}
+                    onChange={(view) => {
+                      setRole(view);
+                      setCelebration(null);
+                    }}
+                  />
+                )}
               </header>
+              {threadBanner?.({
+                listingId: current.listingId,
+                role,
+                onConversation: (updated) => {
+                  stickToBottom.current = true;
+                  setConversations((items) => [
+                    updated,
+                    ...items.filter((item) => item.id !== updated.id),
+                  ]);
+                },
+              })}
               <div
                 className="seller-chat-messages"
                 ref={messagesRef}

@@ -89,6 +89,6 @@ npm run build
 npm start
 ```
 
-Forward your HTTPS tunnel to `http://127.0.0.1:8787`. Set its exact public origin in `API_ALLOWED_ORIGINS` and configure the same URL in Supabase Auth. Keep `.env` and `ACCOUNT_KEYS_ENCRYPTION_KEY` on the server. For LAN development, see `APP_HOST`, `APP_ALLOWED_HOSTS` and port settings in `.env.example`.
+Forward your HTTPS tunnel to `http://127.0.0.1:8787`. To host on a private network behind your own nginx with a self-hosted Supabase, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): `SUPABASE_URL` is the address browsers use, `SUPABASE_INTERNAL_URL` is the LAN address the server uses, and `API_HOST` lets a proxy on another machine reach the API. Set its exact public origin in `API_ALLOWED_ORIGINS` and configure the same URL in Supabase Auth. Keep `.env` and `ACCOUNT_KEYS_ENCRYPTION_KEY` on the server. For LAN development, see `APP_HOST`, `APP_ALLOWED_HOSTS` and port settings in `.env.example`.
 
 Payments and background alerts are not implemented. Web results are search snippets; prices, availability and pickup distances may be unverified. Demo catalogue details are fictional.

@@ -1,6 +1,7 @@
 import { Button } from "./ui/button";
 import { listingPhotos } from "../../shared/listingPhotos";
 import {
+  Clock,
   GitCompareArrows,
   Image as ImageIcon,
   MapPin,
@@ -9,6 +10,7 @@ import SaveToggle from "./SaveToggle";
 import { useEntrance } from "../hooks/useEntrance";
 import { cn } from "@/lib/utils";
 import { TODAY, money, type Product } from "../../shared/marketplace";
+import type { CardAvailability } from "../availability/useAvailability";
 import "./product-card.css";
 
 type ProductCardProps = {
@@ -21,6 +23,8 @@ type ProductCardProps = {
   onOpen: () => void;
   onToggleFavorite: () => void;
   onToggleCompare: () => void;
+  /** Reservation state from the availability prototype, when it runs. */
+  availability?: CardAvailability;
 };
 
 /** A sticker on the photo tells what matters before the details: sold, reserved or free. */
@@ -29,6 +33,9 @@ function productSticker(product: Product) {
   if (product.status === "reserved") return "Reserved";
   return product.price === 0 ? "Free" : "";
 }
+
+const stickerTone = (sticker: string) =>
+  sticker === "Reserved for you" ? "mine" : sticker.toLowerCase();
 
 export default function ProductCard({
   product,
@@ -39,6 +46,7 @@ export default function ProductCard({
   onOpen,
   onToggleFavorite,
   onToggleCompare,
+  availability,
 }: ProductCardProps) {
   const itemTags = product.tags?.filter((tag) => tag !== "Demo") ?? [];
   const tags = [
@@ -53,7 +61,7 @@ export default function ProductCard({
   ]
     .filter((tag) => Boolean(tag) && tag !== "Not specified")
     .slice(0, 3);
-  const sticker = productSticker(product);
+  const sticker = availability?.sticker ?? productSticker(product);
   const entrance = useEntrance(arriving);
   return (
     <article
@@ -86,7 +94,7 @@ export default function ProductCard({
           </span>
         )}
         {sticker && (
-          <span className="product-sticker" data-tone={sticker.toLowerCase()}>
+          <span className="product-sticker" data-tone={stickerTone(sticker)}>
             {sticker}
           </span>
         )}
@@ -121,6 +129,12 @@ export default function ProductCard({
           <MapPin size={14} aria-hidden="true" />
           <span>{product.location}</span>
         </p>
+        {availability?.note && (
+          <p className="product-availability">
+            <Clock size={14} aria-hidden="true" />
+            <span>{availability.note}</span>
+          </p>
+        )}
         <p className="product-distance">Distance unverified</p>
         {product.pickupPoint && (
           <p className="product-pickup-address">

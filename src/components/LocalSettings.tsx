@@ -4,7 +4,9 @@ import { Button } from "./ui/button";
 
 type LocalSettingsProps = {
   connectionStatus: ReactNode;
-  onAddDemo: () => void;
+  developerSettings: ReactNode;
+  /** Sample listings are a demo tool: absent while developer mode is off. */
+  onAddDemo?: () => void;
   onHelp: () => void;
   onClear: () => void;
 };
@@ -37,6 +39,7 @@ function SettingsRow({ icon, tone, title, detail, onClick }: SettingsRowProps) {
 /** Settings without an account: everything lives in this browser. */
 export default function LocalSettings({
   connectionStatus,
+  developerSettings,
   onAddDemo,
   onHelp,
   onClear,
@@ -48,14 +51,17 @@ export default function LocalSettings({
         <p>Your listings and preferences are saved in this browser.</p>
       </div>
       {connectionStatus}
+      {developerSettings}
       <ul className="settings-rows">
-        <SettingsRow
-          icon={<Package size={22} />}
-          tone="sand"
-          title="Add sample listings"
-          detail="Fictional demo items to try things out."
-          onClick={onAddDemo}
-        />
+        {onAddDemo && (
+          <SettingsRow
+            icon={<Package size={22} />}
+            tone="sand"
+            title="Add sample listings"
+            detail="Fictional demo items to try things out."
+            onClick={onAddDemo}
+          />
+        )}
         <SettingsRow
           icon={<Sparkles size={22} />}
           tone="sky"
@@ -67,7 +73,7 @@ export default function LocalSettings({
           icon={<Trash2 size={22} />}
           tone="danger"
           title="Clear local workspace"
-          detail="Removes your listings, favourites and saved searches from this browser."
+          detail="Removes your listings, favourites, saved searches and their alerts from this browser."
           onClick={onClear}
         />
       </ul>

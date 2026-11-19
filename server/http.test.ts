@@ -548,6 +548,36 @@ test(
   },
 );
 
+test(
+  "HTTP routes photo sorting through the same validated agent path",
+  { timeout: 5000 },
+  async (t) => {
+    const png =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==";
+    const service = createAgentService({
+      ...fakeConfig,
+      fetchImpl: fakeFetch(async () =>
+        completion({ groups: [{ photos: [1, 0], label: "Desk" }] }),
+      ),
+    });
+    const instance = await startServer(t, service);
+    const response = await fetch(`${instance.url}/api/agent/group-photos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ images: [png, png] }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual((await response.json()).groups, [
+      { photos: [1, 0], label: "Desk" },
+    ]);
+    const invalid = await fetch(`${instance.url}/api/agent/group-photos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ images: "desk" }),
+    });
+    assert.equal(invalid.status, 400);
+  },
+);
 test("cloud mode exposes only public config and guards all AI and old demo routes", async (t) => {
   const { AgentError } = await import("./errors.ts");
   let calls = 0;

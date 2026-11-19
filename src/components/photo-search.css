@@ -1,0 +1,90 @@
+.photo-search-button {
+  position: relative;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.photo-search-button:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.photo-search-button:focus-within {
+  outline: 3px solid #8297f5;
+  outline-offset: 2px;
+}
+.photo-search-button[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.6;
+}
+.photo-search-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  cursor: inherit;
+}
+.photo-search-button.compact {
+  width: 40px;
+  min-height: 40px;
+  padding: 0;
+  justify-content: center;
+  border: 0;
+}
+.search-submit-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.agent-search.drag-over {
+  outline: 2px dashed var(--blue);
+  outline-offset: 4px;
+}
+.photo-search-source {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 8px 12px 8px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  max-width: 520px;
+}
+.photo-search-source img {
+  width: 52px;
+  height: 52px;
+  border-radius: 5px;
+  flex-shrink: 0;
+}
+.photo-search-source span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+.photo-search-error {
+  margin: 10px 0 0;
+}
+@media (max-width: 640px) {
+  .agent-search-actions .photo-search-button span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .agent-search-actions .photo-search-button {
+    padding: 0 12px;
+  }
+}

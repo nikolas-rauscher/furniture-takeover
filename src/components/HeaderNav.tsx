@@ -25,13 +25,22 @@ export function headerDestination(
 type HeaderNavProps = {
   active: HeaderDestination | null;
   savedSearches: number;
+  /** Matches for saved searches the student has not opened yet. */
+  unreadMatches: number;
   onNavigate: (destination: HeaderDestination) => void;
 };
+
+function searchesName(label: string, saved: number, unread: number) {
+  return unread > 0
+    ? `${label} (${saved} saved, ${unread} new matches)`
+    : `${label} (${saved} saved)`;
+}
 
 /** Desktop navigation: a pill glides to the page on screen, like the phone tab bar. */
 export default function HeaderNav({
   active,
   savedSearches,
+  unreadMatches,
   onNavigate,
 }: HeaderNavProps) {
   return (
@@ -42,7 +51,9 @@ export default function HeaderNav({
           className="header-nav-item"
           aria-current={active === id ? "page" : undefined}
           aria-label={
-            id === "searches" ? `${label} (${savedSearches} saved)` : undefined
+            id === "searches"
+              ? searchesName(label, savedSearches, unreadMatches)
+              : undefined
           }
           onClick={() => onNavigate(id)}
         >
@@ -61,6 +72,11 @@ export default function HeaderNav({
           {id === "searches" && (
             <span className="nav-count" aria-hidden="true">
               {savedSearches}
+            </span>
+          )}
+          {id === "searches" && unreadMatches > 0 && (
+            <span className="nav-count unread" aria-hidden="true">
+              {unreadMatches}
             </span>
           )}
         </Button>

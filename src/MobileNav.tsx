@@ -28,6 +28,7 @@ type MobileNavProps = {
   /** Identifies the page on screen; each page restores its own scroll position. */
   pageKey: string;
   onNavigate: (destination: MobileDestination) => void;
+  badges?: Partial<Record<MobileDestination, number>>;
 };
 
 const tabs = [
@@ -43,6 +44,7 @@ export default function MobileNav({
   active,
   pageKey,
   onNavigate,
+  badges,
 }: MobileNavProps) {
   const selling = active === "sell";
   // The bar measures scrolling from where a page starts. A fresh (window) scroll root per
@@ -76,7 +78,9 @@ export default function MobileNav({
                     <Button
                       className="mobile-nav-item"
                       type="button"
-                      aria-label={name}
+                      aria-label={
+                        name + (badges?.[id] ? `, ${badges[id]} new` : "")
+                      }
                     >
                       <Icon
                         size={22}
@@ -86,6 +90,11 @@ export default function MobileNav({
                       <BottomNavigationLabel className="mobile-nav-label">
                         {label}
                       </BottomNavigationLabel>
+                      {Boolean(badges?.[id]) && (
+                        <span className="mobile-nav-badge" aria-hidden="true">
+                          {badges?.[id]}
+                        </span>
+                      )}
                     </Button>
                   </AnimateIcon>
                 </BottomNavigationItem>

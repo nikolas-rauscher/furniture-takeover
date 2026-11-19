@@ -155,6 +155,10 @@ const toolActivity: Record<string, { label: string; task: AgentTaskKind }> = {
     task: "listings",
   },
   suggest_takeover_offer: { label: "Suggesting an offer", task: "listings" },
+  suggest_watch: {
+    label: "Offering to watch for this item",
+    task: "listings",
+  },
   get_listing: { label: "Checking listing details", task: "listings" },
   get_negotiation: { label: "Reading your proposal", task: "proposal" },
   select_listing: { label: "Starting your proposal", task: "proposal" },
@@ -170,6 +174,82 @@ const toolActivity: Record<string, { label: string; task: AgentTaskKind }> = {
   },
 };
 const toolLabel = (name: string) => toolActivity[name]?.label ?? "Using a tool";
+const negotiationToolNames = new Set([
+  "get_listing",
+  "get_negotiation",
+  "select_listing",
+  "update_negotiation",
+  "prepare_offer_draft",
+  "discard_offer_draft",
+]);
+
+/** Translate known proposal validation failures; never forward arbitrary tool errors. */
+const negotiationToolFailure = (
+  name: string,
+  error: unknown,
+): AgentToolFailure | undefined => {
+  if (!negotiationToolNames.has(name)) return;
+  const message = error instanceof Error ? error.message : "";
+  if (message === "The offered amount must appear in the buyer quote.")
+    return {
+      code: "PROPOSAL_AMOUNT_UNCONFIRMED",
+      message:
+        "Confirm the CHF amount you want to offer before adding it to your proposal.",
+      retryable: true,
+    };
+  if (
+    message ===
+      "Only the buyer can set the offer amount, note or clear a proposal." ||
+    /^Use an exact (buyer|listing) quote for (amount|fulfillment|pickupTime|pickupPoint|note)\.$/.test(
+      message,
+    ) ||
+    /^Copy the supplied wording for (pickupTime|pickupPoint|note)\.$/.test(
+      message,
+    ) ||
+    message === "The quote must support the handover choice."
+  )
+    return {
+      code: "PROPOSAL_DETAIL_UNCONFIRMED",
+      message:
+        "That change needs a confirmed detail from you or the listing. Confirm what you want to add or change.",
+      retryable: true,
+    };
+  if (
+    message ===
+    "This draft changed. Read the current version before updating it."
+  )
+    return {
+      code: "PROPOSAL_CHANGED",
+      message: "Your proposal changed. Try again using its latest draft.",
+      retryable: true,
+    };
+  if (
+    message ===
+    "This Takeover listing is no longer available. Search for an active listing."
+  )
+    return {
+      code: "PROPOSAL_LISTING_UNAVAILABLE",
+      message:
+        "This listing is no longer available. Choose another active Takeover listing.",
+      retryable: false,
+    };
+  if (
+    message === "Select a Takeover listing first." ||
+    message ===
+      "This proposal is closed. Select the listing to start a new draft."
+  )
+    return {
+      code: "PROPOSAL_SELECTION_REQUIRED",
+      message: "Select a Takeover listing to start a new proposal.",
+      retryable: false,
+    };
+  return {
+    code: "PROPOSAL_STEP_FAILED",
+    message:
+      "That proposal step could not finish. Try again using the current draft.",
+    retryable: true,
+  };
+};
 const toolStepLabel = (name: string, input: unknown, listingMode: boolean) => {
   if (listingMode) {
     if (name === "web_search") return "Checking comparable prices online";
@@ -589,6 +669,15 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
             );
           },
           onToolExecutionEnd: async ({ toolCall, toolOutput }) => {
+            // Failed tools are returned to the model, so surface them for debugging.
+            if (toolOutput.type === "tool-error")
+              console.warn(
+                `Agent tool "${toolCall.toolName}" failed: ${
+                  toolOutput.error instanceof Error
+                    ? toolOutput.error.message
+                    : String(toolOutput.error)
+                }`,
+              );
             const webError =
               toolCall.toolName === "web_search" &&
               toolOutput.type === "tool-error"
@@ -621,7 +710,9 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
                       "UNSUPPORTED_SOURCE",
                     ].includes(webError.code),
                 }
-              : undefined;
+              : toolOutput.type === "tool-error"
+                ? negotiationToolFailure(toolCall.toolName, toolOutput.error)
+                : undefined;
             const output =
               toolOutput.type === "tool-result" ? toolOutput.output : null;
             const needsInput =

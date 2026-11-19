@@ -1,6 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AgentApiError, getAgentHealth, requestAgentAssist } from "./agent.ts";
+import {
+  AgentApiError,
+  getAgentHealth,
+  requestAgentAssist,
+  requestPhotoGroups,
+} from "./agent.ts";
+import {
+  configureCloud,
+  getCloudClient,
+  restoreAccountSession,
+} from "../cloud/session.ts";
 
 const validResponse = {
   mode: "live",
@@ -9,6 +19,138 @@ const validResponse = {
   missingDetails: ["What size should it be?"],
   metadata: { query: "desk", keywords: ["desk"] },
 };
+
+const validPhotoGroups = {
+  mode: "live",
+  model: "deepseek-flash",
+  groups: [{ label: "Desk", photos: [0, 1] }],
+};
+
+test("photo grouping sends explicit credentials, the item count, and the abort signal", async (context) => {
+  const controller = new AbortController();
+  const images = [
+    "data:image/jpeg;base64,first",
+    "data:image/jpeg;base64,second",
+  ];
+  const fetch = context.mock.method(
+    globalThis,
+    "fetch",
+    async (path: string, options: RequestInit) => {
+      assert.equal(path, "/api/agent/group-photos");
+      assert.equal(options.method, "POST");
+      assert.equal(
+        new Headers(options.headers).get("Authorization"),
+        "Bearer explicit-token",
+      );
+      assert.equal(
+        new Headers(options.headers).get("Content-Type"),
+        "application/json",
+      );
+      assert.deepEqual(JSON.parse(String(options.body)), {
+        images,
+        itemCount: 1,
+      });
+      assert.equal(options.signal, controller.signal);
+      return Response.json(validPhotoGroups);
+    },
+  );
+  assert.deepEqual(
+    await requestPhotoGroups(
+      images,
+      { signal: controller.signal, accessToken: "explicit-token" },
+      1,
+    ),
+    validPhotoGroups,
+  );
+  assert.equal(fetch.mock.callCount(), 1);
+});
+
+test("photo grouping uses the restored account session and lets explicit credentials override it", async (context) => {
+  const originalLocation = Object.getOwnPropertyDescriptor(
+    globalThis,
+    "location",
+  );
+  context.after(() => {
+    getCloudClient()?.auth.stopAutoRefresh();
+    configureCloud(null);
+    if (originalLocation)
+      Object.defineProperty(globalThis, "location", originalLocation);
+    else Reflect.deleteProperty(globalThis, "location");
+  });
+  Object.defineProperty(globalThis, "location", {
+    configurable: true,
+    value: new URL("https://takeover.example/#settings"),
+  });
+  const credentials: string[] = [];
+  context.mock.method(
+    globalThis,
+    "fetch",
+    async (input: string | URL | Request, options?: RequestInit) => {
+      if (
+        input ===
+        "https://example.supabase.co/auth/v1/token?grant_type=password"
+      ) {
+        return Response.json({
+          access_token: "restored-token",
+          refresh_token: "test-refresh-token",
+          token_type: "bearer",
+          expires_in: 3600,
+          user: { id: "photo-group-user", aud: "authenticated" },
+        });
+      }
+      assert.equal(input, "/api/agent/group-photos");
+      credentials.push(
+        new Headers(options?.headers).get("Authorization") ?? "",
+      );
+      assert.deepEqual(JSON.parse(String(options?.body)), {
+        images: ["first", "second"],
+      });
+      return Response.json(validPhotoGroups);
+    },
+  );
+  configureCloud({
+    supabaseUrl: "https://example.supabase.co",
+    supabaseKey: "sb_publishable_test",
+  });
+  const client = getCloudClient()!;
+  assert.equal(
+    (
+      await client.auth.signInWithPassword({
+        email: "tester@example.com",
+        password: "test-password",
+      })
+    ).error,
+    null,
+  );
+  assert.equal(
+    (await restoreAccountSession()).session?.access_token,
+    "restored-token",
+  );
+  assert.deepEqual(
+    await requestPhotoGroups(["first", "second"]),
+    validPhotoGroups,
+  );
+  const getSession = context.mock.method(
+    client.auth,
+    "getSession",
+    async () => {
+      throw new Error(
+        "Explicit credentials must bypass account session lookup.",
+      );
+    },
+  );
+  assert.deepEqual(
+    await requestPhotoGroups(["first", "second"], {
+      accessToken: "override-token",
+    }),
+    validPhotoGroups,
+  );
+  assert.equal(getSession.mock.callCount(), 0);
+  assert.deepEqual(credentials, [
+    "Bearer restored-token",
+    "Bearer override-token",
+  ]);
+});
 
 test("a proxy outage during a health check reports service connectivity, not a failed prompt", async (context) => {
   context.mock.method(

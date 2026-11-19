@@ -481,7 +481,11 @@ export function createAgentServer(
         });
         return;
       }
-      if (pathname !== "/api/agent/assist" && pathname !== "/api/agent/run")
+      if (
+        pathname !== "/api/agent/assist" &&
+        pathname !== "/api/agent/run" &&
+        pathname !== "/api/agent/group-photos"
+      )
         throw new AgentError(404, "NOT_FOUND", "This endpoint does not exist.");
       if (request.method !== "POST")
         throw new AgentError(
@@ -568,7 +572,10 @@ export function createAgentServer(
           if (!response.destroyed && !response.writableEnded) response.end();
           return;
         }
-        const result = await agents.service.assist(body, controller.signal);
+        const result =
+          pathname === "/api/agent/group-photos"
+            ? await agents.service.groupPhotos(body, controller.signal)
+            : await agents.service.assist(body, controller.signal);
         send(response, 200, result);
       } finally {
         active--;

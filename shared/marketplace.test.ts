@@ -10,6 +10,7 @@ import {
   migrateSaved,
   listingTitle,
   parsePickupDate,
+  criteriaTitle,
 } from "./marketplace.ts";
 
 // Calendar examples use a fixed Monday, independent of when CI runs.
@@ -366,5 +367,14 @@ test("a buyer can collect through Friday while both pickup windows overlap", () 
   assert.deepEqual(
     listingInventory(items, { pickupBy: criteria.pickup }, "2026-10-12").map((item) => item.id),
     expected,
+  );
+});
+
+test("an any-budget search is titled without a price", () => {
+  const criteria = { ...defaults, query: "desk", maxPrice: 1_000_000 };
+  assert.equal(criteriaTitle(criteria), "desk");
+  assert.equal(
+    criteriaTitle({ ...criteria, maxPrice: 80 }),
+    "desk under CHF 80",
   );
 });
