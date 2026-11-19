@@ -74,7 +74,10 @@ import Toast from "./components/Toast";
 import Modal from "./components/Modal";
 import ProductCard from "./components/ProductCard";
 import SearchPreferencesFields from "./components/SearchPreferencesFields";
-import SellFlow, { type ListingDraft } from "./components/SellFlow";
+import SellFlow, {
+  listingSaveWords,
+  type ListingDraft,
+} from "./components/SellFlow";
 import AgentSuggestions from "./components/AgentSuggestions";
 import AgentRunPanel from "./components/AgentRunPanel";
 import { useAgentRun } from "./hooks/useAgentRun";
@@ -153,18 +156,28 @@ const DESTINATION_ORDER: Destination[] = [
 
 type Dialog =
   "filters" | "save" | "edit-search" | "location" | "help" | "clear" | null;
-const emptyDraft: ListingDraft = {
-  image: "",
-  images: [],
-  raw: "",
-  title: "",
-  description: "",
-  price: "",
-  condition: "",
-  dimensions: "",
-  location: "Lausanne",
-  pickup: "",
-  category: "All",
+/** A blank listing, picked up where the student lives or searches. */
+function newDraft(location: string): ListingDraft {
+  return {
+    image: "",
+    images: [],
+    raw: "",
+    title: "",
+    description: "",
+    price: "",
+    condition: "",
+    dimensions: "",
+    location,
+    pickup: "",
+    category: "All",
+  };
+}
+/** What changing a listing's status tells the seller. */
+const STATUS_NOTICES: Record<Product["status"], string> = {
+  active: "Listing is active again.",
+  reserved: "Marked as reserved.",
+  sold: "Marked as sold.",
+  withdrawn: "Listing archived. You can restore it from Archive.",
 };
 
 export default function App({
@@ -310,7 +323,7 @@ export default function App({
   const [jobTitle, setJobTitle] = useState("");
   const [editingJob, setEditingJob] = useState<string | null>(null);
   const draftId = useRef(crypto.randomUUID());
-  const draftRef = useRef<ListingDraft>({ ...emptyDraft });
+  const draftRef = useRef<ListingDraft>(newDraft(searchArea.location));
   const [draft, setDraftState] = useState<ListingDraft>(draftRef.current);
   function setDraft(value: SetStateAction<ListingDraft>) {
     const next = typeof value === "function" ? value(draftRef.current) : value;
@@ -659,7 +672,7 @@ export default function App({
     navigate("sell");
     resetListingConversation();
     listingRevisions.current = {};
-    setDraft({ ...emptyDraft, location: pickupLocation });
+    setDraft(newDraft(pickupLocation));
     setSellStep(1);
     setEditingListing(null);
     setUploadError("");
@@ -1452,11 +1465,7 @@ export default function App({
     }
     if (status === "withdrawn")
       setCompared((current) => current.filter((item) => item !== id));
-    setToast(
-      status === "withdrawn"
-        ? "Listing archived. You can restore it from Archive."
-        : "Listing status updated.",
-    );
+    setToast(STATUS_NOTICES[status]);
   }
   const listingTools = (
     <DropdownMenu>
@@ -1896,8 +1905,8 @@ export default function App({
                       <p>
                         <strong>Moving out?</strong>{" "}
                         <span>
-                          Just take photos. Pako writes the listing, you tap
-                          Publish.
+                          Just take photos. Pako writes the listing, you tap{" "}
+                          {listingSaveWords(Boolean(account)).verb}.
                         </span>
                       </p>
                       <Button
@@ -2185,7 +2194,7 @@ export default function App({
                       <p>
                         {account
                           ? "Items shared on Takeover"
-                          : "Personal browser listings & demo database"}
+                          : "Saved in this browser."}
                       </p>
                     </div>
                     <div className="product-grid">

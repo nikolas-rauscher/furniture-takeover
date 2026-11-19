@@ -195,8 +195,9 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+/* Each action keeps its label on one line; they share a row when both fit. */
 .listing-detail-owner-actions > button {
-  flex: 1 1 130px;
+  flex: 1 1 auto;
 }
 
 /* Save and compare are light pill toggles: a soft fill that turns blue when on. */

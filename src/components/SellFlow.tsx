@@ -65,6 +65,13 @@ const previewSwap = {
   transition: { type: "spring", stiffness: 420, damping: 34 },
 } as const;
 
+/** Accounts publish a listing for other students; the local demo only saves it in this browser. */
+export function listingSaveWords(cloud: boolean) {
+  return cloud
+    ? { verb: "Publish", gerund: "publishing", action: "Publish listing" }
+    : { verb: "Save", gerund: "saving", action: "Save listing" };
+}
+
 type PhotoStepGuide = { mood: PakoMood; bubble: GuideBubble };
 
 /**
@@ -175,6 +182,7 @@ export default function SellFlow({
   onPublish,
 }: SellFlowProps) {
   const [photosOpen, setPhotosOpen] = useState(false);
+  const saveWords = listingSaveWords(cloud);
   const photos = listingPhotos(draft);
   const isPhotoStep = step === 1;
   const checks = [
@@ -296,7 +304,7 @@ export default function SellFlow({
               )}
               <p className="sell-photo-help">
                 {photos.length > 0
-                  ? "Review and edit before publishing."
+                  ? `Review and edit before ${saveWords.gerund}.`
                   : "Add at least one photo to create your draft."}
               </p>
             </div>
@@ -515,8 +523,7 @@ export default function SellFlow({
                         />
                       </label>
                       <label>
-                        Condition{" "}
-                        <span className="optional-label">Optional</span>
+                        Condition<span className="optional">Optional</span>
                         <SelectField
                           aria-label="Condition"
                           value={draft.condition}
@@ -599,13 +606,7 @@ export default function SellFlow({
                 disabled={agentWorking || busy || photoReading}
               >
                 <Check size={18} />
-                {busy
-                  ? "Saving…"
-                  : editing
-                    ? "Save changes"
-                    : cloud
-                      ? "Publish listing"
-                      : "Save listing locally"}
+                {busy ? "Saving…" : editing ? "Save changes" : saveWords.action}
               </Button>
               <span className="quiet-caption">
                 {cloud

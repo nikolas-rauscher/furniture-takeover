@@ -88,7 +88,8 @@ export default function ListingDetailPage({
               {selected.demo ? (
                 <p>
                   <strong>Sample listing.</strong> Price and pickup details are
-                  fictional; this seller cannot reply. {samplePhotoNote}
+                  fictional{selected.own ? "." : "; this seller cannot reply."}{" "}
+                  {samplePhotoNote}
                 </p>
               ) : !cloud ? (
                 <p>
@@ -148,42 +149,25 @@ export default function ListingDetailPage({
                 <dd>{selected.available || "Arrange with seller"}</dd>
               </div>
             </dl>
-            <div className="listing-detail-seller">
-              <span className="listing-detail-avatar" aria-hidden="true">
-                {selected.seller
-                  .trim()
-                  .split(/\s+/)
-                  .slice(0, 2)
-                  .map((part) => part[0])
-                  .join("")
-                  .toUpperCase() || selected.initials}
-              </span>
-              <div>
-                <strong>{selected.seller || "Seller"}</strong>
-                <span>
-                  {selected.own ? "Your listing" : "Listed by seller"}
+            {!selected.own && (
+              <div className="listing-detail-seller">
+                <span className="listing-detail-avatar" aria-hidden="true">
+                  {selected.seller
+                    .trim()
+                    .split(/\s+/)
+                    .slice(0, 2)
+                    .map((part) => part[0])
+                    .join("")
+                    .toUpperCase() || selected.initials}
                 </span>
-              </div>
-            </div>
-            <div className="listing-detail-actions">
-              {(!cloud || !selected.own) && (
-                <div
-                  className={
-                    mobileContact ? "listing-detail-mobile-contact" : undefined
-                  }
-                >
-                  <Button
-                    animateIcon
-                    className="button primary full"
-                    type="button"
-                    disabled={selected.status !== "active"}
-                    onClick={onMessage}
-                  >
-                    <MessageCircle size={17} /> Message seller
-                  </Button>
+                <div>
+                  <strong>{selected.seller || "Seller"}</strong>
+                  <span>Listed by seller</span>
                 </div>
-              )}
-              {(!cloud || selected.own) && (
+              </div>
+            )}
+            <div className="listing-detail-actions">
+              {selected.own ? (
                 <div className="listing-detail-owner-actions">
                   <Button
                     className="button secondary small"
@@ -197,7 +181,23 @@ export default function ListingDetailPage({
                     type="button"
                     onClick={onAskAgent}
                   >
-                    Ask Pako
+                    Ask Pako to improve this listing
+                  </Button>
+                </div>
+              ) : (
+                <div
+                  className={
+                    mobileContact ? "listing-detail-mobile-contact" : undefined
+                  }
+                >
+                  <Button
+                    animateIcon
+                    className="button primary full"
+                    type="button"
+                    disabled={selected.status !== "active"}
+                    onClick={onMessage}
+                  >
+                    <MessageCircle size={17} /> Message seller
                   </Button>
                 </div>
               )}
