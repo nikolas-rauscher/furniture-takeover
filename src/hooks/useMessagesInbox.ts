@@ -68,7 +68,9 @@ export function useMessagesInbox({
         )
       : 0;
   return {
-    deals:account?Object.values(rows?.deals??{}):demoInbox.conversations.flatMap(c=>c.deal?[c.deal]:[]),
+    deals: account
+      ? Object.values(rows?.deals ?? {})
+      : demoInbox.conversations.flatMap(thread => thread.deal ? [thread.deal] : []),
     demoInbox,
     reads,
     accountInbox,

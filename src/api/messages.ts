@@ -1,3 +1,5 @@
+import type { DealAction, DealRole } from "../../shared/deal";
+import type { Product } from "../../shared/marketplace";
 import type { SellerConversation } from "../../shared/messages";
 import { randomUuid } from "../randomUuid";
 function workspace() {
@@ -19,7 +21,10 @@ async function request(init?: RequestInit, path = "/api/messages") {
   });
   const body = await response.json();
   if (!response.ok)
-    throw Object.assign(new Error(body.error?.message ?? "Messages are unavailable. Please try again."),{key:body.error?.code});
+    throw Object.assign(
+      new Error(body.error?.message ?? "Messages are unavailable. Please try again."),
+      { key: body.error?.code },
+    );
   return body;
 }
 export async function listMessages(): Promise<SellerConversation[]> {
@@ -60,13 +65,13 @@ export async function setConversationDeleted(
 }
 
 export type DealListing = Pick<
-  import("../../shared/marketplace").Product,
+  Product,
   "id" | "title" | "seller" | "status"
 > & { image?: string; buyerKey?: string };
 export async function sendDemoDeal(
   listing: DealListing,
-  sender: import("../../shared/deal").DealRole,
-  action: import("../../shared/deal").DealAction,
+  sender: DealRole,
+  action: DealAction,
   text: string,
   expectedVersion: number,
   messageId = randomUuid(),

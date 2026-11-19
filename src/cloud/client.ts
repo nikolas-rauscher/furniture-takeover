@@ -1,3 +1,4 @@
+import type { Deal, DealRole } from "../../shared/deal";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 export type CloudConfig = { supabaseUrl: string; supabaseKey: string };
 /** Supabase dashboard invitations use a token fragment, rather than a PKCE code. */
@@ -82,11 +83,24 @@ export const missingFromSchema = (error: { code?: string } | null) =>
   Boolean(error?.code && MISSING_FROM_SCHEMA.has(error.code));
 
 export type StoredDealTerms = {
- amount:number|null;fulfillment:"pickup"|"shipping"|null;pickup_time:string|null;pickup_at:string|null;pickup_point:string|null;
+  amount: number | null;
+  fulfillment: "pickup" | "shipping" | null;
+  pickup_time: string | null;
+  pickup_at: string | null;
+  pickup_point: string | null;
 };
-export type DealRow={
- conversation_id:string; listing_id:string;version:number;status:import("../../shared/deal").Deal["status"];
- proposal:StoredDealTerms|null;proposal_by:import("../../shared/deal").DealRole|null;proposal_message_id:string|null;
- agreed:StoredDealTerms|null;agreed_at:string|null;updated_at:string;
- outcome:NonNullable<import("../../shared/deal").Deal["outcome"]>["kind"]|null;outcome_by:import("../../shared/deal").DealRole|null;
+
+export type DealRow = {
+  conversation_id: string;
+  listing_id: string;
+  version: number;
+  status: Deal["status"];
+  proposal: StoredDealTerms | null;
+  proposal_by: DealRole | null;
+  proposal_message_id: string | null;
+  agreed: StoredDealTerms | null;
+  agreed_at: string | null;
+  updated_at: string;
+  outcome: NonNullable<Deal["outcome"]>["kind"] | null;
+  outcome_by: DealRole | null;
 };

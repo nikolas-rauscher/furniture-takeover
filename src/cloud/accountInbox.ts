@@ -1,11 +1,11 @@
-import {readDeal} from "./deals.ts";
-import type {Deal} from "../../shared/deal.ts";
+import { readDeal } from "./deals.ts";
+import type { Deal } from "../../shared/deal.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Conversation, Message } from "./client.ts";
 import { fail, missingFromSchema } from "./client.ts";
 
 export type InboxRows = {
-  deals:Record<string,Deal>|null;
+  deals: Record<string, Deal> | null;
   threads: Conversation[];
   /** The newest message of each conversation. */
   latest: Record<string, Message>;
@@ -33,7 +33,7 @@ export async function loadInbox(client: SupabaseClient): Promise<InboxRows> {
     client.from("conversation_reads").select("conversation_id, last_read_at"),
     client.from("deals").select("*"),
   ]);
-  if(!missingFromSchema(ds.error))fail(ds.error);
+  if (!missingFromSchema(ds.error)) fail(ds.error);
   fail(cs.error);
   fail(as.error);
   fail(bs.error);
@@ -49,7 +49,9 @@ export async function loadInbox(client: SupabaseClient): Promise<InboxRows> {
     : { data: [], error: null };
   fail(profiles.error);
   return {
-    deals:ds.error?null:Object.fromEntries((ds.data??[]).map(r=>[r.conversation_id,readDeal(r)])),
+    deals: ds.error
+      ? null
+      : Object.fromEntries((ds.data ?? []).map(row => [row.conversation_id, readDeal(row)])),
     threads: rows.sort((a, b) =>
       (latest[b.id]?.created_at ?? b.created_at).localeCompare(
         latest[a.id]?.created_at ?? a.created_at,

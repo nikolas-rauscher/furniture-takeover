@@ -17,34 +17,39 @@ export type AccountInbox = ReturnType<typeof useAccountInbox>;
  * backstop that runs more often while Messages is open.
  */
 export function useAccountInbox(connection: AccountUser | null, open: boolean) {
-  const [rows, setRows] = useState<InboxRows | null>(null);
+  const [snapshot, setSnapshot] = useState<{ userId: string; rows: InboxRows } | null>(null);
   const [loadError, setLoadError] = useState("");
   const [readError, setReadError] = useState("");
-  const inFlight = useRef(false);
+  const inFlight = useRef<symbol | null>(null);
   /** Grows with every local change, so a refresh that started before it cannot undo it. */
   const generation = useRef(0);
   const client = connection?.client;
   const userId = connection?.userId;
+  const rows = snapshot && snapshot.userId === userId ? snapshot.rows : null;
   const refresh = useCallback(async () => {
-    if (!client || inFlight.current) return;
-    inFlight.current = true;
+    if (!client || !userId || inFlight.current) return;
+    const request = Symbol();
+    inFlight.current = request;
     const token = generation.current;
     try {
       const loaded = await loadInbox(client);
       if (generation.current === token) {
-        setRows(loaded);
+        setSnapshot({ userId, rows: loaded });
         setLoadError("");
       }
     } catch (error) {
+      if (generation.current !== token) return;
       setLoadError(
         error instanceof Error ? error.message : "Could not load messages.",
       );
     } finally {
-      inFlight.current = false;
+      if (inFlight.current === request) inFlight.current = null;
     }
-  }, [client]);
+  }, [client, userId]);
   useEffect(() => {
-    setRows(null);
+    setSnapshot(null);
+    setLoadError("");
+    setReadError("");
     if (!client || !userId) return;
     void refresh();
     const channel = client
@@ -59,9 +64,17 @@ export function useAccountInbox(connection: AccountUser | null, open: boolean) {
         { event: "INSERT", schema: "public", table: "messages" },
         () => void refresh(),
       )
-      .on("postgres_changes",{event:"*",schema:"public",table:"deals"},()=>void refresh())
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "deals" },
+        () => void refresh(),
+      )
       .subscribe();
-    return () => void client.removeChannel(channel);
+    return () => {
+      generation.current++;
+      inFlight.current = null;
+      void client.removeChannel(channel);
+    };
   }, [client, userId, refresh]);
   useEffect(() => {
     if (!client) return;
@@ -74,8 +87,10 @@ export function useAccountInbox(connection: AccountUser | null, open: boolean) {
   /** Applies a local change at once; refreshes that started before it are ignored. */
   const change = useCallback((update: (rows: InboxRows) => InboxRows) => {
     generation.current++;
-    setRows((current) => current && update(current));
-  }, []);
+    setSnapshot(current => current && current.userId === userId
+      ? { userId, rows: update(current.rows) }
+      : current);
+  }, [userId]);
   const markRead = useCallback(
     async (conversationId: string, seenUpTo: string) => {
       if (!client || !userId || !rows?.reads) return;
