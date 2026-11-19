@@ -682,7 +682,7 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
           tools: {
             [TOOL_NAME]: tool({
               description:
-                "Save your reading of the conversation: the summary, the facts with their quotes, the stance and 1 to 3 messages the student could send next. Nothing is sent.",
+                "Save your reading of the conversation: the summary, the facts with their quotes, the stance and 2 or 3 distinct messages the student could send next. Nothing is sent.",
               inputSchema: proposalSchema,
               execute: async (proposal) => {
                 try {
