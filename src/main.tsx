@@ -2,6 +2,7 @@ import { TooltipProvider } from "./components/ui/tooltip";
 import { Button } from "./components/ui/button";
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { MotionConfig } from "motion/react";
 import AccountSession from "./cloud/AccountSession";
 import { configureCloud } from "./cloud/session";
 import type { CloudConfig } from "./cloud/client";
@@ -55,8 +56,11 @@ function Bootstrap() {
 }
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <TooltipProvider delay={400}>
-      <Bootstrap />
-    </TooltipProvider>
+    {/* With reduced motion, springs and glides land at once; fades remain. */}
+    <MotionConfig reducedMotion="user">
+      <TooltipProvider delay={400}>
+        <Bootstrap />
+      </TooltipProvider>
+    </MotionConfig>
   </React.StrictMode>,
 );
