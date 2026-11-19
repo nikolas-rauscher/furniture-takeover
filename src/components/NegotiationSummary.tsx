@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import { useState } from "react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Item, ItemHeader, ItemContent, ItemActions } from "./ui/item";
@@ -25,14 +26,26 @@ const HANDOVER: Record<
   shipping: "Shipping",
 };
 
+/** The listing's photo, or a parcel when there is none or it cannot load. */
 function DealTile({ image }: { image?: string }) {
-  return image ? (
-    <img className="deal-tile" src={image} alt="" />
+  const [brokenImage, setBrokenImage] = useState<string>();
+  return image && image !== brokenImage ? (
+    <img
+      className="deal-tile"
+      src={image}
+      alt=""
+      onError={() => setBrokenImage(image)}
+    />
   ) : (
     <span className="deal-tile" aria-hidden="true">
       <Package size={18} />
     </span>
   );
+}
+
+function dealStatus(proposal: Negotiation, unavailable: boolean) {
+  if (unavailable) return "Listing unavailable";
+  return proposal.draft ? "Ready for review" : "In progress";
 }
 
 function offerText(proposal: Negotiation) {
@@ -120,7 +133,12 @@ export default function NegotiationSummary({
           <strong>{title}</strong>
           <span>
             <PakoLabel>Pako for you</PakoLabel>
-            {proposal.draft ? "Draft ready for review" : "Your offer proposal"}
+            <span
+              className="chip deal-card-status"
+              data-tone={unavailable ? "danger" : undefined}
+            >
+              {dealStatus(proposal, unavailable)}
+            </span>
           </span>
         </div>
       </div>
@@ -148,14 +166,14 @@ export default function NegotiationSummary({
             <div>
               <dt>
                 <Clock size={14} aria-hidden="true" />
-                Time proposal
+                Pickup time
               </dt>
               <dd>{proposal.terms.pickupTime ?? "Not decided"}</dd>
             </div>
             <div>
               <dt>
                 <MapPin size={14} aria-hidden="true" />
-                Meeting point proposal
+                Meeting point
               </dt>
               <dd>{proposal.terms.pickupPoint ?? "Ask the seller"}</dd>
             </div>
@@ -171,7 +189,7 @@ export default function NegotiationSummary({
       <p className="deal-card-note">
         {unavailable
           ? "This listing is no longer available. You can discard the proposal."
-          : "Draft only · Awaiting seller agreement"}
+          : "Not sent · Review and send in seller chat"}
       </p>
       <div className="deal-card-actions">
         <Button

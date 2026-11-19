@@ -55,6 +55,15 @@
   color: var(--muted);
   font-size: var(--type-caption);
 }
+/* Where the proposal stands: a small chip, red when the listing is gone. */
+.deal-card-status.chip {
+  padding: 1px 9px;
+  font-size: var(--type-caption);
+}
+.deal-card-status[data-tone="danger"] {
+  background: #fbe9ea;
+  color: var(--danger);
+}
 .deal-card-terms {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
