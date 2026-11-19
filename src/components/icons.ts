@@ -58,8 +58,10 @@ export {
   Bike,
   Building2,
   CalendarCheck,
+  Car,
   Clock,
   CookingPot,
+  FlaskConical,
   GraduationCap,
   Images,
   Handshake,
@@ -71,6 +73,7 @@ export {
   PartyPopper,
   Sofa,
   Store,
+  Truck,
   Zap,
 } from "lucide-react";
 

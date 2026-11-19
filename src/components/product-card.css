@@ -89,7 +89,8 @@
 .product-card .favorite-button.favorited {
   color: var(--coral);
 }
-.product-card .favorite-button.favorited svg {
+/* It pops only right after the student saved it, not whenever a saved heart shows. */
+.product-card .favorite-button[data-just-saved] svg {
   animation: favorite-pop 440ms var(--ease-out);
 }
 @keyframes favorite-pop {
@@ -129,6 +130,11 @@
 }
 .product-card .product-sticker[data-tone="reserved"] {
   background: var(--kraft-light);
+}
+/* A reservation of the student's own reads in the app's blue. */
+.product-card .product-sticker[data-tone="mine"] {
+  background: var(--sky);
+  color: var(--blue-dark);
 }
 .product-card .product-sticker[data-tone="sold"] {
   background: var(--ink);
@@ -206,6 +212,23 @@
   margin-top: 1px;
   color: var(--blue);
 }
+/* Where a reservation stands, on butter so it reads before the distance line. */
+.product-card .product-availability {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  margin: 6px 0 0;
+  padding: 5px 8px;
+  border-radius: 10px;
+  background: var(--butter);
+  font-size: var(--type-caption);
+  font-weight: 650;
+  line-height: 1.4;
+}
+.product-card .product-availability > svg {
+  flex: none;
+  margin-top: 1px;
+}
 .product-card .product-location > span {
   display: -webkit-box;
   overflow: hidden;
@@ -278,7 +301,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .product-card.arriving,
-  .product-card .favorite-button.favorited svg {
+  .product-card .favorite-button[data-just-saved] svg {
     animation: none;
   }
   .product-card .product-photo > img {

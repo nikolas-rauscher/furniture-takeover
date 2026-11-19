@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { ChevronDown, ChevronUp, FlaskConical } from "lucide-react";
+import { ChevronDown, ChevronUp, FlaskConical } from "@/components/icons";
 import { HOLD_HOURS, HOUR_MS, SELLER_REPLY_HOURS } from "./config";
 import { formatDeadline } from "./format";
 

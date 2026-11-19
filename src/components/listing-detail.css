@@ -133,7 +133,8 @@
   border-radius: 12px;
   background: var(--sand);
 }
-.listing-detail-facts > div:last-child {
+/* A tile left alone in the last row spans it. */
+.listing-detail-facts > div:last-child:nth-child(odd) {
   grid-column: 1 / -1;
 }
 .listing-detail-facts dt {
@@ -148,6 +149,19 @@
   line-height: 1.45;
   font-weight: 650;
   overflow-wrap: anywhere;
+}
+/* The transport estimate reads like the other facts, with the vehicle it suggests. */
+.listing-detail-facts > [data-vehicle] {
+  background: var(--sky);
+}
+.listing-detail-facts > [data-vehicle] dt {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--blue-dark);
+}
+.listing-detail-transport-note {
+  margin: -4px 0 0;
 }
 .listing-detail-seller {
   display: flex;
@@ -232,6 +246,8 @@
 }
 .listing-detail-tools > .save-toggle[aria-pressed="true"] svg {
   color: var(--coral);
+}
+.listing-detail-tools > .save-toggle[data-just-saved] svg {
   animation: listing-heart-pop 440ms var(--ease-out);
 }
 @keyframes listing-heart-pop {
@@ -392,7 +408,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .listing-detail-tools > .save-toggle[aria-pressed="true"] svg {
+  .listing-detail-tools > .save-toggle[data-just-saved] svg {
     animation: none;
   }
 }

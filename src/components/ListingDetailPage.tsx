@@ -2,10 +2,12 @@ import { Button } from "./ui/button";
 import type { ReactNode } from "react";
 import {
   ArrowLeft,
+  Car,
   GitCompareArrows,
   MapPin,
   MessageCircle,
   Pencil,
+  Truck,
 } from "@/components/icons";
 import { listingPhotos } from "../../shared/listingPhotos";
 import { isMine, money, type Product } from "../../shared/marketplace";
@@ -158,7 +160,25 @@ export default function ListingDetailPage({
                 <dt>Collection</dt>
                 <dd>{selected.available || "Arrange with seller"}</dd>
               </div>
+              {transport && (
+                <div data-vehicle={transport.vehicle}>
+                  <dt>
+                    {transport.vehicle === "van" ? (
+                      <Truck size={14} aria-hidden="true" />
+                    ) : (
+                      <Car size={14} aria-hidden="true" />
+                    )}
+                    Transport
+                  </dt>
+                  <dd>{transport.message}</dd>
+                </div>
+              )}
             </dl>
+            {transport && (
+              <p className="quiet-caption listing-detail-transport-note">
+                {transport.note}
+              </p>
+            )}
             {!mine && (
               <div className="listing-detail-seller">
                 <span className="listing-detail-avatar" aria-hidden="true">
@@ -245,13 +265,6 @@ export default function ListingDetailPage({
             <section className="listing-detail-description">
               <h2>About this item</h2>
               <p>{description}</p>
-            </section>
-          )}
-          {transport && (
-            <section className="listing-detail-description transport-guidance">
-              <h2>{transport.label}</h2>
-              <p>{transport.message}</p>
-              <p className="quiet-caption">{transport.note}</p>
             </section>
           )}
           {selected.pickupPoint && (

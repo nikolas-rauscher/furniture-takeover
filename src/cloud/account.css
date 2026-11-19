@@ -263,6 +263,29 @@
   gap: 2px;
   min-width: 0;
 }
+/* A row with a switch toggles it from anywhere on the row; it keeps its lip still. */
+.settings-switch-row {
+  font-size: var(--type-body);
+  font-weight: 400;
+  cursor: pointer;
+}
+.settings-switch-row:active {
+  transform: none;
+  box-shadow: 0 4px 0 var(--lip);
+}
+.settings-switch-row:has(:focus-visible) {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+.settings-switch-row .switch:focus-visible {
+  outline: none;
+}
+/* The demo tool's lip stays inside the space it unfolds into. */
+.settings-row-unfold {
+  overflow: hidden;
+  margin-bottom: -4px;
+  padding-bottom: 4px;
+}
 .settings-row-text strong {
   font-size: var(--type-item);
   font-weight: 700;
