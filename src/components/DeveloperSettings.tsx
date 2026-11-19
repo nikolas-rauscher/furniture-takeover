@@ -1,29 +1,28 @@
 import { useId, useState } from "react";
+import { FlaskConical } from "@/components/icons";
+import Modal from "./Modal";
 import { Button } from "./ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "./ui/dialog";
-import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
-import "./developer-settings.css";
 
 type DeveloperSettingsProps = {
   enabled: boolean;
   onEnabledChange(enabled: boolean): void;
+  /** What developer mode reveals where this row is shown. */
+  detail: string;
   clockOffsetMs?: number;
   onResetDemo?(): Promise<void>;
 };
 
+/** Developer mode as a settings row: the whole row flips the switch. */
 export default function DeveloperSettings({
   enabled,
   onEnabledChange,
+  detail,
   clockOffsetMs = 0,
   onResetDemo,
 }: DeveloperSettingsProps) {
-  const id = useId();
+  const titleId = useId();
+  const detailId = useId();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -49,18 +48,18 @@ export default function DeveloperSettings({
 
   return (
     <>
-      <div className="developer-setting">
-        <div className="developer-setting-copy">
-          <Label htmlFor={id}>Developer mode</Label>
-          <p id={`${id}-description`}>
-            Show local demo tools, including time skips and buyer/seller message
-            previews. Saved only in this browser.
-          </p>
-        </div>
+      <label className="settings-row settings-switch-row" data-tone="sky">
+        <span className="settings-row-icon" aria-hidden="true">
+          <FlaskConical size={22} />
+        </span>
+        <span className="settings-row-text">
+          <strong id={titleId}>Developer mode</strong>
+          <small id={detailId}>{detail}</small>
+        </span>
         <Switch
-          id={id}
           checked={enabled}
-          aria-describedby={`${id}-description`}
+          aria-labelledby={titleId}
+          aria-describedby={detailId}
           disabled={busy}
           onCheckedChange={(next) => {
             if (!next && clockOffsetMs > 0) {
@@ -69,26 +68,26 @@ export default function DeveloperSettings({
             } else onEnabledChange(next);
           }}
         />
-      </div>
-      <Dialog
-        open={confirming}
-        onOpenChange={(open) => {
-          if (!busy) setConfirming(open);
-        }}
-      >
-        <DialogContent>
-          <div className="modal-heading">
-            <DialogTitle>Reset demo and disable developer mode?</DialogTitle>
-          </div>
-          <DialogDescription className="modal-intro">
+      </label>
+      {confirming && (
+        <Modal
+          title="Reset the demo and turn developer mode off?"
+          onClose={() => {
+            if (!busy) setConfirming(false);
+          }}
+        >
+          <p className="modal-intro">
             The demo clock is {Math.round(clockOffsetMs / 3600000)} hours ahead.
-            Resetting returns it to real time, restores listing statuses, and
+            Resetting returns it to real time, restores listing statuses and
             clears local reservations, waitlists and demo messages.
-          </DialogDescription>
-          {error && <p role="alert">{error}</p>}
+          </p>
+          {error && (
+            <p className="form-error" role="alert">
+              {error}
+            </p>
+          )}
           <div className="modal-actions">
             <Button
-              type="button"
               className="button secondary"
               disabled={busy}
               onClick={() => setConfirming(false)}
@@ -96,16 +95,15 @@ export default function DeveloperSettings({
               Keep developer mode
             </Button>
             <Button
-              type="button"
-              className="button primary"
+              className="button danger"
               disabled={busy || !onResetDemo}
               onClick={() => void resetAndDisable()}
             >
-              {busy ? "Resetting…" : "Reset demo & disable"}
+              {busy ? "Resetting…" : "Reset demo & turn off"}
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </Modal>
+      )}
     </>
   );
 }

@@ -61,6 +61,7 @@ export {
   Car,
   Clock,
   CookingPot,
+  FlaskConical,
   GraduationCap,
   Images,
   Handshake,

@@ -2043,6 +2043,7 @@ export default function App({
                       <DeveloperSettings
                         enabled={developerMode}
                         onEnabledChange={setDeveloperMode}
+                        detail="While you write a listing, see how many of this browser's saved searches would get an alert. Saved in this browser."
                       />
                     }
                   />
@@ -2060,6 +2061,7 @@ export default function App({
                       <DeveloperSettings
                         enabled={developerMode}
                         onEnabledChange={setDeveloperMode}
+                        detail="Sample listings, the seller's view in Messages, demo time skips and alert counts while selling. Saved in this browser."
                         clockOffsetMs={availability?.clockOffsetMs}
                         onResetDemo={availability?.resetDemo}
                       />
