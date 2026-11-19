@@ -20,6 +20,7 @@ function query(result: Result) {
 
 const me = "11111111-1111-4111-8111-111111111111";
 const tables = (reads: Result): Record<string, Result> => ({
+  deals:{data:[]},
   conversations: {
     data: [
       {
@@ -89,4 +90,12 @@ test("with the update the inbox carries each read marker, and other failures sta
     ),
     /permission denied/,
   );
+});
+
+test("a missing deal migration leaves ordinary conversations readable",async()=>{
+ const rows=tables({data:[]});
+ rows.deals={error:{code:"PGRST205",message:"Table deals is missing"}};
+ const inbox=await loadInbox(clientWith(rows));
+ assert.equal(inbox.deals,null);
+ assert.equal(inbox.latest.c1.body,"Hi!");
 });

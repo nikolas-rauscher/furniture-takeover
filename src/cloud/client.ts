@@ -80,3 +80,13 @@ const MISSING_FROM_SCHEMA = new Set([
 /** Whether a query failed only because the server lacks a database update. */
 export const missingFromSchema = (error: { code?: string } | null) =>
   Boolean(error?.code && MISSING_FROM_SCHEMA.has(error.code));
+
+export type StoredDealTerms = {
+ amount:number|null;fulfillment:"pickup"|"shipping"|null;pickup_time:string|null;pickup_at:string|null;pickup_point:string|null;
+};
+export type DealRow={
+ conversation_id:string; listing_id:string;version:number;status:import("../../shared/deal").Deal["status"];
+ proposal:StoredDealTerms|null;proposal_by:import("../../shared/deal").DealRole|null;proposal_message_id:string|null;
+ agreed:StoredDealTerms|null;agreed_at:string|null;updated_at:string;
+ outcome:NonNullable<import("../../shared/deal").Deal["outcome"]>["kind"]|null;outcome_by:import("../../shared/deal").DealRole|null;
+};

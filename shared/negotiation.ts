@@ -1,3 +1,5 @@
+import {resolvePickupAt,formatPickup} from "./pickupTime.ts";
+import type {DealTerms} from "./deal.ts";
 import { z } from "zod";
 import { draftMessage } from "./dealMessages.ts";
 
@@ -165,4 +167,10 @@ export function markNegotiationSent(
     version,
     draft: { ...current.draft, version },
   });
+}
+
+export function dealTermsFromNegotiation(terms:NegotiationTerms,now:Date):DealTerms{
+ const {amount,fulfillment,pickupTime,pickupPoint}=terms;
+ const pickupAt=pickupTime?resolvePickupAt(pickupTime,now):null;
+ return {amount,fulfillment,pickupPoint,pickupAt,pickupTime:pickupAt?formatPickup(pickupAt):pickupTime};
 }

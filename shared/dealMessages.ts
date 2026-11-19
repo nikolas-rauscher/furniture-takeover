@@ -1,4 +1,5 @@
-import type { DealRole } from "./deal.ts";
+import { formatPickup } from "./pickupTime.ts";
+import type { DealRole, DealTerms } from "./deal.ts";
 import type { NegotiationTerms } from "./negotiation.ts";
 
 /** The words students send about a deal, in one place so every screen says the same. */
@@ -43,3 +44,42 @@ export function nudgeMessage(role: DealRole, title: string): string {
 export function askToBeNextMessage(title: string): string {
   return `Hi! If the ${title} becomes available again, I'd still like it. Could you let me know?`;
 }
+
+function statedTerms(terms: DealTerms) {
+  const price =
+    terms.amount === null
+      ? null
+      : terms.amount === 0
+        ? "free"
+        : `CHF ${terms.amount}`;
+  const time = terms.pickupAt ? formatPickup(terms.pickupAt) : terms.pickupTime;
+  return [
+    price,
+    terms.fulfillment === "shipping"
+      ? "shipping"
+      : terms.fulfillment === "pickup"
+        ? "pickup"
+        : null,
+    time,
+    terms.pickupPoint,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+export const offerMessage = (title: string, t: DealTerms) =>
+  `Hi! I'm interested in your ${title}. Would this work for you? ${statedTerms(t)}`.trim();
+export const counterMessage = (t: DealTerms) =>
+  `Thanks! How about ${statedTerms(t)}?`;
+export const acceptMessage = (role: DealRole, t: DealTerms) =>
+  `Deal! ${role === "seller" ? "It's yours. " : ""}${statedTerms(t)}.`;
+export const confirmAgreementMessage = (t: DealTerms) =>
+  `Great, confirming: ${statedTerms(t)}.`;
+export const askToConfirmMessage = () =>
+  "Could you tap Confirm on the deal card?";
+export const declineMessage = () =>
+  "Thanks for the offer, but I'll pass on that one.";
+export const withdrawMessage = () => "Sorry, I'm withdrawing my offer.";
+export const cancelDealMessage = () =>
+  "Sorry, I have to cancel our deal. Thanks for understanding.";
+export const reservedElsewhereMessage = (title: string) =>
+  `Sorry, the ${title} is now reserved for someone else. I'll let you know if that changes.`;

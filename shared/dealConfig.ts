@@ -10,3 +10,7 @@ export const AUTO_READ_MIN_REMAINING = 6;
 export const THREAD_TURN_MESSAGES = 20;
 /** …and at most this many characters of them. */
 export const THREAD_TURN_CHARS = 8_000;
+
+export const REMINDER_BEFORE_MINUTES = 120;
+export const NO_SHOW_AFTER_MINUTES = 15;
+export const SIGNAL_WINDOW = { beforeMinutes: 180, afterMinutes: 60 } as const;

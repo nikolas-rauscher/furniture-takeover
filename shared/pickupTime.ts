@@ -351,3 +351,61 @@ export function zurichClockTime(iso: string): string {
   const { hour, minute } = wallClock(Date.parse(iso));
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
+
+export function formatPickup(iso: string, locale = "en-GB"): string {
+  const day = new Intl.DateTimeFormat(locale, {
+    timeZone: ZONE,
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).format(new Date(iso));
+  return day + ", " + zurichClockTime(iso);
+}
+
+export function pickupSlots(available: string, now: Date) {
+  const today = wallClock(now.getTime());
+  const text = plain(available);
+  const weekend = /weekend/.test(text),
+    evenings = /weekday/.test(text);
+  const named = weekday(text);
+  const after = text.match(/after\s+(\d{1,2}):(\d{2})/);
+  const start = after ? Number(after[1]) * 60 + Number(after[2]) + 30 : 18 * 60;
+  const instants = new Set<number>();
+  for (let offset = 0; offset <= 8 && instants.size < 4; offset++) {
+    const date = addDays(today, offset),
+      day = weekdayOf(date);
+    const times = weekend
+      ? day === 6 || day === 0
+        ? [660, 900]
+        : []
+      : evenings
+        ? day > 0 && day < 6
+          ? [1080, 1140]
+          : []
+        : named !== undefined
+          ? day === named
+            ? [start, start + 60]
+            : []
+          : [
+              ...(offset === 1 || offset === 2 ? [1080] : []),
+              ...(day === 6 && offset < 7 ? [660] : []),
+            ];
+    for (const minutes of times) {
+      if (minutes >= 1440) continue;
+      const instant = zurichInstant(date, {
+        hour: Math.floor(minutes / 60),
+        minute: minutes % 60,
+      });
+      if (instant !== null && instant - now.getTime() >= EARLIEST_AHEAD_MS)
+        instants.add(instant);
+    }
+    if (named !== undefined && instants.size) break;
+  }
+  return [...instants]
+    .sort((a, b) => a - b)
+    .slice(0, 4)
+    .map((t) => {
+      const pickupAt = new Date(t).toISOString();
+      return { pickupAt, pickupTime: formatPickup(pickupAt) };
+    });
+}

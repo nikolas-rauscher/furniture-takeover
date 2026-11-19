@@ -9,8 +9,8 @@ function workspace() {
   }
   return id;
 }
-async function request(init?: RequestInit) {
-  const response = await fetch("/api/messages", {
+async function request(init?: RequestInit, path = "/api/messages") {
+  const response = await fetch(path, {
     ...init,
     headers: {
       "Content-Type": "application/json",
@@ -19,9 +19,7 @@ async function request(init?: RequestInit) {
   });
   const body = await response.json();
   if (!response.ok)
-    throw new Error(
-      body.error?.message ?? "Messages are unavailable. Please try again.",
-    );
+    throw Object.assign(new Error(body.error?.message ?? "Messages are unavailable. Please try again."),{key:body.error?.code});
   return body;
 }
 export async function listMessages(): Promise<SellerConversation[]> {
@@ -59,4 +57,39 @@ export async function setConversationDeleted(
       body: JSON.stringify({ id }),
     })
   ).conversation;
+}
+
+export type DealListing = Pick<
+  import("../../shared/marketplace").Product,
+  "id" | "title" | "seller" | "status"
+> & { image?: string; buyerKey?: string };
+export async function sendDemoDeal(
+  listing: DealListing,
+  sender: import("../../shared/deal").DealRole,
+  action: import("../../shared/deal").DealAction,
+  text: string,
+  expectedVersion: number,
+  messageId = randomUuid(),
+): Promise<{
+  conversation: SellerConversation;
+  statusChange?: "active" | "reserved";
+}> {
+  return request(
+    {
+      method: "POST",
+      body: JSON.stringify({
+        listingId: listing.id,
+        title: listing.title,
+        seller: listing.seller,
+        buyerKey: listing.buyerKey,
+        listingStatus: listing.status,
+        sender,
+        action,
+        text,
+        expectedVersion,
+        messageId,
+      }),
+    },
+    "/api/messages/deal",
+  );
 }

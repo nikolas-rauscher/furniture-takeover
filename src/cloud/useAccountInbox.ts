@@ -59,6 +59,7 @@ export function useAccountInbox(connection: AccountUser | null, open: boolean) {
         { event: "INSERT", schema: "public", table: "messages" },
         () => void refresh(),
       )
+      .on("postgres_changes",{event:"*",schema:"public",table:"deals"},()=>void refresh())
       .subscribe();
     return () => void client.removeChannel(channel);
   }, [client, userId, refresh]);

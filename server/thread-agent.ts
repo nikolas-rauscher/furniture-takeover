@@ -13,6 +13,7 @@ import {
   messageStatesTerms,
   missingTerms,
   type DealTerms,
+  turnTerms,
 } from "../shared/deal.ts";
 import { resolvePickupAt } from "../shared/pickupTime.ts";
 import {
@@ -366,25 +367,6 @@ const plainText = (text: string) =>
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
 
-/** The terms as they stand now: what the latest messages say, then what both already agreed. */
-function currentTerms(
-  facts: ThreadFacts,
-  agreed: DealTerms | null,
-  pickupAt: string | null,
-): DealTerms {
-  const meeting =
-    facts.pickupTime !== undefined || facts.pickupPoint !== undefined;
-  return {
-    amount: facts.amount?.value ?? agreed?.amount ?? null,
-    fulfillment:
-      facts.fulfillment?.value ??
-      (meeting ? "pickup" : (agreed?.fulfillment ?? null)),
-    pickupAt: facts.pickupTime ? pickupAt : (agreed?.pickupAt ?? null),
-    pickupTime: facts.pickupTime?.value ?? agreed?.pickupTime ?? null,
-    pickupPoint: facts.pickupPoint?.value ?? agreed?.pickupPoint ?? null,
-  };
-}
-
 /** Agreement is worked out from the checked facts, never taken from the model. */
 function agreementOf(
   proposal: Proposal,
@@ -393,7 +375,7 @@ function agreementOf(
 ): ThreadTurn["agreement"] {
   if (proposal.stance !== "accepts") return { status: "none", missing: [] };
   const missing = missingTerms(
-    currentTerms(proposal.facts, request.deal?.agreed ?? null, pickupAt),
+    turnTerms({facts:proposal.facts,pickupAt}, request.deal?.agreed ?? null),
   );
   return missing.length
     ? { status: "partial", missing }
