@@ -1,17 +1,11 @@
+import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import {
-  ArrowLeft,
-  Check,
-  LoaderCircle,
-  Plus,
-  Sparkles,
-  Trash2,
-  X,
-} from "lucide-react";
+import { ChevronDown, Plus, Sparkles, Trash2, X } from "@/components/icons";
 import {
   MAX_BATCH_PHOTOS,
   MAX_LISTING_PHOTOS,
 } from "../../shared/listingPhotos";
+import type { AgentQuota, PhotoGroup } from "../../shared/agent";
 import {
   batchItem,
   itemsFromGroups,
@@ -20,9 +14,20 @@ import {
   type BatchItem,
 } from "../batchListings";
 import { readListingPhoto, sortListingPhotos } from "../listingPhotos";
-import type { PhotoGroup } from "../../shared/agent";
 import type { ListingDraft } from "./SellFlow";
 import { PickupLocationInput } from "./PickupLocationInput";
+import SnapTarget from "./SnapTarget";
+import WorkspaceHeader from "./WorkspaceHeader";
+import Guide, { type GuideBubble } from "./onboarding/Guide";
+import type { PakoMood } from "./onboarding/storyTypes";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 import "./batch-sell.css";
 
 type Stage = "photos" | "items";
@@ -39,6 +44,8 @@ export type BatchStart = {
 type Props = {
   location: string;
   liveAgent: boolean;
+  quota?: AgentQuota;
+  onAccount: () => void;
   /** Return to the single-listing flow. */
   onBack: () => void;
   /** Create the listings one after another together with the listing agent. */
@@ -47,10 +54,10 @@ type Props = {
   start?: BatchStart;
 };
 
-const stages: { id: Stage; label: string }[] = [
-  { id: "photos", label: "Photos" },
-  { id: "items", label: "Sort items" },
-];
+/** Drafting one item takes Pako two requests: reading its photos and writing the listing. */
+const REQUESTS_PER_ITEM = 2;
+/** A photo glides to the pile it was moved to. */
+const GLIDE = { type: "spring", stiffness: 420, damping: 34 } as const;
 
 /** Prefill each item's title with the name the photo sorting gave it. */
 const withTitles = (items: BatchItem[]) =>
@@ -63,9 +70,84 @@ const titleEdited = (item: BatchItem) =>
   Boolean(item.draft.title.trim()) &&
   item.draft.title.trim() !== item.label.trim();
 
+/** What Pako says above the photos or piles: what to do next, or what he is busy with. */
+function batchGuide({
+  stage,
+  photoCount,
+  pileCount,
+  reading,
+  sorting,
+  sortFailed,
+}: {
+  stage: Stage;
+  photoCount: number;
+  pileCount: number;
+  reading: boolean;
+  sorting: boolean;
+  sortFailed: boolean;
+}): { mood: PakoMood; bubble: GuideBubble } {
+  if (sorting)
+    return {
+      mood: "work",
+      bubble: {
+        id: "sorting",
+        title: "Sorting your photos…",
+        text: "I'm finding which photos show the same thing.",
+      },
+    };
+  if (reading)
+    return {
+      mood: "work",
+      bubble: { id: "reading", text: "Loading your photos…" },
+    };
+  if (stage === "items")
+    return {
+      mood: "happy",
+      bubble: {
+        id: `piles-${pileCount}`,
+        title: pileCount === 1 ? "1 pile" : `${pileCount} piles`,
+        text: "Move a photo if I mixed something up. Then I'll write the listings.",
+      },
+    };
+  if (sortFailed)
+    return {
+      mood: "think",
+      bubble: {
+        id: "sort-failed",
+        text: "I couldn't sort these. Try again, or make one listing per photo.",
+      },
+    };
+  if (photoCount)
+    return {
+      mood: "idle",
+      bubble: {
+        id: "photos",
+        title: photoCount === 1 ? "1 photo" : `${photoCount} photos`,
+        text: "Add more, or let me sort them into one pile per item.",
+      },
+    };
+  return {
+    mood: "wave",
+    bubble: {
+      id: "empty",
+      title: "Snap everything you're selling",
+      text: "One thing or many: I'll sort the photos into one pile per item.",
+    },
+  };
+}
+
+/** How many of the piles today's AI allowance can still draft, when it cannot draft them all. */
+function allowanceNote(quota: AgentQuota | undefined, piles: number) {
+  if (!quota || quota.remaining >= piles * REQUESTS_PER_ITEM) return "";
+  const drafts = Math.floor(quota.remaining / REQUESTS_PER_ITEM);
+  return `Today's AI allowance covers about ${drafts} of ${piles} drafts. You can finish the others by hand.`;
+}
+
 export default function BatchSellFlow({
   location,
   liveAgent,
+  quota,
+  onAccount,
   onBack,
   onStart,
   start,
@@ -100,8 +182,6 @@ export default function BatchSellFlow({
   useEffect(() => {
     headingRef.current?.focus({ preventScroll: true });
   }, [stage]);
-
-  const stageIndex = stages.findIndex((item) => item.id === stage);
 
   async function addPhotos(files: File[]) {
     if (!files.length || reading) return;
@@ -182,65 +262,37 @@ export default function BatchSellFlow({
     else if (stage === "photos") onBack();
   }
 
-  const photoPicker = (label: string) => (
-    <label
-      className={`button ${photos.length ? "secondary" : "primary"} file-label`}
-    >
-      {photos.length > 0 && <Plus size={15} />}
-      {label}
-      <input
-        type="file"
-        aria-label={label}
-        accept="image/jpeg,image/png,image/webp"
-        multiple
-        disabled={reading || sorting || photos.length >= MAX_BATCH_PHOTOS}
-        onChange={(event) => {
-          void addPhotos(Array.from(event.target.files ?? []));
-          event.target.value = "";
-        }}
-      />
-    </label>
-  );
+  const fileInput = useRef<HTMLInputElement>(null);
+  const guide = batchGuide({
+    stage,
+    photoCount: photos.length,
+    pileCount: items.length,
+    reading,
+    sorting,
+    sortFailed,
+  });
+  const photoKey = (photo: string) => `batch-photo-${photos.indexOf(photo)}`;
+  const note = allowanceNote(quota, items.length);
 
   return (
     <>
-      <button className="back-link" type="button" onClick={back}>
-        <ArrowLeft size={16} />
-        {stage === "photos" ? "Sell a single item" : "Back to photos"}
-      </button>
-      <div className="page-title">
-        <h1 ref={headingRef} tabIndex={-1}>
-          {stage === "photos" ? "Sell several items" : "Check your items"}
-        </h1>
-        <p>
-          {stage === "photos"
-            ? "Upload photos of everything you want to sell. Your agent sorts them into one listing per item."
-            : "Each card becomes one listing. Move photos that belong to another item, then create the listings one by one with your agent."}
-        </p>
-      </div>
-      <div className="steps">
-        {stages.map((item, index) => (
-          <span
-            key={item.id}
-            className={
-              index === stageIndex
-                ? "active"
-                : index < stageIndex
-                  ? "completed"
-                  : ""
-            }
-            aria-current={index === stageIndex ? "step" : undefined}
-          >
-            <i>{index < stageIndex ? <Check size={13} /> : index + 1}</i>
-            {item.label}
-          </span>
-        ))}
+      <WorkspaceHeader
+        title="Sell several things"
+        subtitle={stage === "photos" ? "1 of 2 · Photos" : "2 of 2 · Piles"}
+        titleRef={headingRef}
+        backLabel={stage === "photos" ? "Sell one thing" : "Back to photos"}
+        onBack={back}
+        onAccount={onAccount}
+        quota={quota}
+      />
+      <div className="batch-guide">
+        <Guide mood={guide.mood} layout="guide" bubble={guide.bubble} />
       </div>
 
       {stage === "photos" && (
         <div className="batch-photos" aria-busy={reading || sorting}>
           <div
-            className={`batch-dropzone ${photos.length ? "has-photos" : ""}`}
+            className="batch-photo-panel"
             onDragOver={(event) => event.preventDefault()}
             onDrop={(event) => {
               event.preventDefault();
@@ -249,43 +301,62 @@ export default function BatchSellFlow({
             }}
           >
             {photos.length ? (
-              <ul className="batch-photo-grid" aria-label="Uploaded photos">
-                {photos.map((photo, index) => (
-                  <li key={photo}>
-                    <img src={photo} alt={`Photo ${index + 1}`} />
-                    <button
-                      type="button"
-                      className="icon-button batch-photo-remove"
-                      aria-label={`Remove photo ${index + 1}`}
-                      disabled={sorting}
-                      onClick={() =>
-                        setPhotos((current) =>
-                          current.filter((image) => image !== photo),
-                        )
-                      }
-                    >
-                      <X size={15} />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
               <>
-                <h2>Add photos of all your items</h2>
-                <p>
-                  Drag photos here or choose files. Several photos of the same
-                  piece are fine.
-                </p>
+                <ul className="batch-photo-grid" aria-label="Your photos">
+                  {photos.map((photo, index) => (
+                    <li key={photo}>
+                      <img src={photo} alt={`Photo ${index + 1}`} />
+                      <Button
+                        className="icon-button batch-photo-remove"
+                        aria-label={`Remove photo ${index + 1}`}
+                        disabled={sorting}
+                        onClick={() =>
+                          setPhotos((current) =>
+                            current.filter((image) => image !== photo),
+                          )
+                        }
+                      >
+                        <X size={15} aria-hidden="true" />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+                <div className="batch-photo-actions">
+                  <Button
+                    className="button secondary small"
+                    disabled={
+                      reading || sorting || photos.length >= MAX_BATCH_PHOTOS
+                    }
+                    onClick={() => fileInput.current?.click()}
+                  >
+                    <Plus size={15} aria-hidden="true" />
+                    Add photos
+                  </Button>
+                  <span className="quiet-caption">
+                    {photos.length} of {MAX_BATCH_PHOTOS} photos
+                  </span>
+                </div>
+                <Input
+                  ref={fileInput}
+                  type="file"
+                  hidden
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  onChange={(event) => {
+                    void addPhotos(Array.from(event.target.files ?? []));
+                    event.target.value = "";
+                  }}
+                />
               </>
+            ) : (
+              <SnapTarget
+                disabled={reading || sorting}
+                maxPhotos={MAX_BATCH_PHOTOS}
+                onFilesSelected={(files) => void addPhotos(files)}
+              />
             )}
-            <div className="batch-photo-actions">
-              {photoPicker(photos.length ? "Add photos" : "Choose photos")}
-              <span className="file-hint">
-                {reading
-                  ? "Loading photos…"
-                  : `${photos.length}/${MAX_BATCH_PHOTOS} photos · JPG, PNG or WebP · 25 MB each`}
-              </span>
-            </div>
           </div>
           <div className="batch-photo-side">
             <PickupLocationInput
@@ -298,29 +369,25 @@ export default function BatchSellFlow({
                 {error}
               </p>
             )}
-            <button
-              type="button"
-              className="button primary full"
+            <Button
+              animateIcon
+              className="button primary large full"
               disabled={!photos.length || reading || sorting || !liveAgent}
               onClick={() => void sortPhotos()}
             >
-              {sorting && <LoaderCircle className="spin" size={17} />}
-              {sorting ? "Sorting photos…" : "Sort into listings"}
-            </button>
+              <Sparkles size={18} aria-hidden="true" />
+              {sorting ? "Sorting photos…" : "Sort into piles"}
+            </Button>
             {(sortFailed || !liveAgent) && photos.length > 0 && (
-              <button
-                type="button"
-                className="button secondary full"
-                onClick={onePerPhoto}
-              >
+              <Button className="button secondary full" onClick={onePerPhoto}>
                 One listing per photo
-              </button>
+              </Button>
             )}
-            <span className="quiet-caption">
+            <p className="quiet-caption">
               {liveAgent
                 ? "Smaller copies of your photos are sent to the AI service to find which ones show the same item."
-                : "Connect the AI service to sort photos and create drafts."}
-            </span>
+                : "Connect the AI service to sort photos and draft listings."}
+            </p>
           </div>
         </div>
       )}
@@ -330,13 +397,13 @@ export default function BatchSellFlow({
           <ol className="batch-items">
             {items.map((item, index) => (
               <li key={item.id} className="batch-item">
-                <h2>Item {index + 1}</h2>
-                <label>
+                <h2>Pile {index + 1}</h2>
+                <label className="batch-item-title">
                   Title
-                  <input
+                  <Input
                     maxLength={180}
                     value={item.draft.title}
-                    placeholder="Your agent suggests one if you leave this empty"
+                    placeholder="Pako suggests one if you leave this empty"
                     onChange={(event) =>
                       updateItem(item.id, (current) => ({
                         ...current,
@@ -347,77 +414,105 @@ export default function BatchSellFlow({
                 </label>
                 <ul className="batch-item-photos">
                   {item.draft.images!.map((photo, photoIndex) => (
-                    <li key={photo}>
+                    <motion.li
+                      key={photo}
+                      layoutId={photoKey(photo)}
+                      transition={GLIDE}
+                    >
                       <img
                         src={photo}
-                        alt={`Item ${index + 1}, photo ${photoIndex + 1}`}
+                        alt={`Pile ${index + 1}, photo ${photoIndex + 1}`}
                       />
-                      {photoIndex === 0 && <span>Cover</span>}
+                      {photoIndex === 0 && (
+                        <span className="batch-cover">Cover</span>
+                      )}
                       <div className="batch-photo-controls">
-                        <select
-                          aria-label={`Move photo ${photoIndex + 1} of item ${index + 1}`}
-                          value={item.id}
-                          onChange={(event) =>
-                            setItems((current) =>
-                              movePhoto(
-                                current,
-                                photo,
-                                event.target.value || null,
-                                pickupLocation,
-                              ),
-                            )
-                          }
-                        >
-                          {items.map((target, targetIndex) => (
-                            <option
-                              key={target.id}
-                              value={target.id}
-                              disabled={
-                                target.id !== item.id &&
-                                target.draft.images!.length >=
-                                  MAX_LISTING_PHOTOS
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button className="button secondary small" />
+                            }
+                            aria-label={`Move photo ${photoIndex + 1} of pile ${index + 1}`}
+                          >
+                            Move
+                            <ChevronDown size={14} aria-hidden="true" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            {items.map(
+                              (target, targetIndex) =>
+                                target.id !== item.id && (
+                                  <DropdownMenuItem
+                                    key={target.id}
+                                    disabled={
+                                      target.draft.images!.length >=
+                                      MAX_LISTING_PHOTOS
+                                    }
+                                    onClick={() =>
+                                      setItems((current) =>
+                                        movePhoto(
+                                          current,
+                                          photo,
+                                          target.id,
+                                          pickupLocation,
+                                        ),
+                                      )
+                                    }
+                                  >
+                                    To pile {targetIndex + 1}
+                                    {target.draft.title.trim() &&
+                                      ` · ${target.draft.title.trim()}`}
+                                  </DropdownMenuItem>
+                                ),
+                            )}
+                            <DropdownMenuItem
+                              onClick={() =>
+                                setItems((current) =>
+                                  movePhoto(
+                                    current,
+                                    photo,
+                                    null,
+                                    pickupLocation,
+                                  ),
+                                )
                               }
                             >
-                              {target.id === item.id
-                                ? "Move to…"
-                                : `Item ${targetIndex + 1}`}
-                            </option>
-                          ))}
-                          <option value="">New item</option>
-                        </select>
-                        <button
-                          type="button"
+                              To a new pile
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <Button
                           className="icon-button"
-                          aria-label={`Remove photo ${photoIndex + 1} of item ${index + 1}`}
+                          aria-label={`Remove photo ${photoIndex + 1} of pile ${index + 1}`}
                           onClick={() =>
                             setItems((current) => removePhoto(current, photo))
                           }
                         >
-                          <Trash2 size={14} />
-                        </button>
+                          <Trash2 size={15} aria-hidden="true" />
+                        </Button>
                       </div>
-                    </li>
+                    </motion.li>
                   ))}
                 </ul>
               </li>
             ))}
           </ol>
           <div className="batch-footer">
-            <button
-              type="button"
-              className="button primary"
+            {note && <p className="batch-allowance">{note}</p>}
+            <Button
+              animateIcon
+              className="button primary large"
               disabled={!items.length || !liveAgent}
               onClick={startListings}
             >
-              <Sparkles size={16} />
-              Create {items.length} listing{items.length === 1 ? "" : "s"} with
-              your agent
-            </button>
-            <span className="quiet-caption">
-              You go through the items one at a time. For each one, your agent
-              writes a draft and asks what’s missing, like age, condition or
-              pickup. Prices are never guessed.
-            </span>
+              <Sparkles size={18} aria-hidden="true" />
+              {items.length === 1
+                ? "Write the listing with Pako"
+                : `Write ${items.length} listings with Pako`}
+            </Button>
+            <p className="quiet-caption">
+              One at a time: Pako drafts each one and asks what&apos;s missing.
+              You set the price.
+            </p>
           </div>
         </div>
       )}

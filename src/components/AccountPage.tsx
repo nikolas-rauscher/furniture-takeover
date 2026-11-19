@@ -34,6 +34,7 @@ import Pako, { PAKO_FLIGHT_MS } from "./onboarding/Pako";
 import type { PakoMood } from "./onboarding/storyTypes";
 import PakoReaction from "./PakoReaction";
 import ProductGrid from "./ProductGrid";
+import { celebrationFor, type Celebration } from "../sellingCelebration";
 
 export type AccountTab = "favorites" | "listings" | "archive";
 
@@ -47,16 +48,8 @@ const STATUS_LABELS: Record<Product["status"], string> = {
   withdrawn: "Archived",
 };
 
-type Celebration = { title: string; text: string };
-type PublishCelebration = Celebration & { listingId: string };
-
-const CELEBRATIONS: Record<"cloud" | "local", Celebration> = {
-  cloud: {
-    title: "It's live!",
-    text: "Students nearby can see your listing now.",
-  },
-  local: { title: "Saved!", text: "Your listing is ready in this browser." },
-};
+/** The news, and the listings it is about: one listing, or a batch published together. */
+type PublishCelebration = Celebration & { id: string };
 
 /**
  * How many of the visitor's listings found a new home, as a friendly progress
@@ -73,7 +66,7 @@ function SellingProgress({
 }) {
   const headingId = useId();
   const landed = useMomentPassed(
-    celebration && { id: celebration.listingId, ms: PAKO_FLIGHT_MS },
+    celebration && { id: celebration.id, ms: PAKO_FLIGHT_MS },
   );
   const count = (status: Product["status"]) =>
     listings.filter((item) => item.status === status).length;
@@ -174,8 +167,8 @@ type AccountPageProps = {
   onEdit(item: Product): void;
   onStatusChange(id: string, status: Product["status"]): void;
   renderProduct(item: Product, arriving: boolean): ReactNode;
-  /** The listing that was just published, celebrated for a few seconds. */
-  publishedId: string | null;
+  /** The listings that were just published, celebrated for a few seconds. */
+  publishedIds: string[];
   onCelebrationEnd(): void;
 };
 
@@ -193,15 +186,16 @@ export default function AccountPage({
   onEdit,
   onStatusChange,
   renderProduct,
-  publishedId,
+  publishedIds,
   onCelebrationEnd,
 }: AccountPageProps) {
   const endCelebration = useEffectEvent(onCelebrationEnd);
+  const publishedKey = publishedIds.join(" ");
   useEffect(() => {
-    if (!publishedId) return;
+    if (!publishedKey) return;
     const timer = setTimeout(() => endCelebration(), CELEBRATION_MS);
     return () => clearTimeout(timer);
-  }, [publishedId]);
+  }, [publishedKey]);
   const [filters, setFilters] = useState<
     Record<AccountTab, { query: string; status: string }>
   >({
@@ -276,11 +270,11 @@ export default function AccountPage({
           <article
             className={cn(
               "own-listing linked-card",
-              item.id === publishedId && "is-published",
+              publishedIds.includes(item.id) && "is-published",
             )}
             key={item.id}
           >
-            {item.id === publishedId && (
+            {publishedIds.includes(item.id) && (
               <PublishedStamp label={cloud ? "Live" : "Saved"} />
             )}
             <div
@@ -481,10 +475,10 @@ export default function AccountPage({
                 <SellingProgress
                   listings={visibleListings}
                   celebration={
-                    publishedId && items.some((item) => item.id === publishedId)
+                    items.some((item) => publishedIds.includes(item.id))
                       ? {
-                          ...CELEBRATIONS[cloud ? "cloud" : "local"],
-                          listingId: publishedId,
+                          ...celebrationFor(publishedIds.length, cloud),
+                          id: publishedKey,
                         }
                       : null
                   }

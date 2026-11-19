@@ -96,6 +96,7 @@ import {
 import PhotoSearchButton, { imageFrom } from "./components/PhotoSearchButton";
 import BatchSellFlow, { type BatchStart } from "./components/BatchSellFlow";
 import { batchItem, itemsFromGroups } from "./batchListings";
+import { batchStepNote } from "./sellingCelebration";
 import PhotoSplitQuestion from "./components/PhotoSplitQuestion";
 import AgentSuggestions from "./components/AgentSuggestions";
 import AgentRunPanel from "./components/AgentRunPanel";
@@ -391,13 +392,13 @@ export default function App({
     drafts: ListingDraft[];
     index: number;
     results: ("saved" | "skipped")[];
+    /** The listings this batch has saved so far, celebrated together at the end. */
+    savedIds: string[];
   } | null>(null);
   const [editingListing, setEditingListing] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState("");
-  /** A listing that was just published; My listings celebrates it briefly. */
-  const [publishedListing, setPublishedListing] = useState<string | null>(
-    null,
-  );
+  /** Listings that were just published; My listings celebrates them briefly. */
+  const [publishedListings, setPublishedListings] = useState<string[]>([]);
   const hasSellingDraft = useRef(view === "sell");
   const [photoReading, setPhotoReading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -590,7 +591,7 @@ export default function App({
       case "messages":
         return "Messages";
       case "sell":
-        if (sellMode === "batch") return "Sell several items";
+        if (sellMode === "batch") return "Sell several things";
         return sellStep === 1 ? "New listing" : "Your listing";
       case "detail":
         return selected?.title ?? "Listing not found";
@@ -1636,7 +1637,7 @@ export default function App({
       return;
     }
     if (batchQueue && !editingListing) {
-      finishBatchItem("saved");
+      finishBatchItem("saved", item);
       return;
     }
     hasSellingDraft.current = false;
@@ -1649,7 +1650,7 @@ export default function App({
           ? "Listing published to Takeover."
           : "Listing saved in this browser.",
       );
-    else setPublishedListing(item.id);
+    else setPublishedListings([item.id]);
   }
   /** Load one sorted item into the single-listing flow and let the agent draft it. */
   function openBatchItem(next: ListingDraft) {
@@ -1672,37 +1673,41 @@ export default function App({
       return;
     }
     hasSellingDraft.current = true;
-    setBatchQueue({ drafts, index: 0, results: [] });
+    setBatchQueue({ drafts, index: 0, results: [], savedIds: [] });
     setBatchStart(undefined);
     setSellMode("single");
     openBatchItem(drafts[0]);
   }
-  function finishBatchItem(result: "saved" | "skipped") {
+  /** Moves the batch on after a listing was saved or skipped; the last one opens My listings. */
+  function finishBatchItem(result: "saved" | "skipped", saved?: Product) {
     if (!batchQueue) return;
     const results = [...batchQueue.results, result];
+    const savedIds = saved
+      ? [...batchQueue.savedIds, saved.id]
+      : batchQueue.savedIds;
     const index = batchQueue.index + 1;
     const total = batchQueue.drafts.length;
-    const saved = results.filter((item) => item === "saved").length;
-    const done = account ? "published" : "saved";
     if (index < total) {
-      setBatchQueue({ ...batchQueue, index, results });
+      setBatchQueue({ ...batchQueue, index, results, savedIds });
       openBatchItem(batchQueue.drafts[index]);
-      setToast(
-        result === "saved"
-          ? `Listing ${index} of ${total} ${done}. Next: listing ${index + 1}.`
-          : `Skipped listing ${index}. Next: listing ${index + 1} of ${total}.`,
-      );
+      setToastNotice({
+        message: batchStepNote({
+          outcome: result,
+          title: saved?.title ?? draftRef.current.title,
+          next: index + 1,
+          total,
+          cloud: Boolean(account),
+        }),
+        mood: result === "saved" ? "happy" : "idle",
+      });
       return;
     }
     setBatchQueue(null);
     hasSellingDraft.current = false;
     setAccountTab("listings");
     navigate("account");
-    setToast(
-      saved
-        ? `${saved} listing${saved === 1 ? "" : "s"} ${done}.`
-        : "No listings saved.",
-    );
+    if (savedIds.length) setPublishedListings(savedIds);
+    else setToastNotice({ message: "No listings saved.", mood: "idle" });
   }
   /** Return the items not yet created to the sorting step. */
   function backToBatchSorting() {
@@ -2660,6 +2665,8 @@ export default function App({
                 <BatchSellFlow
                   location={location}
                   liveAgent={configured}
+                  quota={agentHealth?.quota}
+                  onAccount={() => navigate("settings")}
                   start={batchStart}
                   onBack={() => {
                     setBatchStart(undefined);
@@ -2874,8 +2881,8 @@ export default function App({
                 onEdit={editListing}
                 onStatusChange={setStatus}
                 renderProduct={productCard}
-                publishedId={publishedListing}
-                onCelebrationEnd={() => setPublishedListing(null)}
+                publishedIds={publishedListings}
+                onCelebrationEnd={() => setPublishedListings([])}
               />
             </WorkspacePage>
           </main>

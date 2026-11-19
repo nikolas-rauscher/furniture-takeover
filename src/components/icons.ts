@@ -65,6 +65,7 @@ export {
   Handshake,
   KeyRound,
   LampDesk,
+  Minus,
   Library,
   PackageOpen,
   PartyPopper,

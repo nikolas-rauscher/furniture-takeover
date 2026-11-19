@@ -148,9 +148,17 @@
   display: none;
 }
 @media (max-width: 760px) {
-  #root:has(.chat-layout, .selling-chat-layout, .selling-photo-layout)
+  #root:has(
+      .chat-layout,
+      .selling-chat-layout,
+      .selling-photo-layout,
+      .selling-batch-layout
+    )
     > .app-header {
     display: none;
+  }
+  .app-layout.selling-batch-layout .main-content.view-sell {
+    padding-top: env(safe-area-inset-top, 0px);
   }
   .app-layout.chat-layout .main-content.view-discover {
     padding: env(safe-area-inset-top, 0px) 12px 4px;

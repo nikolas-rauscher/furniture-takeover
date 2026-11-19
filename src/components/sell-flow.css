@@ -211,6 +211,87 @@
   overflow-wrap: anywhere;
 }
 
+/* Selling several things starts from the snap step, as a quiet second way in. */
+.photo-upload-panel > .sell-several {
+  align-self: flex-start;
+  margin: 2px 0 0 -13px;
+}
+
+/* Listing several things one after another: a tray of covers above the listing. */
+.batch-tray {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin: 0 0 var(--space-group);
+  padding: 10px 14px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--lip);
+}
+.batch-tray > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--type-support);
+}
+.batch-tray > p strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+.batch-tray ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.batch-tray li {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+.batch-tray li > img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+  background: var(--canvas);
+}
+.batch-tray li[data-state="current"] {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+.batch-tray li[data-state="upcoming"] > img {
+  opacity: 0.55;
+}
+.batch-tray li[data-state="skipped"] {
+  outline: 2px dashed var(--lip);
+  outline-offset: 2px;
+}
+.batch-tray li[data-state="skipped"] > img {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+.batch-tray-check {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--blue);
+  color: var(--on-primary);
+}
+.batch-tray .batch-tray-skip {
+  margin-left: auto;
+}
+
 @media (max-width: 760px) {
   .snap-target {
     --snap-floor: 88%;
