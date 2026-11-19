@@ -505,6 +505,36 @@ function checkDraftPickup(
   }
 }
 
+function logDroppedOption(
+  runId: string,
+  index: number,
+  label: string,
+  error: Error,
+) {
+  console.warn(
+    "[thread-turn]",
+    JSON.stringify({
+      runId,
+      event: "option_dropped",
+      optionId: `opt-${index + 1}`,
+      check: error.message,
+      label,
+    }),
+  );
+}
+
+function checkedOption(
+  option: ProposedOption,
+  index: number,
+  request: ThreadTurnRequest,
+  facts: ThreadFacts,
+  now: Date,
+): ThreadTurn["options"][number] {
+  const terms = optionTerms(option, index, request, facts, now);
+  checkOptionLabel(option, request, facts);
+  return { ...option, id: `opt-${index + 1}`, terms };
+}
+
 /** A reading can offer fewer chips when one draft fails its grounding checks. */
 function checkedOptions(
   proposal: Proposal,
@@ -516,27 +546,10 @@ function checkedOptions(
   let firstFailure: Error | undefined;
   for (const [index, option] of proposal.options.entries()) {
     try {
-      const terms = optionTerms(option, index, request, proposal.facts, now);
-      checkOptionLabel(option, request, proposal.facts);
-      options.push({
-        id: `opt-${index + 1}`,
-        label: option.label,
-        message: option.message,
-        kind: option.kind,
-        terms,
-      });
+      options.push(checkedOption(option, index, request, proposal.facts, now));
     } catch (error) {
       if (!(error instanceof Error)) throw error;
-      console.warn(
-        "[thread-turn]",
-        JSON.stringify({
-          runId,
-          event: "option_dropped",
-          optionId: `opt-${index + 1}`,
-          check: error.message,
-          label: option.label,
-        }),
-      );
+      logDroppedOption(runId, index, option.label, error);
       firstFailure ??= error;
     }
   }
@@ -661,11 +674,15 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
       const timeout = AbortSignal.timeout(
         Math.min(config.timeoutMs ?? TURN_LIMIT_MS, TURN_LIMIT_MS),
       );
+      const repairDeadline = new AbortController();
+      let repairTimer: ReturnType<typeof setTimeout> | undefined;
       const signal = callerSignal
-        ? AbortSignal.any([callerSignal, timeout])
-        : timeout;
+        ? AbortSignal.any([callerSignal, timeout, repairDeadline.signal])
+        : AbortSignal.any([timeout, repairDeadline.signal]);
       const now = clock();
       let reading: ThreadTurn | undefined;
+      let repairIndex: number | undefined;
+      let repairStarted = false;
       let streamFailure: unknown;
       /** The checks the model's attempts failed; fixed wording, never what the students wrote. */
       const failedChecks: string[] = [];
@@ -687,6 +704,20 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
               execute: async (proposal) => {
                 try {
                   reading = groundProposal(proposal, request, now, runId);
+                  if (
+                    reading.options.length === 1 &&
+                    proposal.options.length > 1
+                  ) {
+                    const kept = reading.options[0];
+                    repairIndex = proposal.options.findIndex(
+                      (_, i) => `opt-${i + 1}` !== kept.id,
+                    );
+                    return {
+                      kept: kept.label,
+                      instruction:
+                        "Replace one rejected draft. Write one short, different reply about a single point. Omit extra prices, times and places.",
+                    };
+                  }
                 } catch (error) {
                   failedChecks.push(
                     error instanceof Error ? error.message : "check failed",
@@ -696,10 +727,59 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
                 return { saved: true };
               },
             }),
+            repair_reply: tool({
+              description:
+                "Replace one rejected reply. The saved reading and valid reply are already kept.",
+              inputSchema: proposalSchema.shape.options.element,
+              execute: async (option) => {
+                if (!reading || repairIndex === undefined)
+                  throw new Error("No reply needs repair.");
+                const index = repairIndex;
+                repairIndex = undefined;
+                try {
+                  checkSafeText(option.label, "replacement label");
+                  checkSafeText(option.message, "replacement message");
+                  if (
+                    reading.options.some(
+                      (kept) =>
+                        plainText(kept.message) === plainText(option.message) ||
+                        plainText(kept.label) === plainText(option.label),
+                    )
+                  )
+                    throw new Error("Write a different message.");
+                  const replacement = checkedOption(
+                    option,
+                    index,
+                    request,
+                    reading.facts,
+                    now,
+                  );
+                  reading.options.push(replacement);
+                } catch (error) {
+                  if (!(error instanceof Error)) throw error;
+                  // An unsafe label can contain contact details.
+                  const label = error.message.startsWith("replacement label")
+                    ? "[redacted]"
+                    : option.label;
+                  logDroppedOption(runId, index, label, error);
+                }
+                return { saved: reading.options.length > 1 };
+              },
+            }),
           },
-          activeTools: [TOOL_NAME],
+          prepareStep: () => {
+            if (repairIndex === undefined) return { activeTools: [TOOL_NAME] };
+            repairStarted = true;
+            repairTimer = setTimeout(() => repairDeadline.abort(), 2500);
+            return { activeTools: ["repair_reply"] };
+          },
           toolChoice: "required",
-          stopWhen: [stepCountIs(MAX_STEPS), () => reading !== undefined],
+          stopWhen: [
+            stepCountIs(MAX_STEPS),
+            () =>
+              reading !== undefined &&
+              (repairIndex === undefined || repairStarted),
+          ],
           maxOutputTokens: MAX_OUTPUT_TOKENS,
           maxRetries: 1,
           // DeepSeek cannot combine thinking with a forced tool.
@@ -722,8 +802,12 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
           prompt: JSON.stringify({
             ...request,
             pickupLabels: {
-              agreed: request.deal?.agreed?.pickupAt ? formatPickup(request.deal.agreed.pickupAt) : null,
-              proposed: request.deal?.proposal?.terms.pickupAt ? formatPickup(request.deal.proposal.terms.pickupAt) : null,
+              agreed: request.deal?.agreed?.pickupAt
+                ? formatPickup(request.deal.agreed.pickupAt)
+                : null,
+              proposed: request.deal?.proposal?.terms.pickupAt
+                ? formatPickup(request.deal.proposal.terms.pickupAt)
+                : null,
             },
             now: zurichNow.format(now),
             timeZone: ZONE,
@@ -740,6 +824,8 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
           )
             failedChecks.push("the input did not match the tool's schema");
         }
+        callerSignal?.throwIfAborted();
+        if (repairStarted && reading) return reading;
         signal.throwIfAborted();
         if (reading) return reading;
         if (streamFailure) throw streamFailure;
@@ -763,7 +849,10 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
             ...(failedChecks.length ? { failedChecks } : {}),
           }),
         );
+        if (repairStarted && reading && !callerSignal?.aborted) return reading;
         throw safe;
+      } finally {
+        clearTimeout(repairTimer);
       }
     },
   };

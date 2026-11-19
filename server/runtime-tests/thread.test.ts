@@ -536,7 +536,7 @@ test("a misleading bike chip leaves valid siblings available without another rea
   assert.equal(model.doStreamCalls.length, 1);
 });
 
-test("a Friday question cannot hide an availability answer from its label", async (t) => {
+test("repair one rejected Friday reply once and keep the validated sibling", async () => {
   const options = [
     option({
       label: "Confirm Friday pickup availability",
@@ -554,15 +554,39 @@ test("a Friday question cannot hide an availability answer from its label", asyn
         "Yes, it's still available — CHF 145 as listed, and Friday pickup works for me.",
     }),
   ];
-  const { agent } = agentReading(
-    t,
-    reading({ options, facts: {}, stance: "question" }),
-  );
-  const turn = await agent.turn(bike);
-  assert.deepEqual(
-    turn.options.map(({ label }) => label),
-    [options[0].label],
-  );
+  for (const [replacement, expected] of [
+    [options[1], [options[0].label]],
+    [
+      option({
+        label: "Ask what time Friday",
+        message: "What time on Friday suits you?",
+      }),
+      [options[0].label, "Ask what time Friday"],
+    ],
+  ] as const) {
+    const model = new MockLanguageModelV4({
+      doStream: [
+        toolCall(
+          "propose_next_message",
+          reading({ options, facts: {}, stance: "question" }),
+          "initial",
+        ),
+        toolCall("repair_reply", replacement, "repair"),
+      ],
+    });
+    const agent = createThreadAgent({ apiKey: "test", modelImpl: model, now });
+    const turn = await agent.turn(bike);
+    assert.deepEqual(
+      turn.options.map(({ label }) => label),
+      expected,
+    );
+    assert.equal(turn.options[0].id, "opt-1");
+    assert.equal(model.doStreamCalls.length, 2);
+    assert.deepEqual(
+      model.doStreamCalls[1].tools?.map((tool) => tool.name),
+      ["repair_reply"],
+    );
+  }
 });
 
 for (const [role, incoming, label, message] of [
@@ -610,16 +634,29 @@ for (const [role, incoming, label, message] of [
 
 test("condition replies can describe the listing or ask what to check in one reading", async (t) => {
   const options = [
-    option({ label: "Describe listed condition", message: "It's listed in good condition." }),
-    option({ kind: "ask", label: "Ask what they'd like checked", message: "Is there a particular part you'd like me to check?" }),
+    option({
+      label: "Describe listed condition",
+      message: "It's listed in good condition.",
+    }),
+    option({
+      kind: "ask",
+      label: "Ask what they'd like checked",
+      message: "Is there a particular part you'd like me to check?",
+    }),
   ];
-  const { model, agent } = agentReading(t, reading({ facts: {}, stance: "question", options }));
+  const { model, agent } = agentReading(
+    t,
+    reading({ facts: {}, stance: "question", options }),
+  );
   const turn = await agent.turn({
     ...bike,
     listing: { ...bike.listing, condition: "Good" },
     messages: [{ ...bike.messages[0], text: "What condition is the bike in?" }],
   });
-  assert.deepEqual(turn.options.map(({ label }) => label), options.map(({ label }) => label));
+  assert.deepEqual(
+    turn.options.map(({ label }) => label),
+    options.map(({ label }) => label),
+  );
   assert.equal(turn.agreement.status, "none");
   assert.equal(model.doStreamCalls.length, 1);
 });
