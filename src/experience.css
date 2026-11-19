@@ -126,12 +126,18 @@
     padding: 0;
   }
 }
-/* Header actions give way to their icons in narrow windows and on phones. */
-@media (max-width: 960px) {
+/* How it works, the quieter header action, gives way to its icon first. */
+@media (max-width: 1080px) {
   .app-header .help-nav {
     width: 40px;
     padding: 0;
   }
+  .help-nav > .header-action-label {
+    display: none;
+  }
+}
+/* Narrower still, Sell keeps only its plus; its label stays for screen readers. */
+@media (max-width: 960px) {
   .header-action-label {
     position: absolute;
     width: 1px;
@@ -191,11 +197,11 @@ label > textarea {
   line-height: 1.6;
   max-width: var(--measure-prose);
 }
-/* Back is a soft pill that lights up under the pointer. */
+/* Back is a soft pill that lights up under the pointer, close to the page it leads from. */
 .back-link {
   display: inline-flex;
   min-height: 36px;
-  margin: 0 0 32px -8px;
+  margin: 0 0 22px -8px;
   padding: 6px 12px 6px 8px;
   border-radius: 999px;
   font-size: 13px;
@@ -553,10 +559,6 @@ label > textarea {
   font-size: 13px;
   line-height: 1.8;
 }
-.assistant-message.mine {
-  padding: 14px 16px;
-  border-radius: 4px;
-}
 .assistant-brief {
   margin-top: 36px;
   padding-top: 28px;
@@ -786,19 +788,6 @@ label > textarea {
   background: var(--sand);
   padding: 32px;
 }
-.upload-zone h2 {
-  font-size: 22px;
-  font-weight: 450;
-  margin-bottom: 14px;
-}
-.upload-zone p {
-  font-size: 14px;
-  margin-bottom: 28px;
-  color: var(--muted);
-}
-.upload-zone .button {
-  font-size: 14px;
-}
 .file-hint {
   font-size: 12px;
   margin-top: 24px;
@@ -909,13 +898,6 @@ label > textarea {
     border-radius: 12px;
     background: #fff;
   }
-  .agent-review-layout .listing-preview > .preview-label { display: none; }
-  .agent-review-layout .listing-preview > img {
-    width: 80px;
-    height: 96px;
-    border-radius: 5px;
-    object-fit: cover;
-  }
   .agent-review-layout .listing-preview > div { padding: 0; min-width: 0; }
   .agent-review-layout .listing-preview h2 {
     font-size: 15px;
@@ -962,15 +944,6 @@ label > textarea {
   background: var(--surface);
   box-shadow: 0 4px 0 var(--lip);
   top: 120px;
-}
-.preview-label {
-  background: none;
-  padding: 22px 24px;
-  font-size: 13px;
-}
-.listing-preview > img {
-  height: auto;
-  aspect-ratio: 4 / 3;
 }
 .listing-preview > div {
   padding: 28px;
@@ -1095,6 +1068,9 @@ label > textarea {
   .header-actions {
     gap: 4px;
     margin-right: -8px;
+  }
+  .back-link {
+    margin-bottom: 16px;
   }
   .focused-layout .main-content,
   .main-content {
@@ -1232,9 +1208,6 @@ label > textarea {
   .page-title p {
     font-size: 15px;
   }
-  .back-link {
-    margin-bottom: 28px;
-  }
   .detail-layout {
     grid-template-columns: 1fr;
     gap: 36px;
@@ -1277,12 +1250,6 @@ label > textarea {
     height: 260px;
     padding: 24px;
   }
-  .upload-zone h2 {
-    font-size: 21px;
-  }
-  .upload-zone p {
-    font-size: 14px;
-  }
   .sell-inputs label {
     font-size: 14px;
   }
@@ -1304,9 +1271,6 @@ label > textarea {
   .form-section-title {
     font-size: 22px;
     margin-bottom: 24px;
-  }
-  .listing-preview > img {
-    height: auto;
   }
   .account-tabs {
     gap: 24px;
@@ -1360,18 +1324,6 @@ label > textarea {
 }
 .query-field {
   grid-column: 1 / -1;
-}
-.view-discover > .search-title {
-  margin-bottom: 24px;
-}
-.view-discover:has(> .search-title) {
-  padding-top: 32px;
-}
-.search-title h1 {
-  margin-bottom: 0;
-}
-.search-title .back-link {
-  margin-bottom: 16px;
 }
 
 /* Phone navigation stays within thumb reach; desktop navigation remains above. */
@@ -1456,7 +1408,6 @@ label > textarea {
 .page-title h1 { margin-bottom: var(--space-label); min-height: var(--control-size); display: flex; align-items: center; }
 .page-title > .button { margin: 0; }
 .results-controls { margin-bottom: 16px; }
-.search-title .back-link { margin-bottom: 8px; }
 
 .listing-save-form { margin-top: 24px; padding-top: 20px; }
 .listing-manual-fields[open] > summary { margin-bottom: 16px; }
@@ -1554,14 +1505,6 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
   overflow: hidden;
 }
 .chat-layout .view-discover > * { flex-shrink: 0; }
-.chat-layout .search-title {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin: 0 0 8px;
-}
-.chat-layout .search-title h1 { font-size: 20px; margin: 0; }
-.chat-layout .search-title .back-link { margin: 0; min-height: 36px; font-size: 12px; }
 .chat-layout .results-controls { margin: 0; min-height: 36px; gap: 12px; }
 .chat-layout .results-controls button { font-size: 12px; }
 .chat-layout .view-discover > .quiet-caption {
@@ -1589,14 +1532,10 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
     padding-top: 12px;
   }
   .chat-layout .main-content.view-discover { padding: var(--space-label) var(--space-page); }
-  .chat-layout .search-title { gap: 12px; margin-bottom: 4px; }
-  .chat-layout .search-title h1 { font-size: 18px; }
   .chat-layout .view-discover > .quiet-caption { display: none; }
-  .chat-layout .search-title > p { display: none; }
   .chat-layout .chat-workspace { margin-top: 4px; }
 }
 @media (max-height: 600px) {
-  .chat-layout .search-title,
   .chat-layout .view-discover > .quiet-caption { display: none; }
 }
 
@@ -1642,17 +1581,14 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
 .selling-chat-layout .listing-save-form > .button { width: auto; margin: 0; }
 .selling-chat-layout .listing-save-form > .quiet-caption { display: none; }
 .selling-chat-layout .listing-preview { position: static; align-self: start; max-height: 100%; overflow: hidden; }
-.selling-chat-layout .listing-preview > img { max-height: 24dvh; object-fit: contain; }
 .selling-chat-layout .listing-preview > div { padding: 16px; }
 .selling-chat-layout .listing-preview h2 { font-size: 20px; margin: 0 0 8px; }
 .selling-chat-layout .listing-preview-description { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
-.selling-chat-layout .listing-preview .preview-label { margin: 0; padding: 12px 16px; }
 @media (max-width: 760px) {
   .selling-chat-layout .view-sell { padding: 8px var(--space-page); }
   .selling-chat-layout .page-title h1 { font-size: 18px; }
   .selling-chat-layout .agent-review-layout { gap: 6px; }
   .selling-chat-layout .listing-preview { height: 58px; min-height: 58px; flex-shrink: 0; grid-template-columns: 40px minmax(0, 1fr); padding: 6px 10px; gap: 10px; border-radius: var(--radius-card); }
-  .selling-chat-layout .listing-preview > img { width: 40px; height: 44px; }
   .selling-chat-layout .listing-preview > div { padding: 0; }
   .selling-chat-layout .listing-preview h2 { font-size: 13px; white-space: nowrap; display: block; text-overflow: ellipsis; overflow: hidden; margin: 0; }
   .selling-chat-layout .listing-preview strong { font-size: 13px; margin: 0; }

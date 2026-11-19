@@ -874,14 +874,6 @@ textarea {
   color: var(--blue);
   margin-top: 5px;
 }
-.assistant-message.mine {
-  background: var(--mist);
-  border-radius: 9px 9px 0 9px;
-  padding: 10px 12px;
-  color: #5366a2;
-  align-self: flex-end;
-  margin-left: 20px;
-}
 .close-assistant,
 .mobile-assistant-toggle {
   display: none;
@@ -911,15 +903,6 @@ textarea {
 }
 .title-with-action .button {
   font-size: 11px;
-}
-.search-title {
-  margin-top: 0;
-}
-.search-title h1 {
-  margin-top: 3px;
-}
-.search-title .back-link {
-  margin-bottom: 17px;
 }
 .empty-state {
   padding: 55px 20px;
@@ -1246,20 +1229,6 @@ textarea {
   justify-content: center;
   margin-bottom: 23px;
 }
-.upload-zone h2 {
-  font-size: 17px;
-  line-height: 1.6;
-  margin-bottom: 8px;
-}
-.upload-zone p {
-  font-size: 12px;
-  color: #8f96a6;
-  margin-bottom: 20px;
-}
-.upload-zone .button {
-  font-size: 12px;
-  cursor: pointer;
-}
 .file-hint {
   font-size: 10px;
   color: #a1a8b6;
@@ -1341,16 +1310,6 @@ textarea {
   overflow: hidden;
   position: sticky;
   top: 107px;
-}
-.preview-label {
-  display: block;
-  font-size: 11px;
-  color: #9ca3b2;
-  padding: 15px 18px;
-  background: #fafbfe;
-}
-.listing-preview > img {
-  height: 240px;
 }
 .listing-preview > div {
   padding: 20px;
@@ -1481,121 +1440,12 @@ textarea {
   color: #939aab;
   margin-top: 7px;
 }
-.listing-actions {
-  display: flex;
-  gap: 7px;
-  flex-wrap: wrap;
-  margin-top: 16px;
-}
-.listing-actions .text-button {
-  font-size: 10px;
-  color: #969eae;
-  padding: 5px;
-}
-.listing-actions .button {
-  font-size: 10px;
-}
-.inbox {
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  display: grid;
-  grid-template-columns: 220px 1fr;
-  overflow: hidden;
-  min-height: 500px;
-}
-.conversation-list {
-  border-right: 1px solid var(--line);
-  background: #fafbfe;
-}
-.conversation-list > button {
-  padding: 17px 13px;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  width: 100%;
-  border-bottom: 1px solid var(--line);
-  text-align: left;
-}
-.conversation-list > button.active {
-  background: var(--mist);
-}
-.conversation-list > button > span:nth-child(2) {
-  min-width: 0;
-  flex: 1;
-}
-.conversation-list strong {
-  font-size: 12px;
-  font-weight: 550;
-  display: block;
-  margin-bottom: 4px;
-}
-.conversation-list small {
-  font-size: 9px;
-  color: #919aaf;
-  display: block;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-}
-.conversation-list svg {
-  color: #a3afc8;
-}
-.conversation-heading {
-  padding: 19px;
-  border-bottom: 1px solid var(--line);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.conversation-heading h2 {
-  font-size: 16px;
-}
 .demo-badge {
   font-size: 9px;
   color: #8f9bbb;
   background: var(--mist);
   padding: 4px 7px;
   border-radius: 4px;
-}
-.message-list {
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  max-height: 340px;
-  overflow-y: auto;
-}
-.message {
-  font-size: 12px;
-  line-height: 1.7;
-  padding: 12px 15px;
-  max-width: 90%;
-  background: var(--canvas);
-  border-radius: 9px 9px 9px 0;
-  color: #6d7689;
-}
-.message.mine {
-  align-self: flex-end;
-  background: var(--mist);
-  border-radius: 9px 9px 0 9px;
-  color: #5e6e9b;
-}
-.reply-form {
-  display: flex;
-  margin: 0 20px 20px;
-  border: 1px solid #e0e5ef;
-  border-radius: 8px;
-  align-items: center;
-  padding-right: 7px;
-}
-.reply-form > input {
-  border: 0;
-  flex: 1;
-  width: 100%;
-  font-size: 12px;
-}
-.reply-form > .icon-button {
-  color: var(--blue);
 }
 .pickup-plan {
   padding: 18px 20px;
@@ -1705,56 +1555,6 @@ textarea {
   color: #7c8bb5;
   padding: 7px 10px;
   border-radius: 5px;
-}
-.contact-product {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: var(--canvas);
-  padding: 11px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
-.contact-product > img {
-  width: 62px;
-  height: 62px;
-  border-radius: 6px;
-}
-.contact-product strong {
-  font-size: 12px;
-  font-weight: 550;
-  display: block;
-  margin-bottom: 7px;
-}
-.contact-product span {
-  font-size: 11px;
-  color: #9ba3b3;
-}
-.notification-item {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  width: 100%;
-  padding: 17px 0;
-  border-bottom: 1px solid var(--line);
-  text-align: left;
-}
-.notification-item > span:nth-child(2) {
-  flex: 1;
-}
-.notification-item strong {
-  display: block;
-  font-size: 12px;
-  font-weight: 550;
-  margin-bottom: 7px;
-}
-.notification-item small {
-  display: block;
-  font-size: 11px;
-  color: #9ca5b7;
-}
-.notification-item > svg {
-  color: #a1adc6;
 }
 .modal > .quiet-caption {
   margin-top: 18px;
@@ -1895,18 +1695,6 @@ textarea {
   .title-with-action {
     align-items: flex-start;
   }
-  .inbox {
-    grid-template-columns: 165px 1fr;
-  }
-  .conversation-list .avatar {
-    width: 26px;
-    height: 26px;
-    font-size: 10px;
-  }
-  .conversation-list > button {
-    gap: 7px;
-    padding: 14px 10px;
-  }
   .comparison-grid {
     gap: 11px;
   }
@@ -1926,12 +1714,6 @@ textarea {
   .review-layout,
   .sell-layout {
     gap: 20px;
-  }
-  .upload-zone h2 {
-    font-size: 15px;
-  }
-  .upload-zone p {
-    font-size: 11px;
   }
   .own-listing-image {
     width: 140px;
@@ -2024,14 +1806,8 @@ textarea {
   .search-hint button {
     font-size: 11px;
   }
-  .inbox {
-    grid-template-columns: 220px 1fr;
-  }
   .sell-layout {
     gap: 28px;
-  }
-  .upload-zone h2 {
-    font-size: 18px;
   }
   .review-layout {
     gap: 28px;
@@ -2115,9 +1891,6 @@ textarea {
     justify-self: center;
     width: 100%;
   }
-  .listing-preview > img {
-    height: 240px;
-  }
   .review-form {
     order: 2;
   }
@@ -2129,9 +1902,6 @@ textarea {
   }
   .review-form {
     padding-top: 10px;
-  }
-  .inbox {
-    grid-template-columns: 160px 1fr;
   }
   .own-listing-image {
     width: 130px;
@@ -2398,9 +2168,6 @@ textarea {
   .upload-zone {
     height: 310px;
   }
-  .upload-zone h2 {
-    font-size: 17px;
-  }
   .sell-inputs label {
     font-size: 12px;
   }
@@ -2446,52 +2213,8 @@ textarea {
   .own-listing p {
     font-size: 10px;
   }
-  .listing-actions {
-    margin-left: -103px;
-    margin-top: 24px;
-    gap: 7px;
-  }
-  .listing-actions .button {
-    font-size: 9px;
-    padding: 7px 8px;
-  }
-  .inbox {
-    display: block;
-  }
-  .conversation-list {
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
-    display: flex;
-    overflow-x: auto;
-  }
-  .conversation-list > button {
-    min-width: 180px;
-    max-width: 230px;
-    border-right: 1px solid var(--line);
-    border-bottom: 0;
-    padding: 12px;
-  }
-  .conversation-heading {
-    padding: 17px;
-  }
-  .message-list {
-    padding: 17px;
-    max-height: 360px;
-  }
-  .message {
-    font-size: 11px;
-    max-width: 94%;
-    padding: 11px 13px;
-  }
-  .conversation-heading h2 {
-    font-size: 15px;
-  }
   .pickup-plan {
     padding: 17px;
-  }
-  .reply-form {
-    margin-left: 17px;
-    margin-right: 17px;
   }
   .modal-backdrop {
     padding: 15px;
@@ -2526,16 +2249,6 @@ textarea {
   .modal label > textarea,
   .modal label > select {
     font-size: 13px;
-  }
-  .contact-product > img {
-    width: 53px;
-    height: 53px;
-  }
-  .contact-product strong {
-    font-size: 11px;
-  }
-  .contact-product span {
-    font-size: 10px;
   }
 }
 /* Keep practical information legible without competing with the furniture. */
