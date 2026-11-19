@@ -20,11 +20,13 @@ export default function CompareTray({
   return (
     <AnimatePresence>
       {visible && (
+        // It pops up solid from just below its place, clear of the tab bar, so
+        // the page never shows through it; only leaving, it fades.
         <motion.div
           className="compare-tray"
-          initial={{ opacity: 0, y: 28 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 16, transition: { duration: 0.16 } }}
+          initial={{ y: 8, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 8, transition: { duration: 0.16 } }}
           transition={{ type: "spring", stiffness: 420, damping: 32 }}
         >
           <span className="compare-tray-count">

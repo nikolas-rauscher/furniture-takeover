@@ -31,7 +31,9 @@ export default function Toast({
   action,
   onDismiss,
 }: ToastProps) {
-  // It springs in from the edge it rests against and leaves the same way.
+  // It pops up solid from just short of its place, on the side of the edge it
+  // rests against, so it stays clear of the tab bar and the page never shows
+  // through it; it fades only as it leaves the same way.
   const away = placement === "top" ? -1 : 1;
   return (
     <AnimatePresence>
@@ -41,11 +43,11 @@ export default function Toast({
           className="toast"
           data-placement={placement}
           role="status"
-          initial={{ opacity: 0, y: 24 * away, scale: 0.96 }}
+          initial={{ y: 8 * away, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{
             opacity: 0,
-            y: 12 * away,
+            y: 8 * away,
             scale: 0.98,
             transition: { duration: 0.16 },
           }}
