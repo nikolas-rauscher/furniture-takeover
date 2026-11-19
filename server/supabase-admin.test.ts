@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
 import { test, type TestContext } from "node:test";
 import {
   adminActions,
@@ -8,7 +7,7 @@ import {
   type AdminAction,
   type AdminOutput,
 } from "../shared/admin.ts";
-import { buyer, marketplace, seller, stranger } from "./supabase-fixture.ts";
+import { adminMigration, applyMigrations, buyer, marketplace, pickupMigration, reviewMigration, seller, stranger } from "./supabase-fixture.ts";
 
 const why = { reason: "Reviewed with the marketplace team" };
 const draft = {
@@ -37,13 +36,7 @@ async function setup(t: TestContext) {
     "insert into public.reports(reporter_id,message_id,reason) values($1,$2,'Message problem')",
     [seller, fixture.message],
   );
-  for (const name of ["202611190003_pickup.sql", "202611190004_admin.sql"])
-    await db.exec(
-      await readFile(
-        new URL(`../supabase/migrations/${name}`, import.meta.url),
-        "utf8",
-      ),
-    );
+  await applyMigrations(db, [pickupMigration, adminMigration, reviewMigration]);
   await db.query("insert into public.admins(user_id) values($1)", [stranger]);
   return {
     ...fixture,
@@ -80,7 +73,7 @@ test("every admin RPC checks membership before input, and clients cannot grant i
     for (const action of Object.keys(adminActions) as AdminAction[])
       await assert.rejects(
         rpc(action, mutations.has(action) ? {} : undefined),
-        /admin_required/,
+        actor ? /admin_required/ : /permission denied/,
       );
     await assert.rejects(
       db.query("insert into public.admins(user_id) values($1)", [buyer]),
@@ -353,6 +346,8 @@ test("an agreed pickup survives a refused hide and a block, with atomic deal wri
   );
   await rpc("set_student_blocked", { studentId: buyer, blocked: true, ...why });
   await as(buyer);
+  await assert.rejects(act("cancel", 2, "cant_make_it"), /admin_student_blocked/);
+  await assert.rejects(db.query("select public.delete_account()"), /admin_student_blocked/);
   await assert.rejects(
     db.query(
       "select public.pickup_action($1,$2,'I cannot make it','cancel_pickup',2,null,null,'cant_make_it')",
@@ -363,11 +358,20 @@ test("an agreed pickup survives a refused hide and a block, with atomic deal wri
   const deal = (await db.query("select status,version from public.deals"))
     .rows[0];
   assert.deepEqual(deal, { status: "agreed", version: 2 });
+  await as(stranger);
+  await rpc("set_student_blocked", { studentId: buyer, blocked: false, ...why });
+  await rpc("set_student_blocked", { studentId: seller, blocked: true, ...why });
   await as(seller);
+  for (const update of ["title='New title'", "status='withdrawn'"])
+    await assert.rejects(db.query(`update public.listings set ${update} where id=$1`, [listing]), /admin_student_blocked/);
+  await assert.rejects(db.query("select public.delete_account()"), /admin_student_blocked/);
+  await as(buyer);
   await act("cancel", 2, "cant_make_it");
   await as(stranger);
   await rpc("set_listing_hidden", { id: listing, hidden: true, ...why });
   await db.exec("reset role");
+  assert.equal((await db.query("select * from public.reports")).rows.length, 2);
+  assert.deepEqual((await db.query("select student_id from takeover_admin.student_blocks")).rows, [{ student_id: seller }]);
   await db.exec(
     "insert into public.ai_daily_totals values ((now() at time zone 'UTC')::date,4); insert into public.ai_thread_totals values ((now() at time zone 'UTC')::date,7)",
   );

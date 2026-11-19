@@ -69,8 +69,9 @@ Do not forward 8000, 8787, 5432, 6543, 3000 or 4000. Limit port 8787 to the ngin
    docker compose ps
    ```
 
-3. Note two values from the same `.env`, needed in step 3:
-   - `ANON_KEY` (the public key; never use `SERVICE_ROLE_KEY` in this app).
+3. Note these values from the same `.env`, needed in step 3:
+   - `ANON_KEY` (the public key).
+   - `SUPABASE_SECRET_KEY` (the server-only `sb_secret_…` key). For hosted Supabase, copy it from **Settings → API Keys → Publishable and secret API keys → Secret keys**. For self-hosted Supabase, enable the [new API keys in Kong](https://supabase.com/docs/guides/self-hosting/self-hosted-auth-keys) and copy the configured secret key.
    - Kong's port, `KONG_HTTP_PORT` (default `8000`).
 
 4. Make sure the nginx machine and the app machine can open `http://192.168.1.46:8000`, and that nothing else can.
@@ -142,6 +143,7 @@ A returned UUID confirms a new grant. Reload takeover to pick up the change. If 
    # This server: the LAN address of Supabase's Kong port
    SUPABASE_INTERNAL_URL=http://192.168.1.46:8000
    SUPABASE_PUBLISHABLE_KEY=<ANON_KEY from step 1>
+   SUPABASE_SECRET_KEY=<sb_secret_ key from step 1>
    ACCOUNT_KEYS_ENCRYPTION_KEY=<see below>
 
    DEEPSEEK_API_KEY=<your key>
@@ -151,6 +153,8 @@ A returned UUID confirms a new grant. Reload takeover to pick up the change. If 
    API_HOST=192.168.1.48
    API_ALLOWED_ORIGINS=https://aipm.deyan.ch
    ```
+
+   Account mode requires `SUPABASE_SECRET_KEY` at startup. Keep it in the app server environment and out of all `VITE_` variables.
 
    **(same machine as Supabase)** use `SUPABASE_INTERNAL_URL=http://127.0.0.1:8000` and keep `API_HOST` as this machine's LAN IP, so nginx can still reach the app.
 
@@ -170,7 +174,7 @@ A returned UUID confirms a new grant. Reload takeover to pick up the change. If 
 
    You should see `Agent API listening at http://192.168.1.48:8787`. Stop it with Ctrl+C.
 
-   If it stops with `API_HOST can only be set beyond this machine when Supabase accounts are configured`, the two Supabase variables are missing or empty. That check is deliberate: without accounts, the app has no sign-in and must not listen on the network.
+   If it stops with `API_HOST can only be set beyond this machine when Supabase accounts are configured`, the Supabase URL and publishable key are both missing or empty. That check is deliberate: without accounts, the app has no sign-in and must not listen on the network.
 
 6. Run it as a service under its own user. The `.env` holds your keys, so only that user may read it:
 
@@ -256,4 +260,5 @@ Then in a browser:
 ## Backups and updates
 
 - **Back up** the Supabase database volume, the Supabase `.env` (its keys and secrets), and `ACCOUNT_KEYS_ENCRYPTION_KEY`.
+- **Roll out the review fixes:** set `SUPABASE_SECRET_KEY` on the app server and prepare the new build. On a database already migrated through `202611190004_admin.sql`, apply only `202611200001_review_fixes.sql` and restart the app with the new build immediately after. The migration revokes the previous quota endpoints.
 - **Update the app:** `git pull && npm ci && npm run build && sudo systemctl restart takeover`. Check the release for new files in `supabase/migrations/` and apply any new ones once, in order, as in step 2.

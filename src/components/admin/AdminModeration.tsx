@@ -96,7 +96,7 @@ function ReportCard({
               onStep({
                 title: "Block this student?",
                 explanation:
-                  "They can't post listings or send messages. Agreed deals stay in place.",
+                  "They can't post or edit listings, send messages, or update deals. Blocking leaves existing agreements in place.",
                 confirmLabel: "Block student",
                 danger: true,
                 run: (reason) =>

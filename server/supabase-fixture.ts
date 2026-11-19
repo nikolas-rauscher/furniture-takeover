@@ -14,10 +14,21 @@ export const buyer = "11111111-1111-4111-8111-111111111111",
   seller = "22222222-2222-4222-8222-222222222222",
   stranger = "33333333-3333-4333-8333-333333333333";
 
-/** A database with every migration applied, Supabase's roles and one conversation. */
+export async function applyMigrations(db: PGlite, migrations: string[]) {
+  for (const migration of migrations)
+    await db.exec(await readFile(
+      new URL(`../supabase/migrations/${migration}`, import.meta.url), "utf8",
+    ));
+}
+
+export const adminMigration = "202611190004_admin.sql";
+export const reviewMigration = "202611200001_review_fixes.sql";
+export const pickupMigration = "202611190003_pickup.sql";
+
+/** A database through the original deals migration, with an existing listing and conversation. */
 export async function marketplace() {
   const db = new PGlite();
-  await db.exec(`create role anon; create role authenticated;
+  await db.exec(`create role anon; create role authenticated; create role service_role;
  create schema auth; create table auth.users(
   id uuid primary key, instance_id uuid, aud text, role text, email text, encrypted_password text,
   email_confirmed_at timestamptz, banned_until timestamptz, raw_app_meta_data jsonb,
@@ -32,13 +43,7 @@ export async function marketplace() {
  grant select,insert,delete on storage.objects to authenticated;
  create function storage.foldername(text) returns text[] language sql immutable as $$ select string_to_array($1,'/') $$;
  create publication supabase_realtime;`);
-  for (const migration of MIGRATIONS)
-    await db.exec(
-      await readFile(
-        new URL(`../supabase/migrations/${migration}`, import.meta.url),
-        "utf8",
-      ),
-    );
+  await applyMigrations(db, MIGRATIONS);
   await db.query("insert into auth.users(id) values ($1),($2),($3)", [
     buyer,
     seller,

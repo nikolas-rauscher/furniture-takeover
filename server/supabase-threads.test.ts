@@ -1,3 +1,4 @@
+import { adminMigration, applyMigrations, pickupMigration, reviewMigration } from "./supabase-fixture.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buyer,seller,stranger,count,marketplace } from "./supabase-fixture.ts";
@@ -120,34 +121,32 @@ test("reading replies has its own allowance of 150 a day, apart from searches", 
   const { db, as } = await marketplace();
   try {
     type Budget = { allowed: boolean; limit: number; remaining: number };
-    const allowance = async (name: string, spend: boolean) =>
+    await db.exec("reset role");
+    await applyMigrations(db, [pickupMigration, adminMigration, reviewMigration]);
+    await db.exec("set role service_role");
+    const allowance = async (userId: string, kind: string, spend: boolean) =>
       (
         await db.query<{ budget: Budget }>(
-          `select public.${name}($1) as budget`,
-          [spend],
+          "select public.ai_quota_spend($1,$2,$3) as budget",
+          [userId, kind, spend],
         )
       ).rows[0].budget;
-    await as(null);
-    await assert.rejects(
-      allowance("ai_thread_quota", true),
-      /permission denied/,
-    );
-    await as(buyer);
-    assert.equal((await allowance("ai_thread_quota", false)).remaining, 150);
+    assert.equal((await allowance(buyer, "thread", false)).remaining, 150);
     const spent = await db.query<{ budget: Budget }>(
-      "select public.ai_thread_quota(true) as budget from generate_series(1,150)",
+      "select public.ai_quota_spend($1,'thread',true) as budget from generate_series(1,150)",
+      [buyer],
     );
     assert.equal(spent.rows[149].budget.allowed, true);
     assert.equal(spent.rows[149].budget.remaining, 0);
-    assert.equal((await allowance("ai_thread_quota", true)).allowed, false);
-    assert.equal((await allowance("ai_quota", false)).remaining, 50);
+    assert.equal((await allowance(buyer, "thread", true)).allowed, false);
+    assert.equal((await allowance(buyer, "marketplace", false)).remaining, 50);
+    assert.equal((await allowance(seller, "thread", true)).remaining, 149);
+    await as(buyer);
     await assert.rejects(
       db.exec("update public.ai_thread_usage set requests=0"),
       /permission denied/,
     );
-    await as(seller);
-    assert.equal(await count(db, "select * from public.ai_thread_usage"), 0);
-    assert.equal((await allowance("ai_thread_quota", true)).remaining, 149);
+    assert.equal(await count(db, "select * from public.ai_thread_usage"), 1);
   } finally {
     await db.close();
   }

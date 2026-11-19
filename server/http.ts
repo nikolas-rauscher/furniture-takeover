@@ -115,9 +115,9 @@ export function createAgentServer(
       config: { supabaseUrl: string; supabaseKey: string };
       authorize(header: string | undefined, charge?: boolean): Promise<string>;
       /** The daily allowance for searches and listings. */
-      quota(authorization: string, spend?: boolean): Promise<Allowance>;
+      quota(userId: string, spend?: boolean): Promise<Allowance>;
       /** Reading replies has its own, larger daily allowance; each call spends one. */
-      spendReplyReading(authorization: string): Promise<Allowance>;
+      spendReplyReading(userId: string): Promise<Allowance>;
     };
     accountKeys?: AccountKeyStore;
     forAccount?: (
@@ -433,9 +433,9 @@ export function createAgentServer(
         send(response, 200, {
           ...agents.service.health(),
           ...(agents.runtime?.health() ?? {}),
-          ...(owner && request.headers.authorization && options.cloud
+          ...(owner && options.cloud
             ? {
-                quota: await options.cloud.quota(request.headers.authorization),
+                quota: await options.cloud.quota(owner),
               }
             : {}),
         });
@@ -547,9 +547,14 @@ export function createAgentServer(
             "INVALID_REQUEST",
             "Provide the demo listings to update.",
           );
+        const workspace = request.headers["x-message-workspace"];
+        if (workspace !== undefined &&
+          (typeof workspace !== "string" || !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(workspace)))
+          throw adminFailure("admin_invalid_input", 400);
         send(response, 200, {
           listings: options.listings.updateDemo(
             (body as { listings?: unknown }).listings,
+            workspace,
           ),
         });
         return;
@@ -615,8 +620,8 @@ export function createAgentServer(
               "Pako can't read replies on this server.",
             );
           const allowance =
-            actor && authorization && options.cloud
-              ? await options.cloud.spendReplyReading(authorization)
+            actor && options.cloud
+              ? await options.cloud.spendReplyReading(actor)
               : undefined;
           if (allowance && !allowance.allowed) {
             response.setHeader("Retry-After", secondsUntil(allowance.resetAt));
@@ -644,8 +649,8 @@ export function createAgentServer(
           );
           return;
         }
-        if (actor && authorization && options.cloud) {
-          const quota = await options.cloud.quota(authorization, true);
+        if (actor && options.cloud) {
+          const quota = await options.cloud.quota(actor, true);
           response.setHeader("X-AI-Quota-Limit", quota.limit);
           response.setHeader("X-AI-Quota-Remaining", quota.remaining);
           response.setHeader("X-AI-Quota-Reset", quota.resetAt);

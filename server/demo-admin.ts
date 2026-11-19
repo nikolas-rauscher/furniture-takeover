@@ -33,7 +33,7 @@ export function initializeDemoModeration(db: DatabaseSync) {
   `);
 }
 
-function checkDemoStudent(db: DatabaseSync, workspace: string) {
+export function checkDemoStudent(db: DatabaseSync, workspace: string) {
   if (
     db
       .prepare("SELECT 1 FROM demo_student_blocks WHERE student_id=?")
@@ -54,6 +54,22 @@ export function checkDemoContact(
       .get(listingId)
   )
     throw adminFailure("admin_listing_hidden", 409);
+}
+
+function conversationsExist(db: DatabaseSync) {
+  return Boolean(db.prepare(
+    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='conversations'",
+  ).get());
+}
+
+export function hasAgreedDemoDeal(db: DatabaseSync, listingId?: string) {
+  if (!conversationsExist(db)) return false;
+  return Boolean(db.prepare(`
+    SELECT 1 FROM conversations c JOIN listings l ON l.id=c.listing_id AND l.demo=1
+    WHERE json_extract(c.payload,'$.deal.status')='agreed'
+      AND json_extract(c.payload,'$.deletedAt') IS NULL AND (? IS NULL OR l.id=?)
+    LIMIT 1
+  `).get(listingId ?? null, listingId ?? null));
 }
 
 export function createDemoAdmin(
@@ -162,28 +178,8 @@ export function createDemoAdmin(
   const findSeller = db.prepare(
     "SELECT id,name,style_note FROM demo_sellers WHERE id=?",
   );
-  function conversationsExist() {
-    return Boolean(
-      db
-        .prepare(
-          "SELECT 1 FROM sqlite_master WHERE type='table' AND name='conversations'",
-        )
-        .get(),
-    );
-  }
   function requireNoDeal(id?: string) {
-    if (!conversationsExist()) return;
-    const agreed = db
-      .prepare(
-        `
-      SELECT 1 FROM conversations c JOIN listings l ON l.id=c.listing_id AND l.demo=1
-      WHERE json_extract(c.payload,'$.deal.status')='agreed'
-        AND json_extract(c.payload,'$.deletedAt') IS NULL AND (? IS NULL OR l.id=?)
-      LIMIT 1
-    `,
-      )
-      .get(id ?? null, id ?? null);
-    if (agreed) throw adminFailure("admin_deal_agreed", 409);
+    if (hasAgreedDemoDeal(db, id)) throw adminFailure("admin_deal_agreed", 409);
   }
   function log(action: ModerationAction, id: string | null, reason: string) {
     db.prepare("INSERT INTO demo_moderation_log VALUES(?,?,?,?,?,?)").run(
@@ -197,7 +193,7 @@ export function createDemoAdmin(
   }
   function isKnownWorkspace(id: string) {
     return (
-      (conversationsExist() &&
+      (conversationsExist(db) &&
         db.prepare("SELECT 1 FROM conversations WHERE workspace=?").get(id)) ||
       db.prepare("SELECT 1 FROM demo_reports WHERE reporter_id=?").get(id)
     );
@@ -447,7 +443,7 @@ export function createDemoAdmin(
       });
       for (const listing of listListings())
         report.listings[listing.hidden ? "hidden" : listing.status]++;
-      if (conversationsExist()) {
+      if (conversationsExist(db)) {
         for (const row of db
           .prepare(
             "SELECT payload FROM conversations WHERE json_extract(payload,'$.deletedAt') IS NULL",
@@ -491,7 +487,7 @@ export function createDemoAdmin(
         if (input.kind === "listing") {
           const row = readListing.get(input.id);
           if (row && !row.hidden) target = listingTarget(row);
-        } else if (conversationsExist()) {
+        } else if (conversationsExist(db)) {
           const rows = db
             .prepare("SELECT payload FROM conversations WHERE workspace=?")
             .all(workspace);

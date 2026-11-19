@@ -158,7 +158,8 @@ test("daily allowance blocks both agent routes before provider work and health c
           supabaseKey: "public-test-key",
         },
         authorize: async () => "alice",
-        quota: async (_authorization, spend = false) => {
+        quota: async (userId, spend = false) => {
+          assert.equal(userId, "alice");
           reservations.push(spend);
           return { allowed, limit: 50, remaining: allowed ? 49 : 0, resetAt };
         },
@@ -751,8 +752,8 @@ test("each reply reading spends one reading of its own allowance, only after its
       quota: async () => {
         throw new Error("Reading replies never spends searches");
       },
-      spendReplyReading: async (authorization) => {
-        spent.push(authorization);
+      spendReplyReading: async (userId) => {
+        spent.push(userId);
         const allowed = remaining > 0;
         if (allowed) remaining--;
         return { allowed, limit: 150, remaining, resetAt };
@@ -789,7 +790,7 @@ test("each reply reading spends one reading of its own allowance, only after its
   assert.equal((await exhausted.json()).error.code, "THREAD_QUOTA_EXCEEDED");
   assert.ok(Number(exhausted.headers.get("Retry-After")) > 0);
   assert.equal(readings, 2);
-  assert.deepEqual(spent, Array(3).fill("Bearer alice"));
+  assert.deepEqual(spent, Array(3).fill("alice"));
 });
 
 test("the local demo reads replies without accounts, within the route's size, method and origin", async (t) => {

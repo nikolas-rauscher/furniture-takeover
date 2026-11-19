@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { checkDemoContact, initializeDemoModeration } from "./demo-admin.ts";
+import { checkDemoContact, checkDemoStudent, initializeDemoModeration } from "./demo-admin.ts";
 import { AgentError } from "./errors.ts";
 import type { SellerConversation, ChatMessage } from "../shared/messages.ts";
 
@@ -96,6 +96,7 @@ export function createMessagesStore(path: string) {
   ) {
     db.exec("BEGIN IMMEDIATE");
     try {
+      if (command) checkDemoStudent(db, workspace);
       const row = db
         .prepare(
           "select payload from conversations where workspace=? and listing_id=? and buyer_key=?",

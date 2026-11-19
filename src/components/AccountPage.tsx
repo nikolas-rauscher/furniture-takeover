@@ -39,6 +39,11 @@ import ProductGrid from "./ProductGrid";
 import { celebrationFor, type Celebration } from "../sellingCelebration";
 import type { ListingPickupChoice, PickupSend } from "../pickupOptions";
 import Modal from "./Modal";
+import {
+  pickupConfirmation,
+  requireDemoListingEdit,
+  useListingStatusConfirmation,
+} from "../hooks/useListingPickup";
 
 export type AccountTab = "favorites" | "listings" | "archive";
 
@@ -219,7 +224,7 @@ type AccountPageProps = {
   agreementFor?(listingId: string): Agreement | undefined;
 };
 
-/** A booked pickup on a listing: Mark sold and Make active go through its actions. */
+/** A booked pickup on a listing gives status controls an action and its message. */
 export type ListingPickup = {
   other: string;
   sold: ListingPickupChoice;
@@ -229,14 +234,21 @@ export type ListingPickup = {
 };
 type Agreement = { chip: string; onOpenChat(): void; pickup?: ListingPickup };
 
-/** What a status change on a booked listing sends, asked before it goes out. */
+type StatusConfirmation = {
+  other: string;
+  question: string;
+  message: string;
+  label: string;
+  primary?: boolean;
+  followUp?: string;
+  send(): Promise<void>;
+};
+
 function PickupStep({
-  pickup,
-  choice,
+  confirmation,
   onClose,
 }: {
-  pickup: ListingPickup;
-  choice: ListingPickupChoice;
+  confirmation: StatusConfirmation;
   onClose(): void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -245,7 +257,7 @@ function PickupStep({
     setBusy(true);
     setError("");
     try {
-      await pickup.onSend(choice.send);
+      await confirmation.send();
       onClose();
     } catch (failure) {
       setError((failure as Error).message);
@@ -254,10 +266,11 @@ function PickupStep({
     }
   }
   return (
-    <Modal title={choice.confirm} onClose={() => !busy && onClose()}>
+    <Modal title={confirmation.question} onClose={() => !busy && onClose()}>
       <p className="deal-card-sends">
-        Message to {pickup.other}: <q>{choice.send.message}</q>
+        Message to {confirmation.other}: <q>{confirmation.message}</q>
       </p>
+      {confirmation.followUp && <p>{confirmation.followUp}</p>}
       {error && (
         <p className="form-error" role="alert">
           {error}
@@ -265,14 +278,14 @@ function PickupStep({
       )}
       <div className="modal-actions">
         <Button className="button secondary" disabled={busy} onClick={onClose}>
-          Keep pickup
+          Keep agreement
         </Button>
         <Button
-          className={`button ${choice.id === "picked_up" ? "primary" : "danger"}`}
+          className={`button ${confirmation.primary ? "primary" : "danger"}`}
           disabled={busy}
           onClick={() => void send()}
         >
-          {busy ? "Sending…" : choice.label}
+          {busy ? "Sending…" : confirmation.label}
         </Button>
       </div>
     </Modal>
@@ -308,10 +321,51 @@ export default function AccountPage({
     const timer = setTimeout(() => endCelebration(), CELEBRATION_MS);
     return () => clearTimeout(timer);
   }, [publishedKey]);
-  const [pickupStep, setPickupStep] = useState<{
-    pickup: ListingPickup;
-    choice: ListingPickupChoice;
-  }>();
+  const [pickupStep, setPickupStep] = useState<StatusConfirmation>();
+  const [listingError, setListingError] = useState("");
+  const confirmations = useListingStatusConfirmation();
+
+  async function edit(item: Product) {
+    setListingError("");
+    try {
+      if (!cloud) await requireDemoListingEdit();
+      onEdit(item);
+    } catch (failure) {
+      setListingError((failure as Error).message);
+    }
+  }
+
+  async function changeStatus(item: Product, status: Product["status"]) {
+    setListingError("");
+    try {
+      const agreement = agreementFor?.(item.id);
+      const pickup = agreement?.pickup;
+      const applyStatus = (next: Product["status"]) => onStatusChange(item.id, next);
+      let confirmation: StatusConfirmation | undefined;
+      if (pickup) {
+        const choice = status === "sold" ? pickup.sold : pickup.reopen;
+        confirmation = pickupConfirmation(pickup.other, choice, pickup.onSend);
+      } else if (agreement) {
+        confirmation = await confirmations.accountDeal(item.id);
+      } else if (!cloud) {
+        await requireDemoListingEdit();
+        confirmation = await confirmations.demoDeal(item, status, applyStatus);
+      }
+
+      if (confirmation) {
+        setPickupStep({
+          ...confirmation,
+          followUp: status === "withdrawn"
+            ? "The buyer will get this message. You can then archive the listing."
+            : undefined,
+        });
+      } else {
+        applyStatus(status);
+      }
+    } catch (failure) {
+      setListingError((failure as Error).message);
+    }
+  }
   const [filters, setFilters] = useState<
     Record<AccountTab, { query: string; status: string }>
   >({
@@ -507,7 +561,7 @@ export default function AccountPage({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => onEdit(item)}
+                    onClick={() => void edit(item)}
                   >
                     <Pencil size={14} />
                     Edit
@@ -532,7 +586,7 @@ export default function AccountPage({
                     )}
                     {item.status === "active" && (
                       <DropdownMenuItem
-                        onClick={() => onStatusChange(item.id, "reserved")}
+                        onClick={() => void changeStatus(item, "reserved")}
                       >
                         Mark reserved
                       </DropdownMenuItem>
@@ -540,22 +594,14 @@ export default function AccountPage({
                     {(item.status === "active" ||
                       item.status === "reserved") && (
                       <DropdownMenuItem
-                        onClick={() =>
-                          agreement?.pickup
-                            ? setPickupStep({ pickup: agreement.pickup, choice: agreement.pickup.sold })
-                            : onStatusChange(item.id, "sold")
-                        }
+                        onClick={() => void changeStatus(item, "sold")}
                       >
                         Mark sold
                       </DropdownMenuItem>
                     )}
                     {item.status !== "active" && (
                       <DropdownMenuItem
-                        onClick={() =>
-                          agreement?.pickup
-                            ? setPickupStep({ pickup: agreement.pickup, choice: agreement.pickup.reopen })
-                            : onStatusChange(item.id, "active")
-                        }
+                        onClick={() => void changeStatus(item, "active")}
                       >
                         {item.status === "withdrawn"
                           ? "Restore listing"
@@ -566,7 +612,7 @@ export default function AccountPage({
                       <>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                          onClick={() => onStatusChange(item.id, "withdrawn")}
+                          onClick={() => void changeStatus(item, "withdrawn")}
                         >
                           <Archive size={16} />
                           Archive listing
@@ -654,8 +700,11 @@ export default function AccountPage({
             </TabsContent>
           </Tabs>
         )}
+        {listingError && (
+          <p className="form-error" role="alert">{listingError}</p>
+        )}
         {pickupStep && (
-          <PickupStep {...pickupStep} onClose={() => setPickupStep(undefined)} />
+          <PickupStep confirmation={pickupStep} onClose={() => setPickupStep(undefined)} />
         )}
       </section>
     </MotionConfig>

@@ -8,7 +8,9 @@ import { demoListings } from "../shared/demoListings.ts";
 import type { Product } from "../shared/marketplace.ts";
 import {
   adminFailure,
+  checkDemoStudent,
   createDemoAdmin,
+  hasAgreedDemoDeal,
   initializeDemoModeration,
 } from "./demo-admin.ts";
 import { AgentError } from "./errors.ts";
@@ -17,7 +19,7 @@ import { validateRequest } from "./validation.ts";
 export type ListingsStore = {
   listDemo: () => Product[];
   seedDemo: () => Product[];
-  updateDemo: (listings: unknown) => Product[];
+  updateDemo: (listings: unknown, workspace?: string) => Product[];
   admin: ReturnType<typeof createDemoAdmin>;
   close: () => void;
 };
@@ -258,10 +260,11 @@ export function createListingsStore(filename: string): ListingsStore {
       });
       return listDemo();
     },
-    updateDemo(value) {
+    updateDemo(value, workspace) {
       if (!Array.isArray(value) || value.length > demoListings.length)
         throw invalidListing();
       transaction(() => {
+        if (workspace) checkDemoStudent(database, workspace);
         const seen = new Set<string>();
         // Validate the complete batch before updating any row.
         const listings = value.map((item) => {
@@ -274,6 +277,15 @@ export function createListingsStore(filename: string): ListingsStore {
           if (!row) throw invalidListing();
           const existing = JSON.parse(String(row.payload)) as Product;
           const listing = validateDemoListing(item, existing);
+          if (
+            listing.status !== "reserved" &&
+            hasAgreedDemoDeal(database, listing.id)
+          )
+            throw new AgentError(
+              409,
+              "listing_deal_agreed",
+              "Finish or cancel the agreed deal before changing this listing.",
+            );
           return row.edited
             ? {
                 ...listing,

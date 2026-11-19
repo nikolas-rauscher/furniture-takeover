@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
 import {
   marketplace,
+  applyMigrations, adminMigration, pickupMigration, reviewMigration,
   buyer,
   seller,
   stranger,
@@ -95,10 +95,15 @@ for (const scenario of dealScenarios)
       await db.close();
     }
   });
-for (const end of ["buyer deletion", "seller deletion", "sold", "active"])
+for (const end of ["buyer deletion", "seller deletion", "sold", "active", "withdrawn"])
   test("Reservations, competing buyers and " + end, async () => {
     const { db, act, as, listing, conversation } = await setup();
-    const offer = dealScenarios[0].steps[0];
+    const pickupAt = new Date(Date.now() + 90 * 60_000).toISOString();
+    const terms: DealTerms = {
+      amount: 30, fulfillment: "pickup", pickupAt,
+      pickupTime: formatPickup(pickupAt), pickupPoint: "Atrium",
+    };
+    const offer = { action: { type: "propose", terms } as const, body: offerMessage("desk", terms) };
     try {
       await as(stranger);
       await assert.rejects(
@@ -148,6 +153,8 @@ for (const end of ["buyer deletion", "seller deletion", "sold", "active"])
         act(offer.action, offer.body, 2, randomUUID(), other),
         /listing_unavailable/,
       );
+      await db.exec("reset role");
+      await applyMigrations(db, [pickupMigration, adminMigration, reviewMigration]);
       if (end.endsWith("deletion")) {
         await as(end === "buyer deletion" ? buyer : seller);
         await db.exec("select public.delete_account()");
@@ -171,19 +178,31 @@ for (const end of ["buyer deletion", "seller deletion", "sold", "active"])
         else assert.equal(rows.length, 0);
       } else {
         await as(seller);
-        await db.query("update public.listings set status=$1 where id=$2", [
-          end,
-          listing,
-        ]);
-        assert.equal(
-          await count(
-            db,
-            "select * from public.deal_events where kind='" +
-              (end === "sold" ? "completed" : "listing_reopened") +
-              "'",
-          ),
-          1,
+        const setStatus = () => db.query(
+          "update public.listings set status=$1 where id=$2", [end, listing],
         );
+        await assert.rejects(setStatus, /listing_deal_agreed/);
+        await as(buyer);
+        assert.deepEqual((await db.query(
+          "select status, outcome, version from public.deals where conversation_id=$1", [conversation],
+        )).rows, [{ status: "agreed", outcome: null, version: 2 }]);
+        assert.equal(await count(db, "select * from public.deal_events where kind in ('completed','listing_reopened')"), 0);
+        if (end === "withdrawn") {
+          const message = cantMakeItMessage();
+          await as(seller);
+          await db.query(
+            "select public.pickup_action($1,$2,$3,'cancel_pickup',2,null,null,'cant_make_it')",
+            [conversation, randomUUID(), message],
+          );
+          await setStatus();
+          await as(buyer);
+          assert.deepEqual((await db.query(
+            "select m.body from public.deal_events e join public.messages m on m.id=e.message_id where e.kind='pickup_cancelled'",
+          )).rows, [{ body: message }]);
+          assert.deepEqual((await db.query(
+            "select status, outcome from public.deals where conversation_id=$1", [conversation],
+          )).rows, [{ status: "cancelled", outcome: "cancelled" }]);
+        }
       }
     } finally {
       await db.close();
@@ -211,8 +230,6 @@ test("an action cannot reuse a plain message or bypass participant grants",async
  assert.equal(await count(db,"select * from public.deal_events where message_id is null"),1);
  }finally{await db.close();}
 });
-
-const pickupMigration = new URL("../supabase/migrations/202611190003_pickup.sql", import.meta.url);
 
 for (const ending of ["pickup", "no-show", "cancel"] as const) {
   test("migrated bookings keep both students in sync through " + ending, async () => {
@@ -262,6 +279,13 @@ for (const ending of ["pickup", "no-show", "cancel"] as const) {
       await db.query("update public.deals set pickup_at = now() + $1 * interval '1 minute' where conversation_id=$2",
         [minutesFromNow, conversation]);
     }
+    async function blockBuyer() {
+      await db.exec("reset role");
+      await db.query(
+        "insert into takeover_admin.student_blocks(student_id,reason) values($1,'Blocked')",
+        [buyer],
+      );
+    }
     try {
       await as(stranger);
       const { rows: [{ id: other }] } = await db.query<{ id: string }>(
@@ -273,7 +297,7 @@ for (const ending of ["pickup", "no-show", "cancel"] as const) {
       await as(seller);
       await act({ type: "accept", terms }, acceptMessage("seller", terms), 1);
       await db.exec("reset role");
-      await db.exec(await readFile(pickupMigration, "utf8"));
+      await applyMigrations(db, [pickupMigration, adminMigration, reviewMigration]);
       await as(buyer);
       assert.deepEqual((await db.query(
         "select version, agreed, late_minutes from public.deals where conversation_id=$1", [conversation],
@@ -301,7 +325,10 @@ for (const ending of ["pickup", "no-show", "cancel"] as const) {
         await pickup({ ...scenarios.handling[1], error: "too_early" });
         await movePickup(SIGNAL_WINDOW.beforeMinutes - 1);
         for (const step of scenarios.handling) {
-          if (step.action.type === "picked_up") await movePickup(-1);
+          if (step.action.type === "picked_up") {
+            await movePickup(-1);
+            if (step.actor === "seller") await blockBuyer();
+          }
           const result = await pickup(step);
           if (!result) continue;
           if (step.kind === "time_kept") assert.deepEqual(result.agreed, storeTerms(terms));
@@ -319,7 +346,10 @@ for (const ending of ["pickup", "no-show", "cancel"] as const) {
           await movePickup(-SIGNAL_WINDOW.afterMinutes - 1);
           await pickup({ ...scenarios.handling[1], error: "pickup_window_ended" });
           await movePickup(-NO_SHOW_AFTER_MINUTES - 1);
-          for (const step of scenarios.overdue) await pickup(step);
+          for (const step of scenarios.overdue) {
+            if (step.action.type === "release_no_show") await blockBuyer();
+            await pickup(step);
+          }
         } else {
           const result = await pickup({
             actor: "buyer", action: { type: "cancel_pickup", reason: "cant_make_it" },
@@ -327,7 +357,11 @@ for (const ending of ["pickup", "no-show", "cancel"] as const) {
           });
           assert.equal(result?.pickup_cancel_reason, "cant_make_it");
         }
-        await pickup({ ...scenarios.nextBuyer, actor: "buyer", error: "next_buyer_unavailable" });
+        await pickup({
+          ...scenarios.nextBuyer,
+          actor: "buyer",
+          error: ending === "no-show" ? "admin_student_blocked" : "next_buyer_unavailable",
+        });
         await pickup(scenarios.nextBuyer, other, 0);
       }
     } finally {

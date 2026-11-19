@@ -15,7 +15,9 @@ import {
   type AdminInput,
   type AdminOutput,
 } from "../shared/admin.ts";
-import { dealScenarios } from "../shared/dealScenarios.ts";
+import { acceptMessage, cantMakeItMessage, offerMessage } from "../shared/dealMessages.ts";
+import type { DealTerms } from "../shared/deal.ts";
+import { formatPickup } from "../shared/pickupTime.ts";
 import { createListingsStore } from "./database.ts";
 import { createAgentServer } from "./http.ts";
 import { createMessagesStore } from "./messages.ts";
@@ -327,10 +329,16 @@ test("demo hide and reset protect agreed deals and preserve them while a workspa
   const { admin, call, error, listings, request } = await setup(t);
   const listing = listings.listDemo()[0];
   const workspace = { "X-Message-Workspace": randomUUID() };
-  const [proposal, agreement] = dealScenarios.find(
-    ({ steps }) => steps[1]?.kind === "accepted",
-  )!.steps;
-  for (const [version, step] of [proposal, agreement].entries()) {
+  const pickupAt = new Date(Date.now() + 90 * 60_000).toISOString();
+  const terms: DealTerms = {
+    amount: 30, fulfillment: "pickup", pickupAt,
+    pickupTime: formatPickup(pickupAt), pickupPoint: "Atrium",
+  };
+  const steps = [
+    { actor: "buyer", action: { type: "propose", terms }, body: offerMessage(listing.title, terms) },
+    { actor: "seller", action: { type: "accept", terms }, body: acceptMessage("seller", terms) },
+  ];
+  for (const [version, step] of steps.entries()) {
     const response = await request(
       "/api/messages/deal",
       {
@@ -349,6 +357,26 @@ test("demo hide and reset protect agreed deals and preserve them while a workspa
     assert.equal(response.status, 200, await response.text());
   }
   assert.equal((await call("overview", null)).deals.agreed, 1);
+  const update = (changes: object) => request(
+    "/api/listings/demo/update", { listings: [{ ...listing, status: "reserved", ...changes }] }, workspace,
+  );
+  await error(update({ status: "active" }), 409, "listing_deal_agreed");
+  assert.equal((await update({})).status, 200);
+  for (const status of ["active", "sold", "withdrawn"])
+    await error(update({ status }), 409, "listing_deal_agreed");
+  const inbox = async () => (await (await request("/api/messages", undefined, workspace)).json()).conversations[0];
+  const before = await inbox();
+  assert.equal(before.deal.status, "agreed");
+  assert.equal(before.deal.outcome, null);
+  assert.equal(before.messages.length, 2);
+  const cancellation = {
+    listingId: listing.id, title: listing.title, seller: listing.seller,
+    text: cantMakeItMessage(), sender: "seller", messageId: randomUUID(),
+    expectedVersion: 2, listingStatus: "reserved",
+  };
+  const cancelPickup = () => request("/api/messages/pickup", {
+    ...cancellation, action: { type: "cancel_pickup", reason: "cant_make_it" },
+  }, workspace);
   await error(
     admin("set_listing_hidden", { id: listing.id, hidden: true, ...why }),
     409,
@@ -362,4 +390,20 @@ test("demo hide and reset protect agreed deals and preserve them while a workspa
   });
   assert.equal((await call("overview", null)).deals.agreed, 1);
   assert.equal((await call("overview", null)).listings.hidden, 0);
+  await error(update({ title: "Changed while blocked" }), 403, "admin_student_blocked");
+  await error(cancelPickup(), 403, "admin_student_blocked");
+  await error(request("/api/messages/deal", {
+    ...cancellation, action: { type: "cancel", reason: "cant_make_it" },
+  }, workspace), 403, "admin_student_blocked");
+  assert.deepEqual(await inbox(), before);
+  await call("set_student_blocked", {
+    studentId: workspace["X-Message-Workspace"], blocked: false, ...why,
+  });
+  const response = await cancelPickup();
+  assert.equal(response.status, 200, await response.text());
+  const after = await inbox();
+  assert.equal(after.messages.at(-1).text, cancellation.text);
+  assert.equal(after.messages.at(-1).pickupEvent.kind, "pickup_cancelled");
+  assert.equal(after.deal.outcome.kind, "cancelled");
+  assert.equal((await update({ status: "withdrawn" })).status, 200);
 });
