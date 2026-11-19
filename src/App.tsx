@@ -209,6 +209,9 @@ import {
   rememberOnboarding,
 } from "./components/onboarding/onboardingStorage";
 import { placeName } from "./components/onboarding/onboardingContent";
+import AdminArea from "./components/admin/AdminArea";
+import AdminEntry from "./components/admin/AdminEntry";
+import { useAdmin } from "./api/admin";
 
 type Destination = MobileDestination | "settings";
 /** Order of the mobile bar, left to right: tabs, then Sell beside them, then settings. */
@@ -400,6 +403,10 @@ export default function App({
     !database.ready || database.pending > 0,
   );
   const { developerMode, setDeveloperMode } = useDeveloperMode();
+  const admin = useAdmin({ account, developerMode });
+  const adminEntry = admin.isAdmin ? (
+    <AdminEntry onOpen={() => navigate("admin")} />
+  ) : undefined;
   // `?availability=reserve` prototype; null (main behaviour) when the flag is off.
   const availability = useAvailability({
     localDemo: !account,
@@ -742,6 +749,8 @@ export default function App({
       case "settings":
         if (!account) return "Workspace settings";
         return signedIn ? "Account settings" : "Sign in";
+      case "admin":
+        return "Admin";
     }
   }
   useDocumentTitle(pageName());
@@ -1077,7 +1086,7 @@ export default function App({
         ? "messages"
         : view === "searches"
           ? "searches"
-          : view === "settings"
+          : view === "settings" || view === "admin"
             ? "settings"
             : view === "account"
               ? accountTab === "favorites"
@@ -2093,6 +2102,7 @@ export default function App({
                       />
                     }
                     onProfileSaved={setPickupRegion}
+                    adminEntry={adminEntry}
                     browserTools={
                       <DeveloperSettings
                         enabled={developerMode}
@@ -2131,8 +2141,19 @@ export default function App({
                     }
                     onHelp={() => setModal("help")}
                     onClear={() => setModal("clear")}
+                    adminEntry={adminEntry}
                   />
                 )}
+              </PageTransitionView>
+            )}
+            {view === "admin" && (
+              <PageTransitionView>
+                <AdminArea
+                  api={admin.api}
+                  checking={admin.loading}
+                  accessError={admin.error?.message}
+                  onBack={() => navigate("settings")}
+                />
               </PageTransitionView>
             )}
             <WorkspacePage active={view === "messages"}>

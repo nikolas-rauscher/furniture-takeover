@@ -347,6 +347,7 @@ export default function ListingTray({
           <PriceCard
             key={question.id}
             start={suggestion?.patch.price ?? question.input?.value}
+            rangeMax={question.input?.max}
             suggestion={suggestion}
             reasoning={reasoning}
             sources={turn.sources}

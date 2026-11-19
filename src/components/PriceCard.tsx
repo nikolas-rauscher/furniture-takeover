@@ -1,21 +1,23 @@
 import { useId, useState } from "react";
-import { Minus, Plus } from "@/components/icons";
 import { money } from "../../shared/marketplace";
 import type { AgentRunSource } from "../../shared/runs";
-import { niceStep, type PriceSuggestion } from "../listingQuestions";
+import {
+  MAX_ASKING_PRICE,
+  priceSliderRange,
+  type PriceSuggestion,
+} from "../listingQuestions";
 import { plainPrice, priceText } from "../priceText";
 import { answerParts } from "./AgentAnswerContent";
 import { plainAnswer } from "./agentAnswer";
 import Modal from "./Modal";
+import PriceSlider from "./PriceSlider";
 import { Button } from "./ui/button";
-
-const MAX_PRICE = 10_000;
 
 /** The amount in the field, or nothing while it is empty or not a valid price. */
 function typedPrice(text: string): number | undefined {
   if (!text.trim()) return undefined;
   const value = Number(plainPrice(text));
-  return Number.isFinite(value) && value >= 0 && value <= MAX_PRICE
+  return Number.isFinite(value) && value >= 0 && value <= MAX_ASKING_PRICE
     ? value
     : undefined;
 }
@@ -34,14 +36,12 @@ function suggestionFacts(suggested: number, offerCount: number) {
   return facts.join(" · ");
 }
 
-/** One stepper step up or down, landing on the step's grid: 43 goes to 45 or 40. */
-function stepped(price: number, direction: 1 | -1) {
-  const step = niceStep(price);
-  const next =
-    direction > 0
-      ? Math.floor(price / step) * step + step
-      : Math.ceil(price / step) * step - step;
-  return Math.min(MAX_PRICE, Math.max(0, next));
+/** The slider's range around Pako's price, widened when a typed amount lies above it. */
+function sliderRange(start: number, rangeMax?: number, typed?: number) {
+  const range = priceSliderRange(start, rangeMax);
+  return typed !== undefined && typed > range.max
+    ? priceSliderRange(typed)
+    : range;
 }
 
 /**
@@ -102,12 +102,14 @@ function PriceReasons({
 }
 
 /**
- * Pako's price question as a card: his suggestion with what it rests on, a stepper
- * and a field for another amount, then quieter ways to give it away, read why he
- * suggests it, or decide once the other questions are answered.
+ * Pako's price question as a card: his suggestion with the range of offers it rests
+ * on, a slider from free upwards and a field for an exact amount, then quieter ways
+ * to give it away, read why he suggests it, or decide once the other questions are
+ * answered. Without a suggestion the card asks for an amount and shows no slider.
  */
 export default function PriceCard({
   start,
+  rangeMax,
   suggestion,
   reasoning,
   sources,
@@ -117,6 +119,8 @@ export default function PriceCard({
 }: {
   /** Where the card starts: Pako's suggestion, or no amount when he has none. */
   start?: number;
+  /** The top of the slider range Pako offered with his question, if any. */
+  rangeMax?: number;
   suggestion?: PriceSuggestion;
   /** What Pako wrote about the price beside his question, shown with why he suggests it. */
   reasoning: string;
@@ -129,9 +133,6 @@ export default function PriceCard({
   const [whyOpen, setWhyOpen] = useState(false);
   const fieldId = useId();
   const price = typedPrice(text);
-  const current = price ?? 0;
-  const lower = stepped(current, -1);
-  const raise = stepped(current, 1);
   const use = () => {
     if (price !== undefined && !disabled) onPrice(price);
   };
@@ -141,24 +142,22 @@ export default function PriceCard({
       {start === undefined ? (
         <p className="price-card-note">{WITHOUT_SUGGESTION}</p>
       ) : (
-        suggested !== undefined && (
-          <p className="price-card-facts">
-            {suggestionFacts(suggested, sources.length)}
-          </p>
-        )
+        <>
+          {suggestion && (
+            <p className="price-card-facts">{plainAnswer(suggestion.reason)}</p>
+          )}
+          <PriceSlider
+            {...sliderRange(start, rangeMax, price)}
+            value={price ?? 0}
+            disabled={disabled}
+            onChange={(value) => setText(priceText(value))}
+          />
+        </>
       )}
       <div className="price-card-amount">
-        <Button
-          className="button secondary icon-button price-card-step"
-          aria-label={`Lower the price to ${money(lower)}`}
-          disabled={disabled || current <= 0}
-          onClick={() => setText(priceText(lower))}
-        >
-          <Minus size={18} aria-hidden="true" />
-        </Button>
         <div className="price-card-field">
           <label htmlFor={fieldId} className="sr-only">
-            Your price in CHF
+            {start === undefined ? "Your price in CHF" : "Exact price in CHF"}
           </label>
           <span aria-hidden="true">CHF</span>
           <input
@@ -177,14 +176,6 @@ export default function PriceCard({
             }}
           />
         </div>
-        <Button
-          className="button secondary icon-button price-card-step"
-          aria-label={`Raise the price to ${money(raise)}`}
-          disabled={disabled || current >= MAX_PRICE}
-          onClick={() => setText(priceText(raise))}
-        >
-          <Plus size={18} aria-hidden="true" />
-        </Button>
         <Button
           animateIcon
           className="button primary price-card-use"

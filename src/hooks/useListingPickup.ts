@@ -20,7 +20,14 @@ export function useListingPickup(
     if (!client) throw new Error("Sign in to change a booked pickup.");
     const id = pending.current.idFor(item.threadId, "seller", message);
     try {
-      await sendAccountPickup(client, item.threadId, action, message, item.deal.version, id);
+      await sendAccountPickup(
+        client,
+        item.threadId,
+        action,
+        message,
+        item.deal.version,
+        id,
+      );
     } catch (failure) {
       throw failure instanceof TypeError
         ? new Error("No connection, so nothing was sent. Try again.")

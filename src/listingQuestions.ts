@@ -142,16 +142,28 @@ export const asksPrice = (
   question: Pick<AgentQuestionEvent, "listingField" | "input">,
 ) => question.listingField === "price" || question.input?.type === "price";
 
-/**
- * A step of the price card's stepper that suits the amount: single francs for
- * small things, rounder steps for dearer ones.
- */
+/** The highest asking price the price card takes. */
+export const MAX_ASKING_PRICE = 10_000;
+
+/** A round step that suits the amount: single francs for small things, rounder steps for dearer ones. */
 export function niceStep(price: number): number {
   if (price < 20) return 1;
   if (price < 100) return 5;
   if (price < 500) return 10;
   if (price < 2000) return 50;
   return 100;
+}
+
+/**
+ * The seller's price slider: from free up to twice the price, or the top of
+ * the range Pako offered when that is higher, ending on a round amount, in
+ * about a hundred steps.
+ */
+export function priceSliderRange(price: number, rangeMax = 0) {
+  const room = Math.max(price * 2, rangeMax, 20);
+  const round = niceStep(room);
+  const max = Math.min(MAX_ASKING_PRICE, Math.ceil(room / round) * round);
+  return { min: 0, max, step: niceStep(max / 10) };
 }
 
 /** What Pako's tray above the composer shows. */

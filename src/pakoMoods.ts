@@ -1,6 +1,6 @@
 import { pickupDay, type Deal, type DealRole, type DealTerms } from "../shared/deal.ts";
 import { money } from "../shared/marketplace.ts";
-import { formatPickup } from "../shared/pickupTime.ts";
+import { formatPickup, zurichClockTime } from "../shared/pickupTime.ts";
 import type { AgentTaskKind } from "../shared/runs";
 import { plainAnswer } from "./components/agentAnswer.ts";
 import {
@@ -652,10 +652,17 @@ export function pickupGuide({
           ? `If ${other} still doesn't come, you can release the ${title}.`
           : `If ${other} still doesn't come, you can cancel the pickup.`,
     };
-  if (signals?.late && signals.late.by === theirs)
-    return { mood: "listen", line: `${other} is about ${signals.late.minutes} min late.` };
+  if (signals?.late && signals.late.by === theirs) {
+    const around = Date.parse(day.terms.pickupAt!) + signals.late.minutes * 60_000;
+    return {
+      mood: "listen",
+      line: `${other} is running late, so expect them around ${zurichClockTime(new Date(around).toISOString())}.`,
+    };
+  }
   if (signals?.onWay[theirs])
-    return { mood: "happy", line: `${other} is on the way.` };
+    return signals.onWay[role]
+      ? { mood: "happy", line: "You're both on the way. See you there!" }
+      : { mood: "happy", line: `${other} is on the way. Tap On my way when you leave too.` };
   switch (day.phase) {
     case "booked":
       return {
@@ -665,7 +672,7 @@ export function pickupGuide({
     case "pickup_soon":
       return {
         mood: "wave",
-        line: `${pickupCountdown(day)}. Tap On my way when you leave.`,
+        line: `Tap On my way when you leave, so ${other} knows.`,
       };
     case "pickup_now":
       return {

@@ -1,5 +1,5 @@
 import { Clock } from "@/components/icons";
-import { formatPickup } from "../../shared/pickupTime";
+import { shortPickup } from "../dealWords";
 import { setDemoPickupClock } from "../hooks/useNow";
 import { Button } from "./ui/button";
 
@@ -24,30 +24,28 @@ export default function DemoPickupClock({
     { label: "20 min after", to: at + 20 * MINUTE_MS },
   ];
   return (
-    <div className="demo-clock" role="group" aria-label="Demo clock">
-      <span className="demo-clock-now">
+    <div className="pickup-clock" role="group" aria-label="Demo clock">
+      <span className="pickup-clock-now">
         <Clock size={14} aria-hidden="true" />
-        Demo clock · {formatPickup(now.toISOString())}
+        Demo clock {shortPickup(now.toISOString())}
       </span>
-      <div className="demo-clock-jumps">
-        {jumps.map((jump) => (
-          <Button
-            key={jump.label}
-            type="button"
-            className="tap-chip"
-            onClick={() => setDemoPickupClock(new Date(jump.to))}
-          >
-            {jump.label}
-          </Button>
-        ))}
+      {jumps.map((jump) => (
         <Button
+          key={jump.label}
           type="button"
           className="tap-chip"
-          onClick={() => setDemoPickupClock(null)}
+          onClick={() => setDemoPickupClock(new Date(jump.to))}
         >
-          Real time
+          {jump.label}
         </Button>
-      </div>
+      ))}
+      <Button
+        type="button"
+        className="tap-chip"
+        onClick={() => setDemoPickupClock(null)}
+      >
+        Real time
+      </Button>
     </div>
   );
 }

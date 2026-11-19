@@ -6,7 +6,8 @@ export type View =
   | "detail"
   | "compare"
   | "messages"
-  | "settings";
+  | "settings"
+  | "admin";
 /**
  * Where a history entry sits in this tab's history. The app numbers the
  * entries it adds, so Back and Forward can tell which way they lead; an entry
@@ -36,6 +37,7 @@ export function readRoute(hash: string): {
   const routes: Record<string, View> = {
     messages: "messages",
     settings: "settings",
+    admin: "admin",
     listings: "account",
     account: "account",
     saved: "account",

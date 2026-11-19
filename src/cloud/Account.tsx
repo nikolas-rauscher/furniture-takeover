@@ -35,6 +35,7 @@ export default function Account({
   pakoSetting,
   onProfileSaved,
   browserTools,
+  adminEntry,
 }: {
   client: SupabaseClient;
   session: Session;
@@ -44,6 +45,8 @@ export default function Account({
   pakoSetting: ReactNode;
   onProfileSaved?: (region: string) => void;
   browserTools?: ReactNode;
+  /** The way into the admin area, for administrators only. */
+  adminEntry?: ReactNode;
 }) {
   const [section, setSection] = useState<AccountSection>(startSection);
   const [name, setName] = useState(""),
@@ -260,6 +263,7 @@ export default function Account({
               }))}
             />
           </label>
+          {adminEntry && <div className="settings-admin">{adminEntry}</div>}
         </aside>
         <div
           className="account-settings"

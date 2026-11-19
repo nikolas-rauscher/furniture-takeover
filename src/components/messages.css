@@ -199,29 +199,27 @@
   width: 100%;
 }
 /* Developer mode only: jumps around the open thread's booked pickup. */
-.demo-clock {
-  display: grid;
-  gap: 6px;
-  padding: 8px 10px;
-  border: 2px dashed var(--card-line);
-  border-radius: 14px;
-}
-.demo-clock-now {
-  display: inline-flex;
+.pickup-clock {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+  width: 100%;
+}
+.pickup-clock-now {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-right: 2px;
   color: var(--muted);
   font-size: var(--type-caption);
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
-.demo-clock-jumps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.demo-clock-jumps > .tap-chip {
-  min-height: 36px;
-  padding: 4px 12px;
+.pickup-clock > .tap-chip {
+  min-height: 32px;
+  padding: 3px 10px;
+  border-width: 1.5px;
   font-size: var(--type-caption);
 }
 .chat-segment {

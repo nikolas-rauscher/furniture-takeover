@@ -212,8 +212,8 @@
   margin-left: -13px;
 }
 
-/* The price card: what Pako's suggestion rests on, a stepper around the amount, his
-   suggestion to take, and quieter ways to give it away, see why or decide later. */
+/* The price card: what Pako's suggestion rests on, the slider, an exact amount beside
+   the button that takes it, and quieter ways to give it away, see why or decide later. */
 .price-card {
   display: grid;
   gap: 8px;
@@ -235,13 +235,6 @@
   align-items: center;
   gap: 8px;
 }
-.price-card-amount > .price-card-step {
-  width: 44px;
-  height: 44px;
-  min-height: 44px;
-  padding: 0;
-  border-radius: 999px;
-}
 .price-card-field {
   display: inline-flex;
   align-items: center;
@@ -258,6 +251,10 @@
 }
 .price-card-field:focus-within {
   border-color: var(--blue);
+}
+/* The field's blue border shows the focus, so the input inside keeps no ring of its own. */
+.price-card-field > input:focus-visible {
+  outline: none;
 }
 .price-card-field > input {
   width: 100%;

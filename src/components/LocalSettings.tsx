@@ -11,6 +11,8 @@ type LocalSettingsProps = {
   developerSettings: ReactNode;
   /** Sample listings are a demo tool: absent while developer mode is off. */
   onAddDemo?: () => void;
+  /** The way into the admin area, shown while developer mode is on. */
+  adminEntry?: ReactNode;
   onHelp: () => void;
   onClear: () => void;
 };
@@ -47,6 +49,7 @@ export default function LocalSettings({
   pakoSetting,
   developerSettings,
   onAddDemo,
+  adminEntry,
   onHelp,
   onClear,
 }: LocalSettingsProps) {
@@ -82,6 +85,7 @@ export default function LocalSettings({
             )}
           </AnimatePresence>
         </li>
+        {adminEntry && <li>{adminEntry}</li>}
         <li>
           <SettingsRow
             icon={<Sparkles size={22} />}

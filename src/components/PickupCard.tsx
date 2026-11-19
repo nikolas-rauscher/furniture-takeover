@@ -1,12 +1,17 @@
 import { AnimatePresence, motion } from "motion/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, CalendarCheck, MapPin, Package } from "@/components/icons";
 import type { Deal, DealRole, DealTerms, LateMinutes } from "../../shared/deal";
 import type { Product } from "../../shared/marketplace";
-import { formatPickup, pickupSlots, zurichClockTime } from "../../shared/pickupTime";
+import {
+  formatPickup,
+  pickupSlots,
+  zurichClockTime,
+} from "../../shared/pickupTime";
 import { pickupCountdown, termPrice } from "../dealWords";
 import type { Slot } from "../offerProposal";
 import { pickupGuide } from "../pakoMoods";
+import { motionBehavior } from "../uiMotion";
 import {
   LATE_MINUTES,
   changeSend,
@@ -64,10 +69,10 @@ function Facts({ terms, listing }: { terms: DealTerms; listing: Listing }) {
           <Package size={14} aria-hidden="true" />
           Item
         </dt>
-        <dd>
-          {listing.title}
-          {terms.amount !== null && ` · ${termPrice(terms.amount)}`}
-        </dd>
+        <dd>{listing.title}</dd>
+        {terms.amount !== null && (
+          <dd className="deal-card-term-note">{termPrice(terms.amount)}</dd>
+        )}
       </div>
       {terms.pickupPoint && (
         <div>
@@ -77,7 +82,10 @@ function Facts({ terms, listing }: { terms: DealTerms; listing: Listing }) {
           </dt>
           <dd>{terms.pickupPoint}</dd>
           <dd className="deal-card-term-note">
-            <PlaceNote name={terms.pickupPoint} listingPoint={listing.pickupPoint} />
+            <PlaceNote
+              name={terms.pickupPoint}
+              listingPoint={listing.pickupPoint}
+            />
           </dd>
         </div>
       )}
@@ -86,14 +94,26 @@ function Facts({ terms, listing }: { terms: DealTerms; listing: Listing }) {
 }
 
 /** Who is on the way or late: the other student's news stands out, the student's own stays quiet. */
-function Signals({ deal, role, other }: { deal: Deal; role: DealRole; other: string }) {
+function Signals({
+  deal,
+  role,
+  other,
+}: {
+  deal: Deal;
+  role: DealRole;
+  other: string;
+}) {
   const signals = deal.pickup;
   if (!signals) return null;
   const theirs: DealRole = role === "buyer" ? "seller" : "buyer";
   const rows: { key: string; text: string; mine: boolean }[] = [];
   const onWay = (who: DealRole) => signals.onWay[who];
   if (onWay(theirs))
-    rows.push({ key: "their-way", text: `${other} is on the way · ${zurichClockTime(onWay(theirs)!)}`, mine: false });
+    rows.push({
+      key: "their-way",
+      text: `${other} is on the way · ${zurichClockTime(onWay(theirs)!)}`,
+      mine: false,
+    });
   if (signals.late)
     rows.push({
       key: "late",
@@ -104,9 +124,17 @@ function Signals({ deal, role, other }: { deal: Deal; role: DealRole; other: str
       mine: signals.late.by === role,
     });
   if (signals.noShow && signals.noShow.by === theirs)
-    rows.push({ key: "waiting", text: `${other} is waiting at the meeting point`, mine: false });
+    rows.push({
+      key: "waiting",
+      text: `${other} is waiting at the meeting point`,
+      mine: false,
+    });
   if (onWay(role))
-    rows.push({ key: "my-way", text: `You're on the way · ${zurichClockTime(onWay(role)!)}`, mine: true });
+    rows.push({
+      key: "my-way",
+      text: `You're on the way · ${zurichClockTime(onWay(role)!)}`,
+      mine: true,
+    });
   if (!rows.length) return null;
   return (
     <ul className="pickup-signals" aria-label="Pickup news">
@@ -144,7 +172,11 @@ function TimeCompare({
         <small>Booked</small>
         <strong>{formatPickup(current)}</strong>
       </p>
-      <ArrowRight size={18} className="pickup-compare-arrow" aria-hidden="true" />
+      <ArrowRight
+        size={18}
+        className="pickup-compare-arrow"
+        aria-hidden="true"
+      />
       <p data-side="proposed">
         <small>{proposedBy}</small>
         <strong>{formatPickup(proposed)}</strong>
@@ -166,7 +198,13 @@ function PakoLine({ mood, line }: ReturnType<typeof pickupGuide>) {
   );
 }
 
-const MessagePreview = ({ other, message }: { other: string; message: string }) => (
+const MessagePreview = ({
+  other,
+  message,
+}: {
+  other: string;
+  message: string;
+}) => (
   <p className="deal-card-sends">
     Message to {other}: <q>{message}</q>
   </p>
@@ -199,7 +237,12 @@ function StepActions({
       >
         {busy ? "Sending…" : label}
       </Button>
-      <Button type="button" className="button quiet" disabled={busy} onClick={onBack}>
+      <Button
+        type="button"
+        className="button quiet"
+        disabled={busy}
+        onClick={onBack}
+      >
         {back}
       </Button>
     </div>
@@ -226,7 +269,11 @@ function LateStep({
       <p className="deal-card-question">About how late?</p>
       <div className="offer-chips" role="group" aria-label="Minutes late">
         {LATE_MINUTES.map((option) => (
-          <TapChip key={option} selected={option === minutes} onSelect={() => setMinutes(option)}>
+          <TapChip
+            key={option}
+            selected={option === minutes}
+            onSelect={() => setMinutes(option)}
+          >
             {option} min
           </TapChip>
         ))}
@@ -279,11 +326,17 @@ function ChangeStep({
       <TimePanel slots={slots} slot={slot} now={now} onSlot={setSlot} />
       {send && slot ? (
         <>
-          <TimeCompare current={booked} proposed={slot.pickupAt} proposedBy="You suggest" />
+          <TimeCompare
+            current={booked}
+            proposed={slot.pickupAt}
+            proposedBy="You suggest"
+          />
           <MessagePreview other={other} message={send.message} />
         </>
       ) : (
-        <small className="pickup-reason">Choose a time to see the message.</small>
+        <small className="pickup-reason">
+          Choose a time to see the message.
+        </small>
       )}
       <StepActions
         label="Suggest this time"
@@ -317,7 +370,7 @@ function CheckStep({
       {choice.confirm && <p className="deal-card-question">{choice.confirm}</p>}
       <MessagePreview other={other} message={choice.send.message} />
       <StepActions
-        label={choice.label}
+        label={choice.confirmLabel ?? `Send to ${other}`}
         danger={Boolean(choice.confirm)}
         back={choice.id === "cant_make_it" ? "Keep pickup" : "Not now"}
         disabled={locked}
@@ -354,7 +407,9 @@ function ChoiceButton({
       >
         {busy && primary ? "Sending…" : choice.label}
       </Button>
-      {choice.unavailable && <small className="pickup-reason">{choice.unavailable}</small>}
+      {choice.unavailable && (
+        <small className="pickup-reason">{choice.unavailable}</small>
+      )}
     </span>
   );
 }
@@ -388,6 +443,15 @@ export default function PickupCard({
   pickup: PickupLink;
 }) {
   const [step, setStep] = useState<Step>();
+  const actions = useRef<HTMLDivElement>(null);
+  // An opened step can sit below a tall card on a phone: it comes into view.
+  useEffect(() => {
+    if (step)
+      actions.current?.scrollIntoView({
+        block: "nearest",
+        behavior: motionBehavior(),
+      });
+  }, [step]);
   const context = { day, deal, role, other: otherName, title: listing.title };
   const { primary, secondary } = pickupChoices(context);
   const locked = busy || !pickup.available;
@@ -397,13 +461,20 @@ export default function PickupCard({
   const choose = (choice: PickupChoice) => {
     if (choice.id === "late") setStep({ kind: "late" });
     else if (choice.id === "change_time") setStep({ kind: "change" });
-    else if (!choice.send) throw new Error(`Pickup choice ${choice.id} has nothing to send.`);
+    else if (!choice.send)
+      throw new Error(`Pickup choice ${choice.id} has nothing to send.`);
     else if (choice === primary && !choice.confirm) void send(choice.send);
     else setStep({ kind: "check", choice: { ...choice, send: choice.send } });
   };
   const back = () => setStep(undefined);
   const proposed = deal.proposal?.terms.pickupAt;
-  const stepProps = { other: otherName, busy, locked, onSend: send, onBack: back };
+  const stepProps = {
+    other: otherName,
+    busy,
+    locked,
+    onSend: send,
+    onBack: back,
+  };
   return (
     <div className="deal-card-body pickup-card" data-phase={day.phase}>
       <Countdown day={day} />
@@ -413,35 +484,68 @@ export default function PickupCard({
         <TimeCompare
           current={day.terms.pickupAt!}
           proposed={proposed}
-          proposedBy={day.change === "sent" ? "You suggest" : `${otherName} suggests`}
+          proposedBy={
+            day.change === "sent" ? "You suggest" : `${otherName} suggests`
+          }
         />
       )}
       <PakoLine {...pickupGuide(context)} />
-      <AnimatePresence mode="wait" initial={false}>
-        {step?.kind === "late" ? (
-          <LateStep key="late" {...stepProps} />
-        ) : step?.kind === "change" ? (
-          <ChangeStep key="change" day={day} listing={listing} now={now} {...stepProps} />
-        ) : step?.kind === "check" ? (
-          <CheckStep key={`check-${step.choice.id}`} choice={step.choice} {...stepProps} />
-        ) : (
-          <motion.div key="choices" className="deal-card-choices" {...CARD_SWAP}>
-            {primary && (
-              <ChoiceButton choice={primary} primary locked={locked} busy={busy} onChoose={choose} />
-            )}
-            {primary?.send && !primary.unavailable && !primary.confirm && (
-              <MessagePreview other={otherName} message={primary.send.message} />
-            )}
-            {secondary.length > 0 && (
-              <div className="pickup-actions">
-                {secondary.map((choice) => (
-                  <ChoiceButton key={choice.id} choice={choice} locked={locked} busy={busy} onChoose={choose} />
-                ))}
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div ref={actions} className="pickup-steps">
+        <AnimatePresence mode="wait" initial={false}>
+          {step?.kind === "late" ? (
+            <LateStep key="late" {...stepProps} />
+          ) : step?.kind === "change" ? (
+            <ChangeStep
+              key="change"
+              day={day}
+              listing={listing}
+              now={now}
+              {...stepProps}
+            />
+          ) : step?.kind === "check" ? (
+            <CheckStep
+              key={`check-${step.choice.id}`}
+              choice={step.choice}
+              {...stepProps}
+            />
+          ) : (
+            <motion.div
+              key="choices"
+              className="deal-card-choices"
+              {...CARD_SWAP}
+            >
+              {primary && (
+                <ChoiceButton
+                  choice={primary}
+                  primary
+                  locked={locked}
+                  busy={busy}
+                  onChoose={choose}
+                />
+              )}
+              {primary?.send && !primary.unavailable && !primary.confirm && (
+                <MessagePreview
+                  other={otherName}
+                  message={primary.send.message}
+                />
+              )}
+              {secondary.length > 0 && (
+                <div className="pickup-actions">
+                  {secondary.map((choice) => (
+                    <ChoiceButton
+                      key={choice.id}
+                      choice={choice}
+                      locked={locked}
+                      busy={busy}
+                      onChoose={choose}
+                    />
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
       {!pickup.available && pickup.error && (
         <p className="chat-error" role="alert">
           {pickup.error}

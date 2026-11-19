@@ -11,6 +11,7 @@ import {
   PICKUP_QUESTION,
   questionQueue,
   niceStep,
+  priceSliderRange,
   trayPhase,
   DescriptionFullError,
   nextQuestion,
@@ -190,7 +191,7 @@ test("Pako's suggested price shows until the listing has a price of its own", ()
   assert.equal(pendingPrice([{ actions: [fact] }], { price: "" }), undefined);
 });
 
-test("the price stepper moves in steps that suit the amount", () => {
+test("price steps suit the amount", () => {
   assert.equal(niceStep(15), 1);
   assert.equal(niceStep(40), 5);
   assert.equal(niceStep(160), 10);
@@ -398,4 +399,12 @@ test("the pickup line says the pickup times the description states", () => {
   const line = undatedPickup(long);
   assert.ok(line.length <= 80);
   assert.match(line, /^Pickup on weekends near the metro .*…$/);
+});
+
+test("the price slider leaves room above Pako's price on a round top", () => {
+  assert.deepEqual(priceSliderRange(45), { min: 0, max: 90, step: 1 });
+  assert.deepEqual(priceSliderRange(145), { min: 0, max: 290, step: 5 });
+  assert.deepEqual(priceSliderRange(40, 120), { min: 0, max: 120, step: 1 });
+  assert.deepEqual(priceSliderRange(0), { min: 0, max: 20, step: 1 });
+  assert.equal(priceSliderRange(8000).max, 10_000);
 });

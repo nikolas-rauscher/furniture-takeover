@@ -675,6 +675,27 @@ button.deal-strip:hover {
   color: var(--muted);
 }
 
+/* After a released pickup: the next interested buyer, one tap to prepare the message. */
+.deal-next-buyer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  padding: 0 14px 14px;
+}
+.deal-next-buyer > p {
+  flex: 1 1 220px;
+  font-size: var(--type-label);
+  font-weight: 600;
+  line-height: 1.45;
+}
+@media (max-width: 560px) {
+  .deal-next-buyer > .button {
+    width: 100%;
+  }
+}
+
 /* Pickup day: the countdown leads, then what and where, the other student's news,
    Pako's line and the actions the pickup allows now. */
 .pickup-head {
@@ -720,7 +741,7 @@ button.deal-strip:hover {
 }
 .pickup-facts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
   gap: 8px;
   margin: 0;
 }

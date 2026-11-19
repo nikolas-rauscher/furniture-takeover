@@ -4,6 +4,7 @@ import { historyPosition, readRoute } from "./navigation.ts";
 
 test("direct links preserve the selected workspace section on reload", () => {
   assert.equal(readRoute("#settings").view, "settings");
+  assert.equal(readRoute("#admin").view, "admin");
   assert.equal(readRoute("#listings").view, "account");
   assert.equal(readRoute("#listings/archive").accountTab, "archive");
   assert.equal(readRoute("#saved").accountTab, "favorites");

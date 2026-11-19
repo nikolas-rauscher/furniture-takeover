@@ -441,17 +441,24 @@ export default function DealCard(props: Props) {
               {primary.label}
             </Button>
           )}
-          {phase === "cancelled" && nextBuyer && (
+        </div>
+        {phase === "cancelled" && nextBuyer && (
+          <div className="deal-next-buyer">
+            <p>
+              {nextBuyer.name} also asked about the {listing.title}. The
+              message waits for your Send.
+            </p>
             <Button
               type="button"
-              className="button secondary small"
+              animateIcon
+              className="button primary small"
               disabled={props.busy}
               onClick={nextBuyer.onOffer}
             >
               Offer it to {nextBuyer.name}
             </Button>
-          )}
-        </div>
+          </div>
+        )}
         {spoken}
       </motion.section>
     );

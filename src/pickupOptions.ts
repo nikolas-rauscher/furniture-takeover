@@ -47,11 +47,16 @@ export type PickupChoice = {
   send?: PickupSend;
   /** Asked before a tap that ends the pickup. */
   confirm?: string;
+  /** What the button under that question says; other messages simply go to the other student. */
+  confirmLabel?: string;
   /** Why the choice can't be tapped now, said beside it. */
   unavailable?: string;
 };
 
-export type PickupChoices = { primary?: PickupChoice; secondary: PickupChoice[] };
+export type PickupChoices = {
+  primary?: PickupChoice;
+  secondary: PickupChoice[];
+};
 
 export const LATE_MINUTES: readonly LateMinutes[] = [10, 20, 30];
 
@@ -118,11 +123,20 @@ function cantMakeIt({ role, other, title }: Context): ListingPickupChoice {
       role === "seller"
         ? `Cancel the pickup with ${other}? The ${title} goes back on sale.`
         : `Cancel the pickup? The ${title} goes back on sale and isn't reserved for you anymore.`,
+    confirmLabel: "Cancel pickup",
   };
 }
 
-function pickedUp({ day, role, other, title }: Context): PickupChoice & { send: PickupSend } {
-  const send = { action: { type: "picked_up" }, message: pickedUpMessage(role, title) } as const;
+function pickedUp({
+  day,
+  role,
+  other,
+  title,
+}: Context): PickupChoice & { send: PickupSend } {
+  const send = {
+    action: { type: "picked_up" },
+    message: pickedUpMessage(role, title),
+  } as const;
   if (role === "seller") return { id: "picked_up", label: "Mark sold", send };
   return {
     id: "picked_up",
@@ -141,9 +155,11 @@ const noShow = ({ day, other }: Context): PickupChoice => ({
 });
 
 function release({ role, other, title }: Context): PickupChoice {
+  const label = role === "seller" ? "Release the item" : "Cancel the pickup";
   return {
     id: "release",
-    label: role === "seller" ? "Release the item" : "Cancel the pickup",
+    label,
+    confirmLabel: label,
     send: {
       action: { type: "release_no_show" },
       message: noShowReleaseMessage(title, role),
@@ -185,7 +201,10 @@ function changeChoices(context: Context, proposed: DealTerms): PickupChoices {
       {
         id: "keep_time",
         label: `Keep ${shortPickup(day.terms.pickupAt!)}`,
-        send: { action: { type: "keep_time" }, message: keepTimeMessage(day.terms) },
+        send: {
+          action: { type: "keep_time" },
+          message: keepTimeMessage(day.terms),
+        },
       },
       cantMakeIt(context),
     ],
@@ -207,7 +226,10 @@ function overdueChoices(context: Context): PickupChoices {
 }
 
 /** A choice that sends, with the question asked before it. */
-export type ListingPickupChoice = PickupChoice & { send: PickupSend; confirm: string };
+export type ListingPickupChoice = PickupChoice & {
+  send: PickupSend;
+  confirm: string;
+};
 
 /**
  * My listings on a listing with a booked pickup: Mark sold and Make active go
@@ -237,9 +259,10 @@ export function listingPickupChoices(context: Omit<Context, "role">): {
  */
 export function pickupChoices(context: Context): PickupChoices {
   const { day, deal, role } = context;
-  if (day.change && deal.proposal) return changeChoices(context, deal.proposal.terms);
+  if (day.change && deal.proposal)
+    return changeChoices(context, deal.proposal.terms);
   if (role === "seller" && day.buyerReportedPickup)
-    return { primary: pickedUp(context), secondary: [cantMakeIt(context)] };
+    return { primary: pickedUp(context), secondary: [] };
   switch (day.phase) {
     case "booked":
       return {
@@ -249,7 +272,10 @@ export function pickupChoices(context: Context): PickupChoices {
       const way = onMyWay(context);
       return way.unavailable
         ? { secondary: [way, late(context), changeTime, cantMakeIt(context)] }
-        : { primary: way, secondary: [late(context), changeTime, cantMakeIt(context)] };
+        : {
+            primary: way,
+            secondary: [late(context), changeTime, cantMakeIt(context)],
+          };
     }
     case "pickup_now": {
       const way = onMyWay(context);

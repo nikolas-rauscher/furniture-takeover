@@ -41,8 +41,7 @@ export function usePickupReminders({
   const due = deals.find((item) => {
     const day = pickupDay(item.deal, item.role, now);
     return (
-      day?.phase === "pickup_soon" &&
-      !reminded.includes(reminderKey(item))
+      day?.phase === "pickup_soon" && !reminded.includes(reminderKey(item))
     );
   });
   useEffect(() => {
