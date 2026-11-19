@@ -1,6 +1,7 @@
 import { listingInventory } from "../shared/listingInventory.ts";
 import {
   defaults,
+  isMine,
   parseSearch,
   type Criteria,
   type Product,
@@ -214,11 +215,17 @@ export function agentSearchRequest(
   inventory: Product[],
   negotiating = false,
 ): AgentRunRequest {
+  const ownListingIds = inventory
+    .filter((item) => isMine(item) && item.status === "active")
+    .map((item) => item.id);
   return {
     text: search.text,
     context: {
       intent: search.intent ?? "search",
       location: search.location,
+      ...(ownListingIds.length
+        ? { ownListingIds: ownListingIds.slice(0, 200) }
+        : {}),
       originalRequest: search.originalRequest,
       currentQuery: search.criteria.query.slice(0, 500),
       ...(search.previousAnswer
@@ -240,7 +247,7 @@ export function agentSearchRequest(
           }),
     },
     inventory: listingInventory(
-      inventory,
+      inventory.filter((item) => !isMine(item)),
       negotiating || search.intent === "listing_review"
         ? undefined
         : { radius: search.criteria.radius, pickupBy: search.criteria.pickup },

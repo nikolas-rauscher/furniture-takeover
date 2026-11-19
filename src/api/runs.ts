@@ -315,13 +315,13 @@ function requestContext(
       text: item.text,
     }));
   }
-  const previousMatchIds = optionalList(
-    value.previousMatchIds,
-    100,
-    120,
-    invalid,
-  );
-  if (previousMatchIds) context.previousMatchIds = previousMatchIds;
+  for (const [field, maxItems] of [
+    ["previousMatchIds", 100],
+    ["ownListingIds", 200],
+  ] as const) {
+    const ids = optionalList(value[field], maxItems, 120, invalid);
+    if (ids) context[field] = ids;
+  }
   Object.assign(context, listingHistory(value, invalid));
   return context;
 }

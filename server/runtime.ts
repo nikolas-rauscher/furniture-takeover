@@ -64,6 +64,7 @@ const requestSchema = z.object({
       currentQuery: z.string().trim().max(500).optional(),
       previousAnswer: z.string().max(6000).optional(),
       previousMatchIds: z.array(z.string().min(1).max(120)).max(100).optional(),
+      ownListingIds: z.array(z.string().min(1).max(120)).max(200).optional(),
       originalRequest: z.string().max(4000).optional(),
       maxPrice: z.number().finite().min(0).max(1_000_000).optional(),
       budgetSpecified: z.boolean().optional(),
@@ -370,6 +371,8 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
         const request = validateRunRequest(input);
         // Hosted inventory is server-owned; local mode also searches browser drafts.
         const databaseRows = (await config.inventoryProvider?.()) ?? [];
+        // Pako finds things for the student to buy, so their own listings never count.
+        const ownIds = new Set(request.context?.ownListingIds);
         const currentInventory = () => {
           const databaseIds = new Set(databaseRows.map((item) => item.id));
           return [
@@ -384,7 +387,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
                 ? request.context
                 : undefined,
             ),
-          ];
+          ].filter((item) => !ownIds.has(item.id));
         };
 
         const listingReview = request.context?.intent === "listing_review";

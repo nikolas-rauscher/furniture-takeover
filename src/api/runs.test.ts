@@ -433,7 +433,7 @@ test("listing-assist context sends only typed current draft facts and the previo
   );
 });
 
-test("listing runs send the conversation so far and search runs their earlier matches", async (context) => {
+test("listing runs send the conversation so far and search runs their matches and own listings", async (context) => {
   const history = {
     listingStart: true,
     photoAnalysis: { missingDetails: ["Model year"], keywords: ["MacBook"] },
@@ -457,7 +457,7 @@ test("listing runs send the conversation so far and search runs their earlier ma
     { text: "Polish the description", context: history },
     { onEvent() {} },
   );
-  const search = { previousMatchIds: ["desk-1"] };
+  const search = { previousMatchIds: ["desk-1"], ownListingIds: ["mine-1"] };
   await streamAgentRun(
     { text: "A desk", context: search },
     { onEvent() {} },
@@ -469,6 +469,7 @@ test("listing runs send the conversation so far and search runs their earlier ma
     { photoAnalysis: { notes: ["private"] } },
     { skippedQuestions: [{ question: "Which chip?", listingField: "colour" }] },
     { answeredQuestions: [{ question: "Storage?" }] },
+    { ownListingIds: Array.from({ length: 201 }, (_, index) => `id-${index}`) },
     { previousMatchIds: [42] },
   ])
     await assert.rejects(
