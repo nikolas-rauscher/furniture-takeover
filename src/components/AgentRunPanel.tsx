@@ -69,6 +69,8 @@ export default function AgentRunPanel({
   readOnly = false,
   typing = false,
   onAnswer,
+  onChoose,
+  onChoosePrice,
   onSkipQuestion,
   onApplyAction,
   onUndoAction,
@@ -403,6 +405,8 @@ export default function AgentRunPanel({
           question={question}
           answer={state.answers[question.id]}
           onAnswer={onAnswer}
+          onChoose={onChoose}
+          onChoosePrice={onChoosePrice}
           onSkip={onSkipQuestion}
           compact={compact}
           externalComposer={externalComposer}

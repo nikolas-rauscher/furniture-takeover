@@ -25,16 +25,32 @@ import { answerParts } from "./AgentAnswerContent";
 
 export type AgentActionHandlers = {
   onAnswer?: (questionId: string, answer: string) => void | boolean;
+  /** A tapped answer; without it a tap is sent as the answer. */
+  onChoose?: (questionId: string, label: string) => void | boolean;
+  /** The asking price set with the slider; without it the amount is sent as the answer. */
+  onChoosePrice?: (questionId: string, price: number) => void | boolean;
   onSkipQuestion?: (questionId: string) => void | boolean;
   onApplyAction?: (actionId: string) => void;
   onUndoAction?: (actionId: string) => void;
   onEditFields?: () => void;
 };
 
+/** The slider starts at Pako's suggestion, or halfway when he has none. */
+function initialPrice({
+  min,
+  max,
+  step,
+  value,
+}: NonNullable<AgentQuestionEvent["input"]>) {
+  return value ?? Math.round((min + max) / 2 / step) * step;
+}
+
 export function AgentQuestion({
   question,
   answer,
   onAnswer,
+  onChoose,
+  onChoosePrice,
   onSkip,
   compact = false,
   suggestion,
@@ -45,6 +61,8 @@ export function AgentQuestion({
   question: AgentQuestionEvent;
   answer?: string;
   onAnswer?: AgentActionHandlers["onAnswer"];
+  onChoose?: AgentActionHandlers["onChoose"];
+  onChoosePrice?: AgentActionHandlers["onChoosePrice"];
   onSkip?: AgentActionHandlers["onSkipQuestion"];
   compact?: boolean;
   suggestion?: ReactNode;
@@ -55,7 +73,7 @@ export function AgentQuestion({
   const [text, setText] = useState("");
   const [sent, setSent] = useState("");
   const [price, setPrice] = useState(
-    question.input?.value ?? question.input?.min ?? 0,
+    question.input ? initialPrice(question.input) : 0,
   );
   const inputId = useId();
   const response = answer || sent;
@@ -109,6 +127,17 @@ export function AgentQuestion({
     if (disabled || readOnly || !value.trim() || response || !onAnswer) return;
     if (onAnswer(question.id, value.trim()) !== false) setSent(value.trim());
   };
+  const priceLabel = price === 0 ? "Give it away for free" : `Use CHF ${price}`;
+  const choose = (label: string) => {
+    if (!onChoose) return submit(label);
+    if (disabled || readOnly || response) return;
+    if (onChoose(question.id, label) !== false) setSent(label);
+  };
+  const choosePrice = () => {
+    if (!onChoosePrice) return submit(`CHF ${price}`);
+    if (disabled || readOnly || response) return;
+    if (onChoosePrice(question.id, price) !== false) setSent(priceLabel);
+  };
   return (
     <Item
       render={<section ref={questionElement} />}
@@ -154,14 +183,14 @@ export function AgentQuestion({
                 type="button"
                 className="button primary"
                 disabled={disabled}
-                onClick={() => submit(`CHF ${price}`)}
+                onClick={choosePrice}
               >
-                {price === 0 ? "Give it away for free" : `Use CHF ${price}`}
+                {priceLabel}
               </Button>
             </div>
           )}
           {suggestion}
-          {question.input?.type !== "price" && !!question.choices?.length && (
+          {!!question.choices?.length && (
             <Suggestions
               className="agent-run-choices"
               aria-label="Suggested answers"
@@ -170,8 +199,8 @@ export function AgentQuestion({
                 <Suggestion
                   type="button"
                   key={choice}
-                  disabled={disabled || !onAnswer}
-                  onClick={() => submit(choice)}
+                  disabled={disabled || !(onChoose ?? onAnswer)}
+                  onClick={() => choose(choice)}
                 >
                   {choice}
                 </Suggestion>

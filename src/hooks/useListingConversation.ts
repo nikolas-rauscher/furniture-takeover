@@ -1,5 +1,9 @@
 import { useRef, useState, type SetStateAction } from "react";
-import type { AgentListingPatchEvent } from "../../shared/actions";
+import type {
+  AgentListingPatchEvent,
+  AgentQuestionEvent,
+  AgentTapAnswer,
+} from "../../shared/actions";
 import {
   applyListingAction,
   listingFieldNames,
@@ -8,6 +12,13 @@ import {
   type ListingChanges,
 } from "../agentActions";
 import type { ListingDraft } from "../components/SellFlow";
+import {
+  DescriptionFullError,
+  nextQuestion,
+  resolvedByDraft,
+  tapAction,
+  tapOutcome,
+} from "../listingQuestions";
 import {
   listingRunRequest,
   type ListingRunOptions,
@@ -54,6 +65,23 @@ export function useListingConversation({
   const changesRef = useRef<Record<string, ListingChanges>>({});
   const [notices, setNotices] = useState<Record<string, string>>({});
   const [undone, setUndone] = useState<string[]>([]);
+  /** Questions put off with "Decide later"; they come back after the others. */
+  const [deferred, setDeferred] = useState<string[]>([]);
+  /** The change each tapped answer made, so its Undo takes both back. */
+  const [answerActions, setAnswerActions] = useState<Record<string, string>>(
+    {},
+  );
+  /** A tap that could not apply, shown with its question. */
+  const [tapError, setTapError] = useState<{
+    questionId: string;
+    message: string;
+  } | null>(null);
+  const tapCount = useRef(0);
+  const activeQuestion = nextQuestion(
+    run.state.questions,
+    run.state.answers,
+    deferred,
+  );
 
   function resetConversation() {
     runToken.current += 1;
@@ -64,6 +92,9 @@ export function useListingConversation({
     setChanges({});
     setNotices({});
     setUndone([]);
+    setDeferred([]);
+    setAnswerActions({});
+    setTapError(null);
     setInput("");
     lastRequest.current = null;
     photoAnalysis.current = undefined;
@@ -89,6 +120,16 @@ export function useListingConversation({
         : {}),
       ...edit,
     }));
+    answerFilledQuestions();
+  }
+  /** A question about a field the student just filled in needs no answer anymore. */
+  function answerFilledQuestions() {
+    for (const question of run.state.questions)
+      if (
+        !run.state.answers[question.id] &&
+        resolvedByDraft(question, draftRef.current)
+      )
+        run.markQuestionAnswered(question.id, "Set in details");
   }
   function applyPatch(
     action: AgentListingPatchEvent,
@@ -112,6 +153,7 @@ export function useListingConversation({
         [action.id]: result.changes,
       };
       setChanges(changesRef.current);
+      setUndone((value) => value.filter((id) => id !== action.id));
     }
     setNotices((value) => ({
       ...value,
@@ -160,9 +202,7 @@ export function useListingConversation({
     if (!text.trim()) return;
     let question = options.question;
     const unanswered =
-      !question && !explicitRequest
-        ? run.state.questions.find((item) => !run.state.answers[item.id])
-        : undefined;
+      !question && !explicitRequest ? activeQuestion : undefined;
     if (unanswered) {
       question = unanswered.question;
       run.markQuestionAnswered(unanswered.id, text);
@@ -204,6 +244,106 @@ export function useListingConversation({
     void send(reply, { question: question.question });
     return true;
   }
+  const waitingQuestion = (id: string) =>
+    run.state.questions.find(
+      (question) => question.id === id && !run.state.answers[id],
+    );
+  function recordAnswer(questionId: string, reply: string, actionId?: string) {
+    run.markQuestionAnswered(questionId, reply);
+    if (actionId)
+      setAnswerActions((value) => ({ ...value, [questionId]: actionId }));
+    setTapError(null);
+  }
+  function applyTap(
+    question: AgentQuestionEvent,
+    answer: Pick<AgentTapAnswer, "label" | "patch" | "appendDescription">,
+  ) {
+    tapCount.current += 1;
+    const action = tapAction(
+      answer,
+      draftRef.current,
+      `tap-${question.id}-${tapCount.current}`,
+    );
+    // The tap is the student's newest intent, so it applies over every earlier edit.
+    applyPatch(action, { ...revisions.current }, true);
+    return action.id;
+  }
+  function acceptProposal(
+    question: AgentQuestionEvent,
+    answer: AgentTapAnswer,
+  ) {
+    const proposal = run.state.actions.find(
+      (action) =>
+        action.type === "listing_patch" &&
+        action.requiresAcceptance &&
+        action.patch.price === answer.patch?.price,
+    );
+    if (proposal) {
+      accept(proposal.id);
+      return proposal.id;
+    }
+    // No suggestion carries this price, yet the tap itself is the student's decision.
+    return applyTap(question, answer);
+  }
+  /** Applies a tapped answer here; only an answer Pako has to read goes back to him. */
+  function choose(questionId: string, label: string): boolean {
+    const question = waitingQuestion(questionId);
+    if (!question) return false;
+    const outcome = tapOutcome(question, label);
+    if (outcome.kind === "ask-agent") return answer(questionId, label);
+    try {
+      const actionId =
+        outcome.kind === "accept-proposal"
+          ? acceptProposal(question, outcome.answer)
+          : outcome.kind === "patch"
+            ? applyTap(question, outcome.answer)
+            : undefined;
+      recordAnswer(questionId, label, actionId);
+      return true;
+    } catch (error) {
+      if (!(error instanceof DescriptionFullError)) throw error;
+      setTapError({ questionId, message: error.message });
+      return false;
+    }
+  }
+  /** The asking price the student set: Pako's suggestion, their own amount or free. */
+  function choosePrice(questionId: string, price: number): boolean {
+    const question = waitingQuestion(questionId);
+    if (!question) return false;
+    const label = price === 0 ? "Give it away for free" : `Use CHF ${price}`;
+    const suggested = question.choiceActions?.find(
+      (item) => item.acceptsProposal && item.patch?.price === price,
+    );
+    recordAnswer(
+      questionId,
+      label,
+      suggested
+        ? acceptProposal(question, suggested)
+        : applyTap(question, { label, patch: { price } }),
+    );
+    return true;
+  }
+  function skip(questionId: string): boolean {
+    if (!waitingQuestion(questionId)) return false;
+    recordAnswer(questionId, "Skipped");
+    return true;
+  }
+  function decideLater(questionId: string) {
+    setDeferred((value) =>
+      value.includes(questionId) ? value : [...value, questionId],
+    );
+  }
+  /** Takes a tapped answer back: its change is undone and the question waits again. */
+  function undoAnswer(questionId: string) {
+    const actionId = answerActions[questionId];
+    if (actionId) undo(actionId);
+    run.unanswerQuestion(questionId);
+    setAnswerActions((value) =>
+      Object.fromEntries(
+        Object.entries(value).filter(([answered]) => answered !== questionId),
+      ),
+    );
+  }
 
   return {
     state: run.state,
@@ -213,6 +353,9 @@ export function useListingConversation({
     appliedIds: Object.keys(changes),
     undoneIds: undone,
     notices,
+    activeQuestion,
+    answerActions,
+    tapError,
     resetConversation,
     resetForNewDraft,
     cancel,
@@ -223,5 +366,10 @@ export function useListingConversation({
     start,
     retry,
     answer,
+    choose,
+    choosePrice,
+    skip,
+    decideLater,
+    undoAnswer,
   };
 }

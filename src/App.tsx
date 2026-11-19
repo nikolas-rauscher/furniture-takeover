@@ -1669,12 +1669,9 @@ export default function App({
             onReset={listing.resetConversation}
             onRetry={listing.retry}
             onAnswer={listing.answer}
-            onSkipQuestion={(id) =>
-              listing.answer(
-                id,
-                "I don't know. Leave this detail unspecified and continue.",
-              )
-            }
+            onChoose={listing.choose}
+            onChoosePrice={listing.choosePrice}
+            onSkipQuestion={listing.skip}
             onApplyAction={listing.accept}
             onUndoAction={listing.undo}
             appliedActionIds={listing.appliedIds}
