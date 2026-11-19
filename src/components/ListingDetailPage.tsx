@@ -9,6 +9,7 @@ import {
 } from "@/components/icons";
 import { listingPhotos } from "../../shared/listingPhotos";
 import { money, type Product } from "../../shared/marketplace";
+import { transportGuidance } from "../transportGuidance";
 import { relatedListings } from "../../shared/relatedListings";
 import PhotoGallery from "./PhotoGallery";
 import SaveToggle from "./SaveToggle";
@@ -33,6 +34,8 @@ type ListingDetailPageProps = {
   onMessage(): void;
   onEdit(): void;
   onAskAgent(): void;
+  /** Feature-flagged availability prototype; replaces "Message seller". */
+  availabilityPanel?: ReactNode;
 };
 
 export default function ListingDetailPage({
@@ -51,6 +54,7 @@ export default function ListingDetailPage({
   onMessage,
   onEdit,
   onAskAgent,
+  availabilityPanel,
 }: ListingDetailPageProps) {
   if (!selected && !loaded) return null;
   if (!selected)
@@ -72,6 +76,7 @@ export default function ListingDetailPage({
     : selected.description;
   const samplePhotoNote =
     selected.description.match(/Photo (?:illustrates|shows) [^\n]+/)?.[0] ?? "";
+  const transport = transportGuidance(selected.title, selected.dimensions);
   const mobileContact = !selected.own && selected.status === "active";
   return (
     <article
@@ -191,18 +196,22 @@ export default function ListingDetailPage({
               ) : (
                 <div
                   className={
-                    mobileContact ? "listing-detail-mobile-contact" : undefined
+                    mobileContact && !availabilityPanel
+                      ? "listing-detail-mobile-contact"
+                      : undefined
                   }
                 >
-                  <Button
-                    animateIcon
-                    className="button primary full"
-                    type="button"
-                    disabled={selected.status !== "active"}
-                    onClick={onMessage}
-                  >
-                    <MessageCircle size={17} /> Message seller
-                  </Button>
+                  {availabilityPanel ?? (
+                    <Button
+                      animateIcon
+                      className="button primary full"
+                      type="button"
+                      disabled={selected.status !== "active"}
+                      onClick={onMessage}
+                    >
+                      <MessageCircle size={17} /> Message seller
+                    </Button>
+                  )}
                 </div>
               )}
               {(onToggleFavorite || onToggleCompare) && (
@@ -235,6 +244,13 @@ export default function ListingDetailPage({
             <section className="listing-detail-description">
               <h2>About this item</h2>
               <p>{description}</p>
+            </section>
+          )}
+          {transport && (
+            <section className="listing-detail-description transport-guidance">
+              <h2>{transport.label}</h2>
+              <p>{transport.message}</p>
+              <p className="quiet-caption">{transport.note}</p>
             </section>
           )}
           {selected.pickupPoint && (

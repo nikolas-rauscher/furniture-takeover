@@ -23,7 +23,8 @@ import ListingDetailPage from "./components/ListingDetailPage";
 import ComparePage from "./components/ComparePage";
 import SavedSearchesPage from "./components/SavedSearchesPage";
 import { listingPhotos, MAX_LISTING_PHOTOS } from "../shared/listingPhotos";
-import { readListingPhoto } from "./listingPhotos";
+import { readListingPhoto, sortListingPhotos } from "./listingPhotos";
+import type { PhotoGroup } from "../shared/agent";
 import WorkspacePage from "./components/WorkspacePage";
 import WorkspaceHeader from "./components/WorkspaceHeader";
 import MessagesPage from "./components/MessagesPage";
@@ -44,7 +45,11 @@ import AgentListings, { canOffer } from "./components/AgentListings";
 import AgentComposer from "./components/AgentComposer";
 import AgentQuickReplies from "./components/AgentQuickReplies";
 import { quickReplies, type QuickReply } from "./quickReplies";
-import { prepareListingDraft } from "./listingPreparation";
+import {
+  listingDraftReady,
+  listingFromDraft,
+  prepareListingDraft,
+} from "./listingPreparation";
 import { HeroHeadline } from "./components/HeroHeadline";
 import {
   useEffect,
@@ -61,6 +66,7 @@ import {
   Camera,
   ChevronDown,
   CircleHelp,
+  Images,
   MapPin,
   Plus,
   Search,
@@ -81,11 +87,29 @@ import SellFlow, {
   listingSaveWords,
   type ListingDraft,
 } from "./components/SellFlow";
+import DeveloperSettings from "./components/DeveloperSettings";
+import { useDeveloperMode } from "./availability/useDeveloperMode";
+import PhotoSearchFeedback from "./components/PhotoSearchFeedback";
+import {
+  photoSearchFailure,
+  photoSearchClarification,
+  type PhotoSearchNotice,
+} from "./photoSearchFeedback";
+import PhotoSearchButton, { imageFrom } from "./components/PhotoSearchButton";
+import BatchSellFlow, { type BatchStart } from "./components/BatchSellFlow";
+import { batchItem, itemsFromGroups } from "./batchListings";
+import PhotoSplitQuestion from "./components/PhotoSplitQuestion";
 import AgentSuggestions from "./components/AgentSuggestions";
 import AgentRunPanel from "./components/AgentRunPanel";
 import { useAgentRun } from "./hooks/useAgentRun";
 import { useAgentAssist } from "./hooks/useAgentAssist";
 import { useSaved } from "./hooks/useSaved";
+import { useAlerts } from "./alerts/useAlerts";
+import { demandLadder, similarListings } from "./alerts/matching";
+import { activateWatch, findWatch, watchSearch } from "./alerts/watch";
+import SellerInsight from "./alerts/SellerInsight";
+import MatchAlerts from "./alerts/MatchAlerts";
+import WatchPrompt from "./alerts/WatchPrompt";
 import {
   agentSearchRequest,
   isSavedSearches,
@@ -98,7 +122,7 @@ import {
   type SearchSnapshot,
 } from "./searchRequest";
 import { requestAgentAssist } from "./api/agent";
-import { listingPickupMinimum, validListingPickup } from "./listingValidation";
+import { listingPickupMinimum } from "./listingValidation";
 import {
   agentDraft,
   applyListingAction,
@@ -119,6 +143,7 @@ import { useNoticeableWait } from "./hooks/useNoticeableWait";
 import { useFocused } from "./hooks/useFocused";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import { homeGuide, showedResults, turnAnnouncement } from "./pakoMoods";
+import { useAvailability } from "./availability/useAvailability";
 import {
   TODAY,
   defaults,
@@ -323,6 +348,17 @@ export default function App({
   const slowListings = useNoticeableWait(
     !database.ready || database.pending > 0,
   );
+  const { developerMode, setDeveloperMode } = useDeveloperMode();
+  // `?availability=reserve` prototype; null (main behaviour) when the flag is off.
+  const availability = useAvailability({
+    localDemo: !account,
+    developerMode,
+    listings: own,
+    ready: database.ready,
+    setStatus,
+    setToast,
+    onFindSimilar: (title) => void runSearch(title),
+  });
   const [compared, setCompared] = useState<string[]>([]);
   const comparisonOrigin = useRef<View>("discover");
   /** Where the open listing was reached from; a listing opened by link leads back to Browse. */
@@ -346,6 +382,19 @@ export default function App({
     setDraftState(next);
   }
   const [sellStep, setSellStep] = useState(1);
+  const [sellMode, setSellMode] = useState<"single" | "batch">("single");
+  // Set when several photos turn out to show different items.
+  const [photoSplit, setPhotoSplit] = useState<{
+    photos: string[];
+    groups: PhotoGroup[];
+  } | null>(null);
+  const [batchStart, setBatchStart] = useState<BatchStart | undefined>();
+  // Several sorted items, created one after another with the listing agent.
+  const [batchQueue, setBatchQueue] = useState<{
+    drafts: ListingDraft[];
+    index: number;
+    results: ("saved" | "skipped")[];
+  } | null>(null);
   const [editingListing, setEditingListing] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState("");
   /** A listing that was just published; My listings celebrates it briefly. */
@@ -397,6 +446,25 @@ export default function App({
   );
   const editingItem = own.find((item) => item.id === editingListing);
   const savedSearches = jobs.filter((job) => job.id !== "seed-search");
+  const alerts = useAlerts(savedSearches, visibleListings, database.ready);
+  const alertListings = new Map(visibleListings.map((item) => [item.id, item]));
+  // A match is only useful while its listing can still be opened.
+  const shownAlerts = alerts.alerts.filter(
+    (alert) => alertListings.get(alert.listingId)?.status === "active",
+  );
+  const matchAlerts = (items: typeof shownAlerts, markAll = false) => (
+    <MatchAlerts
+      alerts={items}
+      searchTitle={(id) => jobs.find((job) => job.id === id)?.title}
+      onOpen={(alert) => {
+        const item = alertListings.get(alert.listingId);
+        alerts.markRead(alert.id);
+        if (item) openProduct(item);
+      }}
+      onDismiss={(alert) => alerts.dismiss(alert.id)}
+      onMarkAllRead={markAll ? alerts.markAllRead : undefined}
+    />
+  );
   const savedListings = visibleListings.filter((item) =>
     favorites.includes(item.id),
   );
@@ -421,7 +489,9 @@ export default function App({
       : view === "account"
         ? `account-${accountTab}`
         : view === "sell"
-          ? `sell-${sellStep}`
+          ? sellMode === "batch"
+            ? "sell-batch"
+            : `sell-${sellStep}`
           : view === "detail"
             ? `listing-${selectedId}`
             : view;
@@ -504,6 +574,20 @@ export default function App({
   const awaitingAnswer =
     !running &&
     agentRun.state.questions.some((item) => !agentRun.state.answers[item.id]);
+  // The inspiration photo stays attached to the search it started.
+  const [photoSearch, setPhotoSearch] = useState<{
+    image: string;
+    item: string;
+    request: string;
+  } | null>(null);
+  const [photoSearchBusy, setPhotoSearchBusy] = useState(false);
+  const [photoSearchNotice, setPhotoSearchNotice] =
+    useState<PhotoSearchNotice | null>(null);
+  const photoSearchRequest = useRef<AbortController | null>(null);
+  const activePhotoSearch =
+    photoSearch && committedSearch?.originalRequest === photoSearch.request
+      ? photoSearch
+      : null;
   const hasSearchDraft = query.trim().length > 0;
   const searchHeading = "Your search";
   /** The page on screen as the browser tab names it; home keeps the app's own title. */
@@ -519,6 +603,7 @@ export default function App({
       case "messages":
         return "Messages";
       case "sell":
+        if (sellMode === "batch") return "Sell several items";
         return sellStep === 1 ? "New listing" : "Your listing";
       case "detail":
         return selected?.title ?? "Listing not found";
@@ -572,7 +657,11 @@ export default function App({
     location,
   });
   const listingAssist = useAgentAssist(
-    configured && view === "sell" && sellStep === 1 && !busy
+    configured &&
+      view === "sell" &&
+      sellMode === "single" &&
+      sellStep === 1 &&
+      !busy
       ? {
           intent: "listing",
           text: draft.raw,
@@ -647,6 +736,9 @@ export default function App({
       listingRunToken.current += 1;
       listingRun.cancel();
       listingRequest.current?.abort();
+      photoSearchRequest.current?.abort();
+      photoSearchRequest.current = null;
+      setPhotoSearchBusy(false);
       cancelPhotoRead();
       setBusy(false);
       // A note belongs to the page it was raised on.
@@ -739,6 +831,10 @@ export default function App({
     listingRevisions.current = {};
     setDraft(newDraft(pickupLocation));
     setSellStep(1);
+    setSellMode("single");
+    setPhotoSplit(null);
+    setBatchStart(undefined);
+    setBatchQueue(null);
     setEditingListing(null);
     setUploadError("");
   }
@@ -1007,6 +1103,9 @@ export default function App({
     question?: string,
   ) {
     if (!text.trim() || running || quotaExhausted) return;
+    photoSearchRequest.current?.abort();
+    setPhotoSearchBusy(false);
+    setPhotoSearchNotice(null);
     const unanswered =
       isFollowUp && !question
         ? agentRun.state.questions.find(
@@ -1040,6 +1139,47 @@ export default function App({
           ),
       question,
     );
+  }
+  /** Identify an item in an inspiration photo, then search for that description. */
+  async function searchByPhoto(file: File) {
+    if (running || photoSearchBusy) return;
+    photoSearchRequest.current?.abort();
+    const controller = new AbortController();
+    photoSearchRequest.current = controller;
+    setPhotoSearchBusy(true);
+    setPhotoSearchNotice(null);
+    setPhotoSearch(null);
+    try {
+      const image = await readListingPhoto(file, controller.signal);
+      const notes = query.trim();
+      const response = await requestAgentAssist(
+        {
+          intent: "search",
+          text: notes,
+          images: [image],
+          context: { location, radius: criteria.radius },
+        },
+        { signal: controller.signal },
+      );
+      const item = response.metadata.query?.trim();
+      if (controller.signal.aborted) return;
+      if (!item) {
+        setPhotoSearchNotice(photoSearchClarification());
+        return;
+      }
+      const request = (notes ? `${item}. ${notes}` : item).slice(0, 4000);
+      setPhotoSearch({ image, item, request });
+      setPhotoSearchBusy(false);
+      await runSearch(request);
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      setPhotoSearchNotice(photoSearchFailure(error));
+    } finally {
+      if (photoSearchRequest.current === controller) {
+        photoSearchRequest.current = null;
+        setPhotoSearchBusy(false);
+      }
+    }
   }
   function continueOffer(item: Product, existing?: Negotiation) {
     const proposal = existing ?? negotiations.open(item.id);
@@ -1289,6 +1429,21 @@ export default function App({
     void runListing(answer, question.question);
     return true;
   }
+  function isWatching(query: string, maxPrice?: number) {
+    const search = watchSearch(query, location, maxPrice);
+    return !!search && findWatch(jobs, search)?.paused === false;
+  }
+  function addWatch(query: string, maxPrice?: number) {
+    const search = watchSearch(query, location, maxPrice);
+    if (!search) return;
+    if (findWatch(jobs, search)?.paused === false) {
+      setToast("You are already watching for this.");
+      return;
+    }
+    const id = crypto.randomUUID();
+    setJobs((current) => activateWatch(current, search, id));
+    setToast("Watching. You'll be notified in the app when a match appears.");
+  }
   function saveSearch() {
     const existing = editingJob
       ? jobs.find((job) => job.id === editingJob)
@@ -1368,12 +1523,18 @@ export default function App({
       }
     }
   }
-  async function generateDraft() {
-    if (photoReading) {
+  /**
+   * `together` skips the different-items check after the seller chose one listing;
+   * `keepTitle` keeps a title the seller already wrote instead of the agent's.
+   */
+  async function generateDraft({ together = false, keepTitle = false } = {}) {
+    // The ref, not state: a batch item may start right after a cancelled read.
+    if (imageReader.current) {
       setUploadError("Your photo is still loading.");
       return;
     }
-    if (!draft.image) {
+    const start = draftRef.current;
+    if (!start.image) {
       setUploadError("Add a photo first.");
       return;
     }
@@ -1383,12 +1544,24 @@ export default function App({
     setBusy(true);
     setUploadError("");
     try {
+      const photos = listingPhotos(start);
+      if (!together && photos.length > 1) {
+        // Sorting is a hint: if it fails, draft one listing as before.
+        const groups = await sortListingPhotos(photos, controller.signal).catch(
+          () => null,
+        );
+        if (controller.signal.aborted) return;
+        if (groups && groups.length > 1) {
+          setPhotoSplit({ photos, groups });
+          return;
+        }
+      }
       const response = await requestAgentAssist(
         {
           intent: "listing",
-          text: draft.raw,
-          images: listingPhotos(draft),
-          context: { location: draft.location },
+          text: start.raw,
+          images: photos,
+          context: { location: start.location },
         },
         { signal: controller.signal },
       );
@@ -1396,10 +1569,11 @@ export default function App({
       const metadata = response.metadata;
       const current = draftRef.current;
       const prepared = prepareListingDraft(current, metadata);
+      if (keepTitle && current.title.trim()) prepared.title = current.title;
       setDraft(prepared);
       setSellStep(2);
       void runListing(
-        "Help me finish this listing using the recognised photo details already in the draft. If there is no asking price, research comparable second-hand offers and propose a source-backed starting price for my review, then let me choose a price with a slider or give it away. Ask only the next necessary missing detail using short clickable answers, including pickup times when relevant.",
+        "Help me finish this listing using the recognised photo details already in the draft. If there is no asking price, research comparable second-hand offers and propose a source-backed starting price for my review, then let me choose a price with a slider or give it away. Ask only the next necessary missing detail using short clickable answers, such as the item's age or condition, the pickup location or pickup times when relevant.",
       );
     } catch (error) {
       if (!controller.signal.aborted)
@@ -1433,60 +1607,17 @@ export default function App({
       navigate("settings");
       return;
     }
-    const price = Number(draft.price);
-    const pickupValid = validListingPickup(draft.pickup, editingItem);
-    if (
-      !draft.image ||
-      !draft.title.trim() ||
-      !draft.description.trim() ||
-      !draft.price.trim() ||
-      !Number.isFinite(price) ||
-      price < 0 ||
-      price > 10000 ||
-      !draft.location.trim() ||
-      !pickupValid
-    ) {
+    if (!listingDraftReady(draft, editingItem)) {
       setToast("Check the listing details before saving.");
       return;
     }
-    const item: Product = {
-      id: editingListing || draftId.current,
-      title: draft.title.trim(),
-      description: draft.description.trim(),
-      tags: draft.tags,
-      price,
-      image: draft.image,
-      images: listingPhotos(draft),
-      category: "All",
-      location: draft.location.trim(),
-      distance: 0,
-      condition: draft.condition,
-      dimensions: draft.dimensions.trim() || "Not specified",
-      source: "takeover",
-      seller: "You",
-      initials: "Y",
-      own: true,
-      demo: editingItem?.demo,
-      pickupPoint:
-        draft.location.trim() === editingItem?.location
-          ? editingItem?.pickupPoint
-          : undefined,
-      photoSourceUrl:
-        draft.image === editingItem?.image
-          ? editingItem?.photoSourceUrl
-          : undefined,
-      pickupBy: draft.pickup,
-      available:
-        editingItem && draft.pickup === editingItem.pickupBy
-          ? editingItem.available
-          : draft.pickup
-            ? "Pickup by " + shortDate(draft.pickup)
-            : "Flexible pickup",
-      status: editingListing
-        ? own.find((current) => current.id === editingListing)?.status ||
-          "active"
-        : "active",
-    };
+    const item = listingFromDraft(
+      draft,
+      editingListing || draftId.current,
+      editingItem,
+    );
+    if (editingItem && draft.pickup === editingItem.pickupBy)
+      item.available = editingItem.available;
     const saved = await setOwn((current) =>
       editingListing
         ? current.map((existing) =>
@@ -1498,6 +1629,10 @@ export default function App({
       setToast(
         "Could not save the listing. Your draft is still here; check the error above and try again.",
       );
+      return;
+    }
+    if (batchQueue && !editingListing) {
+      finishBatchItem("saved");
       return;
     }
     hasSellingDraft.current = false;
@@ -1512,6 +1647,78 @@ export default function App({
       );
     else setPublishedListing(item.id);
   }
+  /** Load one sorted item into the single-listing flow and let the agent draft it. */
+  function openBatchItem(next: ListingDraft) {
+    listingRequest.current?.abort();
+    cancelPhotoRead();
+    resetListingConversation();
+    listingRevisions.current = {};
+    draftId.current = crypto.randomUUID();
+    setEditingListing(null);
+    setUploadError("");
+    setPhotoSplit(null);
+    setDraft(next);
+    setSellStep(1);
+    void generateDraft({ together: true, keepTitle: true });
+  }
+  function startBatchListings(drafts: ListingDraft[]) {
+    if (!drafts.length) return;
+    if (!signedIn) {
+      navigate("settings");
+      return;
+    }
+    hasSellingDraft.current = true;
+    setBatchQueue({ drafts, index: 0, results: [] });
+    setBatchStart(undefined);
+    setSellMode("single");
+    openBatchItem(drafts[0]);
+  }
+  function finishBatchItem(result: "saved" | "skipped") {
+    if (!batchQueue) return;
+    const results = [...batchQueue.results, result];
+    const index = batchQueue.index + 1;
+    const total = batchQueue.drafts.length;
+    const saved = results.filter((item) => item === "saved").length;
+    const done = account ? "published" : "saved";
+    if (index < total) {
+      setBatchQueue({ ...batchQueue, index, results });
+      openBatchItem(batchQueue.drafts[index]);
+      setToast(
+        result === "saved"
+          ? `Listing ${index} of ${total} ${done}. Next: listing ${index + 1}.`
+          : `Skipped listing ${index}. Next: listing ${index + 1} of ${total}.`,
+      );
+      return;
+    }
+    setBatchQueue(null);
+    hasSellingDraft.current = false;
+    setAccountTab("listings");
+    navigate("account");
+    setToast(
+      saved
+        ? `${saved} listing${saved === 1 ? "" : "s"} ${done}.`
+        : "No listings saved.",
+    );
+  }
+  /** Return the items not yet created to the sorting step. */
+  function backToBatchSorting() {
+    if (!batchQueue) return;
+    listingRequest.current?.abort();
+    resetListingConversation();
+    const remaining = batchQueue.drafts.slice(batchQueue.index);
+    const photos = remaining.flatMap((item) => listingPhotos(item));
+    setBatchStart({
+      photos,
+      groups: [],
+      items: remaining.map((item) => {
+        const next = batchItem(listingPhotos(item), item.location);
+        return { ...next, draft: { ...next.draft, title: item.title } };
+      }),
+    });
+    setBatchQueue(null);
+    setBusy(false);
+    setSellMode("batch");
+  }
   function editListing(item: Product) {
     if (account && !item.own) return;
     if (item.status === "withdrawn") return;
@@ -1519,6 +1726,7 @@ export default function App({
     navigate("sell");
     resetListingConversation();
     listingRevisions.current = {};
+    setBatchQueue(null);
     setEditingListing(item.id);
     setDraft({
       image: item.image,
@@ -1535,6 +1743,7 @@ export default function App({
       category: "All",
     });
     setSellStep(2);
+    setSellMode("single");
     setUploadError("");
   }
   async function setStatus(id: string, status: Product["status"]) {
@@ -1671,6 +1880,7 @@ export default function App({
       onOpen={() => openProduct(item)}
       onToggleFavorite={() => toggleFavorite(item.id)}
       onToggleCompare={() => toggleCompare(item.id)}
+      availability={availability?.cardAvailability(item)}
     />
   );
 
@@ -1755,6 +1965,7 @@ export default function App({
         <HeaderNav
           active={headerDestination(currentDestination)}
           savedSearches={savedSearches.length}
+          unreadMatches={alerts.unread}
           onNavigate={openDestination}
         />
         <div className="header-actions">
@@ -1798,9 +2009,11 @@ export default function App({
           (view === "discover" && !isHome ? " chat-layout" : "") +
           (view === "messages" ? " messages-layout" : "") +
           (view === "sell"
-            ? sellStep === 2
-              ? " selling-chat-layout"
-              : " selling-photo-layout"
+            ? sellMode === "batch"
+              ? " selling-batch-layout"
+              : sellStep === 2
+                ? " selling-chat-layout"
+                : " selling-photo-layout"
             : "")
         }
       >
@@ -1817,6 +2030,12 @@ export default function App({
                     client={account.client}
                     session={account.session}
                     onProfileSaved={setPickupRegion}
+                    browserTools={
+                      <DeveloperSettings
+                        enabled={developerMode}
+                        onEnabledChange={setDeveloperMode}
+                      />
+                    }
                   />
                 ) : account ? (
                   <div className="settings-auth-page">
@@ -1828,7 +2047,17 @@ export default function App({
                 ) : (
                   <LocalSettings
                     connectionStatus={connectionStatus}
-                    onAddDemo={() => void database.addDemo()}
+                    developerSettings={
+                      <DeveloperSettings
+                        enabled={developerMode}
+                        onEnabledChange={setDeveloperMode}
+                        clockOffsetMs={availability?.clockOffsetMs}
+                        onResetDemo={availability?.resetDemo}
+                      />
+                    }
+                    onAddDemo={
+                      developerMode ? () => void database.addDemo() : undefined
+                    }
                     onHelp={() => setModal("help")}
                     onClear={() => setModal("clear")}
                   />
@@ -1837,6 +2066,7 @@ export default function App({
             )}
             <WorkspacePage active={view === "messages"}>
               <MessagesPage
+                developerMode={developerMode}
                 listingId={messageListingId}
                 onBrowse={() => openDestination("browse")}
                 initialMessage={
@@ -1887,6 +2117,7 @@ export default function App({
                   setMessageProposal(undefined);
                 }}
                 onDeleted={() => replaceRoute("#messages")}
+                threadBanner={availability?.threadBanner}
                 listings={own}
                 account={account}
                 listing={own.find((item) => item.id === messageListingId)}
@@ -1924,10 +2155,32 @@ export default function App({
                           event.preventDefault();
                           startSearchFromHome(query);
                         }}
+                        onDragOver={(event) => {
+                          if (event.dataTransfer.types.includes("Files")) {
+                            event.preventDefault();
+                            event.currentTarget.classList.add("drag-over");
+                          }
+                        }}
+                        onDragLeave={(event) =>
+                          event.currentTarget.classList.remove("drag-over")
+                        }
+                        onDrop={(event) => {
+                          event.currentTarget.classList.remove("drag-over");
+                          const file = imageFrom(event.dataTransfer);
+                          if (!file) return;
+                          event.preventDefault();
+                          void searchByPhoto(file);
+                        }}
                       >
                         <PageTransitionShared name="agent-query">
                           <Textarea
                             ref={searchField}
+                            onPaste={(event) => {
+                              const file = imageFrom(event.clipboardData);
+                              if (!file) return;
+                              event.preventDefault();
+                              void searchByPhoto(file);
+                            }}
                             aria-label="Search furniture"
                             maxLength={4000}
                             value={query}
@@ -1962,6 +2215,11 @@ export default function App({
                             <span>{location}</span>
                             <ChevronDown size={13} aria-hidden="true" />
                           </Button>
+                          <PhotoSearchButton
+                            busy={photoSearchBusy}
+                            disabled={running || !configured || quotaExhausted}
+                            onFile={(file) => void searchByPhoto(file)}
+                          />
                           <Button
                             animateIcon
                             className="button primary"
@@ -1975,6 +2233,9 @@ export default function App({
                         </div>
                       </form>
                     </PageTransitionShared>
+                    {photoSearchNotice && (
+                      <PhotoSearchFeedback notice={photoSearchNotice} />
+                    )}
                     {connectionStatus}
                     <AgentSuggestions
                       state={searchAssist}
@@ -2044,6 +2305,18 @@ export default function App({
                           : undefined
                       }
                     />
+                    {!reviewingListing && activePhotoSearch && (
+                      <div className="photo-search-source">
+                        <img src={activePhotoSearch.image} alt="" />
+                        <p>
+                          Similar to your photo
+                          <span>
+                            Recognised as “{activePhotoSearch.item}”. Start a
+                            new search to adjust it.
+                          </span>
+                        </p>
+                      </div>
+                    )}
                     {negotiations.error && (
                       <p role="alert">{negotiations.error}</p>
                     )}
@@ -2167,46 +2440,64 @@ export default function App({
                               )
                             }
                             outcome={
-                              turn.proposal?.draft && (
-                                <MessageDraftPreview
-                                  proposal={turn.proposal}
-                                  sent={negotiations.items.some(
-                                    (proposal) =>
-                                      proposal.id === turn.proposal?.id &&
-                                      proposal.status === "sent",
-                                  )}
-                                  title={
-                                    own.find(
-                                      (item) =>
-                                        item.id === turn.proposal?.listingId,
-                                    )?.title ?? "Listing"
-                                  }
-                                  onReview={
-                                    negotiations.items.some(
+                              <>
+                                {turn.proposal?.draft && (
+                                  <MessageDraftPreview
+                                    proposal={turn.proposal}
+                                    sent={negotiations.items.some(
                                       (proposal) =>
                                         proposal.id === turn.proposal?.id &&
-                                        proposal.version ===
-                                          turn.proposal.version &&
-                                        proposal.status === "draft",
-                                    ) &&
-                                    own.some(
-                                      (item) =>
-                                        item.id === turn.proposal?.listingId &&
-                                        item.status === "active",
-                                    )
-                                      ? () => {
-                                          negotiations.activate(
-                                            turn.proposal!.id,
-                                          );
-                                          openMessages(
-                                            turn.proposal!.listingId,
-                                            turn.proposal,
-                                          );
-                                        }
-                                      : undefined
-                                  }
-                                />
-                              )
+                                        proposal.status === "sent",
+                                    )}
+                                    title={
+                                      own.find(
+                                        (item) =>
+                                          item.id === turn.proposal?.listingId,
+                                      )?.title ?? "Listing"
+                                    }
+                                    onReview={
+                                      negotiations.items.some(
+                                        (proposal) =>
+                                          proposal.id === turn.proposal?.id &&
+                                          proposal.version ===
+                                            turn.proposal.version &&
+                                          proposal.status === "draft",
+                                      ) &&
+                                      own.some(
+                                        (item) =>
+                                          item.id === turn.proposal?.listingId &&
+                                          item.status === "active",
+                                      )
+                                        ? () => {
+                                            negotiations.activate(
+                                              turn.proposal!.id,
+                                            );
+                                            openMessages(
+                                              turn.proposal!.listingId,
+                                              turn.proposal,
+                                            );
+                                          }
+                                        : undefined
+                                    }
+                                  />
+                                )}
+                                {!reviewingListing && turn.watchSuggestion && (
+                                  <WatchPrompt
+                                    query={turn.watchSuggestion.query}
+                                    maxPrice={turn.watchSuggestion.maxPrice}
+                                    watching={isWatching(
+                                      turn.watchSuggestion.query,
+                                      turn.watchSuggestion.maxPrice,
+                                    )}
+                                    onWatch={() =>
+                                      addWatch(
+                                        turn.watchSuggestion!.query,
+                                        turn.watchSuggestion!.maxPrice,
+                                      )
+                                    }
+                                  />
+                                )}
+                              </>
                             }
                             className={`${reviewingListing ? "" : "search-agent-message"} ${archived ? "archived-agent-response" : ""}`}
                             showHistory={false}
@@ -2263,6 +2554,7 @@ export default function App({
                   negotiations.items
                     .filter((item) => item.status === "draft")
                     .map((proposal) => proposalSummary(proposal))}
+                {searchIsHome && availability?.notices()}
                 {showHomeListings && visibleListings.length > 0 && (
                   <>
                     <div className="section-heading">
@@ -2310,6 +2602,17 @@ export default function App({
                 <SavedSearchesPage
                   searches={savedSearches}
                   location={location}
+                  alerts={matchAlerts(shownAlerts, true)}
+                  onTogglePause={(job) =>
+                    setJobs((current) =>
+                      current.map((item) =>
+                        item.id === job.id
+                          ? { ...item, paused: !item.paused }
+                          : item,
+                      ),
+                    )
+                  }
+                  onWatch={addWatch}
                   onFind={goHome}
                   onRun={(job) => {
                     const search = restoreSearch(job, location);
@@ -2343,7 +2646,22 @@ export default function App({
               </PageTransitionView>
             )}
 
-            <WorkspacePage active={view === "sell"}>
+            {view === "sell" && sellMode === "batch" && (
+              <PageTransitionView>
+                <BatchSellFlow
+                  location={location}
+                  liveAgent={configured}
+                  start={batchStart}
+                  onBack={() => {
+                    setBatchStart(undefined);
+                    setSellMode("single");
+                  }}
+                  onStart={startBatchListings}
+                />
+                {connectionStatus}
+              </PageTransitionView>
+            )}
+            <WorkspacePage active={view === "sell" && sellMode === "single"}>
               <>
                 <SellFlow
                   draft={draft}
@@ -2362,28 +2680,106 @@ export default function App({
                         resetListingConversation();
                         setSellStep(1);
                       } else if (editingListing) navigate("account");
+                      else if (batchQueue) backToBatchSorting();
                       else openBrowse();
                     })
                   }
                   onDraftChange={changeDraft}
                   agentWorking={listingRun.state.status === "running"}
+                  insight={
+                    <SellerInsight
+                      price={
+                        draft.price.trim() ? Number(draft.price) : Number.NaN
+                      }
+                      ladder={demandLadder(savedSearches, {
+                        title: draft.title,
+                        price: draft.price.trim()
+                          ? Number(draft.price)
+                          : Number.NaN,
+                        condition: draft.condition,
+                        pickupBy: draft.pickup,
+                      })}
+                      similar={similarListings(
+                        visibleListings,
+                        draft.title,
+                        editingListing ?? undefined,
+                      )}
+                    />
+                  }
                   agentConversation={listingConversation}
                   agentTools={listingTools}
                   quota={agentHealth?.quota}
                   onAccount={() => navigate("settings")}
                   onPhotoSelected={upload}
-                  onCreateDraft={generateDraft}
+                  onCreateDraft={() => void generateDraft()}
                   onSuggestionSelected={addListingSuggestion}
                   onPublish={publish}
+                  batch={
+                    batchQueue && !editingListing
+                      ? {
+                          index: batchQueue.index,
+                          covers: batchQueue.drafts.map((item) => item.image),
+                          results: batchQueue.results,
+                          onSkip: () => finishBatchItem("skipped"),
+                        }
+                      : undefined
+                  }
+                  onSellSeveral={
+                    batchQueue
+                      ? undefined
+                      : () => {
+                          cancelPhotoRead();
+                          setUploadError("");
+                          setBatchStart(undefined);
+                          setSellMode("batch");
+                        }
+                  }
                 />
+                {photoSplit && (
+                  <PhotoSplitQuestion
+                    photos={photoSplit.photos}
+                    groups={photoSplit.groups}
+                    onClose={() => setPhotoSplit(null)}
+                    onTogether={() => {
+                      setPhotoSplit(null);
+                      void generateDraft({ together: true });
+                    }}
+                    onSeparate={(groups, review) => {
+                      if (!review) {
+                        startBatchListings(
+                          itemsFromGroups(
+                            photoSplit.photos,
+                            groups,
+                            draft.location,
+                          ).map((item) => item.draft),
+                        );
+                        return;
+                      }
+                      setBatchStart({
+                        photos: photoSplit.photos,
+                        groups,
+                        review,
+                      });
+                      setPhotoSplit(null);
+                      setSellMode("batch");
+                    }}
+                  />
+                )}
                 {connectionStatus}
               </>
             </WorkspacePage>
 
             {view === "detail" && (
               <PageTransitionView key={`listing-${selectedId}`}>
+                {!selected && selectedId && availability?.notices(selectedId)}
                 <ListingDetailPage
                   selected={selected}
+                  availabilityPanel={
+                    selected &&
+                    availability?.detailPanel(selected, () =>
+                      openMessages(selected.id),
+                    )
+                  }
                   loaded={listingsSettled}
                   cloud={!!account}
                   catalog={localListings}
@@ -2489,6 +2885,7 @@ export default function App({
         active={currentDestination === "settings" ? null : currentDestination}
         pageKey={pageKey}
         onNavigate={openDestination}
+        badges={{ searches: alerts.unread }}
       />
       <CompareTray
         count={comparison.length}
@@ -2507,6 +2904,7 @@ export default function App({
         action={toastNotice?.action}
         onDismiss={() => setToast("")}
       />
+      {availability?.overlay}
 
       {modal === "filters" && (
         <Modal title="Search preferences" onClose={() => setModal(null)}>
@@ -2659,6 +3057,15 @@ export default function App({
               </p>
             </div>
             <div>
+              <Images size={20} />
+              <p>
+                <strong>Search by photo</strong>An inspiration photo, such as a
+                Pinterest image, is sent to the AI service to describe the
+                furniture. The search then uses that description, which you can
+                edit.
+              </p>
+            </div>
+            <div>
               <Camera size={20} />
               <p>
                 <strong>Sell</strong>Your uploaded photo and notes are sent to
@@ -2680,8 +3087,8 @@ export default function App({
       {modal === "clear" && (
         <Modal title="Clear local workspace?" onClose={() => setModal(null)}>
           <p className="modal-intro">
-            This removes your listings, favourites and saved searches from this
-            browser.
+            This removes your listings, favourites, saved searches and their
+            alerts from this browser.
           </p>
           <div className="modal-actions">
             <Button className="button secondary" onClick={() => setModal(null)}>
@@ -2694,6 +3101,7 @@ export default function App({
                 setOwn([]);
                 setFavorites([]);
                 setJobs([]);
+                alerts.clear();
                 setCompared([]);
                 setSearchArea({
                   location: "Lausanne",

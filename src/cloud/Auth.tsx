@@ -19,6 +19,19 @@ export default function Auth({
   const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  if (mode === "complete")
+    return (
+      <section className="account-auth">
+        <h1>Password updated</h1>
+        <p role="status">
+          Your new password has been saved. You can now use it with your account
+          email to sign in on your other devices.
+        </p>
+        <Button className="button primary" onClick={onDone}>
+          Continue
+        </Button>
+      </section>
+    );
   return (
     <section className="account-auth">
       <Pako mood="wave" size={80} className="account-auth-pako" />
@@ -55,8 +68,17 @@ export default function Auth({
             } else if (mode === "password") {
               if (password !== confirmation)
                 throw new Error("The passwords do not match.");
-              fail((await client.auth.updateUser({ password })).error);
-              onDone();
+              const { data, error } = await client.auth.updateUser({
+                password,
+              });
+              fail(error);
+              if (!data.user)
+                throw new Error(
+                  "Could not save your password. Please try again.",
+                );
+              setPassword("");
+              setConfirmation("");
+              setMode("complete");
             } else {
               fail(
                 (await client.auth.signInWithPassword({ email, password }))

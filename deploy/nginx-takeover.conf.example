@@ -1,0 +1,79 @@
+# Copy to /etc/nginx/conf.d/takeover.conf on the nginx machine and change the
+# two upstream addresses. Written for the step BEFORE certbot: run
+#   sudo certbot --nginx -d aipm.deyan.ch -d supabase.deyan.ch
+# afterwards and it adds the HTTPS server blocks and the HTTP redirects itself.
+
+# LAN address of the machine running the Takeover app (npm start, port 8787).
+upstream takeover_app {
+    server 192.168.1.48:8787;
+    keepalive 8;
+}
+
+# LAN address of the Supabase machine; 8000 is Kong, Supabase's API gateway.
+upstream takeover_supabase {
+    server 192.168.1.46:8000;
+}
+
+map $http_upgrade $takeover_connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+# The app: pages and the assistant.
+server {
+    listen 80;
+    server_name aipm.deyan.ch;
+
+    # The API accepts JSON bodies up to 3 MB (listing photos).
+    client_max_body_size 4m;
+
+    # The assistant streams its answer as it is written: no buffering.
+    location = /api/agent/run {
+        proxy_pass http://takeover_app;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+    }
+
+    location / {
+        proxy_pass http://takeover_app;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# Supabase, for browsers. Only the four services the app uses are forwarded,
+# so Studio, the database admin (pg-meta) and every other Supabase path stay
+# unreachable from the internet. Do not add CORS headers here: Kong sends them.
+server {
+    listen 80;
+    server_name supabase.deyan.ch;
+
+    # Photos go to Supabase Storage (up to 5 MB).
+    client_max_body_size 6m;
+
+    location ~ ^/(auth|rest|storage|realtime)/v1/ {
+        proxy_pass http://takeover_supabase;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # Realtime (messages) is a long-lived WebSocket.
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $takeover_connection_upgrade;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+
+    location / {
+        return 404;
+    }
+}

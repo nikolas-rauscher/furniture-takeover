@@ -3,7 +3,7 @@ import { z } from "zod";
 import { RunError } from "./errors.ts";
 import { askingPriceQuestion, formatQuestion } from "./listing-questions.ts";
 import { repeatedQuestion } from "./conversation.ts";
-import { inventoryWords } from "./inventory-terms.ts";
+import { inventoryWords } from "../shared/inventoryTerms.ts";
 import { searchWeb } from "./web-search.ts";
 import type { ListingText } from "./listing-language.ts";
 import type { createNegotiationTools } from "./negotiation-tools.ts";
@@ -389,6 +389,29 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
               };
             },
           }),
+          suggest_watch: tool({
+            description:
+              "Offer to watch for an item when Takeover has no suitable match yet. This only displays a button; the buyer taps it to be notified in the app when a matching Takeover listing appears. It does not create the alert itself, so never claim an alert is active. Use the core item words and only a budget the buyer stated.",
+            inputSchema: z
+              .object({
+                query: z.string().trim().min(1).max(120),
+                maxPrice: z.number().min(0).max(1_000_000).optional(),
+              })
+              .strict(),
+            execute: async ({ query, maxPrice }) => {
+              claimTool();
+              await send({
+                type: "watch_suggestion",
+                query,
+                ...(maxPrice === undefined ? {} : { maxPrice }),
+              });
+              return {
+                suggested: true,
+                nextStep:
+                  "A button now lets the buyer choose to be notified. Nothing is active until they tap it. In-app notifications only; no email.",
+              };
+            },
+          }),
           show_takeover_listings: tool({
             description:
               "Display up to six genuinely relevant takeover offer cards, ranked best first. Use only IDs from the current database catalog or inventory_search results. Exclude accessories that do not match the wanted item. Use an empty array if no relevant match exists. Required before the final discovery answer.",
@@ -415,7 +438,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
       ? {
           web_search: tool({
             description:
-              "Search Brave for individual second-hand offers on supported marketplaces (default purpose offers). Category, profile, wanted, property and non-marketplace pages are excluded. Use short item-specific phrases with the requested location, using local-language terms when helpful. At most three distinct searches per reply: refine a poor query rather than repeating it. In listing modes only, purpose product_info can research manufacturer/product specifications when explicitly requested; it cannot supply asking-price evidence. Returns real titles, HTTPS URLs and snippets, not opened pages or verified availability. Never an arbitrary URL-fetch tool.",
+              "Search Brave for individual second-hand offers on supported marketplaces (default purpose offers). Category, profile, wanted, property and non-marketplace pages are excluded. Use short item-specific phrases with the requested location, using local-language terms when helpful. At most three distinct searches per reply: refine a poor query rather than repeating it. In listing modes only, purpose product_info can research manufacturer/product specifications and purpose similar_items can find comparable furniture examples; neither can supply asking-price evidence. Returns real titles, HTTPS URLs and snippets, not opened pages or verified availability. Never an arbitrary URL-fetch tool.",
             inputSchema: z.object({
               query: z.string().trim().min(1).max(400),
               responseLanguage: z
@@ -426,7 +449,9 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                 .describe(
                   "Answer language selected from the user's chat before reading web results (e.g. English). Never use the query, listing or source language to choose it.",
                 ),
-              purpose: z.enum(["offers", "product_info"]).optional(),
+              purpose: z
+                .enum(["offers", "product_info", "similar_items"])
+                .optional(),
             }),
             execute: async ({
               query,
@@ -435,7 +460,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
             }: {
               query: string;
               responseLanguage: string;
-              purpose?: "offers" | "product_info";
+              purpose?: "offers" | "product_info" | "similar_items";
             }) => {
               claimTool();
               if (state.ownInventoryOnly || negotiations.getCurrent())
@@ -447,6 +472,11 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                 throw new RunError(
                   "INVALID_RESEARCH_SCOPE",
                   "Product specifications are only available when reviewing or preparing a listing.",
+                );
+              if (purpose === "similar_items" && !listingAssist)
+                throw new RunError(
+                  "INVALID_RESEARCH_SCOPE",
+                  "Similar-item research is only available when preparing a listing.",
                 );
               if (state.firstDraft && !state.webSearched && purpose === "product_info")
                 throw new Error("Start with comparable offers using purpose offers.");
@@ -470,8 +500,12 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                   {
                     apiKey: braveApiKey,
                     fetchImpl,
-                    scope: purpose === "product_info" ? "research" : "offers",
-                    ...(purpose !== "product_info"
+                    scope:
+                      purpose === "product_info" || purpose === "similar_items"
+                        ? "research"
+                        : "offers",
+                    ...(purpose !== "product_info" &&
+                    purpose !== "similar_items"
                       ? { source: requestedSource }
                       : {}),
                   },
@@ -484,6 +518,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
               const found = await searching;
               if (
                 purpose !== "product_info" &&
+                purpose !== "similar_items" &&
                 requestedSource !== request.context?.source
               )
                 throw new RunError(
@@ -491,12 +526,16 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                   "The selected marketplace changed during this search. Search the current source again.",
                 );
               const current = found
+                .slice(0, purpose === "similar_items" ? 3 : found.length)
                 .map((foundSource) => {
                   const previous = sources.find(
                     (source) => source.url === foundSource.url,
                   );
                   if (previous) {
-                    if (purpose !== "product_info")
+                    if (
+                      purpose !== "product_info" &&
+                      purpose !== "similar_items"
+                    )
                       offerSourceIds.add(previous.id);
                     return previous;
                   }
@@ -506,7 +545,8 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                     id: `web-${++sourceSequence}`,
                   };
                   sources.push(source);
-                  if (purpose !== "product_info") offerSourceIds.add(source.id);
+                  if (purpose !== "product_info" && purpose !== "similar_items")
+                    offerSourceIds.add(source.id);
                   return source;
                 })
                 .filter((source): source is AgentRunSource => Boolean(source));
@@ -517,7 +557,10 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                 displayedTakeoverListings: state.displayedInventoryIds.map(
                   (id) => state.observedInventory.get(id),
                 ),
-                note: "External snippets only, not facts about Takeover listings. Keep the selected answer language. Wanted ads are not offers. Current details and availability are unverified.",
+                note:
+                  purpose === "similar_items"
+                    ? "Comparable online examples only, not the seller's item or verified offers. Dimensions and current availability are unverified. Keep the selected answer language."
+                    : "External snippets only, not facts about Takeover listings. Keep the selected answer language. Wanted ads are not offers. Current details and availability are unverified.",
               };
             },
           }),

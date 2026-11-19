@@ -2,10 +2,15 @@ import type {
   AssistRequest,
   AssistResponse,
   HealthResponse,
+  PhotoGroupResponse,
 } from "../shared/agent.ts";
-import { assistWithDeepSeek, type ProviderConfig } from "./deepseek.ts";
+import {
+  assistWithDeepSeek,
+  groupPhotosWithDeepSeek,
+  type ProviderConfig,
+} from "./deepseek.ts";
 import { explicitPrice } from "./facts.ts";
-import { validateRequest } from "./validation.ts";
+import { validatePhotoGroupRequest, validateRequest } from "./validation.ts";
 import { AgentError, invalidOutput } from "./errors.ts";
 import {
   defaults,
@@ -16,6 +21,10 @@ import {
 export type AgentService = {
   health: () => HealthResponse;
   assist: (input: unknown, signal?: AbortSignal) => Promise<AssistResponse>;
+  groupPhotos: (
+    input: unknown,
+    signal?: AbortSignal,
+  ) => Promise<PhotoGroupResponse>;
 };
 
 const normalized = (value: string) =>
@@ -211,22 +220,28 @@ export function createAgentService(config: ProviderConfig): AgentService {
     mode: apiKey ? "live" : "unconfigured",
     model,
   });
+  const ready = (signal?: AbortSignal) => {
+    if (signal?.aborted)
+      throw new AgentError(
+        499,
+        "REQUEST_CANCELLED",
+        "The request was cancelled.",
+      );
+  };
+  const requireKey = () => {
+    if (!apiKey)
+      throw new AgentError(
+        503,
+        "AGENT_NOT_CONFIGURED",
+        "Add a DeepSeek API key to the server .env to enable the agent.",
+      );
+  };
   return {
     health,
     async assist(input, signal) {
-      if (signal?.aborted)
-        throw new AgentError(
-          499,
-          "REQUEST_CANCELLED",
-          "The request was cancelled.",
-        );
+      ready(signal);
       const request = validateRequest(input);
-      if (!apiKey)
-        throw new AgentError(
-          503,
-          "AGENT_NOT_CONFIGURED",
-          "Add a DeepSeek API key to the server .env to enable the agent.",
-        );
+      requireKey();
       const output = await assistWithDeepSeek(
         request,
         { ...config, apiKey, model },
@@ -236,6 +251,18 @@ export function createAgentService(config: ProviderConfig): AgentService {
         groundSearch({ ...output, mode: "live", model }, request),
         request,
       );
+    },
+    async groupPhotos(input, signal) {
+      ready(signal);
+      const { images, itemCount } = validatePhotoGroupRequest(input);
+      requireKey();
+      const groups = await groupPhotosWithDeepSeek(
+        images,
+        { ...config, apiKey, model },
+        signal,
+        itemCount,
+      );
+      return { mode: "live", model, groups };
     },
   };
 }

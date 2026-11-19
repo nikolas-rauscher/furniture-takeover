@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
+import { isIP } from "node:net";
 
 type Environment = Record<string, string | undefined>;
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
@@ -15,6 +16,17 @@ export function readPort(
   return Number(value);
 }
 
+/** Address the API listens on. Loopback unless a proxy on another machine needs it. */
+export function readHost(value: string | undefined, name = "API_HOST") {
+  const host = value?.trim() || "127.0.0.1";
+  if (!isIP(host) && !/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/i.test(host))
+    throw new Error(`${name} must be an IP address or hostname.`);
+  return host;
+}
+
+export const isLoopbackHost = (host: string) =>
+  host === "localhost" || host === "::1" || /^127\./.test(host);
+
 export function localOrigins(appPort = 5173, previewPort = 4173): string[] {
   return [...new Set([appPort, previewPort])].flatMap((port) => [
     `http://localhost:${port}`,
@@ -24,6 +36,7 @@ export function localOrigins(appPort = 5173, previewPort = 4173): string[] {
 
 export function readServerConfig(env: Environment = process.env) {
   const port = readPort(env.API_PORT, 8787, "API_PORT");
+  const host = readHost(env.API_HOST);
   const appPort = readPort(env.APP_PORT, 5173, "APP_PORT");
   const previewPort = readPort(env.PREVIEW_PORT, 4173, "PREVIEW_PORT");
   const baseUrl = env.DEEPSEEK_BASE_URL?.trim() || "https://api.deepseek.com";
@@ -67,6 +80,7 @@ export function readServerConfig(env: Environment = process.env) {
   }
   return {
     port,
+    host,
     baseUrl,
     apiKey: env.DEEPSEEK_API_KEY?.trim() ?? "",
     model: env.DEEPSEEK_MODEL?.trim() || "deepseek-flash",

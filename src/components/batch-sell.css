@@ -1,0 +1,356 @@
+/* Several items at once: upload, sort photos into items, review drafts. */
+.batch-photos {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 1fr);
+  gap: 40px;
+  align-items: start;
+}
+.batch-dropzone {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 320px;
+  padding: 28px;
+  border: 1px dashed #c8c9c3;
+  border-radius: var(--radius);
+  background: #fff;
+}
+.batch-dropzone:not(.has-photos) {
+  justify-content: center;
+}
+.batch-dropzone h2 {
+  font-size: 22px;
+  font-weight: 450;
+  margin: 0;
+}
+.batch-dropzone p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+.batch-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.batch-photo-actions .file-hint {
+  margin: 0;
+}
+.batch-photo-grid,
+.batch-item-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.batch-photo-grid li,
+.batch-item-photos li {
+  position: relative;
+  min-width: 0;
+}
+.batch-photo-grid img,
+.batch-item-photos img {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  background: var(--canvas);
+}
+.batch-photo-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 28px;
+  height: 28px;
+  background: #fff;
+}
+.batch-photo-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.batch-photo-side .form-error {
+  margin: 0;
+}
+
+.batch-review {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.batch-items {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.batch-item {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+.batch-item h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.batch-item h2 span {
+  font-weight: 400;
+  color: var(--muted);
+}
+.batch-item-photos {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 140px));
+}
+.batch-item-photos li > span {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 10px;
+}
+.batch-photo-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 6px;
+}
+.batch-photo-controls select {
+  flex: 1 1 auto;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.batch-photo-controls .icon-button {
+  width: 30px;
+  height: 30px;
+}
+
+.batch-draft {
+  position: relative;
+  grid-template-columns: 140px minmax(0, 1fr);
+  align-items: start;
+  padding-right: 52px;
+}
+.batch-draft-cover {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  background: var(--canvas);
+}
+.batch-draft-fields {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.batch-draft-fields .form-grid {
+  margin: 0;
+  gap: 14px;
+}
+.batch-draft-fields .form-error {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.batch-draft-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.batch-missing {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.batch-draft-remove {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.batch-footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 14px 0;
+  background: #fbfbf9;
+  border-top: 1px solid var(--line);
+}
+.batch-footer .quiet-caption {
+  flex: 1 1 240px;
+}
+.multi-item-switch {
+  align-self: flex-start;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--blue);
+}
+
+@media (max-width: 760px) {
+  .batch-photos {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .batch-dropzone {
+    min-height: 220px;
+    padding: 16px;
+  }
+  .batch-photo-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .batch-item-photos {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .batch-draft {
+    grid-template-columns: 1fr;
+  }
+  .batch-draft-cover {
+    max-width: 140px;
+  }
+  .batch-footer {
+    position: static;
+  }
+}
+
+.split-question {
+  display: grid;
+  gap: 16px;
+}
+.split-question p {
+  margin: 0;
+}
+.split-question-groups {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.split-question-groups li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.split-question-groups strong {
+  font-size: 13px;
+  font-weight: 550;
+}
+.split-question-photos {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.split-question-photos img {
+  width: 48px;
+  height: 48px;
+  border-radius: 5px;
+  background: var(--canvas);
+}
+.split-question-actions {
+  display: grid;
+  gap: 8px;
+}
+.split-question-count {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.split-question-count input {
+  max-width: 96px;
+}
+.split-question-count .quiet-caption {
+  grid-column: 1 / -1;
+}
+.split-question-count > label {
+  margin: 0;
+}
+
+/* Creating several listings one after another with the listing agent. */
+.batch-progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0 0 var(--space-group);
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.batch-progress p {
+  margin: 0;
+  font-size: var(--type-label);
+  color: var(--muted);
+}
+.batch-progress strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.batch-progress ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.batch-progress li {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  outline: 2px solid transparent;
+  outline-offset: 1px;
+}
+.batch-progress li img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--canvas);
+}
+.batch-progress li.current {
+  outline-color: var(--blue);
+}
+.batch-progress li.upcoming img,
+.batch-progress li.skipped img {
+  opacity: 0.45;
+}
+.batch-progress li.skipped img {
+  filter: grayscale(1);
+}
+.batch-progress li svg {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  padding: 2px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: var(--on-primary);
+}
+.batch-progress-skip {
+  margin-left: auto;
+  font-size: var(--type-label);
+}

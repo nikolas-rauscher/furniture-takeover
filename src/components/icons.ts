@@ -59,6 +59,7 @@ export {
   Clock,
   CookingPot,
   GraduationCap,
+  Images,
   Handshake,
   KeyRound,
   LampDesk,
