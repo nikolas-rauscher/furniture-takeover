@@ -25,12 +25,15 @@ type ProductCardProps = {
   onToggleCompare: () => void;
   /** Reservation state from the availability prototype, when it runs. */
   availability?: CardAvailability;
+  /** The student's own deal reserved it for them. */
+  reservedForYou?: boolean;
 };
 
 /** A sticker on the photo tells what matters before the details: sold, reserved or free. */
-function productSticker(product: Product) {
+function productSticker(product: Product, reservedForYou: boolean) {
   if (product.status === "sold") return "Sold";
-  if (product.status === "reserved") return "Reserved";
+  if (product.status === "reserved")
+    return reservedForYou ? "Reserved for you" : "Reserved";
   return product.price === 0 ? "Free" : "";
 }
 
@@ -47,6 +50,7 @@ export default function ProductCard({
   onToggleFavorite,
   onToggleCompare,
   availability,
+  reservedForYou = false,
 }: ProductCardProps) {
   const itemTags = product.tags?.filter((tag) => tag !== "Demo") ?? [];
   const tags = [
@@ -61,7 +65,8 @@ export default function ProductCard({
   ]
     .filter((tag) => Boolean(tag) && tag !== "Not specified")
     .slice(0, 3);
-  const sticker = availability?.sticker ?? productSticker(product);
+  const sticker =
+    availability?.sticker ?? productSticker(product, reservedForYou);
   const entrance = useEntrance(arriving);
   return (
     <article

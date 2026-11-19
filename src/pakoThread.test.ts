@@ -29,6 +29,7 @@ test("Pako reads a new reply by himself only in a visible, loaded thread, once",
     { loaded: false },
     { visible: false },
     { handledId: "m2" },
+    { latest: { ...theirs, structured: true } },
   ])
     assert.equal(pakoReadDecision({ ...ready, ...waiting }), "idle");
 });
@@ -57,6 +58,7 @@ test("a buyer hears when the item is gone, and either side can nudge after a day
     threadNotice({
       role: "buyer",
       listingStatus: "active",
+      dealStatus: undefined,
       messages: [mine(25)],
       now,
       canNudge: true,
@@ -67,6 +69,13 @@ test("a buyer hears when the item is gone, and either side can nudge after a day
     status: "reserved",
   });
   assert.deepEqual(notice({}), { kind: "no_answer", hoursWaiting: 25 });
+  // An agreed deal reserved the item for this buyer: nothing is gone and nothing waits for an answer.
+  for (const dealStatus of ["agreed", "completed"] as const)
+    assert.equal(notice({ listingStatus: "reserved", dealStatus }), null);
+  assert.deepEqual(notice({ listingStatus: "reserved", dealStatus: "open" }), {
+    kind: "gone",
+    status: "reserved",
+  });
   assert.deepEqual(notice({ role: "seller", listingStatus: "sold" }), {
     kind: "no_answer",
     hoursWaiting: 25,

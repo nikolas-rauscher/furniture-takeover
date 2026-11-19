@@ -459,6 +459,21 @@
 .messages-page .composer-field textarea {
   max-height: min(160px, 24dvh);
 }
+/* Terms that travel with a message: blue while its text states them, a quiet note once it doesn't. */
+.composer-terms {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: var(--canvas);
+  color: var(--muted);
+  font-size: var(--type-caption);
+  line-height: 1.4;
+}
+.composer-terms[data-states] {
+  background: var(--selected);
+  color: var(--blue-dark);
+  font-weight: 650;
+}
 .seller-message-meta {
   display: flex;
   justify-content: space-between;

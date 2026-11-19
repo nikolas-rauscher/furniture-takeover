@@ -5,6 +5,7 @@ import type { AgentTaskKind } from "../shared/runs.ts";
 import {
   agentTurnPako,
   foundNothing,
+  homeDealNews,
   homeGuide,
   isReaction,
   listingAnnouncement,
@@ -13,6 +14,7 @@ import {
   stepsSummary,
   stepWords,
   threadGuide,
+  threadReactionMs,
   trayMood,
   turnAnnouncement,
   workingLine,
@@ -190,6 +192,7 @@ const guide = (overrides: Partial<Parameters<typeof homeGuide>[0]>) =>
   homeGuide({
     allowanceUsed: false,
     photo: null,
+    deal: null,
     unreadMatches: 0,
     suggestionsLoading: false,
     typing: false,
@@ -232,6 +235,28 @@ test("new matches lead the home guide's line while his mood follows the search b
     false,
     "a sleeping Pako has no news",
   );
+});
+
+test("a deal that needs the student, or a booked pickup, comes before new matches on home", () => {
+  const offer = { kind: "offer", other: "Léa", title: "White study desk" } as const;
+  assert.deepEqual(guide({ deal: offer, unreadMatches: 2 }), {
+    mood: "happy",
+    line: "Léa made you an offer for the White study desk.",
+    newMatches: false,
+  });
+  assert.equal(guide({ deal: offer, typing: true }).mood, "listen");
+  assert.deepEqual(
+    guide({
+      deal: { kind: "booked", title: "White study desk", when: "Fri 20 Nov, 18:00" },
+    }),
+    {
+      mood: "wave",
+      line: "Pickup booked: the White study desk, Fri 20 Nov, 18:00.",
+      newMatches: false,
+    },
+  );
+  assert.equal(guide({ deal: offer, allowanceUsed: true }).mood, "sleep");
+  assert.equal(guide({ deal: offer, photo: "reading" }).mood, "search");
 });
 
 test("a photo search speaks first on home: Pako listens to a drag, looks at the photo, then says what he needs", () => {
@@ -717,4 +742,73 @@ test("Pako's thread lines name the other student and never guess their pronouns"
   ];
   for (const moment of every)
     assert.doesNotMatch(line(moment), /\b(?:he|she|him|her|his|hers)\b/i);
+});
+
+test("on the deal card Pako listens while the other side decides, cheers once both confirmed and is sad when it ends", () => {
+  const names = { other: "Léa", title: "White study desk" };
+  const terms = {
+    amount: 45,
+    fulfillment: "pickup" as const,
+    pickupAt: "2026-11-20T18:30:00.000Z",
+    pickupTime: "Fri 20 Nov, 19:30",
+    pickupPoint: "FMEL Vortex · outside reception",
+  };
+  const guide = (moment: ThreadMoment) => threadGuide(moment, names);
+  assert.deepEqual(guide({ phase: "deal_offer", terms }), {
+    mood: "listen",
+    line: "Léa offers CHF 45 on Fri 20 Nov, 19:30 at FMEL Vortex · outside reception. Confirm, counter or decline?",
+  });
+  assert.equal(
+    guide({ phase: "deal_partial", terms: { ...terms, pickupAt: null, pickupTime: null, pickupPoint: null } }).line,
+    "Léa suggests CHF 45. Fill in the rest, and they can confirm.",
+  );
+  assert.equal(guide({ phase: "deal_waiting" }).mood, "listen");
+  assert.deepEqual(guide({ phase: "deal_agreed", role: "buyer" }), {
+    mood: "cheer",
+    line: "Deal! The White study desk is reserved for you.",
+  });
+  assert.equal(
+    guide({ phase: "deal_agreed", role: "seller" }).line,
+    "Deal with Léa! The White study desk is reserved until pickup.",
+  );
+  assert.equal(guide({ phase: "deal_cancelled", by: "them" }).line, "Léa cancelled the deal.");
+  assert.equal(guide({ phase: "deal_cancelled", by: "me" }).mood, "sad");
+  assert.equal(threadReactionMs({ phase: "deal_agreed", role: "buyer" }, "cheer"), 2400);
+  assert.equal(threadReactionMs({ phase: "deal_waiting" }, "listen"), null);
+  assert.equal(threadReactionMs({ phase: "error" }, "dizzy"), 2600);
+  for (const moment of [
+    { phase: "deal_waiting" },
+    { phase: "deal_partial", terms },
+    { phase: "deal_cancelled", by: "listing" },
+  ] as ThreadMoment[])
+    assert.doesNotMatch(guide(moment).line, /\b(?:he|she|him|her|his|hers)\b/i);
+});
+
+test("Pako mentions an offer waiting for the student, or a booked pickup, on home", () => {
+  const terms = {
+    amount: 40,
+    fulfillment: "pickup" as const,
+    pickupAt: "2026-11-20T17:00:00.000Z",
+    pickupTime: "Fri 20 Nov, 18:00",
+    pickupPoint: "FMEL Vortex · outside reception",
+  };
+  const base = {
+    conversationId: "c1",
+    listingId: "l1",
+    version: 1,
+    proposal: null,
+    agreed: null,
+    outcome: null,
+    updatedAt: "2026-11-19T13:00:00.000Z",
+  };
+  const news = (deal: Parameters<typeof homeDealNews>[0]["deal"], role: "buyer" | "seller" = "buyer") =>
+    homeDealNews({ deal, role, other: "Léa", title: "White study desk" });
+  const offered = { ...base, status: "open" as const, proposal: { by: "seller" as const, terms, messageId: "m1" } };
+  assert.deepEqual(news(offered), { kind: "offer", other: "Léa", title: "White study desk" });
+  assert.equal(news(offered, "seller"), null);
+  assert.deepEqual(
+    news({ ...base, status: "agreed", agreed: { terms, at: "2026-11-19T13:00:00.000Z" } }),
+    { kind: "booked", title: "White study desk", when: "Fri 20 Nov, 18:00" },
+  );
+  assert.equal(news({ ...base, status: "cancelled" }), null);
 });

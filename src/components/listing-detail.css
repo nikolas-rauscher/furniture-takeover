@@ -107,6 +107,44 @@
   font-weight: 700;
   line-height: 1.6;
 }
+/* A listing reserved by the student's own deal says so in blue. */
+.listing-detail-status[data-mine] {
+  background: var(--blue);
+}
+/* The buyer's deal on this listing, as its thread says it. */
+.listing-detail-deal {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: var(--type-label);
+  line-height: 1.4;
+}
+.listing-detail-deal[data-tone="booked"],
+.listing-detail-deal[data-tone="needs"] {
+  background: var(--selected);
+  color: var(--blue-dark);
+}
+.listing-detail-deal strong {
+  font-weight: 700;
+}
+.listing-detail-deal-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: var(--on-primary);
+}
+.listing-detail-deal[data-tone="closed"] .listing-detail-deal-icon {
+  background: var(--lip);
+  color: var(--ink);
+}
 .listing-detail-location {
   display: flex;
   align-items: center;

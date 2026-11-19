@@ -158,8 +158,11 @@ const normalized = (text: string) =>
     .replace(/(?<=\d)\s+(?=(?:cm|mm|m)\b)/g, "")
     .replace(/\s+/g, " ")
     .trim();
+// Messages contain only server-defined wording and validated field names.
+export class ActionRejection extends Error {}
+
 function fail(message: string): never {
-  throw new Error(`ACTION_REJECTED: ${message}`);
+  throw new ActionRejection(`ACTION_REJECTED: ${message}`);
 }
 const contains = (text: string, quote: string) =>
   normalized(text).includes(normalized(quote));

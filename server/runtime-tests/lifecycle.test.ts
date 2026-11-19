@@ -38,7 +38,8 @@ test("missing keys and invalid input never call a provider or return demo succes
   assert.equal(invalid[0].type, "error");
   assert.equal(model.doStreamCalls.length, 0);
 });
-test("eight-step tool limit stops real loop execution instead of reporting completion", async () => {
+test("eight-step tool limit stops real loop execution instead of reporting completion", async (t) => {
+  const log = t.mock.method(console, "error", () => {});
   let count = 0;
   const model = new MockLanguageModelV4({
     doStream: async () => {
@@ -55,6 +56,13 @@ test("eight-step tool limit stops real loop execution instead of reporting compl
     { text: "desk", inventory: [ownDesk] },
   );
   assert.equal(count, 8);
+  const [prefix, diagnostic] = log.mock.calls[0].arguments;
+  assert.equal(prefix, "[agent-run]");
+  assert.deepEqual(JSON.parse(diagnostic).stepSequence,
+    Array.from({ length: 8 }, (_, i) => ({
+      step: i + 1,
+      outcomes: [i % 2 ? "show_takeover_listings: 0 displayedIds" : "inventory_search: 1 items"],
+    })));
   assert.ok(
     events.some(
       (event) => event.type === "error" && event.code === "STEP_LIMIT",

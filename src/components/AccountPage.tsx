@@ -22,6 +22,7 @@ import {
   Check,
   Ellipsis,
   MapPin,
+  MessageCircle,
   Pencil,
   Plus,
   Image as ImageIcon,
@@ -170,6 +171,10 @@ type AccountPageProps = {
   /** The listings that were just published, celebrated for a few seconds. */
   publishedIds: string[];
   onCelebrationEnd(): void;
+  /** A buyer's agreed deal on a listing: who it is reserved for, and its conversation. */
+  agreementFor?(
+    listingId: string,
+  ): { chip: string; onOpenChat(): void } | undefined;
 };
 
 export default function AccountPage({
@@ -188,6 +193,7 @@ export default function AccountPage({
   renderProduct,
   publishedIds,
   onCelebrationEnd,
+  agreementFor,
 }: AccountPageProps) {
   const endCelebration = useEffectEvent(onCelebrationEnd);
   const publishedKey = publishedIds.join(" ");
@@ -277,117 +283,130 @@ export default function AccountPage({
       <ProductGrid items={items} renderProduct={renderProduct} />
     ) : (
       <div className="own-listings">
-        {items.map((item) => (
-          <article
-            className={cn(
-              "own-listing linked-card",
-              publishedIds.includes(item.id) && "is-published",
-            )}
-            key={item.id}
-          >
-            {publishedIds.includes(item.id) && (
-              <PublishedStamp label={cloud ? "Live" : "Saved"} />
-            )}
-            <div
+        {items.map((item) => {
+          const agreement = agreementFor?.(item.id);
+          return (
+            <article
               className={cn(
-                "own-listing-image",
-                item.status === "withdrawn" && "listing-archived-image",
+                "own-listing linked-card",
+                publishedIds.includes(item.id) && "is-published",
               )}
+              key={item.id}
             >
-              {item.image ? (
-                <img src={item.image} alt="" />
-              ) : (
-                <ImageIcon size={28} aria-hidden="true" />
+              {publishedIds.includes(item.id) && (
+                <PublishedStamp label={cloud ? "Live" : "Saved"} />
               )}
-            </div>
-            <div className="own-listing-body">
-              <div className="own-listing-heading">
-                <h2>
-                  {item.status === "withdrawn" ? (
-                    item.title
-                  ) : (
-                    <Button
-                      className="own-listing-title card-link"
-                      onClick={() => onOpen(item)}
-                    >
-                      {item.title}
-                    </Button>
-                  )}
-                </h2>
-                <span
-                  className="chip own-listing-status"
-                  data-status={item.status}
-                >
-                  {STATUS_LABELS[item.status]}
-                </span>
+              <div
+                className={cn(
+                  "own-listing-image",
+                  item.status === "withdrawn" && "listing-archived-image",
+                )}
+              >
+                {item.image ? (
+                  <img src={item.image} alt="" />
+                ) : (
+                  <ImageIcon size={28} aria-hidden="true" />
+                )}
               </div>
-              <strong>{money(item.price)}</strong>
-              <p>
-                <MapPin size={14} aria-hidden="true" />
-                <span>
-                  {item.location}
-                  {item.available ? ` · ${item.available}` : ""}
-                </span>
-              </p>
-            </div>
-            <div className="listing-actions">
-              {item.status !== "withdrawn" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onEdit(item)}
-                >
-                  <Pencil size={14} />
-                  Edit
-                </Button>
-              )}
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={<Button variant="ghost" size="icon" />}
-                  aria-label={`Listing actions for ${item.title}`}
-                >
-                  <Ellipsis size={20} />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {item.status === "active" && (
-                    <DropdownMenuItem
-                      onClick={() => onStatusChange(item.id, "reserved")}
-                    >
-                      Mark reserved
-                    </DropdownMenuItem>
-                  )}
-                  {(item.status === "active" || item.status === "reserved") && (
-                    <DropdownMenuItem
-                      onClick={() => onStatusChange(item.id, "sold")}
-                    >
-                      Mark sold
-                    </DropdownMenuItem>
-                  )}
-                  {item.status !== "active" && (
-                    <DropdownMenuItem
-                      onClick={() => onStatusChange(item.id, "active")}
-                    >
-                      {item.status === "withdrawn"
-                        ? "Restore listing"
-                        : "Make active"}
-                    </DropdownMenuItem>
-                  )}
-                  {item.status !== "withdrawn" && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => onStatusChange(item.id, "withdrawn")}
+              <div className="own-listing-body">
+                <div className="own-listing-heading">
+                  <h2>
+                    {item.status === "withdrawn" ? (
+                      item.title
+                    ) : (
+                      <Button
+                        className="own-listing-title card-link"
+                        onClick={() => onOpen(item)}
                       >
-                        <Archive size={16} />
-                        Archive listing
+                        {item.title}
+                      </Button>
+                    )}
+                  </h2>
+                  <span
+                    className="chip own-listing-status"
+                    data-status={item.status}
+                  >
+                    {agreement?.chip ?? STATUS_LABELS[item.status]}
+                  </span>
+                </div>
+                <strong>{money(item.price)}</strong>
+                <p>
+                  <MapPin size={14} aria-hidden="true" />
+                  <span>
+                    {item.location}
+                    {item.available ? ` · ${item.available}` : ""}
+                  </span>
+                </p>
+              </div>
+              <div className="listing-actions">
+                {item.status !== "withdrawn" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onEdit(item)}
+                  >
+                    <Pencil size={14} />
+                    Edit
+                  </Button>
+                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={<Button variant="ghost" size="icon" />}
+                    aria-label={`Listing actions for ${item.title}`}
+                  >
+                    <Ellipsis size={20} />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {agreement && (
+                      <>
+                        <DropdownMenuItem onClick={agreement.onOpenChat}>
+                          <MessageCircle size={16} />
+                          Open chat
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
+                    {item.status === "active" && (
+                      <DropdownMenuItem
+                        onClick={() => onStatusChange(item.id, "reserved")}
+                      >
+                        Mark reserved
                       </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </article>
-        ))}
+                    )}
+                    {(item.status === "active" ||
+                      item.status === "reserved") && (
+                      <DropdownMenuItem
+                        onClick={() => onStatusChange(item.id, "sold")}
+                      >
+                        Mark sold
+                      </DropdownMenuItem>
+                    )}
+                    {item.status !== "active" && (
+                      <DropdownMenuItem
+                        onClick={() => onStatusChange(item.id, "active")}
+                      >
+                        {item.status === "withdrawn"
+                          ? "Restore listing"
+                          : "Make active"}
+                      </DropdownMenuItem>
+                    )}
+                    {item.status !== "withdrawn" && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => onStatusChange(item.id, "withdrawn")}
+                        >
+                          <Archive size={16} />
+                          Archive listing
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </article>
+          );
+        })}
       </div>
     )
   ) : (

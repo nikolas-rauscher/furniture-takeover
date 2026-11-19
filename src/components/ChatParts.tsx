@@ -8,11 +8,14 @@ import {
 } from "react";
 import { Image as ImageIcon, LoaderCircle, Send } from "@/components/icons";
 import { cn } from "@/lib/utils";
+import type { DealRole } from "../../shared/deal";
 import { useEntrance } from "../hooks/useEntrance";
 import { useSaved } from "../hooks/useSaved";
+import { agreedWords } from "../dealWords";
 import { fitTextarea } from "../textarea";
 import Confetti from "./onboarding/Confetti";
 import Pako, { PAKO_FLIGHT_MS } from "./onboarding/Pako";
+import type { PakoMood } from "./onboarding/storyTypes";
 import { Button } from "./ui/button";
 import {
   InputGroup,
@@ -26,8 +29,12 @@ import "./messages.css";
 const ARRIVAL = { type: "spring", stiffness: 460, damping: 34 } as const;
 /** Thread cards rise in one after another, capped so long inboxes stay quick. */
 const MAX_STAGGERED_THREADS = 8;
-/** A sent offer is celebrated for one delivery flight: the note leaves once Pako has landed. */
-const CELEBRATION_MS = PAKO_FLIGHT_MS;
+/** How long each celebration stays: a sent offer for one delivery flight, a deal a little longer. */
+const CELEBRATION_MS: Record<ChatMoment["kind"], number> = {
+  sent: PAKO_FLIGHT_MS,
+  confirmed: PAKO_FLIGHT_MS,
+  agreed: 3600,
+};
 /** Enough history to label recent threads; older messages lose the label. */
 const MAX_REMEMBERED_DRAFTS = 300;
 
@@ -294,22 +301,74 @@ export function usePakoDrafts() {
   };
 }
 
-/** The other student whose turn it is after an offer went out; null while calm. */
-export function useSentCelebration() {
-  const [recipient, setRecipient] = useState<string | null>(null);
+/** A small joy in a thread: an offer went out, the student confirmed, or both did. */
+export type ChatMoment =
+  | { kind: "sent"; other: string }
+  | { kind: "confirmed"; other: string }
+  | { kind: "agreed"; role: DealRole; other: string; title: string };
+
+/** The celebration on screen and the thread it belongs to, if any; it leaves by itself. */
+export function useChatCelebration() {
+  const [moment, setMoment] = useState<
+    (ChatMoment & { threadKey: string }) | null
+  >(null);
   useEffect(() => {
-    if (recipient === null) return;
-    const timer = setTimeout(() => setRecipient(null), CELEBRATION_MS);
+    if (moment === null) return;
+    const timer = setTimeout(
+      () => setMoment(null),
+      CELEBRATION_MS[moment.kind],
+    );
     return () => clearTimeout(timer);
-  }, [recipient]);
-  return [recipient, setRecipient] as const;
+  }, [moment]);
+  return [moment, setMoment] as const;
 }
 
-/** A short celebration once an offer Pako drafted is sent: he flies it over on beating lids. */
-export function SentCelebration({ recipient }: { recipient: string }) {
+const CELEBRATION_MOODS: Record<ChatMoment["kind"], PakoMood> = {
+  sent: "deliver",
+  confirmed: "happy",
+  agreed: "cheer",
+};
+
+function celebrationWords(moment: ChatMoment): ReactNode {
+  switch (moment.kind) {
+    case "sent":
+      return (
+        <>
+          <strong>Offer sent to {moment.other}!</strong> Now it's their turn.
+        </>
+      );
+    case "confirmed":
+      return (
+        <>
+          <strong>You confirmed!</strong> Now it's {moment.other}'s turn.
+        </>
+      );
+    case "agreed": {
+      const { cheer, meaning } = agreedWords(
+        moment.role,
+        moment.other,
+        moment.title,
+      );
+      return (
+        <>
+          <strong>{cheer}</strong> {meaning}
+        </>
+      );
+    }
+  }
+}
+
+/**
+ * A short celebration in the thread: Pako flies a sent offer over on beating
+ * lids, is happy when the student confirmed and cheers when both did. Paper
+ * confetti marks an offer and a deal; with reduced motion Pako stands still
+ * and no confetti flies.
+ */
+export function ChatCelebration({ moment }: { moment: ChatMoment }) {
   return (
     <motion.p
       className="chat-celebration"
+      data-kind={moment.kind}
       role="status"
       initial={{ opacity: 0, y: 12, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -317,16 +376,60 @@ export function SentCelebration({ recipient }: { recipient: string }) {
       transition={ARRIVAL}
     >
       <span className="chat-celebration-pako" aria-hidden="true">
-        <Pako mood="deliver" size={52} />
-        <span className="chat-celebration-burst">
-          <Confetti />
-        </span>
+        <Pako mood={CELEBRATION_MOODS[moment.kind]} size={52} />
+        {moment.kind !== "confirmed" && (
+          <span className="chat-celebration-burst">
+            <Confetti />
+          </span>
+        )}
       </span>
-      <span className="chat-celebration-text">
-        <strong>Offer sent to {recipient}!</strong> Now it's their turn.
-      </span>
+      <span className="chat-celebration-text">{celebrationWords(moment)}</span>
     </motion.p>
   );
+}
+
+/** A centred chip in the thread: what a message changed in the deal, or news from the app. */
+export function ChatEvent({
+  text,
+  system = false,
+}: {
+  text: string;
+  /** Nobody wrote it; the app noted it, such as another buyer's deal. */
+  system?: boolean;
+}) {
+  return (
+    <motion.p
+      className="chat-event"
+      data-system={system || undefined}
+      initial={{ opacity: 0, scale: 0.94 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={ARRIVAL}
+    >
+      <span>{text}</span>
+    </motion.p>
+  );
+}
+
+const isEventIds = isMessageIds;
+/** Enough celebrated deals to never cheer twice for recent ones. */
+const MAX_REMEMBERED_CELEBRATIONS = 300;
+
+/** Remembers which deal moments were already celebrated, so each plays once. */
+export function useCelebrated() {
+  const [ids, setIds] = useSaved<string[]>(
+    "takeover-celebrated",
+    [],
+    isEventIds,
+  );
+  return {
+    celebrated: (id: string) => ids.includes(id),
+    remember: (id: string) =>
+      setIds((current) =>
+        [...current.filter((item) => item !== id), id].slice(
+          -MAX_REMEMBERED_CELEBRATIONS,
+        ),
+      ),
+  };
 }
 
 /** The shared composer: the field grows with its text up to a limit; Ctrl/⌘ + Enter sends. */

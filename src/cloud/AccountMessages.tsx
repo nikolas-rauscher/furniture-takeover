@@ -9,7 +9,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Skeleton } from "../components/ui/skeleton";
 import { AnimatePresence } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import {
   Archive,
   ArchiveRestore,
@@ -17,16 +17,22 @@ import {
   ArrowLeft,
 } from "@/components/icons";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
-import type { MessagesProps } from "../components/MessagesPage";
+import type {
+  MessagesProps,
+  ThreadRequest,
+} from "../components/MessagesPage";
 import InboxEmpty from "../components/InboxEmpty";
 import {
   ChatPartner,
   ChatSegment,
   ChatThreadCard,
-  SentCelebration,
   usePakoDrafts,
-  useSentCelebration,
 } from "../components/ChatParts";
+import {
+  useThreadDeal,
+  type DealController,
+  type ThreadEvent,
+} from "../components/ThreadDeal";
 import { useThreadPako } from "../components/ThreadPako";
 import {
   ThreadComposer,
@@ -36,15 +42,21 @@ import {
 import Pako from "../components/onboarding/Pako";
 import { usePageVisible } from "../hooks/usePageVisible";
 import { accountInboxThread, isUnread } from "../inboxActivity";
+import { newestAt } from "../inboxDeals";
 import type { ThreadMessage } from "../pakoThread";
+import { NO_TERMS } from "../dealOptions";
+import { attachedTermsNote, threadDealNote } from "../dealWords";
 import type { Conversation, Message } from "./client";
 import { fail } from "./client";
+import { sendAccountDeal } from "./deals";
 import { sendCloudMessage } from "./messages";
 import { accountTurnCache } from "./pakoDrafts";
 import { PendingMessage } from "../pendingMessage";
 import Report from "./Report";
 import type { AccountInbox } from "./useAccountInbox";
+import { useAccountDeal } from "./useAccountDeal";
 import { useAccountThread } from "./useAccountThread";
+import { threadDealSnapshot } from "../../shared/deal";
 import { money, type Product } from "../../shared/marketplace";
 const FILTERS = [
   ["all", "All"],
@@ -76,12 +88,18 @@ export default function AccountMessages({
   onOpenListing,
   onBrowse,
   initialMessage,
+  initialTerms,
+  offerRequest,
+  homePoint,
+  onListingStatus,
   onBeforeSend,
   onSent,
   onDeleted,
+  threadRequest,
 }: MessagesProps & {
   account: { client: SupabaseClient; session: Session };
   inbox: AccountInbox;
+  threadRequest?: ThreadRequest;
 }) {
   const { client, session } = account,
     userId = session.user.id;
@@ -111,6 +129,18 @@ export default function AccountMessages({
     requestedSelection.current = { listingId, initialMessage };
     selectionDone.current = false;
   }, [listingId, initialMessage]);
+  // A deal opened from elsewhere in the app, such as a seller's from Home, opens its own thread once.
+  const openedThread = useRef<ThreadRequest>(undefined);
+  useEffect(() => {
+    if (
+      !threadRequest ||
+      openedThread.current === threadRequest ||
+      !rows?.threads.some((thread) => thread.id === threadRequest.id)
+    )
+      return;
+    openedThread.current = threadRequest;
+    setSelected(threadRequest.id);
+  }, [threadRequest, rows]);
   // Once the inbox has loaded, open the conversation the app asked for, or the newest one.
   useEffect(() => {
     if (!rows || selectionDone.current) return;
@@ -180,13 +210,24 @@ export default function AccountMessages({
   // The opening offer Pako prepared stays labelled as his until the student edits it.
   const offerDraft = Boolean(initialMessage) && text === initialMessage;
   const pakoDrafts = usePakoDrafts();
-  const [celebration, setCelebration] = useSentCelebration();
   const thread = useAccountThread(client, current?.id);
+  const deal = useAccountDeal(client, inbox, current?.id);
+  const events: ThreadEvent[] = deal.events.map(
+    ({ id, kind, terms, messageId, at }) => ({
+      id,
+      kind,
+      terms,
+      messageId,
+      at,
+    }),
+  );
+  const structured = new Set(events.map((event) => event.messageId));
   const messages: ThreadMessage[] = thread.messages.map((message) => ({
     id: message.id,
     from: fromSide(message, userId),
     text: message.body,
     at: message.created_at,
+    ...(structured.has(message.id) ? { structured: true } : {}),
   }));
   const pageVisible = usePageVisible();
   const visible = Boolean(current);
@@ -199,7 +240,8 @@ export default function AccountMessages({
             role,
             listing: product,
             messages,
-            loaded: thread.loaded,
+            loaded: thread.loaded && deal.loaded,
+            deal: threadDealSnapshot(deal.deal, role),
             cache: accountTurnCache(client, userId, current.id),
           }
         : null,
@@ -209,13 +251,79 @@ export default function AccountMessages({
     onText: setText,
     canNudge: !sampleSeller,
   });
-  const latestTheirs = [...messages]
-    .reverse()
-    .find((message) => message.from === "them");
+  /** A first offer starts the conversation, then records the offer with its message. */
+  const controller: DealController = current
+    ? deal
+    : {
+        ...deal,
+        act: async (action, body, messageId) => {
+          const conversation = await conversationFor(product!.id);
+          const result = await sendAccountDeal(
+            client,
+            conversation.id,
+            action,
+            body,
+            0,
+            messageId,
+          );
+          setSelected(conversation.id);
+          void inbox.refresh();
+          window.dispatchEvent(
+            new CustomEvent("takeover-message-sent", {
+              detail: conversation.id,
+            }),
+          );
+          return result;
+        },
+      };
+  const threadDeal = useThreadDeal({
+    threadKey: current?.id ?? selected,
+    controller,
+    role,
+    otherName,
+    listing: product,
+    messages,
+    events,
+    turn: assistant.turn,
+    enabled: !otherBlocked && !sampleSeller,
+    visible,
+    homePoint,
+    onStatusChange: onListingStatus,
+    onWrite: setText,
+  });
+  // A listing's "Draft an offer" opens the offer card in its thread, once per tap.
+  const offerOpened = useRef<number>(undefined);
+  const offerThread =
+    product?.id === listingId &&
+    role === "buyer" &&
+    controller.loaded &&
+    threadDeal.open;
+  const openOffer = useEffectEvent(() =>
+    threadDeal.openOffer({ mode: "offer", terms: NO_TERMS }),
+  );
   useEffect(() => {
-    if (visible && pageVisible && current && latestTheirs)
-      void inbox.markRead(current.id, latestTheirs.at);
-  }, [visible, pageVisible, current?.id, latestTheirs?.at, inbox.markRead]);
+    if (!offerRequest || offerOpened.current === offerRequest || !offerThread)
+      return;
+    offerOpened.current = offerRequest;
+    openOffer();
+  }, [offerRequest, offerThread]);
+  // Terms travel with the text from Pako's option or the opening offer while the deal can take them.
+  const attached =
+    assistant.terms ?? (offerDraft ? (initialTerms ?? null) : null);
+  const termsNote =
+    attached && threadDeal.open && !deal.error
+      ? attachedTermsNote(text, attached)
+      : null;
+  // Reading a thread covers the other side's newest message and news nobody wrote, such as another buyer's deal.
+  const news = current && rows?.systemLatest[current.id];
+  const seenUpTo = newestAt([
+    [...messages].reverse().find((message) => message.from === "them")?.at,
+    news && news.sender_id !== userId ? news.created_at : undefined,
+  ]);
+  useEffect(() => {
+    if (visible && pageVisible && current && seenUpTo)
+      void inbox.markRead(current.id, seenUpTo);
+  }, [visible, pageVisible, current?.id, seenUpTo, inbox.markRead]);
   async function changeArchive(id: string, remove: boolean) {
     setBusy(true);
     setError("");
@@ -276,45 +384,60 @@ export default function AccountMessages({
       setBusy(false);
     }
   }
+  /** A conversation this view started, until the inbox lists it. */
+  const started = useRef<Conversation>(undefined);
+  /** The conversation to write in: the open one, or a new one with this listing's seller. */
+  async function conversationFor(itemId: string): Promise<Conversation> {
+    if (current) return current;
+    if (started.current?.listing_id === itemId) return started.current;
+    const r = await client.rpc("start_conversation", { item: itemId });
+    fail(r.error);
+    const cs = await client
+      .from("conversations")
+      .select("*")
+      .eq("id", r.data)
+      .single();
+    fail(cs.error);
+    const conversation = cs.data as Conversation;
+    started.current = conversation;
+    inbox.change((rows) => ({
+      ...rows,
+      threads: [
+        conversation,
+        ...rows.threads.filter((x) => x.id !== conversation.id),
+      ],
+    }));
+    return conversation;
+  }
+  /** A message without terms: the conversation's ordinary path. */
+  async function sendPlain(conversation: Conversation) {
+    const id = pending.current.idFor(conversation.id, role, text);
+    await sendCloudMessage(client, {
+      id,
+      conversation_id: conversation.id,
+      sender_id: userId,
+      body: text.trim(),
+    });
+    pending.current.acknowledge(id);
+    return id;
+  }
   async function send() {
     const fromPako = offerDraft || assistant.draftedByPako;
     const celebrates = offerDraft || assistant.celebrates;
+    const withTerms = attached && termsNote?.states ? attached : null;
     setBusy(true);
     setError("");
     const key = selected;
     try {
       const itemId = current?.listing_id ?? product!.id;
       onBeforeSend?.(itemId, role);
-      let conversation = current;
-      if (!conversation) {
-        const r = await client.rpc("start_conversation", { item: itemId });
-        fail(r.error);
-        const cs = await client
-          .from("conversations")
-          .select("*")
-          .eq("id", r.data)
-          .single();
-        fail(cs.error);
-        const started = cs.data as Conversation;
-        conversation = started;
-        inbox.change((rows) => ({
-          ...rows,
-          threads: [
-            started,
-            ...rows.threads.filter((x) => x.id !== started.id),
-          ],
-        }));
-      }
-      const id = pending.current.idFor(conversation.id, role, text);
-      await sendCloudMessage(client, {
-        id,
-        conversation_id: conversation.id,
-        sender_id: userId,
-        body: text.trim(),
-      });
-      pending.current.acknowledge(id);
+      const conversation = await conversationFor(itemId);
+      const id = withTerms
+        ? await threadDeal.sendTerms(withTerms, text.trim())
+        : await sendPlain(conversation);
       if (fromPako) pakoDrafts.remember(id);
-      if (celebrates) setCelebration(otherName);
+      if (celebrates && !withTerms)
+        threadDeal.celebrate({ kind: "sent", other: otherName });
       assistant.sent();
       onSent?.(itemId, role, text.trim());
       setDrafts((xs) => ({ ...xs, [key]: "", [conversation.id]: "" }));
@@ -343,12 +466,19 @@ export default function AccountMessages({
     }
   }
   const threadNote = (c: Conversation, item: Product | undefined) => {
+    const threadDealState = rows?.deals?.[c.id];
+    const dealNote = threadDealNote(
+      threadDealState,
+      c.seller_id === userId ? "seller" : "buyer",
+    );
+    if (threadDealState?.status === "agreed") return dealNote;
     if (c.buyer_id === userId && item && item.status !== "active")
       return GONE_NOTES[item.status];
     const newest = latest[c.id];
-    return newest && fromSide(newest, userId) === "them"
-      ? "Your turn"
-      : undefined;
+    return (
+      dealNote ??
+      (newest && fromSide(newest, userId) === "them" ? "Your turn" : undefined)
+    );
   };
   return (
     <section
@@ -416,7 +546,15 @@ export default function AccountMessages({
                 note={threadNote(c, item)}
                 unread={
                   rows?.reads != null &&
-                  isUnread(accountInboxThread(c.id, newest, userId), rows.reads)
+                  isUnread(
+                    accountInboxThread(
+                      c.id,
+                      newest,
+                      userId,
+                      rows.systemLatest[c.id],
+                    ),
+                    rows.reads,
+                  )
                 }
                 onSelect={() => {
                   setSelected(c.id);
@@ -530,6 +668,7 @@ export default function AccountMessages({
                   )}
                 </div>
               </header>
+              {threadDeal.card}
               <ThreadLog
                 threadKey={current?.id ?? selected}
                 messages={messages}
@@ -537,6 +676,7 @@ export default function AccountMessages({
                 loaded={thread.loaded}
                 error={thread.error}
                 drafted={pakoDrafts.drafted}
+                events={events}
                 extras={(message) => (
                   <Report client={client} messageId={message.id} />
                 )}
@@ -551,9 +691,7 @@ export default function AccountMessages({
                   )
                 }
               />
-              <AnimatePresence>
-                {celebration && <SentCelebration recipient={celebration} />}
-              </AnimatePresence>
+              <AnimatePresence>{threadDeal.celebration}</AnimatePresence>
               {otherBlocked && (
                 <p className="inbox-blocked-note" role="status">
                   You blocked this user. Unblock them to send a message.
@@ -565,7 +703,15 @@ export default function AccountMessages({
                   a draft here.
                 </p>
               )}
-              {!otherBlocked && !sampleSeller && assistant.tray}
+              {!otherBlocked && !sampleSeller && deal.error && (
+                <p className="chat-sample-note" role="status">
+                  {deal.error}
+                </p>
+              )}
+              {!otherBlocked &&
+                !sampleSeller &&
+                !threadDeal.celebrating &&
+                assistant.tray(threadDeal.trayMoment)}
               <ThreadComposer
                 text={text}
                 busy={busy}
@@ -574,9 +720,11 @@ export default function AccountMessages({
                 error={error}
                 pakoDrafted={offerDraft || assistant.draftedByPako}
                 tools={!otherBlocked && !sampleSeller && assistant.askMenu}
+                terms={termsNote}
                 onTextChange={setText}
                 onSend={() => void send()}
               />
+              {threadDeal.editor}
             </>
           ) : (
             <div className="inbox-empty">

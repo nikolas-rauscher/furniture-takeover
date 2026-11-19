@@ -1,4 +1,5 @@
 import {
+  dealPhase,
   messageStatesTerms,
   missingTerms,
   type Deal,
@@ -35,6 +36,28 @@ const zurichWeekday = new Intl.DateTimeFormat("en-GB", {
 export const shortPickup = (iso: string) =>
   `${zurichWeekday.format(new Date(iso))} ${zurichClockTime(iso)}`;
 
+const zurichDay = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Zurich",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const DAY_MS = 86_400_000;
+/** Whole Zurich calendar days from one instant to another. */
+const daysBetween = (from: number, to: number) =>
+  Math.round(
+    (Date.parse(zurichDay.format(to)) - Date.parse(zurichDay.format(from))) /
+      DAY_MS,
+  );
+
+/** A pickup on a chip: "Today 18:00", "Tomorrow 18:00", "Sat 11:00" within the week, otherwise its date. */
+export function slotLabel(iso: string, now: Date): string {
+  const days = daysBetween(now.getTime(), Date.parse(iso));
+  if (days === 0) return `Today ${zurichClockTime(iso)}`;
+  if (days === 1) return `Tomorrow ${zurichClockTime(iso)}`;
+  return days < 7 ? shortPickup(iso) : formatPickup(iso);
+}
+
 /** Terms for the tiles: an exact pickup reads as its date and clock time. */
 export function shownTerms(terms: DealTerms): ShownTerms {
   return {
@@ -69,6 +92,26 @@ export function termsSummary(terms: DealTerms, length: Length): string {
       terms.pickupPoint && shortPlace(terms.pickupPoint),
     );
   return parts.filter(Boolean).join(" · ");
+}
+
+/** The terms inside a sentence: "CHF 45 on Fri 20 Nov, 19:30 at FMEL Vortex · outside reception". */
+export function termsSentence(terms: DealTerms): string {
+  const price =
+    terms.amount === null
+      ? null
+      : terms.amount === 0
+        ? "it free"
+        : termPrice(terms.amount);
+  if (terms.fulfillment === "shipping")
+    return [price, "with shipping"].filter(Boolean).join(" ");
+  const time = pickupWords(terms, "full");
+  return [
+    price ?? (time && "a pickup"),
+    time && `on ${time}`,
+    terms.pickupPoint && `at ${terms.pickupPoint}`,
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 /** What an offer leaves open, in a few words: "time and place open". */
@@ -239,6 +282,75 @@ export function dealStrip({
     : null;
 }
 
+/** What a student reads once both confirmed: the cheer, then what it means for the item. */
+export function agreedWords(
+  role: DealRole,
+  other: string,
+  title: string,
+): { cheer: string; meaning: string } {
+  return role === "buyer"
+    ? { cheer: "Deal!", meaning: `The ${title} is reserved for you.` }
+    : {
+        cheer: `Deal with ${other}!`,
+        meaning: `The ${title} is reserved until pickup.`,
+      };
+}
+
+/** The deal on a thread card in the inbox: "Offer · CHF 40", "Agreed · Thu 18:00". */
+export function threadDealNote(
+  deal: Deal | null | undefined,
+  role: DealRole,
+): string | undefined {
+  if (!deal) return undefined;
+  if (deal.status === "agreed" && deal.agreed) {
+    const { pickupAt } = deal.agreed.terms;
+    return pickupAt ? `Agreed · ${shortPickup(pickupAt)}` : "Agreed";
+  }
+  if (deal.status === "completed")
+    return role === "seller" ? "Sold" : "Picked up";
+  if (deal.status === "cancelled") return "Deal cancelled";
+  const { proposal } = deal;
+  if (!proposal) return undefined;
+  const price =
+    proposal.terms.amount === null ? "" : ` · ${termPrice(proposal.terms.amount)}`;
+  return proposal.by === role ? `Your offer${price}` : `Offer${price}`;
+}
+
+/**
+ * A deal in one line where its thread is not open, such as on Home or on its
+ * listing: the strip's words, read from the deal alone.
+ */
+export function dealView({
+  deal,
+  role,
+  other,
+  listing,
+  now,
+}: {
+  deal: Deal;
+  role: DealRole;
+  other: string;
+  listing: Pick<Product, "price" | "status">;
+  now: Date;
+}): StripView | null {
+  const phase = dealPhase({
+    deal,
+    listing,
+    role,
+    messages: [],
+    turn: null,
+    now,
+  });
+  const view = dealStrip({ phase, deal, role, other, listing });
+  return view?.tone === "start" ? null : view;
+}
+
+/** A seller's listing that an agreed deal reserved: "Reserved for Arjun · Thu 18:00". */
+export const reservedForChip = (other: string, terms: DealTerms) =>
+  [`Reserved for ${other}`, terms.pickupAt && shortPickup(terms.pickupAt)]
+    .filter(Boolean)
+    .join(" · ");
+
 /** The centred chip under a message that changed the deal, or alone for a system event. */
 export function eventChip(event: DealEvent): string {
   switch (event.kind) {
@@ -265,16 +377,16 @@ export function eventChip(event: DealEvent): string {
   }
 }
 
-/** The term a message no longer states, as the student would write it. */
-function missingTermWords(
-  missing: "amount" | "time" | "point",
-  terms: DealTerms,
-): string {
+/** The first term a message does not state, as the student would write it; null when it states them all. */
+export function unstatedTerm(text: string, terms: DealTerms): string | null {
+  const stated = messageStatesTerms(text, terms);
+  if (stated.ok) return null;
+  const [missing] = stated.missing;
   if (missing === "amount")
     return terms.amount === 0 ? "that it's free" : `CHF ${terms.amount}`;
   if (missing === "time")
-    return terms.pickupAt ? zurichClockTime(terms.pickupAt) : terms.pickupTime!;
-  return terms.pickupPoint!;
+    return terms.pickupAt ? zurichClockTime(terms.pickupAt) : terms.pickupTime;
+  return terms.pickupPoint;
 }
 
 /**
@@ -284,15 +396,15 @@ function missingTermWords(
 export function attachedTermsNote(
   text: string,
   terms: DealTerms,
-): { states: true; line: string } | { states: false; line: string } {
-  const stated = messageStatesTerms(text, terms);
-  return stated.ok
+): { states: boolean; line: string } {
+  const unstated = unstatedTerm(text, terms);
+  return unstated === null
     ? {
         states: true,
         line: `Also updates the deal: ${termsSummary(terms, "full")}`,
       }
     : {
         states: false,
-        line: `Your text no longer mentions ${missingTermWords(stated.missing[0], terms)}, so it will be sent as a normal message without updating the deal.`,
+        line: `Your text no longer mentions ${unstated}, so it will be sent as a normal message without updating the deal.`,
       };
 }

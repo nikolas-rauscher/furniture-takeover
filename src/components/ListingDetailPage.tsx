@@ -2,8 +2,10 @@ import { Button } from "./ui/button";
 import type { ReactNode } from "react";
 import {
   ArrowLeft,
+  CalendarCheck,
   Car,
   GitCompareArrows,
+  Handshake,
   MapPin,
   MessageCircle,
   Pencil,
@@ -11,6 +13,7 @@ import {
   Sparkles,
   Truck,
 } from "@/components/icons";
+import type { StripView } from "../dealWords";
 import { listingPhotos } from "../../shared/listingPhotos";
 import { isMine, money, type Product } from "../../shared/marketplace";
 import { transportGuidance } from "../transportGuidance";
@@ -39,6 +42,10 @@ type ListingDetailPageProps = {
   onMessage(): void;
   /** Pako drafts an offer, or plans the pickup of a free item. */
   onOffer(): void;
+  /** The buyer's deal on this listing, read from their conversation. */
+  deal?: StripView;
+  /** Opens the conversation the deal is in. */
+  onOpenChat(): void;
   /** Pako searches for real listings like a sample, whose seller cannot reply. */
   onFindSimilar(): void;
   onEdit(): void;
@@ -46,6 +53,24 @@ type ListingDetailPageProps = {
   /** Feature-flagged availability prototype; replaces "Message seller". */
   availabilityPanel?: ReactNode;
 };
+
+/** Where the buyer's deal on this listing stands, in the words of its thread. */
+function ListingDeal({ view }: { view: StripView }) {
+  const booked = view.tone === "booked";
+  return (
+    <p className="listing-detail-deal" data-tone={view.tone}>
+      <span className="listing-detail-deal-icon" aria-hidden="true">
+        {booked ? <CalendarCheck size={17} /> : <Handshake size={17} />}
+      </span>
+      <span>
+        <strong>{booked ? "Reserved for you" : view.lead}</strong>
+        {[view.detail, view.status].filter(Boolean).map((part) => (
+          <span key={part}> · {part}</span>
+        ))}
+      </span>
+    </p>
+  );
+}
 
 /** The transport estimate in a facts tile: short, so it stays one line in any font. */
 const TRANSPORT_TILES = {
@@ -69,6 +94,8 @@ export default function ListingDetailPage({
   onBack,
   onMessage,
   onOffer,
+  deal,
+  onOpenChat,
   onFindSimilar,
   onEdit,
   onAskAgent,
@@ -154,11 +181,16 @@ export default function ListingDetailPage({
                   {money(selected.price)}
                 </strong>
                 {selected.status !== "active" && (
-                  <span className="listing-detail-status">
+                  <span
+                    className="listing-detail-status"
+                    data-mine={deal?.tone === "booked" || undefined}
+                  >
                     {selected.status === "sold"
                       ? "Sold"
                       : selected.status === "reserved"
-                        ? "Reserved"
+                        ? deal?.tone === "booked"
+                          ? "Reserved for you"
+                          : "Reserved"
                         : "Withdrawn"}
                   </span>
                 )}
@@ -257,27 +289,40 @@ export default function ListingDetailPage({
                 </div>
               ) : (
                 <>
+                  {deal && <ListingDeal view={deal} />}
                   <div
                     className={
-                      selected.status === "active" && !availabilityPanel
+                      (selected.status === "active" || deal) &&
+                      !availabilityPanel
                         ? "listing-detail-dock"
                         : undefined
                     }
                   >
-                    {availabilityPanel ?? (
-                      <Button
-                        animateIcon
-                        className="button primary full"
-                        type="button"
-                        disabled={selected.status !== "active"}
-                        onClick={onMessage}
-                      >
-                        <MessageCircle size={17} />
-                        <span>{dockPrice}Message seller</span>
-                      </Button>
-                    )}
+                    {availabilityPanel ??
+                      (deal ? (
+                        <Button
+                          animateIcon
+                          className="button primary full"
+                          type="button"
+                          onClick={onOpenChat}
+                        >
+                          <MessageCircle size={17} />
+                          <span>{dockPrice}Open chat</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          animateIcon
+                          className="button primary full"
+                          type="button"
+                          disabled={selected.status !== "active"}
+                          onClick={onMessage}
+                        >
+                          <MessageCircle size={17} />
+                          <span>{dockPrice}Message seller</span>
+                        </Button>
+                      ))}
                   </div>
-                  {canOffer(selected) && (
+                  {!deal && canOffer(selected) && (
                     <Button
                       animateIcon
                       className="button secondary"

@@ -85,7 +85,7 @@ const flexiblePickupPattern = String.raw`(?:pickup(?: date)?|collection|date|abh
 const anyBudgetPattern = String.raw`any budget|any price|no\s+(?:budget|price)\s+limit|budget doesn't matter`;
 
 const freeItemPattern = /(?<![-\w])(?<!feel )(?<!not )(?<!smoke )(?<!pet )(?:free(?![-\s]+(?:standing|delivery|shipping|pickup|collection|of|space|to)\b)|gratis|kostenlos)\b/i;
-export const takeoverOnlyPattern = /\b(?:(?:use\s+)?takeover[-\s]+only|(?:use\s+)?only\s+takeover|only (?:my|local|your|our)(?: active)? listings|(?:do not|don't|don’t) search (?:the )?web)\b/i;
+export const takeoverOnlyPattern = /\b(?:(?:use\s+)?takeover[-\s]+only|(?:use\s+)?only\s+(?:on\s+)?takeover|only (?:my|local|your|our)(?: active)? listings|(?:do not|don't|don’t) search (?:the )?web)\b/i;
 
 export function parsePickupDate(
   text: string,
