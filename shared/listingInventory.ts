@@ -1,15 +1,24 @@
-import { withinSearchRadius, type Product } from "./marketplace.ts";
+import {
+  marketplaceToday,
+  matchesPickupWindow,
+  withinSearchRadius,
+  type Product,
+} from "./marketplace.ts";
 import type { AgentRunInventoryItem } from "./runs.ts";
 
 /** Searchable active records, shared by browser listings and the server database. */
 export function listingInventory(
   inventory: Product[],
-  preferences?: { radius?: number },
+  preferences?: { radius?: number; pickupBy?: string },
+  today = marketplaceToday(),
 ): AgentRunInventoryItem[] {
   return inventory
-    .filter((item) =>
-      item.source === "takeover" && item.status === "active" &&
-      withinSearchRadius(item.distance, preferences?.radius),
+    .filter(
+      (item) =>
+        item.source === "takeover" &&
+        item.status === "active" &&
+        withinSearchRadius(item.distance, preferences?.radius) &&
+        matchesPickupWindow(item, preferences?.pickupBy, today),
     )
     .map((item) => ({
       id: item.id.slice(0, 120),
@@ -21,6 +30,7 @@ export function listingInventory(
         item.dimensions && item.dimensions !== "Not specified"
           ? `Measurements: ${item.dimensions}.`
           : "",
+        item.pickupBy ? `Last day to collect: ${item.pickupBy}.` : "",
         item.available ? `Pickup arrangement: ${item.available}.` : "",
         item.distance > 0
           ? `Listed distance: ${item.distance} km (unverified).`

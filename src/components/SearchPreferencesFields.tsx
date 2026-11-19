@@ -57,7 +57,7 @@ export default function SearchPreferencesFields({
         <small>Listings with unknown distance are also shown.</small>
       </label>
       <label>
-        Pickup by
+        I can collect by
         <Input
           type="date"
           min={TODAY}

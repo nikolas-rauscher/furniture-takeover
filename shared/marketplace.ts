@@ -57,12 +57,14 @@ export const defaults: Criteria = {
   condition: "All",
   source: "All",
 };
-export const TODAY = new Intl.DateTimeFormat("en-CA", {
+const zurichCalendar = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Europe/Zurich",
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
-}).format(new Date());
+});
+export const marketplaceToday = () => zurichCalendar.format(new Date());
+export const TODAY = marketplaceToday();
 
 const normalize = (value: string) =>
   value
@@ -319,7 +321,39 @@ export function withinSearchRadius(distance: number | undefined, radius?: number
   return radius === undefined || distance === undefined || distance <= radius;
 }
 
-export function filterProducts(items: Product[], c: Criteria): Product[] {
+export function matchesPickupWindow(
+  item: Pick<Product, "available" | "pickupBy">,
+  buyerDeadline: string | undefined,
+  today: string,
+): boolean {
+  if (!buyerDeadline) return true;
+  const lastDay =
+    item.pickupBy && item.pickupBy < buyerDeadline ? item.pickupBy : buyerDeadline;
+  if (lastDay < today) return false;
+
+  const arrangement = item.available?.trim() ?? "";
+  if (/^(weekend pickup|this weekend)$/i.test(arrangement)) {
+    const saturday = new Date(today + "T12:00:00Z");
+    const weekday = saturday.getUTCDay();
+    if (weekday === 0 || weekday === 6) return true;
+    saturday.setUTCDate(saturday.getUTCDate() + 6 - weekday);
+    return saturday.toISOString().slice(0, 10) <= lastDay;
+  }
+  const start = arrangement.match(
+    /^(available from|pickup from|pickup on|pickup) (today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{4}-\d{2}-\d{2})$/i,
+  );
+  if (!start) return true;
+  const firstDay = parsePickupDate(start[2], today);
+  if (!firstDay) return true;
+  const specificDay = !start[1].toLowerCase().endsWith("from");
+  return firstDay <= lastDay && (!specificDay || firstDay >= today);
+}
+
+export function filterProducts(
+  items: Product[],
+  c: Criteria,
+  today = marketplaceToday(),
+): Product[] {
   return items.filter(
     (p) =>
       p.status !== "withdrawn" &&
@@ -330,7 +364,7 @@ export function filterProducts(items: Product[], c: Criteria): Product[] {
       withinSearchRadius(p.distance, c.radius) &&
       (c.source === "All" || p.source === c.source) &&
       (c.condition === "All" || p.condition === c.condition) &&
-      (!c.pickup || p.pickupBy <= c.pickup) &&
+      matchesPickupWindow(p, c.pickup, today) &&
       (!c.query || queryMatches(p, c.query)),
   );
 }

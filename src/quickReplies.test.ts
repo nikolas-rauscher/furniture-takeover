@@ -122,7 +122,7 @@ test("without listings to act on, the replies narrow the search's own criteria",
       "Cheaper: under CHF 60",
       "Closer: within 2 km",
       "Free items only (CHF 0)",
-      "Ready this weekend",
+      "Collect by Sunday",
     ],
   );
 });
@@ -132,7 +132,7 @@ test("a reply appears only while its criterion can still narrow the search", () 
     texts({ listings: [], search: search(criteria, request) });
   assert.deepEqual(
     narrower({ maxPrice: 500 }, "A desk"),
-    ["Closer: within 2 km", "Free items only (CHF 0)", "Ready this weekend"],
+    ["Closer: within 2 km", "Free items only (CHF 0)", "Collect by Sunday"],
     "the app's default ceiling is not a budget the student chose",
   );
   assert.equal(
@@ -142,14 +142,14 @@ test("a reply appears only while its criterion can still narrow the search", () 
   assert.deepEqual(narrower({ maxPrice: 1_000_000 }, "A desk, any budget"), [
     "Closer: within 2 km",
     "Free items only (CHF 0)",
-    "Ready this weekend",
+    "Collect by Sunday",
   ]);
   assert.deepEqual(
     narrower({ maxPrice: 0, radius: 1, pickup: "2026-11-21" }),
     [],
     "free, within a kilometre and ready on Saturday cannot get narrower",
   );
-  assert.equal(narrower({ pickup: "2026-11-24" }).at(-1), "Ready this weekend");
+  assert.equal(narrower({ pickup: "2026-11-24" }).at(-1), "Collect by Sunday");
 });
 
 test("budgets and distances shrink and grow to amounts students say", () => {
@@ -273,7 +273,7 @@ test("each typed reply changes the search just as the follow-up path reads it", 
     "Cheaper: under CHF 60": { maxPrice: 60 },
     "Closer: within 2 km": { radius: 2 },
     "Free items only (CHF 0)": { maxPrice: 0 },
-    "Ready this weekend": {
+    "Collect by Sunday": {
       pickup: extractSearchConstraints("this weekend").pickup,
     },
     "Raise my budget to CHF 105": { maxPrice: 105 },

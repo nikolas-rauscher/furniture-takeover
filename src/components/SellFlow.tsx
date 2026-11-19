@@ -581,7 +581,7 @@ export default function SellFlow({
                         />
                       </label>
                       <label>
-                        Pickup by<span className="optional">Optional</span>
+                        Last day to collect<span className="optional">Optional</span>
                         <Input
                           type="date"
                           min={pickupMin}
@@ -711,7 +711,7 @@ export default function SellFlow({
               <p>
                 <CalendarDays size={14} />
                 {draft.pickup
-                  ? `Pickup by ${shortDate(draft.pickup)}`
+                  ? `Last day to collect ${shortDate(draft.pickup)}`
                   : "Flexible pickup"}
               </p>
             </div>

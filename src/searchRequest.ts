@@ -239,7 +239,9 @@ export function agentSearchRequest(
     },
     inventory: listingInventory(
       inventory,
-      negotiating || search.intent === "listing_review" ? undefined : search.criteria,
+      negotiating || search.intent === "listing_review"
+        ? undefined
+        : { radius: search.criteria.radius, pickupBy: search.criteria.pickup },
     ).slice(0, 100),
   };
 }
