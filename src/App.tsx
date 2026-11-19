@@ -101,8 +101,18 @@ import { batchStepNote } from "./sellingCelebration";
 import PhotoSplitQuestion from "./components/PhotoSplitQuestion";
 import AgentSuggestions from "./components/AgentSuggestions";
 import AgentRunPanel from "./components/AgentRunPanel";
-import { useAgentRun } from "./hooks/useAgentRun";
-import { useAgentAssist } from "./hooks/useAgentAssist";
+import PhotoBubble from "./components/PhotoBubble";
+import { emptyAgentRunState, useAgentRun } from "./hooks/useAgentRun";
+import {
+  assistRequestKey,
+  useAgentAssist,
+  type TypingAssistRequest,
+} from "./hooks/useAgentAssist";
+import {
+  listingRunRequest,
+  type ListingRunOptions,
+  type PhotoAnalysis,
+} from "./listingRunRequest";
 import { useSaved } from "./hooks/useSaved";
 import { useWatches } from "./alerts/useWatches";
 import { demandLadder, similarListings } from "./alerts/matching";
@@ -121,7 +131,6 @@ import {
 import { requestAgentAssist } from "./api/agent";
 import { listingPickupMinimum } from "./listingValidation";
 import {
-  agentDraft,
   applyListingAction,
   applyPreferenceAction,
   listingFieldNames,
@@ -201,6 +210,25 @@ function newDraft(location: string): ListingDraft {
     category: "All",
   };
 }
+/** What the student asks Pako when he starts writing a new listing. */
+const LISTING_START = "Write my listing from my photos.";
+/** The listing's first turn while Pako still reads the photos, before his run starts. */
+const startingListingTurn = {
+  ...emptyAgentRunState(),
+  id: "listing-start",
+  turnKey: "listing-start",
+  request: LISTING_START,
+  status: "running" as const,
+};
+/** The photo analysis of a draft: its photos, the student's note and the pickup place. */
+function listingAssistRequest(draft: ListingDraft): TypingAssistRequest {
+  return {
+    intent: "listing",
+    text: draft.raw,
+    images: listingPhotos(draft),
+    context: { location: draft.location },
+  };
+}
 /** What changing a listing's status tells the seller. */
 const STATUS_NOTICES: Record<Product["status"], string> = {
   active: "Listing is active again.",
@@ -256,9 +284,12 @@ export default function App({
   const listingRevisions = useRef<FieldRevisions>({});
   const listingBaselines = useRef(new Map<string, FieldRevisions>());
   const listingActions = useRef(new Map<string, AgentListingPatchEvent>());
-  const lastListingRequest = useRef<{ text: string; question?: string } | null>(
-    null,
-  );
+  const lastListingRequest = useRef<{
+    text: string;
+    options: ListingRunOptions;
+  } | null>(null);
+  /** What the photo analysis noticed about the listing being written. */
+  const listingPhotoAnalysis = useRef<PhotoAnalysis | undefined>(undefined);
   const [listingInput, setListingInput] = useState("");
   const [listingChanges, setListingChanges] = useState<
     Record<string, ListingChanges>
@@ -657,12 +688,7 @@ export default function App({
       sellMode === "single" &&
       sellStep === 1 &&
       !busy
-      ? {
-          intent: "listing",
-          text: draft.raw,
-          images: listingPhotos(draft),
-          context: { location: draft.location },
-        }
+      ? listingAssistRequest(draft)
       : null,
   );
 
@@ -1263,6 +1289,7 @@ export default function App({
     setListingUndone([]);
     setListingInput("");
     lastListingRequest.current = null;
+    listingPhotoAnalysis.current = undefined;
   }
   function changeDraft(changes: Partial<ListingDraft>) {
     for (const field of listingFieldNames)
@@ -1338,10 +1365,11 @@ export default function App({
   }
   async function runListing(
     text: string,
-    question?: string,
+    options: ListingRunOptions = {},
     explicitRequest = false,
   ) {
     if (!text.trim()) return;
+    let question = options.question;
     const unanswered =
       !question && !explicitRequest
         ? listingRun.state.questions.find(
@@ -1354,61 +1382,21 @@ export default function App({
     }
     const token = ++listingRunToken.current;
     const baseline = { ...listingRevisions.current };
-    const current = draftRef.current;
-    lastListingRequest.current = { text, question };
+    const runOptions = { ...options, question };
+    lastListingRequest.current = { text, options: runOptions };
     setListingInput((current) =>
       current.trim() === text.trim() ? "" : current,
     );
     await listingRun.run(
-      {
-        text: text.trim(),
-        context: {
-          intent: "listing_assist",
-          location: current.location,
-          currentDraft: agentDraft(current),
-          originalRequest:
-            current.raw ||
-            "Prepare a listing from my photo and supplied details.",
-          previousAnswer: listingRun.state.text.slice(0, 6000),
-          answeredQuestions: [...listingRun.state.history, listingRun.state]
-            .flatMap((turn) =>
-              turn.questions.flatMap((item) => {
-                const answer = turn.answers[item.id];
-                return answer
-                  ? [{ question: item.question, answer: answer.slice(0, 4000) }]
-                  : [];
-              }),
-            )
-            .slice(-30),
-          recentMessages: [
-            ...listingRun.state.history.flatMap((turn) => [
-              { role: "user" as const, text: turn.request.slice(0, 4000) },
-              {
-                role: "assistant" as const,
-                text: (
-                  turn.questions.map((item) => item.question).join("\n") ||
-                  turn.text
-                ).slice(0, 4000),
-              },
-            ]),
-            {
-              role: "user" as const,
-              text: listingRun.state.request.slice(0, 4000),
-            },
-            {
-              role: "assistant" as const,
-              text: (
-                listingRun.state.questions
-                  .map((item) => item.question)
-                  .join("\n") || listingRun.state.text
-              ).slice(0, 4000),
-            },
-          ]
-            .filter((item) => item.text)
-            .slice(-12),
-          ...(question ? { previousQuestion: question } : {}),
+      listingRunRequest({
+        text,
+        draft: draftRef.current,
+        conversation: listingRun.state,
+        options: {
+          ...runOptions,
+          photoAnalysis: listingPhotoAnalysis.current,
         },
-      },
+      }),
       {
         onAction: (action) => {
           if (
@@ -1425,7 +1413,7 @@ export default function App({
     const question = listingRun.state.questions.find((item) => item.id === id);
     if (!question || listingRun.state.answers[id]) return false;
     listingRun.markQuestionAnswered(id, answer);
-    void runListing(answer, question.question);
+    void runListing(answer, { question: question.question });
     return true;
   }
   /** Pako keeps watch for an item, or says the watch is running already. */
@@ -1562,35 +1550,39 @@ export default function App({
           return;
         }
       }
-      const response = await requestAgentAssist(
-        {
-          intent: "listing",
-          text: start.raw,
-          images: photos,
-          context: { location: start.location },
-        },
-        { signal: controller.signal },
-      );
+      setSellStep(2);
+      const request = listingAssistRequest(start);
+      const response =
+        finishedAnalysis(request) ??
+        (await requestAgentAssist(request, { signal: controller.signal }));
       if (controller.signal.aborted) return;
-      const metadata = response.metadata;
       const current = draftRef.current;
-      const prepared = prepareListingDraft(current, metadata);
+      const prepared = prepareListingDraft(current, response.metadata);
       if (keepTitle && current.title.trim()) prepared.title = current.title;
       setDraft(prepared);
-      setSellStep(2);
-      void runListing(
-        "Help me finish this listing using the recognised photo details already in the draft. If there is no asking price, research comparable second-hand offers and propose a source-backed starting price for my review, then let me choose a price with a slider or give it away. Ask only the next necessary missing detail using short clickable answers, such as the item's age or condition, the pickup location or pickup times when relevant.",
-      );
+      listingPhotoAnalysis.current = {
+        missingDetails: response.missingDetails,
+        keywords: response.metadata.keywords,
+      };
+      void runListing(LISTING_START, { start: true });
     } catch (error) {
-      if (!controller.signal.aborted)
-        setUploadError(
-          error instanceof Error
-            ? error.message
-            : "Could not prepare the listing. Try again.",
-        );
+      if (controller.signal.aborted) return;
+      setSellStep(1);
+      setUploadError(
+        error instanceof Error
+          ? error.message
+          : "Could not prepare the listing. Try again.",
+      );
     } finally {
       if (listingRequest.current === controller) setBusy(false);
     }
+  }
+  /** The photo analysis Pako already finished for exactly these photos, notes and place. */
+  function finishedAnalysis(request: TypingAssistRequest) {
+    return listingAssist.status === "success" &&
+      listingAssist.requestKey === assistRequestKey(request)
+      ? listingAssist.response
+      : null;
   }
   function addListingSuggestion(suggestion: string) {
     setDraft((current) => ({
@@ -1809,7 +1801,7 @@ export default function App({
         ].map(([label, request]) => (
           <DropdownMenuItem
             key={label}
-            onClick={() => void runListing(request, undefined, true)}
+            onClick={() => void runListing(request, {}, true)}
           >
             {label}
           </DropdownMenuItem>
@@ -1817,11 +1809,14 @@ export default function App({
       </DropdownMenuContent>
     </DropdownMenu>
   );
+  /** Pako still reads the photos in step 2, before his first run of the listing starts. */
+  const listingStarting = busy && sellStep === 2 && !listingRun.state.id;
+  const listingTurn = listingStarting ? startingListingTurn : listingRun.state;
   const listingConversation = (
     <section className="listing-conversation" aria-label="Listing agent">
       <AgentConversation
-        state={listingRun.state}
-        announcement={turnAnnouncement(listingRun.state, undefined, "listing")}
+        state={listingTurn}
+        announcement={turnAnnouncement(listingTurn, undefined, "listing")}
         typing={listingInput.trim() !== ""}
         footer={
           <AgentComposer
@@ -1839,10 +1834,12 @@ export default function App({
             }
           />
         }
-        requestLabel={(request) =>
-          request.startsWith("Help me finish this listing")
-            ? draft.raw || "Create a listing from my photo."
-            : request
+        renderRequest={(turn, index) =>
+          index === 0 && !editingListing ? (
+            <PhotoBubble photos={listingPhotos(draft)} note={draft.raw} />
+          ) : (
+            <p>{turn.request}</p>
+          )
         }
       >
         {(turn, archived) => (
@@ -1862,7 +1859,7 @@ export default function App({
             onReset={resetListingConversation}
             onRetry={() => {
               const last = lastListingRequest.current;
-              if (last) void runListing(last.text, last.question, true);
+              if (last) void runListing(last.text, last.options, true);
             }}
             onAnswer={answerListingQuestion}
             onSkipQuestion={(id) =>
@@ -2690,7 +2687,7 @@ export default function App({
                   step={sellStep}
                   editing={!!editingListing}
                   pickupMin={listingPickupMinimum(draft.pickup, editingItem)}
-                  busy={busy || database.pending > 0}
+                  busy={(busy && !listingStarting) || database.pending > 0}
                   cloud={!!account}
                   photoReading={photoReading}
                   uploadError={uploadError}
@@ -2699,6 +2696,7 @@ export default function App({
                   onBack={() =>
                     transitionPage("nav-back", () => {
                       if (sellStep === 2 && !editingListing) {
+                        listingRequest.current?.abort();
                         resetListingConversation();
                         setSellStep(1);
                       } else if (editingListing) navigate("account");
@@ -2707,7 +2705,9 @@ export default function App({
                     })
                   }
                   onDraftChange={changeDraft}
-                  agentWorking={listingRun.state.status === "running"}
+                  agentWorking={
+                    listingStarting || listingRun.state.status === "running"
+                  }
                   insight={
                     <SellerInsight
                       similar={similarListings(

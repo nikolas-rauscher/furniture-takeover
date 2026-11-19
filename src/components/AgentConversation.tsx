@@ -1,6 +1,10 @@
 import { Fragment, useId, useRef, type ReactNode } from "react";
 import { useScrollFade } from "@animate-ui/react/primitives/effects/scroll-fade";
-import { emptyAgentRunState, type AgentRunState } from "../hooks/useAgentRun";
+import {
+  emptyAgentRunState,
+  type AgentRunState,
+  type AgentRunTurn,
+} from "../hooks/useAgentRun";
 import { motionBehavior } from "../uiMotion";
 import { PageTransitionShared } from "./animate-ui/components/page-transition";
 import { ChevronDown } from "./icons";
@@ -31,7 +35,8 @@ type AgentConversationProps = {
   state: AgentRunState;
   /** What the latest turn tells a screen reader; the messages themselves stay quiet. */
   announcement: string;
-  requestLabel?: (request: string) => string;
+  /** What the student's bubble shows for a turn; its request text by default. */
+  renderRequest?: (turn: AgentRunTurn, index: number) => ReactNode;
   children: (turn: AgentRunState, archived: boolean) => ReactNode;
   footer?: ReactNode;
   context?: ReactNode;
@@ -46,7 +51,7 @@ type AgentConversationProps = {
 export default function AgentConversation({
   state,
   announcement,
-  requestLabel = (request) => request,
+  renderRequest = (turn) => <p>{turn.request}</p>,
   children,
   footer,
   context,
@@ -110,7 +115,7 @@ export default function AgentConversation({
                           <figcaption>From your photo</figcaption>
                         </figure>
                       )}
-                      <p>{requestLabel(turn.request)}</p>
+                      {renderRequest(turn, index)}
                     </BubbleContent>
                   </Bubble>
                 );
