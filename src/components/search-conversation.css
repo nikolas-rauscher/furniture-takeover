@@ -139,18 +139,18 @@
 .app-layout:is(.chat-layout, .selling-chat-layout) .chat-composer-dock {
   padding-top: 6px;
 }
-/* Rests centred on the conversation's faded bottom edge, right above the composer, so it
-   never covers a line that is still being read. */
+/* Rests at the end of the conversation's faded bottom edge, right above the composer, so
+   it stays clear of the text and the replies, which start at the other side. */
 .chat-composer-dock .chat-jump-latest {
   position: absolute;
-  inset-inline: 0;
+  inset-inline: auto 4px;
   bottom: calc(100% + 4px);
   translate: none;
   transform: none;
-  width: 36px;
-  height: 36px;
-  min-height: 36px;
-  margin: 0 auto;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  margin: 0;
   padding: 0;
   border-radius: 999px;
   border: 2px solid var(--card-line);

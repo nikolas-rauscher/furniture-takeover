@@ -32,7 +32,8 @@
   flex: 0 1 auto;
   min-width: 0;
 }
-/* The live step stays on one line, so the header keeps its height while steps change. */
+/* Beside Pako's name the live step stays on one line, so the header keeps its height
+   while steps change. */
 .agent-run-details-header
   > [data-slot="trace-collapsible-trigger"]
   :is([data-slot="trace-line"], [data-slot="trace-title"]) {
@@ -126,6 +127,16 @@
     content: "";
     position: absolute;
     inset: -8px 0;
+  }
+  /* Under the name a long step, such as a search near a long place name, takes a
+     second line instead of losing its end. */
+  .agent-run-details-header
+    > [data-slot="trace-collapsible-trigger"]
+    [data-slot="trace-title"] {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    white-space: normal;
   }
 }
 .agent-run-details [data-slot="trace-line"] {

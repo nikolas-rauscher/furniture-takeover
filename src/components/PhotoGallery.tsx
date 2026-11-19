@@ -14,7 +14,7 @@ import {
   AttachmentTrigger,
 } from "./ui/attachment";
 import { useId, useRef, useState } from "react";
-import { Plus, X, Image as ImageIcon } from "@/components/icons";
+import { Plus, Trash2, Image as ImageIcon } from "@/components/icons";
 import { MAX_LISTING_PHOTOS } from "../../shared/listingPhotos";
 import "./photo-gallery.css";
 
@@ -105,7 +105,7 @@ export default function PhotoGallery({
                   onImagesChange?.(images.filter((image) => image !== active))
                 }
               >
-                <X size={17} />
+                <Trash2 size={18} aria-hidden="true" />
               </Button>
             )}
           </>
@@ -163,7 +163,7 @@ export default function PhotoGallery({
               {addControl("Add photos")}
               {index > 0 && (
                 <Button
-                  className="text-button"
+                  variant="outline"
                   type="button"
                   disabled={disabled}
                   onClick={() =>

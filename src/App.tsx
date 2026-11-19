@@ -2049,7 +2049,7 @@ export default function App({
                                   ? "Ask about your listing…"
                                   : !negotiations.active &&
                                       showedResults(agentRun.state)
-                                    ? "Ask Pako for cheaper, closer or bigger…"
+                                    ? "Cheaper, closer or bigger?"
                                     : "Ask a follow-up…"
                               }
                               sendLabel="Send to Pako"

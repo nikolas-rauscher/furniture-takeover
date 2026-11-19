@@ -606,8 +606,11 @@
 .items-page .page-title > .button {
   font-size: var(--type-label);
 }
-/* The tabs are a segmented control: the open one is a raised face. */
+/* The tabs are a segmented control: the open one is a raised face. Celebration
+   confetti flies behind them, so their labels stay readable. */
 .items-page .account-tabs {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   gap: 4px;
   margin: 0 0 var(--space-group);
@@ -911,5 +914,11 @@
   }
   .items-page .listing-actions .button {
     min-height: 44px;
+  }
+  /* An empty result stays right below the search, clear of the tab bar. */
+  .items-page .empty-state {
+    min-height: 0;
+    margin: var(--space-label) 0;
+    padding: var(--space-group) 16px;
   }
 }

@@ -111,12 +111,15 @@
   margin: 0;
   font-size: var(--type-label);
 }
-.photo-gallery-remove {
+/* Removing sits on the photo as a trash can, unlike a dialog's close button. */
+.photo-gallery-stage .photo-gallery-remove {
   position: absolute;
   top: 8px;
   right: 8px;
   width: 44px;
   height: 44px;
+  background: rgb(255 255 255 / 0.94);
+  color: var(--danger);
 }
 .photo-gallery.is-editable .photo-gallery-stage {
   min-height: 80px;
@@ -148,12 +151,10 @@
   }
 }
 
-/* A single compact photo strip; generic form-label styles must not stack it. */
+/* The photo strip sits above its actions, so adding a photo never reflows the step. */
 .photo-gallery.is-editable .photo-gallery-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
+  display: grid;
+  gap: 6px;
 }
 .photo-gallery.is-editable .photo-gallery-thumbnails {
   min-width: 0;

@@ -471,19 +471,22 @@ export default function AccountPage({
                 Archive<span>{archivedListings.length}</span>
               </TabsTrigger>
             </TabsList>
-            {accountTab === "listings" && visibleListings.length > 0 && (
-              <SellingProgress
-                listings={visibleListings}
-                celebration={
-                  publishedId && items.some((item) => item.id === publishedId)
-                    ? {
-                        ...CELEBRATIONS[cloud ? "cloud" : "local"],
-                        listingId: publishedId,
-                      }
-                    : null
-                }
-              />
-            )}
+            {/* While a search or status filter is on, the matches come first. */}
+            {accountTab === "listings" &&
+              visibleListings.length > 0 &&
+              !filtered && (
+                <SellingProgress
+                  listings={visibleListings}
+                  celebration={
+                    publishedId && items.some((item) => item.id === publishedId)
+                      ? {
+                          ...CELEBRATIONS[cloud ? "cloud" : "local"],
+                          listingId: publishedId,
+                        }
+                      : null
+                  }
+                />
+              )}
             {toolbar}
             <TabsContent value={accountTab}>{content}</TabsContent>
           </Tabs>

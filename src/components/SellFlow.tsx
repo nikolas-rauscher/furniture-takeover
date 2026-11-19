@@ -14,6 +14,7 @@ import {
   type ReactNode,
 } from "react";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import { useScrollFade } from "@animate-ui/react/primitives/effects/scroll-fade";
 import {
   Armchair,
   Image as ImageIcon,
@@ -246,6 +247,9 @@ export default function SellFlow({
   const [fieldsOpen, setFieldsOpen] = useState(false);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  // On phones the photo step scrolls above its Create draft bar; the edge fades instead of cutting.
+  const photoContent = useRef<HTMLDivElement>(null);
+  useScrollFade(photoContent, { size: 32, shrink: 0, blur: 0 });
 
   useEffect(() => {
     headingRef.current?.focus({ preventScroll: true });
@@ -284,7 +288,7 @@ export default function SellFlow({
 
       {isPhotoStep ? (
         <div className="sell-layout" aria-busy={unavailable}>
-          <div className="sell-photo-content">
+          <div className="sell-photo-content" ref={photoContent}>
             <div className="sell-guide">
               <Guide mood={guide.mood} layout="guide" bubble={guide.bubble} />
             </div>
