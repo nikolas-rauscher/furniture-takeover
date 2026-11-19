@@ -62,7 +62,7 @@ export default function AgentConversation({
   const headingId = useId();
   const viewport = useRef<HTMLDivElement>(null);
   // Messages dissolve into the header and the composer instead of being cut off there; the
-  // jump-to-latest button rests inside the lower fade. No shrink or blur: a whole message
+  // jump-to-latest pill rests inside the lower fade. No shrink or blur: a whole message
   // still in view looked out of focus.
   useScrollFade(viewport, { size: 48, shrink: 0, blur: 0 });
   const turns = state.id ? [...state.history, state] : [];
@@ -183,14 +183,14 @@ export default function AgentConversation({
           </div>
           <MessageScrollerButton
             className="chat-jump-latest"
-            size="icon-sm"
+            size="sm"
             variant="outline"
-            aria-label="Latest messages"
-            title="Latest messages"
+            aria-label="Scroll to the latest messages"
             behavior={motionBehavior()}
             onClick={(event) => focusConversation(event.currentTarget)}
           >
-            <ChevronDown size={18} aria-hidden="true" />
+            <ChevronDown size={16} aria-hidden="true" />
+            Latest
           </MessageScrollerButton>
         </div>
       </MessageScrollerProvider>
