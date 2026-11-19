@@ -492,6 +492,7 @@ for (const [label, message, repair] of [
 }
 
 test("a misleading bike chip leaves valid siblings available without another reading", async (t) => {
+  const warnings = t.mock.method(console, "warn", () => {});
   const valid = [
     option({
       label: "Confirm availability",
@@ -521,6 +522,17 @@ test("a misleading bike chip leaves valid siblings available without another rea
     turn.options.map(({ label, message }) => [label, message]),
     valid.map(({ label, message }) => [label, message]),
   );
+  assert.equal(warnings.mock.callCount(), 1);
+  const [prefix, payload] = warnings.mock.calls[0].arguments;
+  assert.equal(prefix, "[thread-turn]");
+  assert.match(JSON.parse(payload).runId, /^[a-f0-9-]{36}$/);
+  assert.deepEqual(JSON.parse(payload), {
+    runId: JSON.parse(payload).runId,
+    event: "option_dropped",
+    optionId: "opt-1",
+    check: "Name the draft's exact CHF amount in the label or remove it.",
+    label: "Confirm availability",
+  });
   assert.equal(model.doStreamCalls.length, 1);
 });
 

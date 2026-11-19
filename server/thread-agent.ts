@@ -510,6 +510,7 @@ function checkedOptions(
   proposal: Proposal,
   request: ThreadTurnRequest,
   now: Date,
+  runId: string,
 ) {
   const options: ThreadTurn["options"] = [];
   let firstFailure: Error | undefined;
@@ -526,6 +527,16 @@ function checkedOptions(
       });
     } catch (error) {
       if (!(error instanceof Error)) throw error;
+      console.warn(
+        "[thread-turn]",
+        JSON.stringify({
+          runId,
+          event: "option_dropped",
+          optionId: `opt-${index + 1}`,
+          check: error.message,
+          label: option.label,
+        }),
+      );
       firstFailure ??= error;
     }
   }
@@ -562,6 +573,7 @@ function groundProposal(
   proposal: Proposal,
   request: ThreadTurnRequest,
   now: Date,
+  runId: string,
 ): ThreadTurn {
   checkSafeText(proposal.summary, "summary");
   proposal.options.forEach((option, index) => {
@@ -585,7 +597,7 @@ function groundProposal(
     facts: proposal.facts,
     pickupAt,
     agreement: agreementOf(proposal, request, pickupAt, now),
-    options: checkedOptions(proposal, request, now),
+    options: checkedOptions(proposal, request, now, runId),
   });
 }
 
@@ -674,7 +686,7 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
               inputSchema: proposalSchema,
               execute: async (proposal) => {
                 try {
-                  reading = groundProposal(proposal, request, now);
+                  reading = groundProposal(proposal, request, now, runId);
                 } catch (error) {
                   failedChecks.push(
                     error instanceof Error ? error.message : "check failed",
