@@ -2158,14 +2158,15 @@ export default function App({
                       <p className="ob-bubble agent-hero-bubble">
                         {heroGuide.line}
                         {heroGuide.newMatches && (
-                          <Button
-                            animateIcon
-                            className="button quiet small agent-hero-matches"
-                            onClick={() => openDestination("searches")}
-                          >
-                            See them
-                            <ArrowRight size={15} aria-hidden="true" />
-                          </Button>
+                          <>
+                            {" "}
+                            <Button
+                              className="agent-hero-matches"
+                              onClick={() => openDestination("searches")}
+                            >
+                              See them →
+                            </Button>
+                          </>
                         )}
                       </p>
                     </div>
@@ -2618,6 +2619,7 @@ export default function App({
             {view === "searches" && (
               <PageTransitionView>
                 <SavedSearchesPage
+                  loaded={listingsSettled}
                   searches={savedSearches}
                   location={location}
                   matches={watches.matches}

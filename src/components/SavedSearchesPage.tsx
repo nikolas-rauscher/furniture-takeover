@@ -29,6 +29,8 @@ function searchDetails(job: SavedSearch, location: string) {
 const UNFOLD = { type: "spring", stiffness: 380, damping: 32 } as const;
 
 type SavedSearchesPageProps = {
+  /** Listings have loaded, so new matches are known: the page shows at once, without moving. */
+  loaded: boolean;
   searches: SavedSearch[];
   location: string;
   matches: WatchMatch[];
@@ -44,6 +46,7 @@ type SavedSearchesPageProps = {
 };
 
 export default function SavedSearchesPage({
+  loaded,
   searches,
   location,
   matches,
@@ -91,60 +94,67 @@ export default function SavedSearchesPage({
           Pako checks new listings for these and tells you here when one fits.
         </p>
       </div>
-      {matches.length > 0 && (
-        <MatchAlerts
-          matches={matches}
-          onOpen={onOpenMatch}
-          onDismiss={onDismissMatch}
-          onMarkAllSeen={onMarkAllSeen}
-        />
-      )}
-      {searches.length ? (
+      {loaded && (
         <>
-          {!watchShown && (
-            <Button className="button secondary watch-open" onClick={openWatch}>
-              <Bell size={16} aria-hidden="true" />
-              Watch for an item
-            </Button>
+          {matches.length > 0 && (
+            <MatchAlerts
+              matches={matches}
+              onOpen={onOpenMatch}
+              onDismiss={onDismissMatch}
+              onMarkAllSeen={onMarkAllSeen}
+            />
           )}
-          {watchCard}
-          <div className="search-jobs">
-            {searches.map((job) => (
-              <SearchCard
-                key={job.id}
-                job={job}
-                details={searchDetails(job, location)}
-                onRun={() => onRun(job)}
-                onEdit={() => onEdit(job)}
-                onDelete={() => onDelete(job)}
-                onTogglePause={() => onTogglePause(job)}
-              />
-            ))}
-          </div>
-          <p className="quiet-caption">
-            Stored in this browser. Alerts cover listings you can see here;
-            nothing is sent to sellers.
-          </p>
-        </>
-      ) : (
-        <>
-          <div className="saved-searches-empty">
-            <Pako mood="wave" size={80} />
-            <h2>No saved searches yet</h2>
-            <p>
-              Tell Pako what you need, then save the search. New matches show up
-              here.
-            </p>
-            <Button animateIcon className="button primary" onClick={onFind}>
-              Find furniture
-            </Button>
-            {!watchShown && (
-              <Button className="button quiet" onClick={openWatch}>
-                Watch for an item
-              </Button>
-            )}
-          </div>
-          {watchCard}
+          {searches.length ? (
+            <>
+              {!watchShown && (
+                <Button
+                  className="button secondary watch-open"
+                  onClick={openWatch}
+                >
+                  <Bell size={16} aria-hidden="true" />
+                  Watch for an item
+                </Button>
+              )}
+              {watchCard}
+              <div className="search-jobs">
+                {searches.map((job) => (
+                  <SearchCard
+                    key={job.id}
+                    job={job}
+                    details={searchDetails(job, location)}
+                    onRun={() => onRun(job)}
+                    onEdit={() => onEdit(job)}
+                    onDelete={() => onDelete(job)}
+                    onTogglePause={() => onTogglePause(job)}
+                  />
+                ))}
+              </div>
+              <p className="quiet-caption">
+                Stored in this browser. Alerts cover listings you can see here;
+                nothing is sent to sellers.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="saved-searches-empty">
+                <Pako mood="wave" size={80} />
+                <h2>No saved searches yet</h2>
+                <p>
+                  Tell Pako what you need, then save the search. New matches
+                  show up here.
+                </p>
+                <Button animateIcon className="button primary" onClick={onFind}>
+                  Find furniture
+                </Button>
+                {!watchShown && (
+                  <Button className="button quiet" onClick={openWatch}>
+                    Watch for an item
+                  </Button>
+                )}
+              </div>
+              {watchCard}
+            </>
+          )}
         </>
       )}
     </>

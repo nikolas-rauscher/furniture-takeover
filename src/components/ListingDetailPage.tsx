@@ -40,6 +40,13 @@ type ListingDetailPageProps = {
   availabilityPanel?: ReactNode;
 };
 
+/** The transport estimate in a facts tile: short, so it stays one line in any font. */
+const TRANSPORT_TILES = {
+  car: "Estate car may do",
+  van: "Van likely needed",
+  unknown: "Ask for W × D × H",
+} as const;
+
 export default function ListingDetailPage({
   cloud = false,
   selected,
@@ -170,13 +177,13 @@ export default function ListingDetailPage({
                     )}
                     Transport
                   </dt>
-                  <dd>{transport.message}</dd>
+                  <dd>{TRANSPORT_TILES[transport.vehicle]}</dd>
                 </div>
               )}
             </dl>
             {transport && (
               <p className="quiet-caption listing-detail-transport-note">
-                {transport.note}
+                {transport.message} {transport.note}
               </p>
             )}
             {!mine && (

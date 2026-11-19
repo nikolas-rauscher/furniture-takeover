@@ -256,10 +256,21 @@ label > textarea {
   font-weight: 500;
   line-height: 1.45;
 }
-/* New matches end Pako's line with a way to see them. */
+/* New matches end Pako's line with an inline link, so the bubble keeps its size; the padding
+   widens the tap target without moving the line. */
 .agent-hero-bubble > .agent-hero-matches {
-  display: flex;
-  margin: 2px 0 -6px -13px;
+  display: inline;
+  margin: -12px -6px;
+  padding: 12px 6px;
+  color: var(--blue);
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.agent-hero-bubble > .agent-hero-matches:hover {
+  color: var(--blue-dark);
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 /* The search card is the page's focal point: the one card that floats above it. */
 .agent-search {
