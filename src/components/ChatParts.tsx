@@ -66,6 +66,7 @@ export function ChatThreadCard({
   title,
   preview,
   note,
+  unread = false,
   onSelect,
 }: {
   active: boolean;
@@ -77,6 +78,8 @@ export function ChatThreadCard({
   title: string;
   preview?: ReactNode;
   note?: string;
+  /** The other student wrote since the student last read this thread. */
+  unread?: boolean;
   onSelect?: () => void;
 }) {
   // A thread rises in once, when it first appears, not on each return to the inbox.
@@ -86,6 +89,7 @@ export function ChatThreadCard({
       className={cn(
         "chat-thread",
         active && "active",
+        unread && "unread",
         entrance.entering && "arriving",
       )}
       aria-current={active || undefined}
@@ -100,11 +104,13 @@ export function ChatThreadCard({
     >
       <ChatIdentity image={image} name={name} />
       <span className="chat-thread-copy">
+        {unread && <span className="sr-only">New message from </span>}
         <strong>{name}</strong>
         <span>{title}</span>
         {preview && <small className="thread-preview">{preview}</small>}
         {note && <small className="thread-note">{note}</small>}
       </span>
+      {unread && <span className="chat-thread-dot" aria-hidden="true" />}
     </Button>
   );
 }

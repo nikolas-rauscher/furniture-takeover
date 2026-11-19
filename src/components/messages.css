@@ -74,6 +74,21 @@
 .chat-thread:disabled {
   opacity: 0.7;
 }
+/* News from the other student: a blue dot and a darker preview, like an unread chat. */
+.chat-thread.unread {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+.chat-thread.unread .thread-preview {
+  color: var(--ink);
+  font-weight: 650;
+}
+.chat-thread-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--blue);
+  box-shadow: 0 0 0 3px var(--selected);
+}
 @keyframes chat-thread-in {
   from {
     opacity: 0;
@@ -468,131 +483,6 @@
   font-size: var(--type-support);
 }
 
-/* Reply suggestions: Pako offers a few answers as tactile chips. */
-.reply-assistance {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-}
-.reply-assistance-action {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 12px;
-}
-.reply-assistance-action small,
-.reply-assistance-note {
-  margin: 0;
-  color: var(--muted);
-  font-size: var(--type-caption);
-  line-height: 1.5;
-}
-.reply-assistance-error {
-  color: var(--danger);
-}
-.reply-assistance > [role="status"]:empty {
-  display: none;
-}
-.reply-suggest-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 34px;
-  padding: 6px 13px;
-  border-radius: 999px;
-  background: var(--selected);
-  color: var(--blue-dark);
-  font-size: var(--type-support);
-  font-weight: 700;
-  transition:
-    background-color 160ms ease,
-    scale 120ms var(--ease-out);
-}
-.reply-suggest-button:hover:not(:disabled) {
-  background: var(--sky);
-}
-.reply-suggest-button:active:not(:disabled) {
-  scale: 0.96;
-}
-.reply-tray-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 4px;
-  color: var(--blue);
-  font-size: var(--type-support);
-  font-weight: 700;
-}
-.reply-tray-toggle svg {
-  transition: rotate 200ms var(--ease-out);
-}
-.reply-tray-toggle[aria-expanded="true"] svg {
-  rotate: 180deg;
-}
-.reply-assistance .reply-suggestions {
-  padding-bottom: 4px;
-}
-.reply-assistance .reply-suggestions > .reply-choice[data-slot="button"] {
-  min-height: 40px;
-  padding: 8px 14px;
-  border: 2px solid var(--card-line);
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--ink);
-  font-weight: 500;
-  transition:
-    scale 90ms var(--ease-out),
-    border-color 160ms ease;
-  animation: reply-suggestion-in 320ms var(--ease-out) both;
-}
-.reply-assistance .reply-suggestions > .reply-choice:nth-child(2) {
-  animation-delay: 50ms;
-}
-.reply-assistance .reply-suggestions > .reply-choice:nth-child(3) {
-  animation-delay: 100ms;
-}
-.reply-assistance .reply-suggestions > .reply-choice:nth-child(4) {
-  animation-delay: 150ms;
-}
-.reply-assistance .reply-suggestions > .reply-choice:hover:not(:disabled) {
-  border-color: var(--blue);
-  background: var(--surface);
-}
-.reply-assistance .reply-suggestions > .reply-choice:active:not(:disabled) {
-  scale: 0.96;
-}
-@keyframes reply-suggestion-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.96);
-  }
-}
-.reply-assistance button:disabled {
-  opacity: 0.55;
-  cursor: default;
-}
-
-/* Loading */
-.reply-loading-placeholders {
-  display: flex;
-  gap: 8px;
-  overflow: hidden;
-  padding-block: 2px;
-}
-.reply-loading-placeholders [data-slot="skeleton"] {
-  flex: 0 0 38%;
-  height: 40px;
-  border-radius: 16px;
-  background: var(--mist);
-}
-.reply-loading-placeholders [data-slot="skeleton"]:nth-child(2) {
-  flex-basis: 30%;
-  animation-delay: 100ms;
-}
-.reply-loading-placeholders [data-slot="skeleton"]:nth-child(3) {
-  flex-basis: 25%;
-  animation-delay: 200ms;
-}
 .inbox-loading > div {
   display: grid;
   gap: 12px;
@@ -762,21 +652,13 @@
   .composer-keyboard-hint {
     display: none;
   }
-  .seller-message-meta:not(:has(small:not(.composer-keyboard-hint))) {
+  .seller-message-meta:not(:has(> :not(.composer-keyboard-hint))) {
     display: none;
-  }
-  .reply-assistance-action > small {
-    flex-basis: 100%;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .chat-thread,
-  .reply-assistance .reply-suggestions > .reply-choice[data-slot="button"] {
-    animation: none;
-  }
-  .reply-assistance [data-slot="spinner"],
-  .reply-loading-placeholders [data-slot="skeleton"],
   .inbox-loading [data-slot="skeleton"] {
     animation: none;
   }

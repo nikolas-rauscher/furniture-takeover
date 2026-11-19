@@ -5,6 +5,8 @@ import { Button } from "./ui/button";
 
 type LocalSettingsProps = {
   connectionStatus: ReactNode;
+  /** Whether Pako reads new replies in Messages by himself. */
+  pakoSetting: ReactNode;
   /** The developer mode row, which reveals the demo tools below it. */
   developerSettings: ReactNode;
   /** Sample listings are a demo tool: absent while developer mode is off. */
@@ -42,6 +44,7 @@ function SettingsRow({ icon, tone, title, detail, onClick }: SettingsRowProps) {
 /** Settings without an account: everything lives in this browser. */
 export default function LocalSettings({
   connectionStatus,
+  pakoSetting,
   developerSettings,
   onAddDemo,
   onHelp,
@@ -55,6 +58,7 @@ export default function LocalSettings({
       </div>
       {connectionStatus}
       <ul className="settings-rows">
+        <li>{pakoSetting}</li>
         <li>{developerSettings}</li>
         <AnimatePresence initial={false}>
           {onAddDemo && (

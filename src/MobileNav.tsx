@@ -30,10 +30,12 @@ type MobileNavProps = {
   onNavigate: (destination: MobileDestination) => void;
   /** New matches for saved searches, counted on the Searches tab. */
   newMatches: number;
+  /** Conversations with news from the other student, counted on the Messages tab. */
+  unreadMessages: number;
 };
 
 /** The count pops whenever it rises, but not when the app opens with it. */
-function MatchBadge({ count }: { count: number }) {
+function CountBadge({ count }: { count: number }) {
   const shown = useRef(count);
   const rose = count > shown.current;
   useEffect(() => {
@@ -61,12 +63,25 @@ const tabs = [
 ] as const;
 
 /** Floating tab bar: the highlight glides between tabs; Sell sits beside it as the primary action. */
+/** A tab's name with its news, such as "Messages, 2 new". */
+function tabName(name: string, count: number, unit?: [string, string]) {
+  if (!count) return name;
+  return unit
+    ? `${name}, ${count} new ${count === 1 ? unit[0] : unit[1]}`
+    : `${name}, ${count} new`;
+}
+
 export default function MobileNav({
   active,
   pageKey,
   onNavigate,
   newMatches,
+  unreadMessages,
 }: MobileNavProps) {
+  const counts: Partial<Record<MobileDestination, number>> = {
+    searches: newMatches,
+    messages: unreadMessages,
+  };
   const selling = active === "sell";
   // The bar measures scrolling from where a page starts. A fresh (window) scroll root per
   // page makes a restored scroll position its baseline, so switching tabs never shrinks it.
@@ -100,9 +115,11 @@ export default function MobileNav({
                       className="mobile-nav-item"
                       type="button"
                       aria-label={
-                        id === "searches" && newMatches
-                          ? `${name}, ${newMatches} new ${newMatches === 1 ? "match" : "matches"}`
-                          : name
+                        id === "searches"
+                          ? tabName(name, newMatches, ["match", "matches"])
+                          : id === "messages"
+                            ? tabName(name, unreadMessages)
+                            : name
                       }
                     >
                       <Icon
@@ -113,7 +130,7 @@ export default function MobileNav({
                       <BottomNavigationLabel className="mobile-nav-label">
                         {label}
                       </BottomNavigationLabel>
-                      {id === "searches" && <MatchBadge count={newMatches} />}
+                      <CountBadge count={counts[id] ?? 0} />
                     </Button>
                   </AnimateIcon>
                 </BottomNavigationItem>

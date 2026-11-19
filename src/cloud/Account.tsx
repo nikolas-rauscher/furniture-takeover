@@ -14,7 +14,12 @@ import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { fail } from "./client";
 import AccountApiKeys from "./AccountApiKeys";
 
-type AccountSection = "profile" | "keys" | "payments" | "security" | "privacy";
+export type AccountSection =
+  | "profile"
+  | "keys"
+  | "payments"
+  | "security"
+  | "privacy";
 type Handover = "" | "pickup" | "shipping" | "both";
 const accountSections = [
   ["profile", "Profile & pickup"],
@@ -26,15 +31,21 @@ const accountSections = [
 export default function Account({
   client,
   session,
+  startSection,
+  pakoSetting,
   onProfileSaved,
   browserTools,
 }: {
   client: SupabaseClient;
   session: Session;
+  /** The section on screen when the settings open. */
+  startSection: AccountSection;
+  /** Whether Pako reads new replies in Messages by himself. */
+  pakoSetting: ReactNode;
   onProfileSaved?: (region: string) => void;
   browserTools?: ReactNode;
 }) {
-  const [section, setSection] = useState<AccountSection>("profile");
+  const [section, setSection] = useState<AccountSection>(startSection);
   const [name, setName] = useState(""),
     [bio, setBio] = useState(""),
     [region, setRegion] = useState(""),
@@ -518,6 +529,10 @@ export default function Account({
               Sign out other devices
             </Button>
           </form>
+          <section hidden={section !== "privacy"}>
+            <h2>Pako in Messages</h2>
+            {pakoSetting}
+          </section>
           {browserTools && (
             <section hidden={section !== "privacy"}>
               <h2>Browser tools</h2>

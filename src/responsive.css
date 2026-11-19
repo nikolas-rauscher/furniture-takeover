@@ -69,7 +69,6 @@
   .items-page .account-tabs button,
   .agent-quick-reply-list > .agent-quick-reply[data-slot="button"],
   .agent-run-question .agent-run-choices > .ai-suggestion[data-slot="button"],
-  .reply-assistance .reply-suggestions > .reply-choice[data-slot="button"],
   .agent-sources [data-slot="trace-collapsible-trigger"],
   .listing-checklist [data-slot="trace-collapsible-trigger"],
   .agent-change-toggle,
@@ -271,7 +270,6 @@
   :root[data-compact-viewport] .selling-chat-layout .page-title {
     display: none;
   }
-  :root[data-compact-viewport] .messages-page .reply-assistance-action > small,
   :root[data-compact-viewport]
     .messages-page
     .conversation-composer

@@ -14,7 +14,10 @@ export const POLISH_DESCRIPTION = {
     "Improve my description using the photos and details I provided. Keep it concise and natural.",
 };
 
-const REQUESTS = [
+export type PakoRequest = { label: string; request: string };
+
+/** What the student can ask about a listing being written. */
+export const LISTING_REQUESTS: readonly PakoRequest[] = [
   {
     label: "Research this item",
     request: "Research comparable individual secondhand offers for this item.",
@@ -32,11 +35,13 @@ const REQUESTS = [
   POLISH_DESCRIPTION,
 ];
 
-/** What the student can ask Pako about the listing at any time; each costs one request. */
+/** What the student can ask Pako at any time; each costs one request. */
 export default function AskPakoMenu({
+  requests,
   disabled,
   onAsk,
 }: {
+  requests: readonly PakoRequest[];
   disabled: boolean;
   onAsk: (request: string) => void;
 }) {
@@ -52,7 +57,7 @@ export default function AskPakoMenu({
         <ChevronDown size={14} aria-hidden="true" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="agent-tools-menu">
-        {REQUESTS.map(({ label, request }) => (
+        {requests.map(({ label, request }) => (
           <DropdownMenuItem key={label} onClick={() => onAsk(request)}>
             {label}
           </DropdownMenuItem>

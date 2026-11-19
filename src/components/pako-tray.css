@@ -1,0 +1,197 @@
+/* Pako above a thread's composer: Pako beside a speech bubble with his reading of the
+   latest reply, the other student's own words, and tap answers on small lips. */
+.thread-tray {
+  display: grid;
+  flex-shrink: 0;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  margin: 2px 0 10px;
+}
+.thread-tray-pako {
+  display: block;
+  padding-top: 6px;
+}
+.thread-tray-bubble {
+  position: relative;
+  border: 2px solid var(--card-line);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--lip);
+}
+/* The tail points at Pako, like his bubbles in the intro. */
+.thread-tray-bubble::before {
+  content: "";
+  position: absolute;
+  top: 20px;
+  left: -9px;
+  width: 14px;
+  height: 14px;
+  border-bottom: 2px solid var(--card-line);
+  border-left: 2px solid var(--card-line);
+  border-bottom-left-radius: 3px;
+  background: var(--surface);
+  transform: rotate(45deg);
+}
+.thread-tray-content {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px 14px;
+}
+.thread-tray-line {
+  margin: 0;
+  font-size: var(--type-body);
+  font-weight: 700;
+  line-height: 1.4;
+}
+/* The other student's words, quoted as they wrote them. */
+.thread-tray-quotes {
+  display: -webkit-box;
+  margin: -2px 0 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--type-support);
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.thread-tray-quotes q {
+  color: var(--ink);
+}
+.thread-tray-hint {
+  color: var(--muted);
+  font-size: var(--type-caption);
+  line-height: 1.4;
+}
+.thread-tray-actions,
+.thread-tray-choices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+/* Tap answers: soft pills on a small lip that sinks under the finger, rising in one
+   after another. */
+.thread-tray .thread-tray-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 8px 15px;
+  border: 2px solid var(--card-line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--blue-dark);
+  font-size: var(--type-label);
+  font-weight: 650;
+  line-height: 1.3;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  box-shadow: 0 2px 0 var(--lip);
+  animation: thread-tray-rise 420ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  animation-delay: calc(80ms + var(--stagger, 0) * 40ms);
+  transition:
+    transform 90ms var(--ease-out),
+    box-shadow 90ms var(--ease-out),
+    border-color 160ms ease,
+    background-color 120ms ease,
+    color 120ms ease;
+}
+.thread-tray .thread-tray-choice:hover:not(:disabled) {
+  border-color: var(--blue);
+  background: var(--selected);
+}
+.thread-tray .thread-tray-choice:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 var(--lip);
+}
+.thread-tray .thread-tray-choice[data-chosen] {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: var(--on-primary);
+  box-shadow: 0 2px 0 var(--blue-dark);
+}
+/* While Pako reads, three quiet pills hold the place of his answers. */
+.thread-tray-skeletons {
+  display: flex;
+  gap: 8px;
+  overflow: hidden;
+}
+.thread-tray-skeletons [data-slot="skeleton"] {
+  flex: 0 0 32%;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--mist);
+}
+.thread-tray-skeletons [data-slot="skeleton"]:nth-child(2) {
+  flex-basis: 26%;
+  animation-delay: 100ms;
+}
+.thread-tray-skeletons [data-slot="skeleton"]:nth-child(3) {
+  flex-basis: 22%;
+  animation-delay: 200ms;
+}
+
+/* Pako's note at the start of a thread: he reads new replies here, for this student only. */
+.thread-disclosure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 2px 6px;
+  max-width: 420px;
+  margin: 0 auto 4px;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  line-height: 1.45;
+  text-align: center;
+}
+.thread-disclosure > .chat-listing-link {
+  font-size: inherit;
+}
+
+@keyframes thread-tray-rise {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+/* On phones Pako sits in the bubble's corner, so the answers get its full width. */
+@media (max-width: 760px) {
+  .thread-tray {
+    display: block;
+    position: relative;
+    margin-bottom: 8px;
+  }
+  .thread-tray-pako {
+    position: absolute;
+    top: 9px;
+    left: 10px;
+    z-index: 1;
+    padding: 0;
+  }
+  .thread-tray-pako .ob-pako {
+    width: 34px;
+    height: 34px;
+  }
+  .thread-tray-bubble::before {
+    display: none;
+  }
+  .thread-tray-content {
+    gap: 8px;
+    padding: 10px 12px 12px;
+  }
+  .thread-tray-line {
+    min-height: 34px;
+    padding-left: 42px;
+    font-size: var(--type-label);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .thread-tray .thread-tray-choice,
+  .thread-tray-skeletons [data-slot="skeleton"] {
+    animation: none;
+  }
+}

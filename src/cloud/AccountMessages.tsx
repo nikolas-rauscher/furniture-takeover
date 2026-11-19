@@ -9,7 +9,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Skeleton } from "../components/ui/skeleton";
 import { AnimatePresence } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Archive,
   ArchiveRestore,
@@ -17,39 +17,59 @@ import {
   ArrowLeft,
 } from "@/components/icons";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
-import type { MessagesPageProps } from "../components/MessagesPage";
+import type { MessagesProps } from "../components/MessagesPage";
 import InboxEmpty from "../components/InboxEmpty";
 import {
-  ChatComposerField,
-  ChatDate,
-  ChatMessage,
   ChatPartner,
   ChatSegment,
-  ChatStart,
   ChatThreadCard,
-  PakoLabel,
   SentCelebration,
-  startsNewDay,
   usePakoDrafts,
   useSentCelebration,
-  type PakoDrafts,
 } from "../components/ChatParts";
+import { useThreadPako } from "../components/ThreadPako";
+import {
+  ThreadComposer,
+  ThreadDisclosure,
+  ThreadLog,
+} from "../components/ThreadView";
 import Pako from "../components/onboarding/Pako";
+import { usePageVisible } from "../hooks/usePageVisible";
+import { accountInboxThread, isUnread } from "../inboxActivity";
+import type { ThreadMessage } from "../pakoThread";
 import type { Conversation, Message } from "./client";
 import { fail } from "./client";
 import { sendCloudMessage } from "./messages";
+import { accountTurnCache } from "./pakoDrafts";
 import { PendingMessage } from "../pendingMessage";
-import { motionBehavior } from "../uiMotion";
 import Report from "./Report";
-import ReplySuggestions from "./ReplySuggestions";
-import { money } from "../../shared/marketplace";
+import type { AccountInbox } from "./useAccountInbox";
+import { useAccountThread } from "./useAccountThread";
+import { money, type Product } from "../../shared/marketplace";
 const FILTERS = [
   ["all", "All"],
   ["buying", "Buying"],
   ["selling", "Selling"],
 ] as const;
+const STATUS_WORDS: Record<Product["status"], string> = {
+  active: "Available",
+  withdrawn: "Archived listing",
+  reserved: "Reserved",
+  sold: "Sold",
+};
+const GONE_NOTES: Record<Exclude<Product["status"], "active">, string> = {
+  reserved: "Reserved",
+  sold: "Sold",
+  withdrawn: "No longer listed",
+};
+
+const fromSide = (message: Message, userId: string) =>
+  message.sender_id === userId ? ("me" as const) : ("them" as const);
+
 export default function AccountMessages({
   account,
+  inbox,
+  pako: reading,
   listingId,
   listing,
   listings,
@@ -59,114 +79,28 @@ export default function AccountMessages({
   onBeforeSend,
   onSent,
   onDeleted,
-}: MessagesPageProps & {
+}: MessagesProps & {
   account: { client: SupabaseClient; session: Session };
+  inbox: AccountInbox;
 }) {
   const { client, session } = account,
     userId = session.user.id;
-  const [threads, setThreads] = useState<Conversation[]>([]),
-    [selected, setSelected] = useState(""),
+  const rows = inbox.rows;
+  const threads = rows?.threads ?? [],
+    latest = rows?.latest ?? {},
+    archived = rows?.archived ?? [],
+    blocked = rows?.blocked ?? [],
+    names = rows?.names ?? {};
+  const [selected, setSelected] = useState(""),
     [query, setQuery] = useState(""),
     [filter, setFilter] = useState<"all" | "buying" | "selling">("all"),
-    [latest, setLatest] = useState<Record<string, Message>>({}),
-    [conversationLatest, setConversationLatest] = useState<
-      Record<string, string>
-    >({}),
-    [archived, setArchived] = useState<string[]>([]),
     [showArchived, setShowArchived] = useState(false),
-    [blocked, setBlocked] = useState<string[]>([]),
-    [names, setNames] = useState<Record<string, string>>({}),
     [error, setError] = useState(""),
-    [loadError, setLoadError] = useState(""),
     [busy, setBusy] = useState(false),
-    [loaded, setLoaded] = useState(false),
     [drafts, setDrafts] = useState<Record<string, string>>({});
-  const mounted = useRef(true),
-    inFlight = useRef(false),
-    initialSelection = useRef(false),
-    generation = useRef(0),
-    pending = useRef(new PendingMessage());
+  const pending = useRef(new PendingMessage());
   const requestedSelection = useRef({ listingId, initialMessage });
-  const refresh = useCallback(async () => {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    const token = generation.current;
-    try {
-      const [cs, as, bs, ms] = await Promise.all([
-        client
-          .from("conversations")
-          .select("*")
-          .order("created_at", { ascending: false }),
-        client.from("conversation_archives").select("conversation_id"),
-        client.from("blocked_users").select("blocked_id"),
-        client
-          .from("messages")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(200),
-      ]);
-      fail(cs.error);
-      fail(as.error);
-      fail(bs.error);
-      fail(ms.error);
-      const previews: Record<string, Message> = {};
-      for (const message of (ms.data ?? []) as Message[])
-        previews[message.conversation_id] ??= message;
-      const rows = cs.data as Conversation[],
-        ids = [...new Set(rows.flatMap((c) => [c.buyer_id, c.seller_id]))];
-      const profiles = ids.length
-        ? await client.from("profiles").select("*").in("id", ids)
-        : { data: [], error: null };
-      fail(profiles.error);
-      if (mounted.current && generation.current === token) {
-        setThreads(
-          rows.sort((a, b) =>
-            (previews[b.id]?.created_at ?? b.created_at).localeCompare(
-              previews[a.id]?.created_at ?? a.created_at,
-            ),
-          ),
-        );
-        setLatest(previews);
-        setArchived(as.data!.map((x) => x.conversation_id));
-        setBlocked(bs.data!.map((x) => x.blocked_id));
-        setNames(
-          Object.fromEntries(
-            (profiles.data ?? []).map((x) => [x.id, x.display_name]),
-          ),
-        );
-        setLoaded(true);
-        setLoadError("");
-        if (!initialSelection.current) {
-          initialSelection.current = true;
-          const { listingId, initialMessage } = requestedSelection.current;
-          const target = listingId
-            ? rows.find(
-                (c) => c.listing_id === listingId && c.buyer_id === userId,
-              )
-            : rows.find(
-                (c) => !as.data!.some((a) => a.conversation_id === c.id),
-              );
-          setSelected(
-            !listingId && window.matchMedia("(max-width: 760px)").matches
-              ? ""
-              : (target?.id ?? (listingId ? `new:${listingId}` : "")),
-          );
-          if (initialMessage)
-            setDrafts((current) => ({
-              ...current,
-              [target?.id ?? `new:${listingId}`]: initialMessage,
-            }));
-        }
-      }
-    } catch (err) {
-      if (mounted.current)
-        setLoadError(
-          err instanceof Error ? err.message : "Could not load messages.",
-        );
-    } finally {
-      inFlight.current = false;
-    }
-  }, [client, userId]);
+  const selectionDone = useRef(false);
   useEffect(() => {
     const previous = requestedSelection.current;
     if (
@@ -175,37 +109,29 @@ export default function AccountMessages({
     )
       return;
     requestedSelection.current = { listingId, initialMessage };
-    initialSelection.current = false;
-    void refresh();
-  }, [listingId, initialMessage, refresh]);
+    selectionDone.current = false;
+  }, [listingId, initialMessage]);
+  // Once the inbox has loaded, open the conversation the app asked for, or the newest one.
   useEffect(() => {
-    mounted.current = true;
-    void refresh();
-    const timer = setInterval(() => void refresh(), 5000);
-    const channel = client
-      .channel(`account-inbox-${userId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "conversations" },
-        () => void refresh(),
-      )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages" },
-        () => void refresh(),
-      )
-      .subscribe();
-    return () => {
-      mounted.current = false;
-      clearInterval(timer);
-      void client.removeChannel(channel);
-    };
-  }, [client, userId, refresh]);
-  const onLatestMessage = useCallback((id: string, messageId: string) => {
-    setConversationLatest((previous) =>
-      previous[id] === messageId ? previous : { ...previous, [id]: messageId },
+    if (!rows || selectionDone.current) return;
+    selectionDone.current = true;
+    const { listingId, initialMessage } = requestedSelection.current;
+    const target = listingId
+      ? rows.threads.find(
+          (c) => c.listing_id === listingId && c.buyer_id === userId,
+        )
+      : rows.threads.find((c) => !rows.archived.includes(c.id));
+    setSelected(
+      !listingId && window.matchMedia("(max-width: 760px)").matches
+        ? ""
+        : (target?.id ?? (listingId ? `new:${listingId}` : "")),
     );
-  }, []);
+    if (initialMessage)
+      setDrafts((current) => ({
+        ...current,
+        [target?.id ?? `new:${listingId}`]: initialMessage,
+      }));
+  }, [rows, listingId, initialMessage, userId]);
   const current = threads.find((c) => c.id === selected);
   const product = current
     ? listings.find((p) => p.id === current.listing_id)
@@ -239,15 +165,52 @@ export default function AccountMessages({
   });
   const role = current?.seller_id === userId ? "seller" : "buyer";
   const text = drafts[selected] ?? "";
+  const setText = (value: string) =>
+    setDrafts((xs) => ({ ...xs, [selected]: value }));
   const otherBlocked = !!otherId && blocked.includes(otherId);
-  // A draft Pako prepared stays labelled as his until the visitor edits it.
-  const pakoDraft = Boolean(initialMessage) && text === initialMessage;
+  // The opening offer Pako prepared stays labelled as his until the student edits it.
+  const offerDraft = Boolean(initialMessage) && text === initialMessage;
   const pakoDrafts = usePakoDrafts();
   const [celebration, setCelebration] = useSentCelebration();
+  const thread = useAccountThread(client, current?.id);
+  const messages: ThreadMessage[] = thread.messages.map((message) => ({
+    id: message.id,
+    from: fromSide(message, userId),
+    text: message.body,
+    at: message.created_at,
+  }));
+  const pageVisible = usePageVisible();
+  const visible = Boolean(current);
+  const assistant = useThreadPako({
+    reading,
+    thread:
+      current && product
+        ? {
+            key: current.id,
+            role,
+            listing: product,
+            messages,
+            loaded: thread.loaded,
+            cache: accountTurnCache(client, userId, current.id),
+          }
+        : null,
+    otherName,
+    visible,
+    text,
+    onText: setText,
+    // Sample sellers never reply, so nudging them helps nobody.
+    canNudge: !product?.demo,
+  });
+  const latestTheirs = [...messages]
+    .reverse()
+    .find((message) => message.from === "them");
+  useEffect(() => {
+    if (visible && pageVisible && current && latestTheirs)
+      void inbox.markRead(current.id, latestTheirs.at);
+  }, [visible, pageVisible, current?.id, latestTheirs?.at, inbox.markRead]);
   async function changeArchive(id: string, remove: boolean) {
     setBusy(true);
     setError("");
-    generation.current++;
     try {
       const r = remove
         ? await client
@@ -259,7 +222,12 @@ export default function AccountMessages({
             .eq("conversation_id", id)
             .eq("user_id", userId);
       if (r.error?.code !== "23505") fail(r.error);
-      setArchived((xs) => (remove ? [...xs, id] : xs.filter((x) => x !== id)));
+      inbox.change((rows) => ({
+        ...rows,
+        archived: remove
+          ? [...rows.archived, id]
+          : rows.archived.filter((x) => x !== id),
+      }));
       if (remove) {
         setSelected("");
         if (current) onDeleted?.(current.listing_id);
@@ -269,10 +237,111 @@ export default function AccountMessages({
         err instanceof Error ? err.message : "Could not update conversation.",
       );
     } finally {
-      generation.current++;
       setBusy(false);
     }
   }
+  async function toggleBlock(other: string) {
+    setBusy(true);
+    setError("");
+    try {
+      const isBlocked = blocked.includes(other);
+      const r = isBlocked
+        ? await client
+            .from("blocked_users")
+            .delete()
+            .eq("user_id", userId)
+            .eq("blocked_id", other)
+        : await client.from("blocked_users").insert({
+            user_id: userId,
+            blocked_id: other,
+          });
+      if (r.error?.code !== "23505") fail(r.error);
+      inbox.change((rows) => ({
+        ...rows,
+        blocked: isBlocked
+          ? rows.blocked.filter((x) => x !== other)
+          : [...rows.blocked, other],
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update block.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function send() {
+    const fromPako = offerDraft || assistant.draftedByPako;
+    const celebrates = offerDraft || assistant.celebrates;
+    setBusy(true);
+    setError("");
+    const key = selected;
+    try {
+      const itemId = current?.listing_id ?? product!.id;
+      onBeforeSend?.(itemId, role);
+      let conversation = current;
+      if (!conversation) {
+        const r = await client.rpc("start_conversation", { item: itemId });
+        fail(r.error);
+        const cs = await client
+          .from("conversations")
+          .select("*")
+          .eq("id", r.data)
+          .single();
+        fail(cs.error);
+        const started = cs.data as Conversation;
+        conversation = started;
+        inbox.change((rows) => ({
+          ...rows,
+          threads: [
+            started,
+            ...rows.threads.filter((x) => x.id !== started.id),
+          ],
+        }));
+      }
+      const id = pending.current.idFor(conversation.id, role, text);
+      await sendCloudMessage(client, {
+        id,
+        conversation_id: conversation.id,
+        sender_id: userId,
+        body: text.trim(),
+      });
+      pending.current.acknowledge(id);
+      if (fromPako) pakoDrafts.remember(id);
+      if (celebrates) setCelebration(otherName);
+      assistant.sent();
+      onSent?.(itemId, role, text.trim());
+      setDrafts((xs) => ({ ...xs, [key]: "", [conversation.id]: "" }));
+      setSelected(conversation.id);
+      await client
+        .from("conversation_archives")
+        .delete()
+        .eq("conversation_id", conversation.id)
+        .eq("user_id", userId);
+      const sentTo = conversation.id;
+      inbox.change((rows) => ({
+        ...rows,
+        archived: rows.archived.filter((x) => x !== sentTo),
+      }));
+      window.dispatchEvent(
+        new CustomEvent("takeover-message-sent", { detail: conversation.id }),
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not send message. Your text is kept.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  const threadNote = (c: Conversation, item: Product | undefined) => {
+    if (c.buyer_id === userId && item && item.status !== "active")
+      return GONE_NOTES[item.status];
+    const newest = latest[c.id];
+    return newest && fromSide(newest, userId) === "them"
+      ? "Your turn"
+      : undefined;
+  };
   return (
     <section
       className={`messages-page account-messages${selected ? " has-conversation" : ""}`}
@@ -291,6 +360,12 @@ export default function AccountMessages({
           {showArchived ? "Back to inbox" : "Archived"}
         </Button>
       </div>
+      {rows && rows.reads === null && (
+        <p className="account-notice" role="status">
+          Unread counts and Pako's reply reading arrive with this server's next
+          update. Your messages work as before.
+        </p>
+      )}
       <div className="seller-chat-layout">
         <nav aria-label="Conversations">
           <div className="inbox-controls">
@@ -310,7 +385,8 @@ export default function AccountMessages({
           </div>
           {visibleThreads.map((c, order) => {
             const item = listings.find((l) => l.id === c.listing_id),
-              other = c.buyer_id === userId ? c.seller_id : c.buyer_id;
+              other = c.buyer_id === userId ? c.seller_id : c.buyer_id,
+              newest = latest[c.id];
             return (
               <ChatThreadCard
                 key={c.id}
@@ -326,8 +402,13 @@ export default function AccountMessages({
                 }
                 title={item?.title ?? "Listing unavailable"}
                 preview={
-                  latest[c.id] &&
-                  `${latest[c.id].sender_id === userId ? "You: " : ""}${latest[c.id].body}`
+                  newest &&
+                  `${newest.sender_id === userId ? "You: " : ""}${newest.body}`
+                }
+                note={threadNote(c, item)}
+                unread={
+                  rows?.reads != null &&
+                  isUnread(accountInboxThread(c.id, newest, userId), rows.reads)
                 }
                 onSelect={() => {
                   setSelected(c.id);
@@ -346,7 +427,7 @@ export default function AccountMessages({
               note="New conversation"
             />
           )}
-          {!loaded && !loadError && (
+          {!rows && !inbox.loadError && (
             <div className="inbox-loading" role="status">
               <span className="sr-only">Loading conversations…</span>
               <div aria-hidden="true">
@@ -356,7 +437,7 @@ export default function AccountMessages({
               </div>
             </div>
           )}
-          {loaded &&
+          {rows &&
             !visibleThreads.length &&
             !selected.startsWith("new:") &&
             (query || filter !== "all" || showArchived ? (
@@ -390,15 +471,7 @@ export default function AccountMessages({
                     title={product?.title ?? "Listing unavailable"}
                     detail={
                       product &&
-                      `${money(product.price)} · ${
-                        product.status === "active"
-                          ? "Available"
-                          : product.status === "withdrawn"
-                            ? "Archived listing"
-                            : product.status === "reserved"
-                              ? "Reserved"
-                              : "Sold"
-                      }`
+                      `${money(product.price)} · ${STATUS_WORDS[product.status]}`
                     }
                     onOpenListing={() =>
                       onOpenListing(current?.listing_id ?? product!.id)
@@ -437,39 +510,7 @@ export default function AccountMessages({
                         {otherId && (
                           <DropdownMenuItem
                             disabled={busy}
-                            onClick={async () => {
-                              setBusy(true);
-                              setError("");
-                              generation.current++;
-                              try {
-                                const isBlocked = blocked.includes(otherId);
-                                const r = isBlocked
-                                  ? await client
-                                      .from("blocked_users")
-                                      .delete()
-                                      .eq("user_id", userId)
-                                      .eq("blocked_id", otherId)
-                                  : await client.from("blocked_users").insert({
-                                      user_id: userId,
-                                      blocked_id: otherId,
-                                    });
-                                if (r.error?.code !== "23505") fail(r.error);
-                                setBlocked((xs) =>
-                                  isBlocked
-                                    ? xs.filter((x) => x !== otherId)
-                                    : [...xs, otherId],
-                                );
-                              } catch (err) {
-                                setError(
-                                  err instanceof Error
-                                    ? err.message
-                                    : "Could not update block.",
-                                );
-                              } finally {
-                                generation.current++;
-                                setBusy(false);
-                              }
-                            }}
+                            onClick={() => void toggleBlock(otherId)}
                           >
                             {blocked.includes(otherId)
                               ? "Unblock user"
@@ -481,14 +522,26 @@ export default function AccountMessages({
                   )}
                 </div>
               </header>
-              <ConversationMessages
-                key={current?.id ?? selected}
-                client={client}
-                userId={userId}
-                conversationId={current?.id}
+              <ThreadLog
+                threadKey={current?.id ?? selected}
+                messages={messages}
                 otherName={otherName}
-                pakoDrafts={pakoDrafts}
-                onLatestMessage={onLatestMessage}
+                loaded={thread.loaded}
+                error={thread.error}
+                drafted={pakoDrafts.drafted}
+                extras={(message) => (
+                  <Report client={client} messageId={message.id} />
+                )}
+                disclosure={
+                  current &&
+                  product &&
+                  reading.available === "ready" && (
+                    <ThreadDisclosure
+                      autoRead={reading.autoRead}
+                      onOpenSettings={reading.onOpenSettings}
+                    />
+                  )
+                }
               />
               <AnimatePresence>
                 {celebration && <SentCelebration recipient={celebration} />}
@@ -498,115 +551,17 @@ export default function AccountMessages({
                   You blocked this user. Unblock them to send a message.
                 </p>
               )}
-              <form
-                className="conversation-composer"
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (busy || !text.trim() || otherBlocked) return;
-                  const fromPako = pakoDraft;
-                  setBusy(true);
-                  setError("");
-                  const key = selected;
-                  try {
-                    const itemId = current?.listing_id ?? product!.id;
-                    onBeforeSend?.(itemId, role);
-                    let thread = current;
-                    if (!thread) {
-                      const r = await client.rpc("start_conversation", {
-                        item: itemId,
-                      });
-                      fail(r.error);
-                      const cs = await client
-                        .from("conversations")
-                        .select("*")
-                        .eq("id", r.data)
-                        .single();
-                      fail(cs.error);
-                      thread = cs.data as Conversation;
-                      setThreads((xs) => [
-                        thread!,
-                        ...xs.filter((x) => x.id !== thread!.id),
-                      ]);
-                    }
-                    const id = pending.current.idFor(thread.id, role, text);
-                    await sendCloudMessage(client, {
-                      id,
-                      conversation_id: thread.id,
-                      sender_id: userId,
-                      body: text.trim(),
-                    });
-                    pending.current.acknowledge(id);
-                    if (fromPako) {
-                      pakoDrafts.remember(id);
-                      setCelebration(otherName);
-                    }
-                    onSent?.(itemId, role, text.trim());
-                    setDrafts((xs) => ({ ...xs, [key]: "", [thread!.id]: "" }));
-                    setSelected(thread.id);
-                    await client
-                      .from("conversation_archives")
-                      .delete()
-                      .eq("conversation_id", thread.id)
-                      .eq("user_id", userId);
-                    setArchived((xs) => xs.filter((x) => x !== thread!.id));
-                    window.dispatchEvent(
-                      new CustomEvent("takeover-message-sent", {
-                        detail: thread.id,
-                      }),
-                    );
-                  } catch (err) {
-                    setError(
-                      err instanceof Error
-                        ? err.message
-                        : "Could not send message. Your text is kept.",
-                    );
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                <ReplySuggestions
-                  key={selected}
-                  client={client}
-                  userId={userId}
-                  conversationId={current?.id}
-                  role={role}
-                  listing={product}
-                  latestMessageKey={`${latest[selected]?.id ?? ""}:${conversationLatest[selected] ?? ""}`}
-                  draft={text}
-                  disabled={busy || otherBlocked}
-                  onSelect={(reply) => {
-                    if (reply.length > 4000) return;
-                    setDrafts((xs) => ({ ...xs, [selected]: reply }));
-                  }}
-                />
-                {pakoDraft && (
-                  <PakoLabel>
-                    Pako drafted this for you. Check it, then send.
-                  </PakoLabel>
-                )}
-                <ChatComposerField
-                  value={text}
-                  disabled={otherBlocked}
-                  busy={busy}
-                  onValueChange={(value) =>
-                    setDrafts((xs) => ({ ...xs, [selected]: value }))
-                  }
-                />
-                <div className="seller-message-meta">
-                  <small className="composer-keyboard-hint">
-                    Ctrl / ⌘ + Enter to send
-                  </small>
-                  {text.length >= 3500 && (
-                    <small>{text.length.toLocaleString()}/4,000</small>
-                  )}
-                </div>
-                {error && (
-                  <p className="chat-error" role="alert">
-                    {error}
-                  </p>
-                )}
-              </form>
+              {!otherBlocked && assistant.tray}
+              <ThreadComposer
+                text={text}
+                busy={busy}
+                disabled={otherBlocked}
+                error={error}
+                pakoDrafted={offerDraft || assistant.draftedByPako}
+                tools={!otherBlocked && assistant.askMenu}
+                onTextChange={setText}
+                onSend={() => void send()}
+              />
             </>
           ) : (
             <div className="inbox-empty">
@@ -617,143 +572,16 @@ export default function AccountMessages({
           )}
         </section>
       </div>
-      {loadError && (
+      {inbox.loadError && (
         <p role="alert">
-          {loadError}{" "}
-          <Button className="text-button" onClick={() => void refresh()}>
+          {inbox.loadError}{" "}
+          <Button className="text-button" onClick={() => void inbox.refresh()}>
             Retry
           </Button>
         </p>
       )}
+      {inbox.readError && <p role="alert">{inbox.readError}</p>}
       {error && !selected && <p role="alert">{error}</p>}
     </section>
-  );
-}
-function ConversationMessages({
-  client,
-  userId,
-  conversationId,
-  otherName,
-  pakoDrafts,
-  onLatestMessage,
-}: {
-  client: SupabaseClient;
-  userId: string;
-  conversationId?: string;
-  otherName: string;
-  pakoDrafts: PakoDrafts;
-  onLatestMessage: (conversationId: string, messageId: string) => void;
-}) {
-  const [messages, setMessages] = useState<Message[]>([]),
-    [error, setError] = useState(""),
-    // A new conversation has nothing to load; history arrives without an entrance.
-    [loaded, setLoaded] = useState(!conversationId);
-  const pane = useRef<HTMLDivElement>(null),
-    follow = useRef(true);
-  useEffect(() => {
-    if (!conversationId) return;
-    let alive = true,
-      loading = false;
-    async function load() {
-      if (loading) return;
-      loading = true;
-      try {
-        const rows: Message[] = [];
-        for (let from = 0; ; from += 500) {
-          const result = await client
-            .from("messages")
-            .select("*")
-            .eq("conversation_id", conversationId!)
-            .order("created_at")
-            .order("id")
-            .range(from, from + 499);
-          fail(result.error);
-          rows.push(...(result.data as Message[]));
-          if (result.data!.length < 500) break;
-        }
-        if (alive) {
-          setMessages(rows);
-          setLoaded(true);
-          onLatestMessage(conversationId!, rows.at(-1)?.id ?? "");
-          setError("");
-        }
-      } catch (err) {
-        if (alive)
-          setError(
-            err instanceof Error ? err.message : "Could not load conversation.",
-          );
-      } finally {
-        loading = false;
-      }
-    }
-    const refresh = () => void load();
-    void load();
-    const timer = setInterval(refresh, 5000);
-    window.addEventListener("takeover-message-sent", refresh);
-    const channel = client
-      .channel(`account-thread-${conversationId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `conversation_id=eq.${conversationId}`,
-        },
-        (payload) => {
-          if (typeof payload.new.id === "string")
-            onLatestMessage(conversationId, payload.new.id);
-          refresh();
-        },
-      )
-      .subscribe();
-    return () => {
-      alive = false;
-      clearInterval(timer);
-      window.removeEventListener("takeover-message-sent", refresh);
-      void client.removeChannel(channel);
-    };
-  }, [client, conversationId, onLatestMessage]);
-  useEffect(() => {
-    const el = pane.current;
-    if (el && follow.current)
-      el.scrollTo({ top: el.scrollHeight, behavior: motionBehavior() });
-  }, [messages.length]);
-  return (
-    <div
-      className="seller-chat-messages"
-      ref={pane}
-      onScroll={() => {
-        const el = pane.current!;
-        follow.current = el.scrollHeight - el.clientHeight - el.scrollTop < 72;
-      }}
-      role="log"
-      aria-live="polite"
-    >
-      {loaded && !messages.length && !error && <ChatStart />}
-      {loaded && (
-        <AnimatePresence initial={false}>
-          {messages.map((m, index) => (
-            <div className="message-entry" key={m.id}>
-              {startsNewDay(m.created_at, messages[index - 1]?.created_at) && (
-                <ChatDate createdAt={m.created_at} />
-              )}
-              <ChatMessage
-                mine={m.sender_id === userId}
-                drafted={m.sender_id === userId && pakoDrafts.drafted(m.id)}
-                author={m.sender_id === userId ? "You" : otherName}
-                createdAt={m.created_at}
-                text={m.body}
-              >
-                {m.sender_id !== userId && (
-                  <Report client={client} messageId={m.id} />
-                )}
-              </ChatMessage>
-            </div>
-          ))}
-        </AnimatePresence>
-      )}
-      {error && <p role="alert">{error}</p>}
-    </div>
   );
 }
