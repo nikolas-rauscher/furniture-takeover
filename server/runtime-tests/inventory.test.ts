@@ -500,3 +500,45 @@ test("widening only the radius rechecks local inventory and retains the free-ite
   assert.deepEqual(events.filter(event => event.type === "watch_suggestion"),
     [{ type: "watch_suggestion", query: "antique grand piano", maxPrice: 0 }]);
 });
+
+test("a filter-only follow-up closes after curation and one external lookup", async () => {
+  for (const [text, external] of [
+    ["only within 2 km please", true], ["under CHF 70", true],
+    ["free items only", true], ["only on Takeover", false],
+    ["cheaper please", true], ["closer to UNIL", true],
+  ] as const) {
+    const steps = [
+      toolCall("inventory_search", { query: "desk" }, "find"),
+      toolCall("show_takeover_listings", { ids: [] }, "select"),
+    ];
+    if (external) steps.push(toolCall("web_search", { query: "bureau Lausanne" }, "web"));
+    const model = new MockLanguageModelV4({ doStream: [...steps, answer("No matches.")] });
+    const events = await eventsFor(createAgentRuntime({
+      apiKey: "test", braveApiKey: "test", modelImpl: model,
+      fetchImpl: async () => Response.json({ web: { results: [] } }),
+    }), { text, context: {
+      previousAnswer: "I found a desk.", source: "All", currentQuery: "desk",
+      maxPrice: 80, location: "EPFL", budgetSpecified: true,
+    } });
+    assert.deepEqual(model.doStreamCalls.map(call => call.tools?.map(tool => tool.name)),
+      [["inventory_search"], ["show_takeover_listings"], ...(external ? [["web_search"]] : []), ["ask_user"]], text);
+    assert.equal(events.at(-1)?.type, "complete", text);
+    assert.ok(events.some(event => event.type === "watch_suggestion"));
+  }
+});
+
+test("repeating the current query and budget preserves the selected cards", async () => {
+  const model = new MockLanguageModelV4({ doStream: [
+    toolCall("inventory_search", { query: "desk" }, "find"),
+    toolCall("show_takeover_listings", { ids: [ownDesk.id] }, "select"),
+    toolCall("update_search_preferences", { patch: { query: "desk", maxPrice: 80 },
+      reason: "Keep your filters.", evidence: [{ kind: "seller", quote: "desk" }] }, "filters"),
+    answer("One desk fits."),
+  ] });
+  const events = await eventsFor(createAgentRuntime({ apiKey: "test", modelImpl: model }), {
+    text: "desk under CHF 80", context: { currentQuery: "desk", source: "takeover" }, inventory: [ownDesk],
+  });
+  assert.deepEqual(events.filter(event => event.type === "inventory_matches").at(-1),
+    { type: "inventory_matches", ids: [ownDesk.id] });
+  assert.equal(events.at(-1)?.type, "complete");
+});

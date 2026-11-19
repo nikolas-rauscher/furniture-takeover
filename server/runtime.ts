@@ -29,7 +29,7 @@ import type {
 import { WebSearchError } from "./web-search.ts";
 import { marketplaceDomains } from "./marketplace-policy.ts";
 import { MAX_REASONING_CHARS, MAX_REASONING_PARTS } from "../shared/runs.ts";
-import { dateSchema, listingDraftSchema, questionSchema } from "./actions.ts";
+import { ActionRejection, dateSchema, listingDraftSchema, questionSchema } from "./actions.ts";
 
 export type AgentRuntimeConfig = {
   apiKey: string;
@@ -156,7 +156,15 @@ export function validateRunRequest(input: unknown): AgentRunRequest {
   return parsed.data;
 }
 
-/** Model steps in one run before it stops with a step-limit error. */
+/** Only route filter-only turns here. Requests to select or negotiate still need their tools. */
+function isSearchRefinement(request: AgentRunRequest) {
+  if (request.text.length > 500 || !request.context?.currentQuery ||
+      !(request.context.previousAnswer || request.context.recentMessages?.length)) return false;
+  const remainder = parseSearch(request.text).query
+    .replace(/\b(?:only|items?|search|budget|widen|expand|radius|to|the|cheaper|closer|EPFL|UNIL)\b|[:?]/gi, "").trim();
+  return !remainder && /\b(?:km|chf|budget|free|takeover|cheaper|closer|under|below)\b/i.test(request.text);
+}
+
 const MAX_STEPS = 8;
 
 const toolActivity: Record<string, { label: string; task: AgentTaskKind }> = {
@@ -405,7 +413,9 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
           request.context?.intent === "negotiation" ||
           Boolean(request.context?.negotiation);
         const constraints = extractSearchConstraints(request.text);
+        const refinement = !listingMode && !negotiationMode && isSearchRefinement(request);
         if (!listingMode && !negotiationMode) {
+          const previous = { ...request.context };
           request.context ??= {};
           if (constraints.maxPrice !== undefined) {
             request.context.maxPrice = constraints.maxPrice;
@@ -413,6 +423,20 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
           }
           if (constraints.radius !== undefined) request.context.radius = constraints.radius;
           if (takeoverOnlyPattern.test(request.text)) request.context.source = "takeover";
+          if (refinement) {
+            const campus = request.text.match(/\b(?:closer to|near|of) (EPFL|UNIL)\b/i)?.[1];
+            if (campus) request.context.location = campus.toUpperCase();
+            const patch = Object.fromEntries(
+              (["maxPrice", "radius", "source", "location"] as const)
+                .filter(field => previous[field] !== request.context?.[field])
+                .map(field => [field, request.context?.[field]]),
+            );
+            if (Object.keys(patch).length) await send({
+              type: "preferences_patch", id: runId + "-filters", patch,
+              reason: "Apply your updated search preferences.",
+              evidence: [{ kind: "seller", quote: request.text.trim() }],
+            });
+          }
         }
         const ownOnly = request.context?.source?.toLowerCase() === "takeover";
         const state: AgentToolState = {
@@ -538,10 +562,10 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
               steps.length >= MAX_STEPS + Number(negotiations.isReadyToFinish()),
             () => Boolean(state.pendingQuestion),
           ],
-          prepareStep: ({ stepNumber }) => {
+          prepareStep: ({ stepNumber, steps }) => {
             // Preferences can change through a tool in this same reply. Rebuild
             // capabilities so an earlier takeover-only flag cannot survive it.
-            const instructions = buildAgentInstructions({
+            let instructions = buildAgentInstructions({
               listingMode,
               listingAssist,
               keyFacts,
@@ -550,6 +574,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
               allowWebSearch: state.allowWebSearch,
               ownInventoryOnly: state.ownInventoryOnly,
             });
+            if (refinement) instructions += "\nThe current filters are applied. Compare the curated cards in the requested order. The interface offers a watch for empty results. When comparing distance to a named campus, a listed distance without an explicit origin cannot establish distance to that campus. Say when you cannot rank or verify it.";
             // The model chooses the language before seeing foreign-language sources.
             // Reinforce that committed choice through the SDK on every later step.
             const languageInstructions = state.responseLanguage
@@ -575,6 +600,18 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
                 activeTools: [],
                 toolChoice: "none" as const,
               };
+            if (refinement && state.inventoryCurated &&
+                (!state.allowWebSearch || state.webSearched)) {
+              // Cards and the empty-result watch are already supplied by the runtime.
+              // Leave one opportunity for a clarification, then close on the evidence.
+              const canAsk = !state.displayedInventoryIds.length &&
+                !steps.some(step => step.toolCalls.some(call => call.toolName === "ask_user"));
+              return {
+                ...languageInstructions,
+                activeTools: canAsk ? ["ask_user"] : [],
+                toolChoice: canAsk ? "auto" : "none",
+              };
+            }
             const needsBudget =
               !listingMode &&
               !negotiationMode &&
@@ -589,9 +626,9 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
                     !negotiationMode &&
                     !negotiations.getCurrent() &&
                     !state.inventorySearched &&
-                    (constraints.radius !== undefined ||
+                    (refinement || constraints.radius !== undefined ||
                       (!request.context?.previousAnswer && !request.context?.recentMessages?.length)) &&
-                    request.context?.budgetSpecified !== undefined &&
+                    (refinement || request.context?.budgetSpecified !== undefined) &&
                     !state.pendingQuestion
                   ? "inventory_search"
                   : !listingMode &&
@@ -623,8 +660,8 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
               state.inventoryCurated &&
               state.allowWebSearch &&
               !state.webSearched &&
-              request.context?.source &&
-              marketplaceDomains(request.context.source)?.length
+              (refinement || (request.context?.source &&
+                marketplaceDomains(request.context.source)?.length))
             )
               requiredTool = "web_search";
             const requiresTool = Boolean(
@@ -689,14 +726,15 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
               if (part.type === "tool-error") {
                 const error = part.error;
                 const reason = error instanceof RunError || error instanceof WebSearchError
-                  ? error.code : error instanceof Error && error.message.startsWith("ACTION_REJECTED:")
-                    ? "ACTION_REJECTED" : "INVALID_TOOL_CALL";
+                  ? error.code : error instanceof ActionRejection
+                    ? error.message : "INVALID_TOOL_CALL";
                 outcomes.push(name + ": " + reason);
               } else {
                 const output = part.output;
-                const count = output && typeof output === "object" &&
-                  ["items", "displayedIds", "sources"].find(key => Array.isArray(Reflect.get(output, key)));
-                outcomes.push(name + (count ? ": " + Reflect.get(output as object, count).length + " " + count : ": completed"));
+                const arrays = output && typeof output === "object" ? Object.entries(output) : [];
+                const counted = arrays.find(([key, value]) =>
+                  ["items", "displayedIds", "sources"].includes(key) && Array.isArray(value));
+                outcomes.push(counted && Array.isArray(counted[1]) ? `${name}: ${counted[1].length} ${counted[0]}` : `${name}: completed`);
               }
             }
             stepSequence.push({ step: stepNumber + 1, outcomes: outcomes.length ? outcomes : [finishReason] });

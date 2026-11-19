@@ -297,15 +297,14 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                 claimTool();
                 const action = preferencesAction(input, request, toolCallId);
                 const previousSource = request.context?.source;
+                const filtersChanged = Object.entries(action.patch).some(([field, value]) =>
+                  value !== (field === "query" ? request.context?.currentQuery :
+                    request.context?.[field as keyof NonNullable<AgentRunRequest["context"]>]),
+                );
                 request.context = { ...request.context, ...action.patch };
                 if (action.patch.query !== undefined)
                   request.context.currentQuery = action.patch.query;
-                if (
-                  action.patch.query !== undefined ||
-                  action.patch.maxPrice !== undefined ||
-                  action.patch.condition !== undefined ||
-                  action.patch.source !== undefined
-                ) {
+                if (filtersChanged) {
                   state.observedInventory.clear();
                   state.inventorySearched = false;
                   state.inventoryCurated = false;
