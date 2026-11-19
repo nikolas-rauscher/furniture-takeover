@@ -413,36 +413,6 @@
 .ob-chat-confirm {
   width: 100%;
 }
-.ob-chat-booked {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 52px;
-  padding: 0 14px;
-  border-radius: 14px;
-  background: var(--selected);
-  color: var(--blue-dark);
-  font-weight: 700;
-}
-.ob-chat-booked:focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 3px;
-}
-.ob-chat-booked-icon {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--blue);
-  color: var(--on-primary);
-}
-.ob-chat-booked-check {
-  margin-left: auto;
-  color: var(--blue);
-}
-
 @media (max-width: 360px) {
   .ob-ask-request,
   .ob-chat-bubble {

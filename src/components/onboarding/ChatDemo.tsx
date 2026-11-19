@@ -1,14 +1,8 @@
 import { AnimatePresence, motion } from "motion/react";
-import {
-  useEffect,
-  useEffectEvent,
-  useMemo,
-  useRef,
-  useState,
-  type Ref,
-} from "react";
-import { CalendarCheck, Check, Clock, MapPin } from "@/components/icons";
+import { useEffect, useEffectEvent, useMemo, useState, type Ref } from "react";
+import { Clock, MapPin } from "@/components/icons";
 import { money } from "../../../shared/marketplace";
+import BookedBanner from "../BookedBanner";
 import { Button } from "../ui/button";
 import {
   chatScene,
@@ -220,32 +214,5 @@ function DealCard({
         </Button>
       )}
     </motion.section>
-  );
-}
-
-/** Replaces the confirm button, so it takes over keyboard focus from it. */
-function BookedBanner() {
-  const banner = useRef<HTMLParagraphElement>(null);
-  useEffect(() => banner.current?.focus(), []);
-  return (
-    <motion.p
-      ref={banner}
-      tabIndex={-1}
-      className="ob-chat-booked"
-      initial={{ opacity: 0, scale: 0.94 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ type: "spring", stiffness: 500, damping: 30 }}
-    >
-      <span className="ob-chat-booked-icon" aria-hidden="true">
-        <CalendarCheck size={18} />
-      </span>
-      Pickup booked
-      <Check
-        animate
-        size={20}
-        strokeWidth={3}
-        className="ob-chat-booked-check"
-      />
-    </motion.p>
   );
 }
