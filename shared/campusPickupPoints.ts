@@ -28,6 +28,38 @@ export const legacyCampusPickupPoints = [
   },
 ] as const;
 
+/** UNIL buildings and Lausanne centre hubs, checked on 2026-11-19 against UNIL's access page and Lausanne Tourisme. */
+function uniAndCityPickupPoints() {
+  const unilAccess = "https://unil.ch/acces/en/home/menuinst/unil.html";
+  const unilBuilding = (building: string) =>
+    ({
+      name: `UNIL ${building} · main entrance`,
+      address: `Bâtiment ${building}, 1015 Lausanne`,
+      area: "UNIL · Dorigny",
+      sourceUrl: unilAccess,
+    }) as const;
+  return [
+    unilBuilding("Amphipôle"),
+    unilBuilding("Internef"),
+    unilBuilding("Géopolis"),
+    unilBuilding("Unithèque"),
+    {
+      name: "Lausanne-Flon · metro station",
+      address: "Place de l'Europe, 1003 Lausanne",
+      area: "Lausanne · Centre",
+      sourceUrl:
+        "https://www.lausanne-tourisme.ch/en/explore/flon-the-heart-of-lausanne/",
+    },
+    {
+      name: "Gare de Lausanne · main hall",
+      address: "Place de la Gare, 1003 Lausanne",
+      area: "Lausanne · Centre",
+      sourceUrl:
+        "https://www.lausanne-tourisme.ch/en/explore/lausanne-railway-station/",
+    },
+  ] as const;
+}
+
 export const campusPickupPoints = [
   {
     name: "FMEL Atrium · outside entrance",
@@ -62,6 +94,7 @@ export const campusPickupPoints = [
   legacyCampusPickupPoints[0],
   legacyCampusPickupPoints[1],
   legacyCampusPickupPoints[3],
+  ...uniAndCityPickupPoints(),
 ] as const;
 
 // Only the exact old demo assignments are migrated; a custom address is preserved.

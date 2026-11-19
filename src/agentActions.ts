@@ -3,7 +3,11 @@ import type {
   AgentListingPatchEvent,
   AgentPreferencesPatchEvent,
 } from "../shared/actions.ts";
-import { TODAY, type Criteria } from "../shared/marketplace.ts";
+import {
+  listingConditions,
+  TODAY,
+  type Criteria,
+} from "../shared/marketplace.ts";
 import type { ListingDraft } from "./components/SellFlow.tsx";
 import type { SearchSnapshot } from "./searchRequest.ts";
 
@@ -82,7 +86,7 @@ function fieldValue(
   if (field === "condition")
     return text === ""
       ? ""
-      : (["Very good", "Good", "Used"].find(
+      : (listingConditions.find(
           (condition) => condition.toLowerCase() === text.toLowerCase(),
         ) ?? text);
   if (

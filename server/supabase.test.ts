@@ -533,7 +533,7 @@ test("Supabase migration enforces listing ownership, private chats and photo own
       add column created_at timestamptz, add column updated_at timestamptz;`);
     const retiredSeller = "df5ead21-cb17-52ad-af2d-b6b167100001";
     await db.query(
-      "insert into auth.users(id,raw_app_meta_data) values($1,'{\"demo_seed\":\"takeover-ebay-v1\"}')",
+      "insert into auth.users(id,email,raw_app_meta_data) values($1,'takeover-demo-lea@example.invalid','{\"demo_seed\":\"takeover-ebay-v1\"}')",
       [retiredSeller],
     );
     await db.query(

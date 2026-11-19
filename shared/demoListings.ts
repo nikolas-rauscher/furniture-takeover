@@ -11,6 +11,12 @@ const [
   learningCenter,
   swisstech,
   leCroset,
+  amphipole,
+  internef,
+  geopolis,
+  unitheque,
+  flon,
+  lausanneStation,
 ] = campusPickupPoints;
 
 type Place = Pick<Product, "location" | "pickupPoint">;
@@ -19,8 +25,6 @@ const at = (point: NonNullable<Product["pickupPoint"]>): Place => ({
   location: point.area,
   pickupPoint: point,
 });
-const unil: Place = { location: "UNIL · Dorigny" };
-const lausanneCentre: Place = { location: "Lausanne · Centre" };
 
 type DemoListingSpec = Pick<
   Product,
@@ -275,13 +279,13 @@ const specs: DemoListingSpec[] = [
     title: "Bookshelf speakers",
     price: 60,
     seller: "Arjun",
-    place: unil,
+    place: at(amphipole),
     distance: 5.8,
     condition: "Good",
     dimensions: "17 × 24 × 30 cm each",
     available: "Weekend pickup",
     description:
-      "A pair of passive bookshelf speakers with seriously nice sound for the money! Wood-look cabinets, 2-way, 8 ohm. I used them with a small amp for two years. One has a little dent on a top corner, which you can only see if you look for it. I'm around the Unicentre during the week.",
+      "A pair of passive bookshelf speakers with seriously nice sound for the money! Wood-look cabinets, 2-way, 8 ohm. I used them with a small amp for two years. One has a little dent on a top corner, which you can only see if you look for it. I'm around the Amphipôle during the week.",
   },
   {
     id: "demo-v1-2",
@@ -317,7 +321,7 @@ const specs: DemoListingSpec[] = [
     title: "Single bed with mattress",
     price: 90,
     seller: "Jonas",
-    place: lausanneCentre,
+    place: at(flon),
     distance: 5.5,
     condition: "Good",
     dimensions: "90 × 200 cm",
@@ -473,7 +477,7 @@ const specs: DemoListingSpec[] = [
     title: "Droit des obligations notes (UNIL)",
     price: 0,
     seller: "Noé",
-    place: unil,
+    place: at(internef),
     distance: 5.9,
     condition: "Used, with marks",
     dimensions: "Printed · about 140 pages",
@@ -502,7 +506,7 @@ const specs: DemoListingSpec[] = [
     title: "Two-door wardrobe",
     price: 70,
     seller: "Mia",
-    place: unil,
+    place: at(geopolis),
     distance: 6,
     condition: "Used, with marks",
     dimensions: "100 × 50 × 200 cm",
@@ -518,13 +522,13 @@ const specs: DemoListingSpec[] = [
     title: "Tennis racket",
     price: 25,
     seller: "Jonas",
-    place: unil,
+    place: at(unitheque),
     distance: 6.1,
     condition: "Good",
     dimensions: "Head 645 cm² · 27 in",
     available: weekdayEvenings,
     description:
-      "Tennis racket, grip size 3. New grip tape last month. Strings fine. Cover included. Pickup at the UNIL sports centre.",
+      "Tennis racket, grip size 3. New grip tape last month. Strings fine. Cover included. Pickup outside the Unithèque.",
   },
   {
     id: "demo-v1-12",
@@ -546,7 +550,7 @@ const specs: DemoListingSpec[] = [
     title: "Framed prints, set of 3",
     price: 18,
     seller: "Sofia",
-    place: lausanneCentre,
+    place: at(lausanneStation),
     distance: 5,
     condition: "Like new",
     dimensions: "30 × 40 cm each",
@@ -617,7 +621,7 @@ const specs: DemoListingSpec[] = [
     title: "Yoga mat",
     price: 10,
     seller: "Sofia",
-    place: lausanneCentre,
+    place: at(flon),
     distance: 4.9,
     condition: "Good",
     dimensions: "183 × 61 cm · 6 mm",

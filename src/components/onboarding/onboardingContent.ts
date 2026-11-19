@@ -82,8 +82,8 @@ export const places: Place[] = [
     area: "Dorigny",
     kind: "campus",
     searchArea: "UNIL, Dorigny",
-    meetingPoint: "UNIL-Mouline metro",
-    meetingPhrase: "the UNIL-Mouline metro stop",
+    meetingPoint: "UNIL Amphipôle · main entrance",
+    meetingPhrase: "the Amphipôle at UNIL",
   },
   {
     id: "vortex",

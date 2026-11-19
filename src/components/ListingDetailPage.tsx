@@ -45,8 +45,6 @@ type ListingDetailPageProps = {
   deal?: StripView;
   /** Opens the conversation the deal is in. */
   onOpenChat(): void;
-  /** Pako searches for real listings like a sample, whose seller cannot reply. */
-  onFindSimilar(): void;
   onEdit(): void;
   onAskAgent(): void;
   /** Feature-flagged availability prototype; replaces "Message seller". */

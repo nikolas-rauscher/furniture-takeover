@@ -29,6 +29,7 @@ import {
   type ChatMoment,
 } from "./ChatParts";
 import DealCard from "./DealCard";
+import { useNamedOfferPrice } from "./namedOfferPrice";
 import OfferEditor from "./OfferEditor";
 
 /** A change to the deal as the reading student sees it in the thread. */
@@ -203,6 +204,7 @@ export function useThreadDeal({
   onWrite: (text: string) => void;
 }) {
   const { deal } = controller;
+  const namedPrice = useNamedOfferPrice();
   const phase = listing
     ? cardPhase(
         dealPhase({ deal, listing, role, messages, turn, now: new Date() }),
@@ -374,6 +376,9 @@ export function useThreadDeal({
         role={role}
         otherName={otherName}
         homePoint={homePoint}
+        namedPrice={
+          editor.entry.mode === "offer" ? namedPrice(listing.id) : null
+        }
         counter={counter}
         busy={busy}
         error={failure?.key === threadKey ? failure.text : ""}

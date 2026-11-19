@@ -27,6 +27,10 @@ import MessagesPage, {
   type ThreadRequest,
 } from "./components/MessagesPage";
 import PakoReadingSetting from "./components/PakoReadingSetting";
+import {
+  NamedOfferPriceContext,
+  priceNamedInSearch,
+} from "./components/namedOfferPrice";
 import { useMessagesInbox } from "./hooks/useMessagesInbox";
 import { useDealCheers } from "./hooks/useDealCheers";
 import { useNegotiations } from "./hooks/useNegotiations";
@@ -2076,85 +2080,91 @@ export default function App({
               </PageTransitionView>
             )}
             <WorkspacePage active={view === "messages"}>
-              <MessagesPage
-                developerMode={developerMode}
-                listingId={messageListingId}
-                onBrowse={() => openDestination("browse")}
-                initialMessage={
-                  messageProposal
-                    ? (messageProposal.draft?.message ??
-                      draftMessage(
-                        own.find((item) => item.id === messageListingId)
-                          ?.title ?? "Listing",
-                        messageProposal.terms,
-                      ))
-                    : messageDraft
+              <NamedOfferPriceContext.Provider
+                value={(listingId) =>
+                  priceNamedInSearch(negotiations.items, listingId)
                 }
-                initialTerms={
-                  messageProposal &&
-                  dealTermsFromNegotiation(messageProposal.terms, new Date())
-                }
-                offerRequest={offerRequest}
-                homePoint={nearbyMeetingPoint(location)}
-                onListingStatus={followDealStatus}
-                onBeforeSend={(listingId, role) => {
-                  if (
-                    !messageProposal ||
-                    listingId !== messageProposal.listingId ||
-                    role !== "buyer"
-                  )
-                    return;
-                  const current = negotiations.current();
-                  if (
-                    !current ||
-                    current.id !== messageProposal.id ||
-                    current.version !== messageProposal.version
-                  )
-                    throw new Error(
-                      "This proposal has changed. Reopen its latest message from the agent chat.",
-                    );
-                }}
-                onSent={(listingId, role, message) => {
-                  if (
-                    !messageProposal ||
-                    listingId !== messageProposal.listingId ||
-                    role !== "buyer"
-                  )
-                    return;
-                  negotiations.commit({
-                    type: "negotiation_update",
-                    previousVersion: messageProposal.version,
-                    negotiation: markNegotiationSent(
-                      {
-                        ...messageProposal,
-                        draft: { message, version: messageProposal.version },
-                      },
-                      messageProposal.version,
-                    ),
-                  });
-                  setMessageProposal(undefined);
-                }}
-                onDeleted={() => replaceRoute("#messages")}
-                threadBanner={availability?.threadBanner}
-                listings={own}
-                {...messagesInbox}
-                pako={{
-                  available: messages.available,
-                  autoRead: messages.autoRead,
-                  remaining: messages.remaining,
-                  onRemaining: messages.setRemaining,
-                  onOpenSettings: () => {
-                    setReadingSettingsRequested(true);
-                    openDestination("settings");
-                  },
-                  onFindSimilar: (title) => void runSearch(title),
-                }}
-                listing={own.find((item) => item.id === messageListingId)}
-                onOpenListing={(id) => {
-                  const item = own.find((item) => item.id === id);
-                  if (item) openProduct(item);
-                }}
-              />
+              >
+                <MessagesPage
+                  developerMode={developerMode}
+                  listingId={messageListingId}
+                  onBrowse={() => openDestination("browse")}
+                  initialMessage={
+                    messageProposal
+                      ? (messageProposal.draft?.message ??
+                        draftMessage(
+                          own.find((item) => item.id === messageListingId)
+                            ?.title ?? "Listing",
+                          messageProposal.terms,
+                        ))
+                      : messageDraft
+                  }
+                  initialTerms={
+                    messageProposal &&
+                    dealTermsFromNegotiation(messageProposal.terms, new Date())
+                  }
+                  offerRequest={offerRequest}
+                  homePoint={nearbyMeetingPoint(location)}
+                  onListingStatus={followDealStatus}
+                  onBeforeSend={(listingId, role) => {
+                    if (
+                      !messageProposal ||
+                      listingId !== messageProposal.listingId ||
+                      role !== "buyer"
+                    )
+                      return;
+                    const current = negotiations.current();
+                    if (
+                      !current ||
+                      current.id !== messageProposal.id ||
+                      current.version !== messageProposal.version
+                    )
+                      throw new Error(
+                        "This proposal has changed. Reopen its latest message from the agent chat.",
+                      );
+                  }}
+                  onSent={(listingId, role, message) => {
+                    if (
+                      !messageProposal ||
+                      listingId !== messageProposal.listingId ||
+                      role !== "buyer"
+                    )
+                      return;
+                    negotiations.commit({
+                      type: "negotiation_update",
+                      previousVersion: messageProposal.version,
+                      negotiation: markNegotiationSent(
+                        {
+                          ...messageProposal,
+                          draft: { message, version: messageProposal.version },
+                        },
+                        messageProposal.version,
+                      ),
+                    });
+                    setMessageProposal(undefined);
+                  }}
+                  onDeleted={() => replaceRoute("#messages")}
+                  threadBanner={availability?.threadBanner}
+                  listings={own}
+                  {...messagesInbox}
+                  pako={{
+                    available: messages.available,
+                    autoRead: messages.autoRead,
+                    remaining: messages.remaining,
+                    onRemaining: messages.setRemaining,
+                    onOpenSettings: () => {
+                      setReadingSettingsRequested(true);
+                      openDestination("settings");
+                    },
+                    onFindSimilar: (title) => void runSearch(title),
+                  }}
+                  listing={own.find((item) => item.id === messageListingId)}
+                  onOpenListing={(id) => {
+                    const item = own.find((item) => item.id === id);
+                    if (item) openProduct(item);
+                  }}
+                />
+              </NamedOfferPriceContext.Provider>
             </WorkspacePage>
             <WorkspacePage
               active={view === "discover"}
@@ -2617,7 +2627,7 @@ export default function App({
                 {showHomeListings && visibleListings.length > 0 && (
                   <>
                     <div className="section-heading">
-                      <h2>Your local listings</h2>
+                      <h2>Listings nearby</h2>
                       <Button
                         animateIcon
                         className="button quiet"
@@ -2632,7 +2642,7 @@ export default function App({
                       <p>
                         {account
                           ? "Items shared on Takeover"
-                          : "Saved in this browser."}
+                          : "From students around EPFL, UNIL and the FMEL residences."}
                       </p>
                     </div>
                     <ProductGrid
@@ -2873,9 +2883,6 @@ export default function App({
                       () => openOfferCard(selected),
                       "fade",
                     )
-                  }
-                  onFindSimilar={() =>
-                    selected && startSearchFromHome(selected.title)
                   }
                   onEdit={() => selected && editListing(selected)}
                   onAskAgent={() => {

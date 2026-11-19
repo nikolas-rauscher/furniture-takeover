@@ -364,6 +364,15 @@ export function shortDate(value: string) {
       })
     : "Flexible";
 }
+/** Every condition a listing can carry, best first; filters and the sell form offer exactly these. */
+export const listingConditions = [
+  "Like new",
+  "Very good",
+  "Good",
+  "Used",
+  "Used, with marks",
+] as const;
+
 export const money = (value: number) => `CHF ${value.toLocaleString("en-GB")}`;
 
 // Keep existing saved searches usable after the interface language change.

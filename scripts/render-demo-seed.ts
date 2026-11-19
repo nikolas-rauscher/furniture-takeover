@@ -32,7 +32,7 @@ function listingUuid(demoId: string): string {
 }
 
 const sellerEmail = (name: string) =>
-  `takeover-demo-${name.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()}@example.invalid`;
+  `takeover-demo-v2-${name.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()}@example.invalid`;
 
 function sellerRows(): string {
   return demoSellers

@@ -1,6 +1,10 @@
 import { SelectField } from "./ui/select-field";
 import { Input } from "./ui/input";
-import { TODAY, type Criteria } from "../../shared/marketplace";
+import {
+  listingConditions,
+  TODAY,
+  type Criteria,
+} from "../../shared/marketplace";
 
 type SearchPreferencesFieldsProps = {
   value: Criteria;
@@ -74,7 +78,7 @@ export default function SearchPreferencesFields({
           value={value.condition}
           onValueChange={(condition) => onChange({ ...value, condition })}
           options={[
-            ...new Set(["All", "Very good", "Good", "Used", value.condition]),
+            ...new Set(["All", ...listingConditions, value.condition]),
           ].map((option) => ({ value: option, label: option }))}
         />
       </label>

@@ -433,31 +433,6 @@
   gap: 10px;
   margin: 0 0 20px;
 }
-.agent-run-price-input > label {
-  font-size: 13px;
-}
-.agent-run-price-input input[type="range"] {
-  width: 100%;
-  accent-color: var(--blue);
-  min-height: 44px;
-  padding: 0;
-  background: transparent;
-}
-.agent-run-price-input output {
-  font-size: 20px;
-  font-weight: 500;
-}
-.agent-run-price-input input[type="number"] {
-  max-width: 160px;
-  padding: 10px 12px;
-  font-size: 16px;
-}
-.agent-run-price-input .agent-run-price-bounds {
-  display: flex;
-  justify-content: space-between;
-  color: var(--muted);
-  font-size: 12px;
-}
 .agent-run-panel.is-running {
   min-height: 0;
 }
@@ -470,23 +445,6 @@
   }
 }
 
-.agent-run-price-input > label {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.agent-run-price-input > label > strong {
-  font-size: 20px;
-  font-weight: 500;
-  color: var(--ink);
-}
-.agent-run-price-input > div {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: var(--muted);
-}
 .agent-run-price-input > button {
   justify-self: start;
   min-height: 44px;
@@ -858,11 +816,11 @@
   overflow: visible;
   mask-image: none;
 }
-/* Suggested answers are outlined pills, like every suggestion chip. */
+/* Suggested answers are pills on a small lip, like the offer card's chips. */
 .agent-run-question .agent-run-choices > .ai-suggestion[data-slot="button"] {
   flex: 0 1 auto;
   max-width: 100%;
-  min-height: 40px;
+  min-height: 44px;
   padding: 7px 14px;
   border: 2px solid var(--card-line);
   border-radius: 999px;
@@ -871,8 +829,10 @@
   font-weight: 650;
   white-space: normal;
   overflow-wrap: anywhere;
+  box-shadow: 0 2px 0 var(--lip);
   transition:
-    scale 90ms var(--ease-out),
+    transform 90ms var(--ease-out),
+    box-shadow 90ms var(--ease-out),
     border-color 160ms ease,
     background-color 160ms ease;
 }
@@ -885,5 +845,6 @@
 .agent-run-question
   .agent-run-choices
   > .ai-suggestion[data-slot="button"]:active:not(:disabled) {
-  scale: 0.96;
+  transform: translateY(2px);
+  box-shadow: 0 0 0 var(--lip);
 }

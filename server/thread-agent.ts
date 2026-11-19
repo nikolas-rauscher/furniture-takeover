@@ -267,6 +267,12 @@ const GENERIC_PLACE_WORDS = new Set([
   "center",
   "centre",
   "front",
+  "main",
+  "hall",
+  "metro",
+  "station",
+  "unil",
+  "lausanne",
 ]);
 
 /**

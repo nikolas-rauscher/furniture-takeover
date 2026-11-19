@@ -131,7 +131,7 @@ test("a complete offer from the other side is confirmed in one tap that says wha
   assert.equal(
     options({ phase: "offer_received", deal: offerBy("seller", shipped) })
       .primary?.label,
-    "Confirm purchase",
+    "Confirm offer",
   );
 });
 
@@ -143,7 +143,7 @@ test("declining asks first and sends the decline template", () => {
   assert.deepEqual(decline, {
     kind: "act",
     id: "decline",
-    label: "Decline",
+    label: "Decline offer",
     action: { type: "decline" },
     message: declineMessage(),
     confirm: "Decline Léa's offer?",
@@ -165,7 +165,7 @@ test("an incomplete offer opens the offer card for what it leaves open", () => {
   assert.equal(
     options({ phase: "partial_received", deal: offerBy("seller", priceOnly) })
       .primary?.label,
-    "Choose a price",
+    "Add price",
   );
 });
 
@@ -181,7 +181,7 @@ test("terms that look agreed are confirmed as Pako read them, or need a time fir
   assert.deepEqual(agreed.primary, {
     kind: "act",
     id: "confirm",
-    label: "Confirm pickup",
+    label: "Send for confirmation",
     action: { type: "propose", terms: read },
     message: confirmAgreementMessage(read),
   });
@@ -193,7 +193,7 @@ test("terms that look agreed are confirmed as Pako read them, or need a time fir
       agreement: { status: "partial", missing: ["pickupTime"] },
     }),
   });
-  assert.equal(noTime.primary?.label, "Pick a time to confirm");
+  assert.equal(noTime.primary?.label, "Choose pickup time");
   assert.equal(
     noTime.primary?.kind === "edit" && noTime.primary.entry.mode,
     "confirm",
@@ -202,7 +202,7 @@ test("terms that look agreed are confirmed as Pako read them, or need a time fir
     phase: "looks_agreed",
     turn: turn({ pickupAt: "2026-11-19T12:00:00.000Z" }),
   });
-  assert.equal(past.primary?.label, "Pick a time to confirm");
+  assert.equal(past.primary?.label, "Choose pickup time");
 });
 
 test("an acceptance with only the time open already looks agreed", () => {
@@ -263,7 +263,7 @@ test("a buyer without an offer is offered one; sellers, gone listings and closed
   assert.equal(
     options({ phase: "your_turn", listing: { ...listing, price: 0 } }).primary
       ?.label,
-    "Plan pickup",
+    "Suggest pickup",
   );
   assert.deepEqual(options({ phase: "talking", role: "seller" }), {
     secondary: [],
@@ -312,15 +312,15 @@ test("counter prices lie strictly between both sides' latest prices", () => {
 test("without an offer of their own, a seller counters from the asking price and a buyer from below", () => {
   assert.deepEqual(
     counterPrices({ role: "seller", theirs: 35, mineBefore: null, asking: 45 }),
-    { theirs: 35, mine: 45 },
+    { theirs: 35, mine: 45, mineFrom: "asking" },
   );
   assert.deepEqual(
     counterPrices({ role: "buyer", theirs: 45, mineBefore: null, asking: 45 }),
-    { theirs: 45, mine: 35 },
+    { theirs: 45, mine: 35, mineFrom: "below" },
   );
   assert.deepEqual(
     counterPrices({ role: "buyer", theirs: 45, mineBefore: 38, asking: 45 }),
-    { theirs: 45, mine: 38 },
+    { theirs: 45, mine: 38, mineFrom: "offer" },
   );
 });
 
@@ -339,6 +339,9 @@ test("meeting points to tap come once each, and the student's area names its cam
     "FMEL Vortex · outside reception",
   );
   assert.equal(nearbyMeetingPoint("EPFL, Ecublens"), "Rolex Learning Center");
-  assert.equal(nearbyMeetingPoint("UNIL, Dorigny"), "UNIL-Mouline metro");
+  assert.equal(
+    nearbyMeetingPoint("UNIL, Dorigny"),
+    "UNIL Amphipôle · main entrance",
+  );
   assert.equal(nearbyMeetingPoint("Geneva"), undefined);
 });

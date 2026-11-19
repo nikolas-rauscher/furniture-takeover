@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { listingConditions } from "../../shared/marketplace";
 import { plainPrice, priceText } from "../priceText";
 import { Input } from "./ui/input";
 import { SelectField } from "./ui/select-field";
@@ -116,7 +117,7 @@ export default function ListingFields({
             value={draft.condition}
             onValueChange={(condition) => onDraftChange({ condition })}
             options={[
-              ...new Set(["", "Very good", "Good", "Used", draft.condition]),
+              ...new Set(["", ...listingConditions, draft.condition]),
             ].map((value) => ({
               value,
               label: value || "Not specified",

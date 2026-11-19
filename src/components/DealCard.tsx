@@ -12,6 +12,7 @@ import {
   type DealOption,
 } from "../dealOptions";
 import {
+  completedWords,
   dealStrip,
   shownTerms,
   termPrice,
@@ -37,11 +38,11 @@ const SWAP = {
 } as const;
 /** The card grows out of the strip and folds back into it. */
 const GROW = { type: "spring", stiffness: 360, damping: 34 } as const;
-const OPEN = {
-  amount: "Open",
-  fulfillment: "Open",
-  pickupTime: "Open",
-  pickupPoint: "Open",
+const NOT_SET = {
+  amount: "Not set",
+  fulfillment: "Not set",
+  pickupTime: "Not set",
+  pickupPoint: "Not set",
 };
 
 type Listing = Pick<Product, "title" | "image" | "price" | "status"> & {
@@ -140,11 +141,12 @@ function placeNote(name: string, listing: Listing) {
     <>
       {point.address} ·{" "}
       <a
+        aria-label={`Open ${point.name} in Maps`}
         href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${point.name} ${point.address}`)}`}
         target="_blank"
         rel="noopener noreferrer"
       >
-        Map ↗
+        Map
       </a>
     </>
   );
@@ -188,11 +190,13 @@ function OptionButton({
 /** What a tap that ends something sends, asked once before it goes out. */
 function ConfirmStep({
   option,
+  otherName,
   busy,
   onConfirm,
   onBack,
 }: {
   option: Extract<DealOption, { kind: "act" }>;
+  otherName: string;
   busy: boolean;
   onConfirm: () => void;
   onBack: () => void;
@@ -201,7 +205,7 @@ function ConfirmStep({
     <motion.div className="deal-card-confirm" {...SWAP}>
       <p className="deal-card-question">{option.confirm}</p>
       <p className="deal-card-sends">
-        Sends: <q>{option.message}</q>
+        Message to {otherName}: <q>{option.message}</q>
       </p>
       <div className="deal-card-actions">
         <Button
@@ -218,7 +222,7 @@ function ConfirmStep({
           disabled={busy}
           onClick={onBack}
         >
-          Back
+          {option.id === "cancel" ? "Keep deal" : "Keep offer"}
         </Button>
       </div>
     </motion.div>
@@ -255,19 +259,17 @@ function CardBody({
       : onOption(option);
   const { primary } = options;
   const booked = phase === "agreed" || phase === "completed";
+  const reservedDetail =
+    role === "buyer" ? "Reserved for you" : `Reserved for ${otherName}`;
   return (
     <div className="deal-card-body">
       {booked && deal?.agreed && (
         <BookedBanner
           takeFocus={confirmedHere}
-          detail={
-            role === "buyer" ? "Reserved for you" : `Reserved for ${otherName}`
-          }
+          detail={phase === "completed" ? undefined : reservedDetail}
         >
           {phase === "completed"
-            ? role === "buyer"
-              ? "Picked up"
-              : "Sold"
+            ? completedWords(role, deal.agreed.terms)
             : deal.agreed.terms.fulfillment === "shipping"
               ? "Deal agreed"
               : "Pickup booked"}
@@ -275,14 +277,15 @@ function CardBody({
       )}
       {phase === "looks_agreed" && (
         <PakoLabel>
-          Pako read this as agreed. Confirm, then {otherName} confirms too.
+          These are the terms I found in your messages. {otherName} still needs
+          to confirm.
         </PakoLabel>
       )}
       {pair && <Seats pair={pair} />}
       {terms && (
         <DealTermsGrid
           terms={shownTerms(terms)}
-          unknown={OPEN}
+          unknown={NOT_SET}
           amountLabel={booked ? "Price" : "Offer"}
           notes={termNotes(phase, terms, turn, listing)}
         />
@@ -292,6 +295,7 @@ function CardBody({
           <ConfirmStep
             key="confirm"
             option={asking}
+            otherName={otherName}
             busy={busy}
             onConfirm={() => onOption(asking)}
             onBack={() => setAsking(undefined)}
@@ -311,7 +315,7 @@ function CardBody({
             )}
             {primary?.kind === "act" && (
               <p className="deal-card-sends">
-                Sends: <q>{primary.message}</q>
+                Message to {otherName}: <q>{primary.message}</q>
               </p>
             )}
             {options.secondary.length > 0 && (

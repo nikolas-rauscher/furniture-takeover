@@ -79,19 +79,28 @@ export function cardPhase(phase: DealPhase, turn: ThreadTurn | null) {
     : phase;
 }
 
+/** Accepting a complete offer agrees the deal at once, so the button names what it books. */
 export const confirmLabel = (role: DealRole, terms: DealTerms) =>
   role === "seller"
     ? "Confirm sale"
     : terms.fulfillment === "shipping"
-      ? "Confirm purchase"
+      ? "Confirm offer"
       : "Confirm pickup";
+
+/** Sending terms Pako read from the messages proposes them; the other student still confirms. */
+export const SEND_FOR_CONFIRMATION = "Send for confirmation";
+
+const COMPLETE_LABELS: Record<string, string> = {
+  amount: "Add price",
+  pickupTime: "Choose pickup time",
+  pickupPoint: "Choose meeting point",
+  "pickupTime,pickupPoint": "Choose time & place",
+};
 
 /** Names what an incomplete offer still needs from the student. */
 function completeLabel(terms: DealTerms) {
-  const missing = missingTerms(terms);
-  if (missing.every((field) => field === "amount")) return "Choose a price";
-  if (!missing.includes("amount")) return "Choose time & place";
-  return "Complete the offer";
+  const missing = missingTerms(terms).filter((field) => field !== "fulfillment");
+  return COMPLETE_LABELS[missing.join(",")] ?? "Complete the offer";
 }
 
 const edit = (
@@ -104,7 +113,7 @@ const edit = (
 const decline = (other: string): DealOption => ({
   kind: "act",
   id: "decline",
-  label: "Decline",
+  label: "Decline offer",
   action: { type: "decline" },
   message: declineMessage(),
   confirm: `Decline ${other}'s offer?`,
@@ -113,7 +122,7 @@ const decline = (other: string): DealOption => ({
 const withdraw: DealOption = {
   kind: "act",
   id: "withdraw",
-  label: "Withdraw",
+  label: "Withdraw offer",
   action: { type: "withdraw" },
   message: withdrawMessage(),
   confirm: "Withdraw your offer?",
@@ -199,10 +208,10 @@ export function dealOptions({
     case "looks_agreed": {
       if (!turn) return NONE;
       const agreed = lookedAgreedTerms(turn, deal);
-      const change = edit("change", "Not right? Change it", "change", agreed);
+      const change = edit("change", "Edit terms", "change", agreed);
       return needsTime(agreed, now)
         ? {
-            primary: edit("time", "Pick a time to confirm", "confirm", {
+            primary: edit("time", "Choose pickup time", "confirm", {
               ...agreed,
               pickupAt: null,
               pickupTime: null,
@@ -213,7 +222,7 @@ export function dealOptions({
             primary: {
               kind: "act",
               id: "confirm",
-              label: confirmLabel(role, agreed),
+              label: SEND_FOR_CONFIRMATION,
               action: { type: "propose", terms: agreed },
               message: confirmAgreementMessage(agreed),
             },
@@ -249,7 +258,7 @@ export function dealOptions({
     ? {
         primary: edit(
           "offer",
-          listing.price === 0 ? "Plan pickup" : "Make an offer",
+          listing.price === 0 ? "Suggest pickup" : "Make an offer",
           "offer",
           NO_TERMS,
         ),
@@ -261,7 +270,7 @@ export function dealOptions({
 /** Cheap items move by the franc, everything else by five. */
 export const priceStep = (asking: number) => (asking < 20 ? 1 : 5);
 
-const roundTo = (value: number, step: number) =>
+export const roundTo = (value: number, step: number) =>
   Math.max(step, Math.round(value / step) * step);
 
 /**
@@ -275,7 +284,7 @@ export function priceChoices({
 }: {
   asking: number;
   /** Both sides' latest prices when countering. */
-  counter?: { theirs: number; mine: number };
+  counter?: Pick<CounterRange, "theirs" | "mine">;
 }): number[] {
   if (asking === 0) return [];
   if (counter) {
@@ -298,6 +307,16 @@ export function priceChoices({
 }
 
 /**
+ * Both sides' latest prices for a counter, and where the student's comes from:
+ * their own offer, their asking price, or a step under the other side's.
+ */
+export type CounterRange = {
+  theirs: number;
+  mine: number;
+  mineFrom: "offer" | "asking" | "below";
+};
+
+/**
  * The other side's latest price against the student's own for a counter: the
  * student's last offer, or for a seller who offered nothing yet the asking
  * price. A buyer without an offer of their own counters below the seller's.
@@ -313,11 +332,15 @@ export function counterPrices({
   /** The student's latest price in this thread, if they named one. */
   mineBefore: number | null;
   asking: number;
-}): { theirs: number; mine: number } {
-  const mine =
-    mineBefore ??
-    (role === "seller" ? asking : roundTo(theirs * 0.8, priceStep(asking)));
-  return { theirs, mine };
+}): CounterRange {
+  if (mineBefore !== null) return { theirs, mine: mineBefore, mineFrom: "offer" };
+  return role === "seller"
+    ? { theirs, mine: asking, mineFrom: "asking" }
+    : {
+        theirs,
+        mine: roundTo(theirs * 0.8, priceStep(asking)),
+        mineFrom: "below",
+      };
 }
 
 /** Meeting points to tap: the one already named, the listing's, and the one near the student. */

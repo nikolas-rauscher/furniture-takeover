@@ -1,4 +1,3 @@
-import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { Suggestion, Suggestions } from "./ui/suggestion";
@@ -17,6 +16,7 @@ import type { AgentRunAction } from "../hooks/useAgentRun";
 import { searchChangeSummary } from "../searchChanges";
 import { motionBehavior } from "../uiMotion";
 import { answerParts } from "./AgentAnswerContent";
+import PriceSlider from "./PriceSlider";
 
 export type AgentActionHandlers = {
   onAnswer?: (questionId: string, answer: string) => void | boolean;
@@ -134,23 +134,14 @@ export function AgentQuestion({
         <>
           {question.input?.type === "price" && onAnswer && (
             <div className="agent-run-price-input">
-              <label htmlFor={`${inputId}-price`}>
-                Your price <strong>CHF {price}</strong>
-              </label>
-              <Input
-                id={`${inputId}-price`}
-                type="range"
+              <PriceSlider
                 min={question.input.min}
                 max={question.input.max}
                 step={question.input.step}
                 value={price}
                 disabled={disabled}
-                onChange={(event) => setPrice(Number(event.target.value))}
+                onChange={setPrice}
               />
-              <div>
-                <span>CHF {question.input.min}</span>
-                <span>CHF {question.input.max}</span>
-              </div>
               <Button
                 animateIcon
                 type="button"
@@ -182,7 +173,7 @@ export function AgentQuestion({
           {externalComposer && onSkip && (
             <Button
               type="button"
-              className="text-button question-skip"
+              className="button quiet small question-skip"
               disabled={disabled}
               onClick={skip}
             >
@@ -223,7 +214,7 @@ export function AgentQuestion({
                 </Button>
                 {onSkip && (
                   <Button
-                    className="text-button"
+                    className="button quiet small"
                     type="button"
                     disabled={disabled}
                     onClick={skip}

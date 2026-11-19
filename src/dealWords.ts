@@ -51,13 +51,28 @@ const daysBetween = (from: number, to: number) =>
       DAY_MS,
   );
 
-/** A pickup on a chip: "Today 18:00", "Tomorrow 18:00", "Sat 11:00" within the week, otherwise its date. */
-export function slotLabel(iso: string, now: Date): string {
+const zurichLongWeekday = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Europe/Zurich",
+  weekday: "long",
+});
+
+function relativePickup(iso: string, now: Date, weekday: Intl.DateTimeFormat) {
   const days = daysBetween(now.getTime(), Date.parse(iso));
-  if (days === 0) return `Today ${zurichClockTime(iso)}`;
-  if (days === 1) return `Tomorrow ${zurichClockTime(iso)}`;
-  return days < 7 ? shortPickup(iso) : formatPickup(iso);
+  const clock = zurichClockTime(iso);
+  if (days === 0) return `Today ${clock}`;
+  if (days === 1) return `Tomorrow ${clock}`;
+  return days < 7
+    ? `${weekday.format(new Date(iso))} ${clock}`
+    : formatPickup(iso);
 }
+
+/** A pickup on a chip: "Today 18:00", "Tomorrow 18:00", "Sat 11:00" within the week, otherwise its date. */
+export const slotLabel = (iso: string, now: Date) =>
+  relativePickup(iso, now, zurichWeekday);
+
+/** A pickup in Pako's words: "Saturday 11:00" within the week, otherwise as on a chip. */
+export const spokenSlot = (iso: string, now: Date) =>
+  relativePickup(iso, now, zurichLongWeekday);
 
 /** Terms for the tiles: an exact pickup reads as its date and clock time. */
 export function shownTerms(terms: DealTerms): ShownTerms {
@@ -153,6 +168,15 @@ function cancelledDetail(deal: Deal, role: DealRole, other: string) {
   return deal.outcome?.by === role ? "You cancelled" : `${other} cancelled`;
 }
 
+/**
+ * A finished deal from one side: the seller sold, the buyer picked the item
+ * up, or a shipped deal is simply completed. Nothing is reserved anymore.
+ */
+export function completedWords(role: DealRole, terms: DealTerms | null) {
+  if (role === "seller") return "Sold";
+  return terms?.fulfillment === "shipping" ? "Deal completed" : "Picked up";
+}
+
 /** An agreed deal: the booked pickup, or the price of a shipped item. */
 function bookedStrip(terms: DealTerms): StripView {
   return terms.fulfillment === "shipping"
@@ -201,7 +225,7 @@ export function dealStrip({
       return deal?.agreed ? bookedStrip(deal.agreed.terms) : null;
     case "completed":
       return {
-        lead: role === "buyer" ? "Picked up ✓" : "Sold ✓",
+        lead: `${completedWords(role, deal?.agreed?.terms ?? null)} ✓`,
         detail:
           role === "seller" && deal?.agreed?.terms.amount != null
             ? termPrice(deal.agreed.terms.amount)
@@ -291,7 +315,7 @@ export function threadDealNote(
     return pickupAt ? `Agreed · ${shortPickup(pickupAt)}` : "Agreed";
   }
   if (deal.status === "completed")
-    return role === "seller" ? "Sold" : "Picked up";
+    return completedWords(role, deal.agreed?.terms ?? null);
   if (deal.status === "cancelled") return "Deal cancelled";
   const { proposal } = deal;
   if (!proposal) return undefined;
