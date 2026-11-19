@@ -6,12 +6,15 @@ import { Input } from "./ui/input";
 
 type SnapTargetProps = {
   disabled: boolean;
+  /** How many photos one pick may hold: one listing's gallery, or a batch to sort. */
+  maxPhotos?: number;
   onFilesSelected: (files: File[]) => void;
 };
 
 /** The empty photo step as a viewfinder: one big shutter opens the camera or photo library. */
 export default function SnapTarget({
   disabled,
+  maxPhotos = MAX_LISTING_PHOTOS,
   onFilesSelected,
 }: SnapTargetProps) {
   const fileInput = useRef<HTMLInputElement>(null);
@@ -64,7 +67,7 @@ export default function SnapTarget({
         Add photos
       </Button>
       <p id={hintId} className="snap-target-hint">
-        Up to {MAX_LISTING_PHOTOS} photos · JPG, PNG or WebP · 25&nbsp;MB each
+        Up to {maxPhotos} photos · JPG, PNG or WebP · 25&nbsp;MB each
       </p>
       <Input
         ref={fileInput}

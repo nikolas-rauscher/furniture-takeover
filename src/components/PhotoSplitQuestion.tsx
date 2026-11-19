@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState } from "react";
-import { LoaderCircle } from "lucide-react";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import { Minus, Plus } from "@/components/icons";
 import type { PhotoGroup } from "../../shared/agent";
 import { sortListingPhotos } from "../listingPhotos";
 import Modal from "./Modal";
+import Pako from "./onboarding/Pako";
+import { Button } from "./ui/button";
+import "./photo-split-question.css";
 
 type Props = {
   photos: string[];
@@ -14,7 +17,10 @@ type Props = {
   onSeparate: (groups: PhotoGroup[], review: boolean) => void;
 };
 
-/** Asks the seller whether photos of different items become separate listings. */
+const photoCount = (count: number) =>
+  count === 1 ? "1 photo" : `${count} photos`;
+
+/** Pako asks whether photos of different things become separate listings. */
 export default function PhotoSplitQuestion({
   photos,
   groups,
@@ -22,32 +28,31 @@ export default function PhotoSplitQuestion({
   onTogether,
   onSeparate,
 }: Props) {
-  const [count, setCount] = useState(String(groups.length));
+  const [recounting, setRecounting] = useState(false);
+  const [count, setCount] = useState(groups.length);
   const [sorting, setSorting] = useState(false);
   const [error, setError] = useState("");
   const request = useRef<AbortController | null>(null);
+  const countLabel = useId();
   useEffect(() => () => request.current?.abort(), []);
 
-  const chosen = Number(count);
-  const valid =
-    Number.isInteger(chosen) && chosen >= 1 && chosen <= photos.length;
-
+  /** The seller's own count: one listing, one per photo, Pako's piles, or a new sort. */
   async function applyCount() {
-    if (!valid || sorting) return;
-    if (chosen === 1) return onTogether();
-    if (chosen === photos.length)
+    if (sorting) return;
+    if (count === 1) return onTogether();
+    if (count === photos.length)
       return onSeparate(
         photos.map((_, index) => ({ photos: [index], label: "" })),
         true,
       );
-    if (chosen === groups.length) return onSeparate(groups, true);
+    if (count === groups.length) return onSeparate(groups, true);
     const controller = new AbortController();
     request.current = controller;
     setSorting(true);
     setError("");
     try {
       onSeparate(
-        await sortListingPhotos(photos, controller.signal, chosen),
+        await sortListingPhotos(photos, controller.signal, count),
         true,
       );
     } catch (error) {
@@ -62,80 +67,110 @@ export default function PhotoSplitQuestion({
   }
 
   return (
-    <Modal title={`${groups.length} different items?`} onClose={onClose}>
+    <Modal title={`${groups.length} different things?`} onClose={onClose}>
       <div className="split-question" aria-busy={sorting}>
-        <p>
-          Your photos seem to show {groups.length} different items. Should I
-          create a separate listing for each, or keep everything in one listing?
-        </p>
+        <div className="split-question-pako">
+          <Pako mood={sorting ? "work" : error ? "think" : "happy"} size={72} />
+          <p>
+            {sorting
+              ? "Sorting them again…"
+              : `These photos look like ${groups.length} different things. Shall I make ${groups.length} listings?`}
+          </p>
+        </div>
         <ul className="split-question-groups">
           {groups.map((group, index) => (
             <li key={group.photos.join("-")}>
-              <span className="split-question-photos">
-                {group.photos.map((photo) => (
-                  <img key={photo} src={photos[photo]} alt="" />
+              <span className="split-question-pile" aria-hidden="true">
+                {group.photos.slice(0, 3).map((photo, order) => (
+                  <img
+                    key={photo}
+                    src={photos[photo]}
+                    alt=""
+                    style={{ "--pile": order } as CSSProperties}
+                  />
                 ))}
               </span>
-              <strong>{group.label || `Item ${index + 1}`}</strong>
+              <span className="split-question-name">
+                <strong>{group.label || `Thing ${index + 1}`}</strong>
+                <small>{photoCount(group.photos.length)}</small>
+              </span>
             </li>
           ))}
         </ul>
         <div className="split-question-actions">
-          <button
-            type="button"
-            className="button primary full"
+          <Button
+            animateIcon
+            className="button primary large full"
             disabled={sorting}
             onClick={() => onSeparate(groups, false)}
           >
-            Create {groups.length} separate listings
-          </button>
-          <button
-            type="button"
+            Make {groups.length} listings
+          </Button>
+          <Button
             className="button secondary full"
             disabled={sorting}
             onClick={onTogether}
           >
             Keep as one listing
-          </button>
+          </Button>
         </div>
-        <form
-          className="split-question-count"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void applyCount();
-          }}
-        >
-          <label>
-            Not correct? Enter your number of listings
-            <input
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={photos.length}
-              step={1}
-              required
-              disabled={sorting}
-              value={count}
-              onChange={(event) => setCount(event.target.value)}
-            />
-          </label>
-          <button
-            type="submit"
-            className="button secondary"
-            disabled={!valid || sorting}
+        {recounting ? (
+          <form
+            className="split-question-recount"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void applyCount();
+            }}
           >
-            {sorting && <LoaderCircle className="spin" size={16} />}
-            {sorting
-              ? "Sorting…"
-              : valid && chosen === 1
-                ? "Use 1 listing"
-                : `Sort into ${valid ? chosen : "…"} listings`}
-          </button>
-          <span className="quiet-caption">
-            {error ||
-              `Between 1 and ${photos.length}. You can check and move photos before the listings are written.`}
-          </span>
-        </form>
+            <span id={countLabel}>How many things are in these photos?</span>
+            <div
+              className="split-question-stepper"
+              role="group"
+              aria-labelledby={countLabel}
+            >
+              <Button
+                className="icon-button"
+                aria-label="One thing fewer"
+                disabled={sorting || count <= 1}
+                onClick={() => setCount((current) => current - 1)}
+              >
+                <Minus size={18} aria-hidden="true" />
+              </Button>
+              <output aria-live="polite">{count}</output>
+              <Button
+                className="icon-button"
+                aria-label="One thing more"
+                disabled={sorting || count >= photos.length}
+                onClick={() => setCount((current) => current + 1)}
+              >
+                <Plus size={18} aria-hidden="true" />
+              </Button>
+            </div>
+            <Button
+              type="submit"
+              className="button secondary"
+              disabled={sorting}
+            >
+              {sorting
+                ? "Sorting…"
+                : count === 1
+                  ? "Use one listing"
+                  : `Sort into ${count}`}
+            </Button>
+            <p className="quiet-caption" role={error ? "alert" : undefined}>
+              {error ||
+                "You can check and move photos before the listings are written."}
+            </p>
+          </form>
+        ) : (
+          <Button
+            className="button quiet split-question-more"
+            disabled={sorting}
+            onClick={() => setRecounting(true)}
+          >
+            Not right? Tell me how many
+          </Button>
+        )}
       </div>
     </Modal>
   );

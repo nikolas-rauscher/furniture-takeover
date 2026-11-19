@@ -44,7 +44,6 @@ import Guide, { type GuideBubble } from "./onboarding/Guide";
 import type { PakoMood } from "./onboarding/storyTypes";
 import { listingPhotos } from "../../shared/listingPhotos";
 import "./sell-flow.css";
-import "./batch-sell.css";
 
 /** Where the seller is when creating several listings one after another. */
 export type BatchProgress = {
@@ -84,6 +83,69 @@ export function listingSaveWords(cloud: boolean) {
   return cloud
     ? { verb: "Publish", gerund: "publishing", action: "Publish listing" }
     : { verb: "Save", gerund: "saving", action: "Save listing" };
+}
+
+/** Where a listing stands in the batch tray. */
+function trayState(batch: BatchProgress, index: number) {
+  if (index === batch.index) return "current";
+  return batch.results[index] ?? "upcoming";
+}
+
+const TRAY_NAMES = {
+  current: "current",
+  saved: "done",
+  skipped: "skipped",
+  upcoming: "next",
+} as const;
+
+/** The things being listed one after another: covers with their state, and a way to skip one. */
+function BatchTray({
+  batch,
+  disabled,
+}: {
+  batch: BatchProgress;
+  disabled: boolean;
+}) {
+  const done = batch.results.filter((result) => result === "saved").length;
+  return (
+    <nav className="batch-tray" aria-label="Your listings">
+      <p>
+        <strong>
+          Listing {batch.index + 1} of {batch.covers.length}
+        </strong>
+        {done > 0 && <span> · {done} done</span>}
+      </p>
+      <ol>
+        {batch.covers.map((cover, index) => {
+          const state = trayState(batch, index);
+          return (
+            <li
+              key={index}
+              data-state={state}
+              aria-current={state === "current" ? "step" : undefined}
+            >
+              <img
+                src={cover}
+                alt={`Listing ${index + 1}, ${TRAY_NAMES[state]}`}
+              />
+              {state === "saved" && (
+                <span className="batch-tray-check" aria-hidden="true">
+                  <Check size={11} strokeWidth={3} />
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+      <Button
+        className="button quiet small batch-tray-skip"
+        disabled={disabled}
+        onClick={batch.onSkip}
+      >
+        Skip this one
+      </Button>
+    </nav>
+  );
 }
 
 type PhotoStepGuide = { mood: PakoMood; bubble: GuideBubble };
@@ -162,7 +224,7 @@ type SellFlowProps = {
   agentConversation?: ReactNode;
   agentTools?: ReactNode;
   agentWorking?: boolean;
-  /** Demand and price context for the listing being written. */
+  /** Prices of similar listings for the one being written, beside its price. */
   insight?: ReactNode;
   quota?: AgentQuota;
   onAccount: () => void;
@@ -320,58 +382,7 @@ export default function SellFlow({
         actions={isPhotoStep ? undefined : agentTools}
       />
       {batch && (
-        <nav className="batch-progress" aria-label="Your listings">
-          <p>
-            <strong>
-              Listing {batch.index + 1} of {batch.covers.length}
-            </strong>
-            {batch.results.includes("saved") && (
-              <span>
-                {" "}
-                · {
-                  batch.results.filter((result) => result === "saved").length
-                }{" "}
-                done
-              </span>
-            )}
-          </p>
-          <ol>
-            {batch.covers.map((cover, index) => {
-              const result = batch.results[index];
-              return (
-                <li
-                  key={index}
-                  className={
-                    index === batch.index ? "current" : (result ?? "upcoming")
-                  }
-                  aria-current={index === batch.index ? "step" : undefined}
-                >
-                  <img
-                    src={cover}
-                    alt={`Listing ${index + 1}${
-                      result === "saved"
-                        ? ", done"
-                        : result === "skipped"
-                          ? ", skipped"
-                          : index === batch.index
-                            ? ", current"
-                            : ""
-                    }`}
-                  />
-                  {result === "saved" && <Check size={13} aria-hidden="true" />}
-                </li>
-              );
-            })}
-          </ol>
-          <Button
-            type="button"
-            className="text-button batch-progress-skip"
-            disabled={busy || agentWorking}
-            onClick={batch.onSkip}
-          >
-            Skip this item
-          </Button>
-        </nav>
+        <BatchTray batch={batch} disabled={busy || agentWorking} />
       )}
 
       {isPhotoStep ? (
@@ -400,15 +411,14 @@ export default function SellFlow({
                   : "Add at least one photo to create your draft."}
               </p>
               {onSellSeveral && !editing && (
-                <button
-                  type="button"
-                  className="text-button multi-item-switch"
+                <Button
+                  className="button quiet small sell-several"
                   disabled={unavailable}
                   onClick={onSellSeveral}
                 >
-                  <Images size={15} />
-                  Selling several items? Upload them all at once
-                </button>
+                  <Images size={16} aria-hidden="true" />
+                  Selling several things? Snap them all at once
+                </Button>
               )}
             </div>
             <form
@@ -661,6 +671,7 @@ export default function SellFlow({
                         />
                       </label>
                     </div>
+                    {insight}
                     <h2 className="form-section-title collection-title">
                       Collection
                     </h2>
@@ -714,7 +725,7 @@ export default function SellFlow({
                     ? "Save changes"
                     : saveWords.action +
                       (batch && batch.index + 1 < batch.covers.length
-                        ? " & continue"
+                        ? " & next"
                         : "")}
               </Button>
               <span className="quiet-caption">
