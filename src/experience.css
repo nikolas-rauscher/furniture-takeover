@@ -265,7 +265,9 @@ label > textarea {
     border-color 160ms ease,
     box-shadow 160ms ease;
 }
-.agent-search:focus-within {
+/* It lights up while you write, or as the keyboard moves through it; not when a
+   tap, or a dialog closing after one, leaves focus on one of its buttons. */
+.agent-search:has(:focus-visible) {
   border-color: var(--blue);
   box-shadow:
     0 4px 0 var(--blue-dark),
