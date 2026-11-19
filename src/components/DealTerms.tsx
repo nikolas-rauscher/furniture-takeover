@@ -6,27 +6,15 @@ import {
   MapPin,
   Package,
 } from "@/components/icons";
-import { money } from "../../shared/marketplace";
+import { termPrice, type ShownTerms } from "../dealWords";
 import "./deal-card.css";
 
-/** The terms as students read them; null where nothing is settled yet. */
-export type ShownTerms = {
-  amount: number | null;
-  fulfillment: "pickup" | "shipping" | null;
-  /** The pickup in words, such as "Thu 20 Nov, 18:00". */
-  pickupTime: string | null;
-  pickupPoint: string | null;
-};
 type TermField = keyof ShownTerms;
 
 const HANDOVER: Record<NonNullable<ShownTerms["fulfillment"]>, string> = {
   pickup: "Pickup",
   shipping: "Shipping",
 };
-
-/** A price as a deal states it: a free item says so instead of "CHF 0". */
-export const termPrice = (amount: number) =>
-  amount === 0 ? "Free" : money(amount);
 
 /** The listing's photo, or a parcel when there is none or it cannot load. */
 export function DealTile({ image }: { image?: string }) {

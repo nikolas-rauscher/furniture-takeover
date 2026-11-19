@@ -5,7 +5,8 @@ import { Item, ItemHeader, ItemContent, ItemActions } from "./ui/item";
 import { X } from "@/components/icons";
 import type { Negotiation } from "../../shared/negotiation";
 import { PakoLabel } from "./ChatParts";
-import { DealTermsGrid, DealTile, termPrice } from "./DealTerms";
+import { termPrice } from "../dealWords";
+import { DealTermsGrid, DealTile } from "./DealTerms";
 import "./negotiation.css";
 
 /** The agreed terms slide up like the deal card in the intro. */
