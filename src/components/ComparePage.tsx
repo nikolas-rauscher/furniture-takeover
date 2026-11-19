@@ -1,6 +1,7 @@
 import { Button } from "./ui/button";
 import { ArrowLeft, Image as ImageIcon } from "@/components/icons";
 import { money, type Product } from "../../shared/marketplace";
+import Pako from "./onboarding/Pako";
 import "./compare-page.css";
 
 type ComparePageProps = {
@@ -71,7 +72,7 @@ export default function ComparePage({
               </dl>
               <div className="comparison-card-actions">
                 <Button
-                  className="button secondary full"
+                  className="button secondary small full"
                   onClick={() => onOpen(item)}
                 >
                   Open listing
@@ -88,8 +89,10 @@ export default function ComparePage({
           ))}
         </div>
       ) : (
-        <div className="empty-state">
+        <div className="compare-empty">
+          <Pako mood="idle" size={80} />
           <h2>Select listings to compare</h2>
+          <p>Tap the compare tile on up to three listings.</p>
           <Button className="button secondary" onClick={() => onBack()}>
             My listings
           </Button>

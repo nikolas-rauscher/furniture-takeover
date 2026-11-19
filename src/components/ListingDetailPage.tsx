@@ -12,6 +12,7 @@ import { money, type Product } from "../../shared/marketplace";
 import { relatedListings } from "../../shared/relatedListings";
 import PhotoGallery from "./PhotoGallery";
 import SaveToggle from "./SaveToggle";
+import Pako from "./onboarding/Pako";
 import "./listing-detail.css";
 
 type ListingDetailPageProps = {
@@ -50,8 +51,10 @@ export default function ListingDetailPage({
 }: ListingDetailPageProps) {
   if (!selected)
     return (
-      <div className="empty-state">
+      <div className="listing-detail-missing">
+        <Pako mood="idle" size={88} />
         <h1>Listing not found</h1>
+        <p>It may have been sold or removed in the meantime.</p>
         <Button className="button secondary" onClick={onBack}>
           {backLabel}
         </Button>
@@ -106,120 +109,124 @@ export default function ListingDetailPage({
           )}
         </div>
         <div className="listing-detail-summary">
-          <div className="listing-detail-heading">
-            {selected.own && (
-              <span className="listing-detail-owner">Your listing</span>
-            )}
-            <h1>{selected.title}</h1>
-            <div className="listing-detail-price-row">
-              <strong className="listing-detail-price">
-                {money(selected.price)}
-              </strong>
-              {selected.status !== "active" && (
-                <span className="listing-detail-status">
-                  {selected.status === "sold"
-                    ? "Sold"
-                    : selected.status === "reserved"
-                      ? "Reserved"
-                      : "Withdrawn"}
+          <div className="listing-detail-card">
+            <div className="listing-detail-heading">
+              {selected.own && (
+                <span className="listing-detail-owner">Your listing</span>
+              )}
+              <h1>{selected.title}</h1>
+              <div className="listing-detail-price-row">
+                <strong className="listing-detail-price">
+                  {money(selected.price)}
+                </strong>
+                {selected.status !== "active" && (
+                  <span className="listing-detail-status">
+                    {selected.status === "sold"
+                      ? "Sold"
+                      : selected.status === "reserved"
+                        ? "Reserved"
+                        : "Withdrawn"}
+                  </span>
+                )}
+              </div>
+              <p className="listing-detail-location">
+                <MapPin size={15} aria-hidden="true" />
+                {selected.location}
+              </p>
+            </div>
+            <dl className="listing-detail-facts">
+              <div>
+                <dt>Condition</dt>
+                <dd>{selected.condition || "Not specified"}</dd>
+              </div>
+              <div>
+                <dt>Dimensions</dt>
+                <dd>{selected.dimensions || "Not specified"}</dd>
+              </div>
+              <div>
+                <dt>Collection</dt>
+                <dd>{selected.available || "Arrange with seller"}</dd>
+              </div>
+            </dl>
+            <div className="listing-detail-seller">
+              <span className="listing-detail-avatar" aria-hidden="true">
+                {selected.seller
+                  .trim()
+                  .split(/\s+/)
+                  .slice(0, 2)
+                  .map((part) => part[0])
+                  .join("")
+                  .toUpperCase() || selected.initials}
+              </span>
+              <div>
+                <strong>{selected.seller || "Seller"}</strong>
+                <span>
+                  {selected.own ? "Your listing" : "Listed by seller"}
                 </span>
+              </div>
+            </div>
+            <div className="listing-detail-actions">
+              {(!cloud || !selected.own) && (
+                <div
+                  className={
+                    mobileContact ? "listing-detail-mobile-contact" : undefined
+                  }
+                >
+                  <Button
+                    animateIcon
+                    className="button primary full"
+                    type="button"
+                    disabled={selected.status !== "active"}
+                    onClick={onMessage}
+                  >
+                    <MessageCircle size={17} /> Message seller
+                  </Button>
+                </div>
+              )}
+              {(!cloud || selected.own) && (
+                <div className="listing-detail-owner-actions">
+                  <Button
+                    className="button secondary small"
+                    type="button"
+                    onClick={onEdit}
+                  >
+                    <Pencil size={16} /> Edit listing
+                  </Button>
+                  <Button
+                    className="button secondary small"
+                    type="button"
+                    onClick={onAskAgent}
+                  >
+                    Ask Pako
+                  </Button>
+                </div>
+              )}
+              {(onToggleFavorite || onToggleCompare) && (
+                <div className="listing-detail-tools">
+                  {onToggleFavorite && (
+                    <SaveToggle
+                      title={selected.title}
+                      saved={favorite}
+                      onToggle={onToggleFavorite}
+                    />
+                  )}
+                  {onToggleCompare && (
+                    <Button
+                      type="button"
+                      onClick={onToggleCompare}
+                      aria-pressed={compared}
+                    >
+                      <GitCompareArrows size={16} />
+                      {compared ? "Added to compare" : "Compare"}
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
-            <p className="listing-detail-location">
-              <MapPin size={15} aria-hidden="true" />
-              {selected.location}
-            </p>
-          </div>
-          <dl className="listing-detail-facts">
-            <div>
-              <dt>Condition</dt>
-              <dd>{selected.condition || "Not specified"}</dd>
-            </div>
-            <div>
-              <dt>Dimensions</dt>
-              <dd>{selected.dimensions || "Not specified"}</dd>
-            </div>
-            <div>
-              <dt>Collection</dt>
-              <dd>{selected.available || "Arrange with seller"}</dd>
-            </div>
-          </dl>
-          <div className="listing-detail-seller">
-            <span className="listing-detail-avatar" aria-hidden="true">
-              {selected.seller
-                .trim()
-                .split(/\s+/)
-                .slice(0, 2)
-                .map((part) => part[0])
-                .join("")
-                .toUpperCase() || selected.initials}
-            </span>
-            <div>
-              <strong>{selected.seller || "Seller"}</strong>
-              <span>{selected.own ? "Your listing" : "Listed by seller"}</span>
-            </div>
-          </div>
-          <div className="listing-detail-actions">
-            {(!cloud || !selected.own) && (
-              <div
-                className={
-                  mobileContact ? "listing-detail-mobile-contact" : undefined
-                }
-              >
-                <Button
-                  animateIcon
-                  className="button primary full"
-                  type="button"
-                  disabled={selected.status !== "active"}
-                  onClick={onMessage}
-                >
-                  <MessageCircle size={17} /> Message seller
-                </Button>
-              </div>
-            )}
-            {(!cloud || selected.own) && (
-              <div className="listing-detail-owner-actions">
-                <Button
-                  className="button secondary"
-                  type="button"
-                  onClick={onEdit}
-                >
-                  <Pencil size={16} /> Edit listing
-                </Button>
-                <Button
-                  className="button secondary"
-                  type="button"
-                  onClick={onAskAgent}
-                >
-                  Ask the agent
-                </Button>
-              </div>
-            )}
-            {(onToggleFavorite || onToggleCompare) && (
-              <div className="listing-detail-tools">
-                {onToggleFavorite && (
-                  <SaveToggle
-                    title={selected.title}
-                    saved={favorite}
-                    onToggle={onToggleFavorite}
-                  />
-                )}
-                {onToggleCompare && (
-                  <Button
-                    type="button"
-                    onClick={onToggleCompare}
-                    aria-pressed={compared}
-                  >
-                    <GitCompareArrows size={16} />
-                    {compared ? "Added to compare" : "Compare"}
-                  </Button>
-                )}
-              </div>
+            {reportAction && (
+              <div className="listing-detail-report">{reportAction}</div>
             )}
           </div>
-          {reportAction && (
-            <div className="listing-detail-report">{reportAction}</div>
-          )}
           {description && (
             <section className="listing-detail-description">
               <h2>About this item</h2>

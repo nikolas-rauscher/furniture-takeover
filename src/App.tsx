@@ -53,6 +53,7 @@ import {
   Bookmark,
   Camera,
   ChevronDown,
+  MapPin,
   Plus,
   Search,
   SquarePen,
@@ -119,6 +120,7 @@ import Onboarding, {
   type OnboardingOutcome,
 } from "./components/onboarding/Onboarding";
 import OnboardingInvite from "./components/onboarding/OnboardingInvite";
+import Pako from "./components/onboarding/Pako";
 import {
   firstVisitMode,
   readOnboarding,
@@ -1760,10 +1762,22 @@ export default function App({
                       </Button>
                     </div>
                     <HeroHeadline compact={false} />
-                    <p>
-                      Describe what you need. Your agent searches around{" "}
-                      {location}.
-                    </p>
+                    <div className="agent-hero-guide">
+                      <Pako
+                        className="agent-hero-pako"
+                        mood={
+                          searchAssist.status === "loading"
+                            ? "work"
+                            : hasSearchDraft
+                              ? "happy"
+                              : "wave"
+                        }
+                        size={64}
+                      />
+                      <p className="ob-bubble agent-hero-bubble">
+                        Tell me what you need. I'll search around {location}.
+                      </p>
+                    </div>
                     <PageTransitionShared name="agent-composer">
                       <form
                         className="agent-search"
@@ -1804,8 +1818,9 @@ export default function App({
                               setModal("location");
                             }}
                           >
-                            {location}
-                            <ChevronDown size={13} />
+                            <MapPin size={15} aria-hidden="true" />
+                            <span>{location}</span>
+                            <ChevronDown size={13} aria-hidden="true" />
                           </Button>
                           <Button
                             animateIcon
@@ -1828,6 +1843,23 @@ export default function App({
                         startSearchFromHome(suggestion);
                       }}
                     />
+                    <div className="home-sell-card">
+                      <span className="home-sell-icon" aria-hidden="true">
+                        <Camera size={22} />
+                      </span>
+                      <div>
+                        <h2>Moving out? Just take photos.</h2>
+                        <p>Pako writes the listing, you tap Publish.</p>
+                      </div>
+                      <Button
+                        animateIcon
+                        className="button quiet"
+                        onClick={startSell}
+                      >
+                        Sell from a photo
+                        <ArrowRight size={16} />
+                      </Button>
+                    </div>
                   </section>
                 ) : (
                   <>
@@ -2072,13 +2104,15 @@ export default function App({
                         </span>
                       </div>
                       <Button
-                        className="browse-filter"
+                        animateIcon
+                        className="button quiet"
                         onClick={() => {
                           setAccountTab("listings");
                           navigate("account");
                         }}
                       >
                         Manage listings
+                        <ArrowRight size={16} />
                       </Button>
                     </div>
                     <div className="product-grid">
@@ -2087,17 +2121,15 @@ export default function App({
                   </>
                 )}
                 {searchIsHome && !visibleListings.length && (
-                  <div className="section-heading">
+                  <div className="home-empty">
+                    <Pako mood="idle" size={72} />
                     <div>
-                      <h2>Something to sell?</h2>
-                      <span>
-                        Upload a photo. Your agent prepares the listing.
-                      </span>
+                      <h2>Nothing listed nearby yet</h2>
+                      <p>
+                        Ask me above and I'll check other second-hand sites
+                        too. Or be the first: list something with a photo.
+                      </p>
                     </div>
-                    <Button className="button secondary" onClick={startSell}>
-                      Create a listing
-                      <ArrowRight size={16} />
-                    </Button>
                   </div>
                 )}
               </>

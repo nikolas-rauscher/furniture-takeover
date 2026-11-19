@@ -197,101 +197,154 @@ label > textarea {
   color: var(--blue-dark);
 }
 
-/* The opening task is deliberately one writing surface. */
+/* Home: Pako greets the visitor above one big writing card, like the intro's ask scene. */
 .agent-hero {
-  max-width: 840px;
+  max-width: 760px;
   margin: 0 auto;
-  padding: 88px 0;
+  padding: var(--space-section) 0;
 }
 .agent-modes {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-group);
+  gap: 4px 6px;
+  margin-bottom: var(--space-group);
   font-size: var(--type-label);
-  margin-bottom: 32px;
-  line-height: 1.5;
+}
+.agent-modes > span,
+.agent-modes > button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-weight: 650;
+  line-height: 1.3;
 }
 .agent-modes > span {
-  font-weight: 500;
-  color: var(--blue);
+  background: var(--selected);
+  color: var(--blue-dark);
 }
 .agent-modes > button {
-  padding: 6px 0;
   color: var(--muted);
-  font-size: 15px;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
 }
 .agent-modes > button:hover {
-  color: var(--blue);
-  text-decoration: underline;
-  text-underline-offset: 5px;
+  background: var(--canvas);
+  color: var(--ink);
+}
+/* Phones keep the three ways in on one row. */
+@media (max-width: 760px) {
+  .agent-modes {
+    gap: 4px 2px;
+    font-size: var(--type-support);
+  }
+  .agent-modes > span,
+  .agent-modes > button {
+    padding-inline: 10px;
+  }
 }
 .agent-hero h1 {
+  margin-bottom: var(--space-group);
   font-size: var(--type-display);
-  font-weight: 450;
-  line-height: 1.17;
+  font-weight: 700;
+  line-height: 1.2;
   letter-spacing: -0.025em;
-  margin-bottom: 20px;
 }
-.agent-hero > p {
+.agent-hero-guide {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.agent-hero-pako {
+  flex: none;
+}
+.agent-hero-bubble {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
   font-size: var(--type-body);
-  color: var(--muted);
-  line-height: 1.6;
+  font-weight: 500;
+  line-height: 1.45;
 }
 .agent-search {
-  margin-top: 36px;
-  background: #fff;
-  border: 1px solid #c8c9c3;
-  border-radius: 4px;
-  padding: 24px 28px;
+  margin-top: var(--space-group);
+  padding: 16px 16px 14px 20px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-stage);
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--lip);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 .agent-search:focus-within {
   border-color: var(--blue);
+  box-shadow: 0 4px 0 var(--blue-dark);
 }
 .agent-search textarea {
   display: block;
   width: 100%;
+  min-height: 2.75rem;
+  max-height: 9rem;
+  padding: 2px 0;
+  overflow-y: auto;
   border: 0;
   border-radius: 0;
   outline: none;
   background: none;
-  padding: 0;
   resize: none;
-  min-height: 96px;
-  line-height: 1.7;
-  font-size: 19px;
-  letter-spacing: -0.2px;
+  field-sizing: content;
+  font-size: 1.0625rem;
+  line-height: 1.55;
 }
 .agent-search textarea::placeholder {
-  color: #85857f;
+  color: var(--muted);
 }
 .agent-search-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  margin-top: 18px;
+  gap: 12px;
+  margin-top: 12px;
 }
 .agent-search-actions .button {
-  font-size: 14px;
-  padding: 13px 24px;
+  flex: none;
 }
-.agent-search-actions .button:disabled {
-  opacity: 1;
-  background: #dfe4f5;
-  color: #6571a1;
-  border-color: #dfe4f5;
-}
+/* The search area is a pill, so a long residence name truncates instead of wrapping. */
 .search-area {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 0;
-  font-size: 14px;
-  color: var(--muted);
+  gap: 6px;
+  min-width: 0;
+  min-height: 40px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: var(--type-support);
+  font-weight: 650;
+  transition: background-color 160ms ease;
 }
 .search-area:hover {
-  color: var(--ink);
+  background: var(--selected);
 }
+.search-area > span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.search-area > svg:first-child {
+  color: var(--blue);
+}
+.agent-hero > .agent-footnote {
+  margin: var(--space-field) 0 0;
+  font-size: var(--type-caption);
+}
+
 .agent-footnote {
   font-size: 12px;
   color: var(--muted);
@@ -325,14 +378,84 @@ label > textarea {
 }
 .section-heading h2 {
   font-size: var(--type-section);
-  font-weight: 500;
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 .section-heading > div > span {
   display: block;
   font-size: var(--type-support);
   color: var(--muted);
-  margin-top: 10px;
+  margin-top: 4px;
+}
+/* The second way in: selling takes nothing but photos. */
+.home-sell-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 14px;
+  margin-top: var(--space-group);
+  padding: 14px 16px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--lip);
+}
+/* The link lines up with the text it belongs to; desktop gives it its own column. */
+.home-sell-card > .button {
+  grid-column: 2;
+  justify-self: start;
+  min-height: 36px;
+  padding-inline: 0;
+}
+@media (min-width: 761px) {
+  .home-sell-card {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .home-sell-card > .button {
+    grid-column: 3;
+    padding-inline: 4px;
+  }
+}
+.section-heading > .button.quiet {
+  padding-inline: 0;
+}
+.home-sell-card h2 {
+  font-size: var(--type-item);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.home-sell-card p {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: var(--type-support);
+}
+.home-sell-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--sand);
+  color: var(--kraft-deep);
+}
+/* Pako keeps the page company when there is nothing to show yet. */
+.home-empty {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 560px;
+  margin: var(--space-section) auto 0;
+}
+.home-empty h2 {
+  font-size: var(--type-section);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.home-empty p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: var(--type-support);
 }
 .sort-label select {
   font-size: 13px;
@@ -364,88 +487,6 @@ label > textarea {
 .categories button.active:after {
   height: 1px;
   background: var(--ink);
-}
-.browse-filter {
-  padding: 7px 0 20px;
-  font-size: 14px;
-  color: var(--muted);
-  flex-shrink: 0;
-}
-.browse-filter:hover {
-  color: var(--blue);
-}
-.product-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-section) var(--space-group);
-}
-.home-layout .product-grid,
-.focused-layout .product-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-section) var(--space-group);
-}
-.product-photo {
-  height: auto;
-  aspect-ratio: 4 / 3;
-  border-radius: 3px;
-}
-.photo-link > img {
-  transition: none;
-}
-.photo-link:hover > img {
-  transform: none;
-}
-.favorite-button {
-  width: 34px;
-  height: 34px;
-  border-radius: 3px;
-  top: 12px;
-  right: 12px;
-}
-.product-info {
-  padding: var(--space-field) 0 0;
-  container-type: inline-size;
-}
-.product-source {
-  display: block;
-  font-size: var(--type-caption);
-  color: var(--muted);
-  margin-bottom: 10px;
-}
-.product-title {
-  font-size: clamp(0.9375rem, 0.875rem + 0.6cqi, 1.0625rem);
-  font-weight: 450;
-  line-height: 1.5;
-  white-space: normal;
-  text-overflow: initial;
-}
-.product-title-row {
-  gap: 8px;
-}
-.product-title-row > strong {
-  font-size: clamp(1rem, 0.95rem + 0.5cqi, 1.125rem);
-  font-weight: 500;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-.product-location,
-.product-location > span,
-.pickup {
-  font-size: var(--type-support);
-  color: var(--muted);
-  line-height: 1.5;
-}
-.product-location {
-  margin-top: var(--space-label);
-}
-.product-bottom {
-  margin-top: 7px;
-}
-.pickup.today {
-  color: var(--muted);
-}
-.compare-button {
-  width: 32px;
-  height: 32px;
 }
 .market-footer {
   margin-top: 64px;
@@ -981,30 +1022,6 @@ label > textarea {
   gap: 32px;
   border-radius: 4px;
 }
-.search-job {
-  padding: 32px;
-  gap: 24px;
-  border-radius: 4px;
-}
-.search-jobs {
-  gap: 24px;
-}
-.job-heading h2 {
-  font-size: 20px;
-  font-weight: 500;
-}
-.job-facts {
-  font-size: 13px;
-  margin-top: 18px;
-}
-.job-main > p {
-  font-size: 13px;
-  margin-top: 20px;
-}
-.job-actions {
-  margin-top: 28px;
-  gap: 24px;
-}
 .empty-state {
   border: 0;
   border-radius: 0;
@@ -1045,17 +1062,8 @@ label > textarea {
   .app-layout {
     grid-template-columns: minmax(0, 1fr) 320px;
   }
-  .agent-hero {
-    padding: 72px 0;
-    max-width: 800px;
-  }
   .market-toolbar .categories {
     gap: 24px;
-  }
-  .product-grid,
-  .home-layout .product-grid,
-  .focused-layout .product-grid {
-    gap: var(--space-section) var(--space-group);
   }
   .assistant-heading,
   .assistant-body {
@@ -1087,9 +1095,6 @@ label > textarea {
     width: 380px;
     box-shadow: none;
   }
-  .product-title {
-    font-size: clamp(0.9375rem, 0.875rem + 0.6cqi, 1.0625rem);
-  }
   .detail-summary h1 {
     font-size: 32px;
   }
@@ -1113,22 +1118,6 @@ label > textarea {
   .main-content {
     padding: var(--space-section) var(--space-page) calc(2 * var(--space-section));
   }
-  .agent-hero {
-    padding: 56px 0 64px;
-  }
-  .agent-hero h1 {
-    letter-spacing: -0.025em;
-  }
-  .agent-search {
-    padding: 24px;
-    margin-top: 30px;
-  }
-  .agent-search textarea {
-    font-size: 18px;
-  }
-  .agent-modes {
-    margin-bottom: 28px;
-  }
   .agent-footnote {
     gap: 16px;
   }
@@ -1138,16 +1127,8 @@ label > textarea {
   .market-toolbar .categories {
     gap: 22px;
   }
-  .categories button,
-  .browse-filter {
+  .categories button {
     font-size: 13px;
-  }
-  .home-layout .product-grid,
-  .focused-layout .product-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .product-title {
-    font-size: clamp(0.9375rem, 0.875rem + 0.6cqi, 1.0625rem);
   }
   .detail-layout {
     gap: 28px;
@@ -1214,41 +1195,6 @@ label > textarea {
   .main-content {
     padding: var(--space-section) var(--space-page) calc(2 * var(--space-section));
   }
-  .agent-hero {
-    padding: 44px 0 56px;
-  }
-  .agent-modes {
-    margin-bottom: 28px;
-  }
-  .agent-modes > button {
-    font-size: 13px;
-  }
-  .agent-hero h1 {
-    line-height: 1.2;
-    letter-spacing: -0.025em;
-    margin-bottom: 20px;
-  }
-  .agent-search {
-    padding: 20px;
-    margin-top: 28px;
-  }
-  .agent-search textarea {
-    font-size: 16px;
-    min-height: 110px;
-    line-height: 1.65;
-  }
-  .agent-search-actions {
-    margin-top: 20px;
-    gap: 12px;
-  }
-  .agent-search-actions .button {
-    font-size: 12px;
-    padding: 12px 14px;
-    min-height: 44px;
-  }
-  .search-area {
-    font-size: 12px;
-  }
   .agent-footnote {
     align-items: flex-start;
     flex-direction: column;
@@ -1277,52 +1223,6 @@ label > textarea {
   .categories button {
     font-size: 12px;
     padding: 5px 0;
-  }
-  .browse-filter {
-    font-size: 12px;
-    padding: 5px 0;
-  }
-  .product-grid,
-  .home-layout .product-grid,
-  .focused-layout .product-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-section) var(--space-group);
-  }
-  .product-photo {
-    height: auto;
-    aspect-ratio: 1 / 1.1;
-  }
-  .favorite-button {
-    width: 30px;
-    height: 30px;
-    top: 8px;
-    right: 8px;
-  }
-  .product-info {
-    padding-top: 14px;
-  }
-  .product-title {
-    font-size: clamp(0.9375rem, 0.875rem + 0.6cqi, 1.0625rem);
-    line-height: 1.6;
-    min-height: 42px;
-  }
-  .product-source {
-    font-size: var(--type-caption);
-    margin-bottom: 8px;
-  }
-  .product-title-row > strong {
-    font-size: clamp(1rem, 0.95rem + 0.5cqi, 1.125rem);
-  }
-  .product-location {
-    margin-top: 12px;
-    flex-wrap: wrap;
-    white-space: normal;
-    gap: 3px 6px;
-  }
-  .product-location,
-  .product-location > span,
-  .pickup {
-    font-size: var(--type-support);
   }
   .market-footer {
     margin-top: 48px;
@@ -1440,24 +1340,6 @@ label > textarea {
     padding: 20px;
     gap: 20px;
   }
-  .search-job {
-    padding: 20px;
-    gap: 14px;
-  }
-  .job-heading h2 {
-    font-size: 17px;
-  }
-  .job-facts {
-    font-size: 12px;
-    gap: 10px;
-  }
-  .job-actions {
-    gap: 14px;
-  }
-  .job-actions > .button,
-  .job-actions > .text-button {
-    font-size: 12px;
-  }
   .assistant-panel.mobile-open,
   .assistant-panel.assistant-drawer {
     top: 112px;
@@ -1511,23 +1393,11 @@ label > textarea {
 .view-discover:has(> .search-title) {
   padding-top: 32px;
 }
-.search-title ~ .product-grid .product-photo {
-  width: 100%;
-  max-height: 240px;
-}
-.search-title ~ .product-grid .product-title-row {
-  flex-direction: row;
-  align-items: baseline;
-  justify-content: space-between;
-}
 .search-title h1 {
   margin-bottom: 0;
 }
 .search-title .back-link {
   margin-bottom: 16px;
-}
-.view-discover > .section-heading .browse-filter {
-  padding: 8px 0;
 }
 
 /* Phone navigation stays within thumb reach; desktop navigation remains above. */
@@ -1570,11 +1440,6 @@ label > textarea {
   body:has(.compare-tray) .main-content {
     padding-bottom: calc(180px + env(safe-area-inset-bottom, 0px));
   }
-  .product-card .compare-button,
-  .product-card .favorite-button {
-    width: 44px;
-    height: 44px;
-  }
 }
 
 .removed-listing {
@@ -1597,62 +1462,6 @@ label > textarea {
   text-align: center;
 }
 
-.product-pickup-address {
-  margin: 0 0 12px;
-  color: #6c706e;
-  font-size: 12px;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-
-/* Keep the search compact while allowing a longer brief to grow naturally. */
-.agent-hero.search-entry {
-  padding: var(--space-section) 0;
-}
-.agent-hero.search-entry .agent-modes {
-  gap: var(--space-group);
-  margin-bottom: var(--space-group);
-}
-.agent-hero.search-entry h1 {
-  font-size: var(--type-display);
-  line-height: 1.25;
-  letter-spacing: -0.025em;
-  margin-bottom: var(--space-field);
-}
-.agent-hero.search-entry > p {
-  font-size: var(--type-body);
-  line-height: 1.6;
-  max-width: var(--measure-prose);
-}
-.agent-hero.search-entry .agent-search {
-  margin-top: var(--space-group);
-  padding: var(--space-panel);
-  border-radius: 10px;
-}
-.agent-hero.search-entry .agent-search textarea {
-  field-sizing: content;
-  min-height: 2.75rem;
-  max-height: 9rem;
-  overflow-y: auto;
-  font-size: var(--type-body);
-  line-height: 1.6;
-}
-.agent-hero.search-entry .agent-search-actions {
-  margin-top: var(--space-label);
-}
-.agent-hero.search-entry > .agent-footnote {
-  margin: var(--space-label) 0 0;
-  padding: 0;
-  font-size: var(--type-caption);
-  line-height: 1.5;
-}
-@media (prefers-reduced-motion: reduce) {
-  .agent-hero.search-entry,
-  .agent-hero.search-entry h1 {
-    transition: none;
-  }
-}
-
 /* Keep the photograph independent of long descriptions. */
 .detail-photo { align-self:start; aspect-ratio:4 / 3; min-height:0; background:#f1f1ed; }
 .detail-photo > img { object-fit:contain; }
@@ -1667,9 +1476,6 @@ label > textarea {
   .view-sell > .steps { margin-bottom: 20px; font-size: 12px; gap: 12px; }
   .listing-save-form { margin-top: 24px; padding-top: 20px; }
 }
-
-.product-tags { display:flex; flex-wrap:wrap; gap:4px 8px; min-height:20px; margin-bottom:8px; }
-.product-tags > span { font-size:var(--type-caption); line-height:1.5; color:var(--muted); background:#f0f0ed; padding:2px 6px; border-radius:2px; overflow-wrap:anywhere; }
 
 /* Keep related copy together while preserving generous control targets. */
 .page-title { margin-bottom: var(--space-group); }
@@ -1688,10 +1494,7 @@ label > textarea {
 .form-grid, .modal .form-grid { gap: 20px; margin: 20px 0; }
 .account-tabs { margin: 24px 0; gap: 24px; }
 .account-tabs button { min-height: 44px; padding-bottom: 12px; }
-.own-listing, .search-job { padding: 20px; gap: 20px; }
-.search-jobs { gap: 16px; }
-.job-facts, .job-main > p { margin-top: 10px; }
-.job-actions { margin-top: 16px; gap: 16px; }
+.own-listing { padding: 20px; gap: 20px; }
 .listing-preview h2 { margin: 12px 0; }
 .listing-preview p { margin-top: 10px; }
 .database-status {
@@ -1707,7 +1510,7 @@ label > textarea {
   .review-layout.agent-review-layout { gap: 12px; }
   .form-grid, .modal .form-grid { gap: 16px; }
   .account-tabs { margin: 20px 0; gap: 20px; }
-  .own-listing, .search-job { padding: 16px; gap: 16px; }
+  .own-listing { padding: 16px; gap: 16px; }
 }
 
 /* Keep modal scrollbar changes from shifting the whole workspace sideways. */
