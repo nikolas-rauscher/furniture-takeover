@@ -1072,7 +1072,10 @@ export default function App({
     await agentRun.run(request, {
       preserveHistory,
       onNegotiation: (event) => {
-        if (token === searchRunToken.current) negotiations.commit(event);
+        if (token !== searchRunToken.current) return;
+        negotiations.commit(event);
+        if (event.negotiation.status === "discarded")
+          forgetMessageDraft(event.negotiation.listingId);
       },
       onAction: (action) => {
         if (
@@ -1227,11 +1230,21 @@ export default function App({
               previousVersion: proposal.version,
               negotiation: discardNegotiation(proposal, proposal.version),
             });
+            forgetMessageDraft(proposal.listingId);
           } catch {
             /* repository exposes the error */
           }
         }}
       />
+    );
+  }
+  /** A discarded offer leaves no unsent conversation waiting in Messages. */
+  function forgetMessageDraft(listingId: string) {
+    setMessageProposal((current) =>
+      current?.listingId === listingId ? undefined : current,
+    );
+    setMessageListingId((current) =>
+      current === listingId ? undefined : current,
     );
   }
   function answerSearchQuestion(id: string, answer: string) {
