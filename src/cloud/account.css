@@ -871,19 +871,23 @@
   font-size: var(--type-caption);
 }
 
-/* Publishing: Pako cheers, confetti leaves his box, a stamp lands on the card. */
-.items-page .listing-celebration {
+/* Publishing: Pako cheers in the progress card, confetti leaves his box, a stamp lands on the new card. */
+.items-page .selling-progress-pako {
   position: relative;
-  max-width: 720px;
-  margin-bottom: var(--space-group);
+  flex: none;
 }
-.items-page .listing-celebration-burst {
+.items-page .selling-progress-burst {
   position: absolute;
-  top: calc(50% - 11px);
-  left: 42px;
+  top: 18px;
+  left: 50%;
   width: 0;
   height: 0;
   pointer-events: none;
+}
+.items-page .selling-progress-news {
+  margin: -4px 0 0;
+  color: var(--muted);
+  font-size: var(--type-support);
 }
 .items-page .published-stamp {
   position: absolute;
@@ -903,12 +907,6 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   pointer-events: none;
-}
-@media (min-width: 761px) {
-  .items-page .listing-celebration-burst {
-    top: calc(50% - 12px);
-    left: 46px;
-  }
 }
 @media (max-width: 760px) {
   .focused-layout .main-content.view-account:has(> .items-page) {

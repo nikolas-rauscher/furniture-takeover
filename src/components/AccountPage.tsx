@@ -5,7 +5,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import { MotionConfig, motion } from "motion/react";
 import { SelectField } from "./ui/select-field";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Button } from "./ui/button";
@@ -29,7 +29,6 @@ import {
 import { cn } from "@/lib/utils";
 import { money, type Product } from "../../shared/marketplace";
 import Confetti from "./onboarding/Confetti";
-import Guide from "./onboarding/Guide";
 import Pako from "./onboarding/Pako";
 
 export type AccountTab = "favorites" | "listings" | "archive";
@@ -50,8 +49,28 @@ function statusLabel(status: Product["status"], cloud: boolean) {
     : STATUS_LABELS[status];
 }
 
-/** How many of the visitor's listings found a new home, as a friendly progress bar. */
-function SellingProgress({ listings }: { listings: Product[] }) {
+type Celebration = { title: string; text: string };
+
+const CELEBRATIONS: Record<"cloud" | "local", Celebration> = {
+  cloud: {
+    title: "It's live!",
+    text: "Students nearby can see your listing now.",
+  },
+  local: { title: "Saved!", text: "Your listing is ready in this browser." },
+};
+
+/**
+ * How many of the visitor's listings found a new home, as a friendly progress
+ * bar. Right after publishing, the same card celebrates: Pako cheers once, with
+ * confetti from his box, instead of a second Pako repeating the news.
+ */
+function SellingProgress({
+  listings,
+  celebration,
+}: {
+  listings: Product[];
+  celebration: Celebration | null;
+}) {
   const headingId = useId();
   const count = (status: Product["status"]) =>
     listings.filter((item) => item.status === status).length;
@@ -62,13 +81,35 @@ function SellingProgress({ listings }: { listings: Product[] }) {
   );
   return (
     <section className="selling-progress" aria-labelledby={headingId}>
-      <Pako mood={sold === total ? "happy" : "idle"} size={56} />
-      <div className="selling-progress-body">
+      <span className="selling-progress-pako">
+        {celebration && (
+          <span className="selling-progress-burst" aria-hidden="true">
+            <Confetti />
+          </span>
+        )}
+        <Pako
+          mood={celebration ? "cheer" : sold === total ? "happy" : "idle"}
+          size={56}
+        />
+      </span>
+      <div className="selling-progress-body" aria-live="polite">
         <h2 id={headingId}>
-          {sold === total
-            ? `All ${total} passed on!`
-            : `${sold} of ${total} passed on`}
+          {celebration
+            ? celebration.title
+            : sold === total
+              ? `All ${total} passed on!`
+              : `${sold} of ${total} passed on`}
         </h2>
+        {celebration && (
+          <motion.p
+            className="selling-progress-news"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 420, damping: 32 }}
+          >
+            {celebration.text}
+          </motion.p>
+        )}
         <div
           className="selling-progress-bar"
           role="progressbar"
@@ -92,40 +133,6 @@ function SellingProgress({ listings }: { listings: Product[] }) {
         </ul>
       </div>
     </section>
-  );
-}
-
-/** Pako cheers, with confetti from his box, when a listing has just gone up. */
-function PublishCelebration({ cloud }: { cloud: boolean }) {
-  return (
-    <motion.div
-      className="listing-celebration"
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-      transition={{ type: "spring", stiffness: 380, damping: 32 }}
-    >
-      <span className="listing-celebration-burst" aria-hidden="true">
-        <Confetti />
-      </span>
-      <Guide
-        mood="cheer"
-        layout="guide"
-        bubble={
-          cloud
-            ? {
-                id: "published",
-                title: "It's live!",
-                text: "Students nearby can see your listing now.",
-              }
-            : {
-                id: "saved",
-                title: "Saved!",
-                text: "Your listing is ready in this browser.",
-              }
-        }
-      />
-    </motion.div>
   );
 }
 
@@ -458,14 +465,15 @@ export default function AccountPage({
                 Archive<span>{archivedListings.length}</span>
               </TabsTrigger>
             </TabsList>
-            <AnimatePresence>
-              {accountTab === "listings" &&
-                items.some((item) => item.id === publishedId) && (
-                  <PublishCelebration key="celebration" cloud={cloud} />
-                )}
-            </AnimatePresence>
             {accountTab === "listings" && visibleListings.length > 0 && (
-              <SellingProgress listings={visibleListings} />
+              <SellingProgress
+                listings={visibleListings}
+                celebration={
+                  items.some((item) => item.id === publishedId)
+                    ? CELEBRATIONS[cloud ? "cloud" : "local"]
+                    : null
+                }
+              />
             )}
             {toolbar}
             <TabsContent value={accountTab}>{content}</TabsContent>
