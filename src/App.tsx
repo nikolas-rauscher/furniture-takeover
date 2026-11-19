@@ -102,17 +102,16 @@ import PhotoSplitQuestion from "./components/PhotoSplitQuestion";
 import AgentSuggestions from "./components/AgentSuggestions";
 import AgentRunPanel from "./components/AgentRunPanel";
 import PhotoBubble from "./components/PhotoBubble";
-import { emptyAgentRunState, useAgentRun } from "./hooks/useAgentRun";
+import { useAgentRun } from "./hooks/useAgentRun";
 import {
   assistRequestKey,
   useAgentAssist,
   type TypingAssistRequest,
 } from "./hooks/useAgentAssist";
 import {
-  listingRunRequest,
-  type ListingRunOptions,
-  type PhotoAnalysis,
-} from "./listingRunRequest";
+  startingListingTurn,
+  useListingConversation,
+} from "./hooks/useListingConversation";
 import { useSaved } from "./hooks/useSaved";
 import { useWatches } from "./alerts/useWatches";
 import { demandLadder, similarListings } from "./alerts/matching";
@@ -131,19 +130,11 @@ import {
 import { requestAgentAssist } from "./api/agent";
 import { listingPickupMinimum } from "./listingValidation";
 import {
-  applyListingAction,
   applyPreferenceAction,
-  listingFieldNames,
-  undoListingAction,
   undoPreferenceAction,
-  type FieldRevisions,
-  type ListingChanges,
   type PreferenceChanges,
 } from "./agentActions";
-import type {
-  AgentListingPatchEvent,
-  AgentPreferencesPatchEvent,
-} from "../shared/actions";
+import type { AgentPreferencesPatchEvent } from "../shared/actions";
 import { useAgentHealth } from "./hooks/useAgentHealth";
 import { useNoticeableWait } from "./hooks/useNoticeableWait";
 import { useFocused } from "./hooks/useFocused";
@@ -210,16 +201,6 @@ function newDraft(location: string): ListingDraft {
     category: "All",
   };
 }
-/** What the student asks Pako when he starts writing a new listing. */
-const LISTING_START = "Write my listing from my photos.";
-/** The listing's first turn while Pako still reads the photos, before his run starts. */
-const startingListingTurn = {
-  ...emptyAgentRunState(),
-  id: "listing-start",
-  turnKey: "listing-start",
-  request: LISTING_START,
-  status: "running" as const,
-};
 /** The photo analysis of a draft: its photos, the student's note and the pickup place. */
 function listingAssistRequest(draft: ListingDraft): TypingAssistRequest {
   return {
@@ -277,28 +258,8 @@ export default function App({
         turn.proposal.draft,
     ),
   );
-  const listingRun = useAgentRun();
-  const listingRunToken = useRef(0);
   const searchRunToken = useRef(0);
   const committedSearchRef = useRef<SearchSnapshot | null>(null);
-  const listingRevisions = useRef<FieldRevisions>({});
-  const listingBaselines = useRef(new Map<string, FieldRevisions>());
-  const listingActions = useRef(new Map<string, AgentListingPatchEvent>());
-  const lastListingRequest = useRef<{
-    text: string;
-    options: ListingRunOptions;
-  } | null>(null);
-  /** What the photo analysis noticed about the listing being written. */
-  const listingPhotoAnalysis = useRef<PhotoAnalysis | undefined>(undefined);
-  const [listingInput, setListingInput] = useState("");
-  const [listingChanges, setListingChanges] = useState<
-    Record<string, ListingChanges>
-  >({});
-  const listingChangesRef = useRef<Record<string, ListingChanges>>({});
-  const [listingNotices, setListingNotices] = useState<Record<string, string>>(
-    {},
-  );
-  const [listingUndone, setListingUndone] = useState<string[]>([]);
   const [searchChanges, setSearchChanges] = useState<
     Record<string, PreferenceChanges>
   >({});
@@ -411,6 +372,7 @@ export default function App({
     draftRef.current = next;
     setDraftState(next);
   }
+  const listing = useListingConversation({ draftRef, setDraft });
   const [sellStep, setSellStep] = useState(1);
   const [sellMode, setSellMode] = useState<"single" | "batch">("single");
   // Set when several photos turn out to show different items.
@@ -754,8 +716,7 @@ export default function App({
         searchRunToken.current += 1;
         agentRun.cancel();
       }
-      listingRunToken.current += 1;
-      listingRun.cancel();
+      listing.cancel();
       listingRequest.current?.abort();
       photoSearchRequest.current?.abort();
       photoSearchRequest.current = null;
@@ -850,8 +811,7 @@ export default function App({
     if (view === "sell") return;
     hasSellingDraft.current = true;
     navigate("sell");
-    resetListingConversation();
-    listingRevisions.current = {};
+    listing.resetForNewDraft();
     setDraft(newDraft(pickupLocation));
     setSellStep(1);
     setSellMode("single");
@@ -1051,8 +1011,7 @@ export default function App({
       setSearchNotices({});
       setSearchUndone([]);
     }
-    listingRunToken.current += 1;
-    listingRun.cancel();
+    listing.cancel();
     listingRequest.current?.abort();
     cancelPhotoRead();
     setView("discover");
@@ -1278,144 +1237,6 @@ export default function App({
     void runSearch(answer, criteria, true, question.question);
     return true;
   }
-  function resetListingConversation() {
-    listingRunToken.current += 1;
-    listingRun.reset();
-    listingBaselines.current.clear();
-    listingActions.current.clear();
-    listingChangesRef.current = {};
-    setListingChanges({});
-    setListingNotices({});
-    setListingUndone([]);
-    setListingInput("");
-    lastListingRequest.current = null;
-    listingPhotoAnalysis.current = undefined;
-  }
-  function changeDraft(changes: Partial<ListingDraft>) {
-    for (const field of listingFieldNames)
-      if (Object.hasOwn(changes, field))
-        listingRevisions.current[field] =
-          (listingRevisions.current[field] ?? 0) + 1;
-    setDraft((current) => ({
-      ...current,
-      ...(changes.title !== undefined && changes.title !== current.title
-        ? { tags: undefined }
-        : {}),
-      ...changes,
-    }));
-  }
-  function applyListingPatch(
-    action: AgentListingPatchEvent,
-    baseline: FieldRevisions,
-    accepted = false,
-  ) {
-    listingActions.current.set(action.id, action);
-    listingBaselines.current.set(action.id, baseline);
-    const result = applyListingAction(
-      draftRef.current,
-      action,
-      baseline,
-      listingRevisions.current,
-      accepted,
-    );
-    if (result.pending) return;
-    if (Object.keys(result.changes).length) {
-      setDraft(result.next);
-      listingChangesRef.current = {
-        ...listingChangesRef.current,
-        [action.id]: result.changes,
-      };
-      setListingChanges(listingChangesRef.current);
-    }
-    setListingNotices((value) => ({
-      ...value,
-      [action.id]: result.skipped.length
-        ? "Kept your newer or unsupported details: " +
-          result.skipped.join(", ") +
-          "."
-        : Object.keys(result.changes).length
-          ? "Updated your draft. Nothing has been saved yet."
-          : "Your draft already has these details.",
-    }));
-  }
-  function acceptListingPatch(id: string) {
-    const action = listingActions.current.get(id);
-    const baseline = listingBaselines.current.get(id);
-    if (action && baseline) applyListingPatch(action, baseline, true);
-  }
-  function undoListingPatch(id: string) {
-    const changes = listingChangesRef.current[id];
-    if (!changes) return;
-    const result = undoListingAction(
-      draftRef.current,
-      changes,
-      listingRevisions.current,
-    );
-    for (const field of result.restored)
-      listingRevisions.current[field] =
-        (listingRevisions.current[field] ?? 0) + 1;
-    setDraft(result.next);
-    setListingUndone((value) => [...value, id]);
-    setListingNotices((value) => ({
-      ...value,
-      [id]: result.preserved.length
-        ? "Undone where unchanged. Your later edits were kept."
-        : "Undone. Previous details restored.",
-    }));
-  }
-  async function runListing(
-    text: string,
-    options: ListingRunOptions = {},
-    explicitRequest = false,
-  ) {
-    if (!text.trim()) return;
-    let question = options.question;
-    const unanswered =
-      !question && !explicitRequest
-        ? listingRun.state.questions.find(
-            (item) => !listingRun.state.answers[item.id],
-          )
-        : undefined;
-    if (unanswered) {
-      question = unanswered.question;
-      listingRun.markQuestionAnswered(unanswered.id, text);
-    }
-    const token = ++listingRunToken.current;
-    const baseline = { ...listingRevisions.current };
-    const runOptions = { ...options, question };
-    lastListingRequest.current = { text, options: runOptions };
-    setListingInput((current) =>
-      current.trim() === text.trim() ? "" : current,
-    );
-    await listingRun.run(
-      listingRunRequest({
-        text,
-        draft: draftRef.current,
-        conversation: listingRun.state,
-        options: {
-          ...runOptions,
-          photoAnalysis: listingPhotoAnalysis.current,
-        },
-      }),
-      {
-        onAction: (action) => {
-          if (
-            token === listingRunToken.current &&
-            action.type === "listing_patch"
-          )
-            applyListingPatch(action, baseline);
-        },
-      },
-    );
-  }
-  function answerListingQuestion(id: string, answer: string) {
-    if (listingRun.state.status === "running") return false;
-    const question = listingRun.state.questions.find((item) => item.id === id);
-    if (!question || listingRun.state.answers[id]) return false;
-    listingRun.markQuestionAnswered(id, answer);
-    void runListing(answer, { question: question.question });
-    return true;
-  }
   /** Pako keeps watch for an item, or says the watch is running already. */
   function keepWatch(query: string, maxPrice?: number) {
     if (!watches.watch(query, maxPrice)) {
@@ -1560,11 +1381,10 @@ export default function App({
       const prepared = prepareListingDraft(current, response.metadata);
       if (keepTitle && current.title.trim()) prepared.title = current.title;
       setDraft(prepared);
-      listingPhotoAnalysis.current = {
+      void listing.start({
         missingDetails: response.missingDetails,
         keywords: response.metadata.keywords,
-      };
-      void runListing(LISTING_START, { start: true });
+      });
     } catch (error) {
       if (controller.signal.aborted) return;
       setSellStep(1);
@@ -1599,8 +1419,7 @@ export default function App({
   }
   async function publish(event: FormEvent) {
     event.preventDefault();
-    if (listingRun.state.status === "running" || database.pending || busy)
-      return;
+    if (listing.running || database.pending || busy) return;
     if (!signedIn) {
       navigate("settings");
       return;
@@ -1649,8 +1468,7 @@ export default function App({
   function openBatchItem(next: ListingDraft) {
     listingRequest.current?.abort();
     cancelPhotoRead();
-    resetListingConversation();
-    listingRevisions.current = {};
+    listing.resetForNewDraft();
     draftId.current = randomUuid();
     setEditingListing(null);
     setUploadError("");
@@ -1706,7 +1524,7 @@ export default function App({
   function backToBatchSorting() {
     if (!batchQueue) return;
     listingRequest.current?.abort();
-    resetListingConversation();
+    listing.resetConversation();
     const remaining = batchQueue.drafts.slice(batchQueue.index);
     const photos = remaining.flatMap((item) => listingPhotos(item));
     setBatchStart({
@@ -1726,8 +1544,7 @@ export default function App({
     if (item.status === "withdrawn") return;
     hasSellingDraft.current = true;
     navigate("sell");
-    resetListingConversation();
-    listingRevisions.current = {};
+    listing.resetForNewDraft();
     setBatchQueue(null);
     setEditingListing(item.id);
     setDraft({
@@ -1776,7 +1593,7 @@ export default function App({
     <DropdownMenu>
       <DropdownMenuTrigger
         render={<Button variant="outline" size="sm" />}
-        disabled={!configured || listingRun.state.status === "running"}
+        disabled={!configured || listing.running}
       >
         Agent tools <ChevronDown size={14} />
       </DropdownMenuTrigger>
@@ -1801,7 +1618,7 @@ export default function App({
         ].map(([label, request]) => (
           <DropdownMenuItem
             key={label}
-            onClick={() => void runListing(request, {}, true)}
+            onClick={() => void listing.send(request, {}, true)}
           >
             {label}
           </DropdownMenuItem>
@@ -1810,28 +1627,24 @@ export default function App({
     </DropdownMenu>
   );
   /** Pako still reads the photos in step 2, before his first run of the listing starts. */
-  const listingStarting = busy && sellStep === 2 && !listingRun.state.id;
-  const listingTurn = listingStarting ? startingListingTurn : listingRun.state;
+  const listingStarting = busy && sellStep === 2 && !listing.state.id;
+  const listingTurn = listingStarting ? startingListingTurn : listing.state;
   const listingConversation = (
     <section className="listing-conversation" aria-label="Listing agent">
       <AgentConversation
         state={listingTurn}
         announcement={turnAnnouncement(listingTurn, undefined, "listing")}
-        typing={listingInput.trim() !== ""}
+        typing={listing.input.trim() !== ""}
         footer={
           <AgentComposer
-            value={listingInput}
-            onChange={setListingInput}
-            onSend={() => void runListing(listingInput)}
+            value={listing.input}
+            onChange={listing.setInput}
+            onSend={() => void listing.send(listing.input)}
             label="Tell Pako about your listing"
             placeholder="Add a detail…"
             sendLabel="Send to Pako"
-            disabled={!configured || listingRun.state.status === "running"}
-            onStop={
-              listingRun.state.status === "running"
-                ? listingRun.cancel
-                : undefined
-            }
+            disabled={!configured || listing.running}
+            onStop={listing.running ? listing.cancel : undefined}
           />
         }
         renderRequest={(turn, index) =>
@@ -1849,30 +1662,24 @@ export default function App({
             externalComposer
             readOnly={archived}
             voice="listing"
-            typing={listingInput.trim() !== ""}
+            typing={listing.input.trim() !== ""}
             showHistory={false}
             state={turn}
-            onCancel={() => {
-              listingRunToken.current += 1;
-              listingRun.cancel();
-            }}
-            onReset={resetListingConversation}
-            onRetry={() => {
-              const last = lastListingRequest.current;
-              if (last) void runListing(last.text, last.options, true);
-            }}
-            onAnswer={answerListingQuestion}
+            onCancel={listing.cancel}
+            onReset={listing.resetConversation}
+            onRetry={listing.retry}
+            onAnswer={listing.answer}
             onSkipQuestion={(id) =>
-              answerListingQuestion(
+              listing.answer(
                 id,
                 "I don't know. Leave this detail unspecified and continue.",
               )
             }
-            onApplyAction={acceptListingPatch}
-            onUndoAction={undoListingPatch}
-            appliedActionIds={Object.keys(listingChanges)}
-            undoneActionIds={listingUndone}
-            actionNotices={listingNotices}
+            onApplyAction={listing.accept}
+            onUndoAction={listing.undo}
+            appliedActionIds={listing.appliedIds}
+            undoneActionIds={listing.undoneIds}
+            actionNotices={listing.notices}
           />
         )}
       </AgentConversation>
@@ -2697,17 +2504,15 @@ export default function App({
                     transitionPage("nav-back", () => {
                       if (sellStep === 2 && !editingListing) {
                         listingRequest.current?.abort();
-                        resetListingConversation();
+                        listing.resetConversation();
                         setSellStep(1);
                       } else if (editingListing) navigate("account");
                       else if (batchQueue) backToBatchSorting();
                       else openBrowse();
                     })
                   }
-                  onDraftChange={changeDraft}
-                  agentWorking={
-                    listingStarting || listingRun.state.status === "running"
-                  }
+                  onDraftChange={listing.editDraft}
+                  agentWorking={listingStarting || listing.running}
                   insight={
                     <SellerInsight
                       similar={similarListings(
@@ -2841,7 +2646,7 @@ export default function App({
                   onAskAgent={() => {
                     if (!selected) return;
                     editListing(selected);
-                    void runListing(
+                    void listing.send(
                       "Review my supplied listing and help me improve it. Ask about missing facts; do not invent them.",
                     );
                   }}

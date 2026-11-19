@@ -77,15 +77,11 @@ body:has(.compare-tray) .toast {
   body:has(.compare-tray) .toast {
     bottom: calc(var(--mobile-nav-height) + 84px);
   }
-  /* A listing's contact bar stays tappable: notes rise above it, and above the tray too. */
-  body:has(.listing-detail.has-mobile-contact) .toast {
-    bottom: calc(
-      var(--mobile-nav-height) + var(--listing-contact-height) + 16px
-    );
+  /* A listing's docked action stays tappable: notes rise above it, and above the tray too. */
+  body:has(.listing-detail-dock) .toast {
+    bottom: calc(var(--listing-dock-height) + 16px);
   }
-  body:has(.listing-detail.has-mobile-contact):has(.compare-tray) .toast {
-    bottom: calc(
-      var(--mobile-nav-height) + var(--listing-contact-height) + 84px
-    );
+  body:has(.listing-detail-dock):has(.compare-tray) .toast {
+    bottom: calc(var(--listing-dock-height) + 84px);
   }
 }

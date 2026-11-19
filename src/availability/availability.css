@@ -351,6 +351,13 @@
   body:has(.compare-tray) .demo-controls {
     bottom: calc(var(--mobile-nav-height) + 84px);
   }
+  /* On a listing the pill rests above its docked action instead. */
+  body:has(.listing-detail-dock) .demo-controls {
+    bottom: calc(var(--listing-dock-height) + 16px);
+  }
+  body:has(.listing-detail-dock):has(.compare-tray) .demo-controls {
+    bottom: calc(var(--listing-dock-height) + 84px);
+  }
   /* Scrolling pages end clear of the pill. */
   body:has(.demo-controls)
     .app-layout:not(

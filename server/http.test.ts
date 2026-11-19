@@ -11,6 +11,10 @@ import {
   fakeFetch,
 } from "./testing/provider.ts";
 import { unavailableKeyStatus } from "./account-keys.ts";
+import {
+  MAX_BATCH_PHOTOS,
+  MAX_PHOTO_PREVIEW_BYTES,
+} from "../shared/listingPhotos.ts";
 import { mkdtemp, mkdir, writeFile, symlink, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -576,6 +580,34 @@ test(
       body: JSON.stringify({ images: "desk" }),
     });
     assert.equal(invalid.status, 400);
+  },
+);
+
+test(
+  "sorting the most photos, each at its full preview share, fits the request body limit",
+  { timeout: 5000 },
+  async (t) => {
+    const preview = Buffer.alloc(Math.floor(MAX_PHOTO_PREVIEW_BYTES));
+    preview.set([0xff, 0xd8, 0xff]);
+    const images = Array<string>(MAX_BATCH_PHOTOS).fill(
+      `data:image/jpeg;base64,${preview.toString("base64")}`,
+    );
+    const body = JSON.stringify({ images, itemCount: MAX_BATCH_PHOTOS });
+    assert.ok(Buffer.byteLength(body) <= MAX_BODY_BYTES);
+    const service = createAgentService({
+      ...fakeConfig,
+      fetchImpl: fakeFetch(async () =>
+        completion({ groups: images.map((_, index) => ({ photos: [index] })) }),
+      ),
+    });
+    const { url } = await startServer(t, service);
+    const response = await fetch(`${url}/api/agent/group-photos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).groups.length, MAX_BATCH_PHOTOS);
   },
 );
 test("cloud mode exposes only public config and guards all AI and old demo routes", async (t) => {

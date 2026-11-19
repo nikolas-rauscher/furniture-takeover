@@ -1,9 +1,8 @@
 import type { PhotoGroup } from "../shared/agent";
 import { requestPhotoGroups } from "./api/agent.ts";
 import {
-  MAX_BATCH_PHOTOS,
   MAX_ORIGINAL_PHOTO_BYTES,
-  MAX_PHOTO_SORT_BYTES,
+  MAX_PHOTO_PREVIEW_BYTES,
   MAX_STORED_PHOTO_BYTES,
 } from "../shared/listingPhotos.ts";
 
@@ -69,8 +68,7 @@ const base64Bytes = (data: string) =>
 
 /** A smaller copy for sorting many photos at once within one request budget. */
 export async function photoPreview(photo: string): Promise<string> {
-  const budget = MAX_PHOTO_SORT_BYTES / MAX_BATCH_PHOTOS;
-  if (base64Bytes(photo) <= budget) return photo;
+  if (base64Bytes(photo) <= MAX_PHOTO_PREVIEW_BYTES) return photo;
   const image = new Image();
   image.src = photo;
   await image.decode();
@@ -89,7 +87,7 @@ export async function photoPreview(photo: string): Promise<string> {
     context.fillRect(0, 0, canvas.width, canvas.height);
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
     const data = canvas.toDataURL("image/jpeg", 0.7);
-    if (base64Bytes(data) <= budget) return data;
+    if (base64Bytes(data) <= MAX_PHOTO_PREVIEW_BYTES) return data;
     longestSide = Math.round(longestSide * 0.75);
   }
   throw new Error("Could not prepare these photos. Try fewer photos.");

@@ -179,14 +179,17 @@ export function applyAgentRunEvent(
       };
     case "inventory_matches":
       return { ...state, inventoryMatchIds: event.ids };
-    case "question":
+    case "question": {
+      const asked = queuedQuestions(event);
+      const ids = new Set(asked.map((question) => question.id));
       return {
         ...state,
         questions: [
-          ...state.questions.filter((question) => question.id !== event.id),
-          event,
+          ...state.questions.filter((question) => !ids.has(question.id)),
+          ...asked,
         ],
       };
+    }
     case "listing_patch":
     case "preferences_patch":
       return {
@@ -225,6 +228,19 @@ function stopReasoning(parts?: AgentReasoningPart[]) {
   );
 }
 
+/** The questions Pako queued behind one are asked on their own, right after it. */
+function queuedQuestions(event: AgentQuestionEvent): AgentQuestionEvent[] {
+  const { followUps = [], ...asked } = event;
+  return [
+    asked,
+    ...followUps.map((followUp, index) => ({
+      ...followUp,
+      type: "question" as const,
+      id: `${event.id}:${index + 1}`,
+    })),
+  ];
+}
+
 export function answerAgentQuestion(
   state: AgentRunState,
   id: string,
@@ -236,6 +252,32 @@ export function answerAgentQuestion(
     ...state,
     answers: { ...state.answers, [id]: answer.trim().slice(0, 4000) },
   };
+}
+
+/** Takes an answer back, so the question waits in its place again. */
+export function unanswerAgentQuestion(
+  state: AgentRunState,
+  id: string,
+): AgentRunState {
+  if (!Object.hasOwn(state.answers, id)) return state;
+  return {
+    ...state,
+    answers: Object.fromEntries(
+      Object.entries(state.answers).filter(([answered]) => answered !== id),
+    ),
+  };
+}
+
+/** A question Pako asks without a run joins the turn once the student answers it. */
+export function answerLocalQuestion(
+  state: AgentRunState,
+  question: AgentQuestionEvent,
+  answer: string,
+): AgentRunState {
+  const asked = state.questions.some((item) => item.id === question.id)
+    ? state
+    : { ...state, questions: [...state.questions, question] };
+  return answerAgentQuestion(asked, question.id, answer);
 }
 
 export function useAgentRun() {
@@ -349,6 +391,24 @@ export function useAgentRun() {
       setState((previous) => answerAgentQuestion(previous, id, answer)),
     [],
   );
+  const unanswerQuestion = useCallback(
+    (id: string) => setState((previous) => unanswerAgentQuestion(previous, id)),
+    [],
+  );
+  const answerOwnQuestion = useCallback(
+    (question: AgentQuestionEvent, answer: string) =>
+      setState((previous) => answerLocalQuestion(previous, question, answer)),
+    [],
+  );
 
-  return { state, run, cancel, reset, retry, markQuestionAnswered };
+  return {
+    state,
+    run,
+    cancel,
+    reset,
+    retry,
+    markQuestionAnswered,
+    unanswerQuestion,
+    answerOwnQuestion,
+  };
 }

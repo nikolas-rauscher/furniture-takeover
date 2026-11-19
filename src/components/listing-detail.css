@@ -210,8 +210,16 @@
   gap: 8px;
 }
 /* Each action keeps its label on one line; they share a row when both fit. */
-.listing-detail-owner-actions > button {
+.listing-detail-owner-actions .button {
   flex: 1 1 auto;
+}
+/* The main action docks at the bottom of a phone screen; on wider screens it stays in
+   the card, so the dock adds no box and the card's price is not repeated. */
+.listing-detail-dock {
+  display: contents;
+}
+.listing-detail-dock-price {
+  display: none;
 }
 
 /* Save and compare are light pill toggles: a soft fill that turns blue when on. */
@@ -360,34 +368,45 @@
 }
 
 @media (max-width: 760px) {
-  body:has(.listing-detail.has-mobile-contact) {
-    --listing-contact-height: 72px;
+  /* A listing is a focus page, like an open thread: the tab bar steps aside and the
+     main action rests on a solid bar at the bottom, clear of the home indicator. */
+  body:has(.listing-detail-dock) {
+    --listing-dock-height: calc(78px + env(safe-area-inset-bottom, 0px));
   }
-  .listing-detail.has-mobile-contact {
-    padding-bottom: var(--listing-contact-height);
+  .listing-detail:has(.listing-detail-dock) {
+    padding-bottom: var(--listing-dock-height);
   }
-  .listing-detail-mobile-contact {
+  .listing-detail-dock {
+    display: block;
     position: fixed;
     z-index: 39;
-    left: 0;
-    right: 0;
-    min-height: var(--listing-contact-height);
-    bottom: var(--mobile-nav-height);
-    padding: 10px max(16px, env(safe-area-inset-right, 0px)) 14px
+    inset: auto 0 0;
+    min-height: var(--listing-dock-height);
+    padding: 10px max(16px, env(safe-area-inset-right, 0px))
+      calc(14px + env(safe-area-inset-bottom, 0px))
       max(16px, env(safe-area-inset-left, 0px));
     border-top: 2px solid var(--card-line);
     background: var(--surface);
   }
-  .listing-detail-mobile-contact > .button {
+  .listing-detail-dock > .button {
     display: flex;
     width: 100%;
     max-width: 560px;
     margin: 0 auto;
   }
-  body:has(.listing-detail.has-mobile-contact) .compare-tray {
-    bottom: calc(
-      var(--mobile-nav-height) + var(--listing-contact-height) + 12px
-    );
+  /* Edit, small in the card, docks as a full-size secondary button. */
+  .listing-detail-dock > .button.secondary.small {
+    --button-depth: 2px;
+    min-height: 52px;
+    padding: 9px 18px;
+    border-radius: 14px;
+    font-size: var(--type-body);
+  }
+  .listing-detail-dock .listing-detail-dock-price {
+    display: inline;
+  }
+  body:has(.listing-detail-dock) .compare-tray {
+    bottom: calc(var(--listing-dock-height) + 12px);
   }
   .listing-detail-main {
     grid-template-columns: minmax(0, 1fr);
