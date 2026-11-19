@@ -9,7 +9,7 @@ import {
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { AutoHeight } from "@animate-ui/react/primitives/effects/auto-height";
 import type { AgentQuestionEvent } from "../../shared/actions";
-import { Check, LoaderCircle } from "@/components/icons";
+import { Check, LoaderCircle, Sparkles } from "@/components/icons";
 import { TODAY } from "../../shared/marketplace";
 import type { AgentRunState } from "../hooks/useAgentRun";
 import { useMomentPassed } from "../hooks/useMomentPassed";
@@ -21,6 +21,7 @@ import {
 } from "../listingQuestions";
 import { REACTION_MS, trayMood, workingLine } from "../pakoMoods";
 import { answerParts } from "./AgentAnswerContent";
+import { POLISH_DESCRIPTION } from "./AskPakoMenu";
 import PakoReaction from "./PakoReaction";
 import PriceCard from "./PriceCard";
 import { Button } from "./ui/button";
@@ -63,6 +64,8 @@ type Props = {
   onRetry: () => void;
   /** Goes on without Pako: the student fills in the details. */
   onManual: () => void;
+  /** Asks Pako to polish the description once he has asked everything; absent while he cannot help. */
+  onPolish?: () => void;
 };
 
 /** One dot per question of this turn, filled once answered. */
@@ -220,6 +223,7 @@ export default function ListingTray({
   onLater,
   onRetry,
   onManual,
+  onPolish,
 }: Props) {
   const reduced = useReducedMotion() === true;
   const headingId = useId();
@@ -398,10 +402,20 @@ export default function ListingTray({
     );
   } else if (phase === "done") {
     content = (
-      <p className="listing-tray-title" {...titleProps}>
-        {closing.title}
-        <span>{closing.text}</span>
-      </p>
+      <>
+        <p className="listing-tray-title" {...titleProps}>
+          {closing.title}
+          <span>{closing.text}</span>
+        </p>
+        {onPolish && (
+          <div className="listing-tray-choices">
+            <Button className="listing-tray-choice" onClick={onPolish}>
+              <Sparkles size={15} aria-hidden="true" />
+              {POLISH_DESCRIPTION.label}
+            </Button>
+          </div>
+        )}
+      </>
     );
   } else content = <WorkingLine turn={turn} titleProps={titleProps} />;
 
