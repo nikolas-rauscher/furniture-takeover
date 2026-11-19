@@ -98,7 +98,7 @@ export default function AgentActivity({
   const visible = activityLines(steps, place, voice);
   if (!visible.length) return null;
   return (
-    <Trace className="agent-activity-list" role="list" aria-label="Agent steps">
+    <Trace className="agent-activity-list" role="list" aria-label="What I did">
       {visible.map((step) => (
         <ActivityStep
           key={step.id}

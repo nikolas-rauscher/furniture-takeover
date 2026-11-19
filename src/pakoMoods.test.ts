@@ -11,7 +11,6 @@ import {
   listingAnnouncement,
   priceComparison,
   settledSteps,
-  showedResults,
   stepsSummary,
   stepWords,
   threadGuide,
@@ -211,7 +210,7 @@ test("the home guide sleeps once the allowance is used, thinks while suggestions
   assert.equal(guide({ typing: true, suggestionsLoading: true }).mood, "think");
   assert.deepEqual(guide({ allowanceUsed: true, typing: true }), {
     mood: "sleep",
-    line: "I'm out of searches for today. See you tomorrow!",
+    line: "I've used today's requests. You can still browse.",
     newMatches: false,
   });
 });
@@ -348,7 +347,7 @@ test("Pako's working line reads the request, names the latest search in the intr
   );
 });
 
-test("a turn found nothing only after searching, and showed results once it ended with some", () => {
+test("a turn found nothing only after searching", () => {
   const searched = [reading, step("inventory", "complete", "listings")];
   const facts = (overrides: Partial<Parameters<typeof agentTurnPako>[0]>) =>
     turn({ status: "complete", steps: searched, ...overrides });
@@ -358,28 +357,6 @@ test("a turn found nothing only after searching, and showed results once it ende
     foundNothing(facts({ steps: [catalogChecked, reading] })),
     false,
     "answering without a search is not an empty search",
-  );
-  assert.equal(showedResults(facts({ inventoryMatchIds: ["desk-1"] })), true);
-  assert.equal(
-    showedResults(
-      facts({
-        sources: [
-          {
-            id: "web-1",
-            title: "Desk",
-            url: "https://example.com",
-            snippet: "",
-          },
-        ],
-      }),
-    ),
-    true,
-  );
-  assert.equal(showedResults(facts({ inventoryMatchIds: [] })), false);
-  assert.equal(
-    showedResults(turn({ inventoryMatchIds: ["desk-1"] })),
-    false,
-    "results only count once the turn has ended",
   );
 });
 
@@ -602,12 +579,12 @@ test("a step the agent corrected itself disappears once the same step completed"
   );
 });
 
-test("a finished listing turn sums up the offers it compared, other turns their steps", () => {
+test("a finished listing turn sums up the offers it compared, other turns their activities", () => {
   assert.equal(stepsSummary(4, 3, "listing"), "Compared 3 offers");
   assert.equal(stepsSummary(4, 1, "listing"), "Compared 1 offer");
-  assert.equal(stepsSummary(2, 0, "listing"), "2 steps");
-  assert.equal(stepsSummary(4, 3, "search"), "4 steps");
-  assert.equal(stepsSummary(1, 0, "search"), "1 step");
+  assert.equal(stepsSummary(2, 0, "listing"), "2 activities");
+  assert.equal(stepsSummary(4, 3, "search"), "4 activities");
+  assert.equal(stepsSummary(1, 0, "search"), "1 activity");
 });
 
 test("Pako in the tray thinks while he reads, works like in the thread, listens while he asks and reacts at the end", () => {

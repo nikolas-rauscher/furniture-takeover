@@ -9,7 +9,6 @@ import {
   MapPin,
   MessageCircle,
   Pencil,
-  Sparkles,
   Truck,
 } from "@/components/icons";
 import type { StripView } from "../dealWords";
@@ -73,7 +72,7 @@ function ListingDeal({ view }: { view: StripView }) {
 const TRANSPORT_TILES = {
   car: "Estate car may do",
   van: "Van likely needed",
-  unknown: "Ask for W × D × H",
+  unknown: "Ask for measurements",
 } as const;
 
 export default function ListingDetailPage({
@@ -102,8 +101,8 @@ export default function ListingDetailPage({
     return (
       <div className="listing-detail-missing">
         <PakoReaction mood="sad" size={88} />
-        <h1>Listing not found</h1>
-        <p>It may have been sold or removed in the meantime.</p>
+        <h1>Listing unavailable</h1>
+        <p>Go back to browse other listings.</p>
         <Button className="button secondary" onClick={onBack}>
           {backLabel}
         </Button>
@@ -161,7 +160,7 @@ export default function ListingDetailPage({
                         ? deal?.tone === "booked"
                           ? "Reserved for you"
                           : "Reserved"
-                        : "Withdrawn"}
+                        : "Archived"}
                   </span>
                 )}
               </div>
@@ -180,8 +179,8 @@ export default function ListingDetailPage({
                 <dd>{selected.dimensions || "Not specified"}</dd>
               </div>
               <div>
-                <dt>Collection</dt>
-                <dd>{selected.available || "Arrange with seller"}</dd>
+                <dt>Pickup</dt>
+                <dd>{selected.available || "Ask the seller"}</dd>
               </div>
               {transport && (
                 <div data-vehicle={transport.vehicle}>
@@ -215,7 +214,7 @@ export default function ListingDetailPage({
                 </span>
                 <div>
                   <strong>{selected.seller || "Seller"}</strong>
-                  <span>Listed by seller</span>
+                  {selected.seller && <span>Seller</span>}
                 </div>
               </div>
             )}
@@ -260,7 +259,7 @@ export default function ListingDetailPage({
                           onClick={onOpenChat}
                         >
                           <MessageCircle size={17} />
-                          <span>{dockPrice}Open chat</span>
+                          <span>{dockPrice}Open conversation</span>
                         </Button>
                       ) : (
                         <Button
@@ -277,13 +276,12 @@ export default function ListingDetailPage({
                   </div>
                   {!deal && canOffer(selected) && (
                     <Button
-                      animateIcon
-                      className="button secondary"
+                      className="button secondary listing-detail-offer"
                       type="button"
                       onClick={onOffer}
                     >
-                      <Sparkles size={16} />
-                      {offerLabel(selected)}
+                      <PakoReaction mood="idle" size={26} still />
+                      {offerLabel(selected)} with Pako
                     </Button>
                   )}
                 </>
@@ -304,7 +302,7 @@ export default function ListingDetailPage({
                       aria-pressed={compared}
                     >
                       <GitCompareArrows size={16} />
-                      {compared ? "Added to compare" : "Compare"}
+                      Compare
                     </Button>
                   )}
                 </div>
@@ -343,7 +341,7 @@ export default function ListingDetailPage({
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    Address source
+                    Check address source
                   </a>
                 </div>
                 <p className="listing-detail-pickup-note">
@@ -361,7 +359,6 @@ export default function ListingDetailPage({
         >
           <div className="listing-detail-related-heading">
             <h2 id="similar-items-heading">Similar items</h2>
-            <p>More available listings with details in common.</p>
           </div>
           <div className="listing-detail-related-grid">
             {similar.map((item) => (

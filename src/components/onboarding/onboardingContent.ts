@@ -36,7 +36,7 @@ export const intentOptions: IntentOption[] = [
   {
     id: "sell",
     title: "I'm moving out",
-    detail: "Pass on furniture before I leave",
+    detail: "Pass on my things before I leave",
     reaction: "Moving day! Let's find your things a new home.",
   },
   {

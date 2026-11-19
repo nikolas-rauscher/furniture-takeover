@@ -31,7 +31,7 @@ export default function MatchAlerts({
           {unread > 0 && (
             <span className="match-alerts-count">
               {unread}
-              <span className="sr-only"> unseen</span>
+              <span className="sr-only"> new</span>
             </span>
           )}
         </h2>
@@ -85,7 +85,7 @@ function MatchCard({
           onClick={onOpen}
         >
           {listing.title}
-          {!alert.read && <span className="sr-only"> (new)</span>}
+          {!alert.read && <span className="sr-only"> new</span>}
         </Button>
         <ul className="match-alert-facts" aria-label="Why it matches">
           {matchFacts(listing, search.criteria).map((fact) => (

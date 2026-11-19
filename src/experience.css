@@ -392,6 +392,10 @@ label > textarea {
   margin: var(--space-field) 0 0;
   font-size: var(--type-caption);
 }
+/* Holds the allowance chip's row on home until the chip arrives, so nothing below moves. */
+.agent-hero > .agent-footnote-pending {
+  min-height: 1.5rem;
+}
 
 .agent-footnote {
   font-size: 12px;
@@ -1045,6 +1049,68 @@ label > textarea {
 }
 .empty-state p {
   font-size: 15px;
+}
+.empty-state-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+/* The example only shows where a wide screen has room for two columns. */
+.saved-example {
+  display: none;
+}
+@media (min-width: 1024px) {
+  .empty-state.has-example {
+    display: grid;
+    grid-template-columns: minmax(0, 17rem) minmax(0, 26rem);
+    justify-content: center;
+    align-items: center;
+    gap: var(--space-section);
+    text-align: left;
+  }
+  .empty-state.has-example .empty-state-message {
+    align-items: flex-start;
+  }
+  .saved-example {
+    display: grid;
+    gap: 10px;
+    padding: 10px 10px 16px;
+    border: 2px solid var(--card-line);
+    border-radius: var(--radius-card);
+    background: var(--surface);
+    box-shadow: 0 4px 0 var(--lip);
+    transform: rotate(-2deg);
+  }
+  .saved-example-photo {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    border-radius: 12px;
+    background: var(--sand);
+  }
+  .saved-example-heart {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--coral);
+  }
+  .saved-example-heart svg {
+    fill: currentColor;
+  }
+  .saved-example-line {
+    height: 10px;
+    width: 70%;
+    border-radius: 999px;
+    background: var(--canvas);
+  }
+  .saved-example-line.is-short {
+    width: 40%;
+  }
 }
 .modal {
   width: 580px;

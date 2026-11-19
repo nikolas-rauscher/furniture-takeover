@@ -278,6 +278,10 @@
   .agent-product-slide {
     flex-basis: 50%;
   }
+  /* Two cards side by side keep their titles on one line, so a card is a little shorter. */
+  .agent-product-placeholder {
+    min-height: 171px;
+  }
 }
 @container agent-listings (min-width: 58rem) {
   .agent-product-slide {

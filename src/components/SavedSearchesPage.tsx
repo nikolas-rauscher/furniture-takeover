@@ -105,7 +105,8 @@ export default function SavedSearchesPage({
       <div className="page-title">
         <h1>Saved searches</h1>
         <p>
-          Pako checks new listings for these and tells you here when one fits.
+          This browser checks listings while takeover is open. Matches
+          appear here.
         </p>
       </div>
       {loaded && (
@@ -126,7 +127,7 @@ export default function SavedSearchesPage({
                   onClick={openWatch}
                 >
                   <Bell size={16} aria-hidden="true" />
-                  Watch for an item
+                  New saved search
                 </Button>
               )}
               {watchCard}
@@ -159,11 +160,11 @@ export default function SavedSearchesPage({
                   show up here.
                 </p>
                 <Button animateIcon className="button primary" onClick={onFind}>
-                  Find furniture
+                  Search listings
                 </Button>
                 {!watchShown && (
                   <Button className="button quiet" onClick={openWatch}>
-                    Watch for an item
+                    New saved search
                   </Button>
                 )}
               </div>
@@ -205,7 +206,7 @@ function SearchCard({
       <div className="job-controls">
         <Button
           className="icon-button"
-          aria-label={"Edit saved search " + job.title}
+          aria-label={"Edit search " + job.title}
           onClick={onEdit}
         >
           <Pencil size={16} />
@@ -218,7 +219,7 @@ function SearchCard({
           <Trash2 size={16} />
         </Button>
       </div>
-      <ul className="job-chips" aria-label="Search limits and alerts">
+      <ul className="job-chips" aria-label="Search preferences and alerts">
         {limits.map((limit) => (
           <li key={limit} className="chip">
             {limit}

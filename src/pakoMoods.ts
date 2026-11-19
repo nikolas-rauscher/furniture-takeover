@@ -117,7 +117,7 @@ export function homeGuide({
   if (allowanceUsed)
     return {
       mood: "sleep",
-      line: "I'm out of searches for today. See you tomorrow!",
+      line: "I've used today's requests. You can still browse.",
       newMatches: false,
     };
   if (photo) return photoGuide(photo);
@@ -207,11 +207,6 @@ export function foundNothing(
     isSearchTask(step.task),
   );
   return searched && !hasFindings(turn);
-}
-
-/** The turn has ended with listings or web results to look at. */
-export function showedResults(turn: Findings & Pick<TurnFacts, "status">) {
-  return turn.status === "complete" && hasFindings(turn);
 }
 
 function endingMood(turn: TurnFacts): PakoMood {
@@ -337,7 +332,7 @@ export function settledSteps(steps: readonly AgentRunStep[]): AgentRunStep[] {
   );
 }
 
-/** The collapsed activity line: the offers a listing turn compared, otherwise its step count. */
+/** The collapsed activity line: the offers a listing turn compared, otherwise how many things Pako did. */
 export function stepsSummary(
   stepCount: number,
   sourceCount: number,
@@ -345,7 +340,7 @@ export function stepsSummary(
 ): string {
   if (voice === "listing" && sourceCount > 0)
     return `Compared ${offerCount(sourceCount)}`;
-  return stepCount === 1 ? "1 step" : `${stepCount} steps`;
+  return stepCount === 1 ? "1 activity" : `${stepCount} activities`;
 }
 
 /**

@@ -989,7 +989,7 @@ export async function streamAgentRun(
   } catch (error) {
     if (signal?.aborted) throw error;
     throw new AgentRunError(
-      "The agent could not connect. Your request is still here; try again.",
+      "I couldn't connect. Your request is still here, so try again.",
       "NETWORK_ERROR",
     );
   }

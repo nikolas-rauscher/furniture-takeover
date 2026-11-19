@@ -5,6 +5,9 @@ import {
   useState,
   type SetStateAction,
 } from "react";
+import { AdminApiError, adminCatalogChanged } from "../api/admin";
+import { getMessageWorkspace } from "../api/messages";
+import { adminErrors } from "../../shared/admin";
 import type { Product } from "../../shared/marketplace";
 import { isProducts } from "./savedState";
 import { useSaved } from "./useSaved";
@@ -15,8 +18,12 @@ async function requestListings(
   init?: RequestInit,
 ): Promise<Product[]> {
   const response = await fetch(path, init);
-  if (!response.ok)
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    if (body?.error?.code === "admin_listing_hidden")
+      throw new AdminApiError("admin_listing_hidden");
     throw new Error("The listing database is unavailable. Please try again.");
+  }
   const body: unknown = await response.json();
   const listings =
     body && typeof body === "object"
@@ -25,6 +32,21 @@ async function requestListings(
   if (!isProducts(listings) || listings.some((item) => item.demo !== true))
     throw new Error("The listing database returned an invalid response.");
   return listings;
+}
+
+const postingCheckUnavailable =
+  "Listing permission could not be checked. Try again.";
+
+async function verifyCanPost() {
+  const response = await fetch("/api/listings/permission", {
+    headers: { "X-Message-Workspace": getMessageWorkspace() },
+    signal: AbortSignal.timeout(8000),
+  });
+  const body = await response.json();
+  if (response.ok && body.allowed === true) return;
+  if (body.error?.code === "admin_student_blocked")
+    throw new AdminApiError("admin_student_blocked");
+  throw new Error(postingCheckUnavailable);
 }
 
 /** Demo catalog is server-owned; personal browser records are never uploaded. */
@@ -69,12 +91,21 @@ export function useListings(enabled = true) {
         try {
           // One listing gallery per request stays within the API's 3 MB payload limit.
           for (const listing of listings) {
-            await requestListings("/api/listings/demo/update", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ listings: [listing] }),
-              signal: AbortSignal.timeout(8000),
-            });
+            try {
+              await requestListings("/api/listings/demo/update", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ listings: [listing] }),
+                signal: AbortSignal.timeout(8000),
+              });
+            } catch (error) {
+              // A hidden or retired listing must leave the optimistic catalog.
+              if (!(
+                error instanceof AdminApiError &&
+                error.code === "admin_listing_hidden"
+              ))
+                throw error;
+            }
             journal.outbox?.acknowledge(listing);
           }
           if (
@@ -177,6 +208,7 @@ export function useListings(enabled = true) {
     void recover();
     window.addEventListener("online", recoverWhenAvailable);
     window.addEventListener("focus", recoverWhenAvailable);
+    window.addEventListener(adminCatalogChanged, recover);
     return () => {
       cancelled = true;
       mounted.current = false;
@@ -186,13 +218,42 @@ export function useListings(enabled = true) {
       retryTimer.current = null;
       window.removeEventListener("online", recoverWhenAvailable);
       window.removeEventListener("focus", recoverWhenAvailable);
+      window.removeEventListener(adminCatalogChanged, recover);
     };
   }, [load, journal, enabled]);
 
   const setListings = useCallback(
-    (update: SetStateAction<Product[]>) => {
-      const previous = current.current;
-      const proposed = typeof update === "function" ? update(previous) : update;
+    async (update: SetStateAction<Product[]>) => {
+      const apply = (products: Product[]) =>
+        typeof update === "function" ? update(products) : update;
+      let previous = current.current;
+      let proposed = apply(previous);
+      if (
+        proposed.some(
+          (item) => !item.demo && !previous.some(({ id }) => id === item.id),
+        )
+      ) {
+        try {
+          await verifyCanPost();
+        } catch (error) {
+          setError(
+            error instanceof AdminApiError
+              ? error.message
+              : postingCheckUnavailable,
+          );
+          return false;
+        }
+        setError((message) =>
+          message === adminErrors.admin_student_blocked ||
+          message === postingCheckUnavailable
+            ? ""
+            : message,
+        );
+        if (current.current !== previous) {
+          previous = current.current;
+          proposed = apply(previous);
+        }
+      }
       const ids = new Set(proposed.map((item) => item.id));
       // Clearing browser data leaves the database catalog intact. Removal uses status withdrawn.
       const next = [

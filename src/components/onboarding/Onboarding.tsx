@@ -179,7 +179,7 @@ function WelcomeContent() {
     <div className="ob-welcome">
       <p className="ob-wordmark">takeover</p>
       <h2 id={WELCOME_HEADING} className="ob-title">
-        Furniture from students, for students.
+        Second-hand from students, for students.
       </h2>
       <p className="ob-lead">
         Pass on what you don't need and find what you do, around EPFL, UNIL and

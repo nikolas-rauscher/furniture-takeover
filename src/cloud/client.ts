@@ -47,6 +47,8 @@ export type Listing = {
   status: "active" | "reserved" | "sold" | "withdrawn";
   created_at: string;
   pickup_by?: string | null;
+  hidden_at?: string | null;
+  demo_meeting_point?: string;
   tags?: string[];
 };
 export type Conversation = {

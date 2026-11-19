@@ -316,8 +316,8 @@ test("an alert reason mentions a price limit only when one was stated", () => {
     const first = run(emptyAlerts(), [], [j]);
     return run(first, listings, [j]).alerts[0].reason;
   };
-  assert.match(baseline(80), /limit CHF 80/);
-  assert.doesNotMatch(baseline(NO_BUDGET), /limit/);
+  assert.match(baseline(80), /within your CHF 80 budget/);
+  assert.doesNotMatch(baseline(NO_BUDGET), /budget/);
 });
 
 test("similar listings summarise active items of the same kind", () => {

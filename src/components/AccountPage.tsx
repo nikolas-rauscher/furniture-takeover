@@ -21,6 +21,7 @@ import {
   Archive,
   Check,
   Ellipsis,
+  Heart,
   MapPin,
   MessageCircle,
   Pencil,
@@ -160,18 +161,38 @@ type EmptyView = {
   title: string;
   text: string;
   action?: ReactNode;
+  /** Shows on wide screens beside the message: what the tab fills with. */
+  example?: ReactNode;
 };
 
 /** A tab without listings: Pako, what it means, and the one way on from it. */
 function EmptyTab({ view }: { view: EmptyView }) {
   return (
-    <div className="empty-state">
-      <span className="empty-state-pako">
-        <PakoReaction mood={view.mood} size={96} />
+    <div className={cn("empty-state", view.example && "has-example")}>
+      {view.example}
+      <div className="empty-state-message">
+        <span className="empty-state-pako">
+          <PakoReaction mood={view.mood} size={96} />
+        </span>
+        <h2>{view.title}</h2>
+        <p>{view.text}</p>
+        {view.action}
+      </div>
+    </div>
+  );
+}
+
+/** A listing card in outline with its heart filled: where a saved item comes from. */
+function SavedExample() {
+  return (
+    <div className="saved-example" aria-hidden="true">
+      <span className="saved-example-photo">
+        <span className="saved-example-heart">
+          <Heart size={18} />
+        </span>
       </span>
-      <h2>{view.title}</h2>
-      <p>{view.text}</p>
-      {view.action}
+      <span className="saved-example-line" />
+      <span className="saved-example-line is-short" />
     </div>
   );
 }
@@ -380,7 +401,8 @@ export default function AccountPage({
       return {
         mood: "wave",
         title: "No saved items yet",
-        text: "Save a listing with the heart to find it here later.",
+        text: "Save listings to find them here later.",
+        example: <SavedExample />,
         action: (
           <Button variant="default" onClick={onBrowse}>
             Browse listings

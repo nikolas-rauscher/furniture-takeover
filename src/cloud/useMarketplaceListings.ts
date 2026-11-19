@@ -6,6 +6,8 @@ import {
   type SetStateAction,
 } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { campusPickupPoints } from "../../shared/campusPickupPoints";
+import { adminCatalogChanged } from "../api/admin";
 import type { Product } from "../../shared/marketplace";
 import { listingPhotos } from "../../shared/listingPhotos";
 import { useListings } from "../hooks/useListings";
@@ -19,6 +21,7 @@ export function toProduct(
   userId?: string,
   name = "Seller",
 ): Product {
+  const pickupPoint = campusPickupPoints.find(({ name }) => name === row.demo_meeting_point);
   const clientImages = row.images; // converted to public URLs by the loader
   return {
     id: row.id,
@@ -26,6 +29,7 @@ export function toProduct(
     description: row.description,
     price: Number(row.price),
     location: row.location,
+    ...(pickupPoint ? { pickupPoint } : {}),
     condition: row.condition,
     dimensions: row.dimensions,
     category: "All",
@@ -40,7 +44,7 @@ export function toProduct(
     distance: 0,
     pickupBy: row.pickup_by ?? "",
     available: row.pickup || "Flexible pickup",
-    status: row.status,
+    status: row.hidden_at ? "withdrawn" : row.status,
   };
 }
 export async function loadProducts(client: SupabaseClient, userId?: string) {
@@ -52,7 +56,7 @@ export async function loadProducts(client: SupabaseClient, userId?: string) {
       .order("id")
       .range(offset, offset + 499);
     fail(result.error);
-    rows.push(...(result.data as Listing[]));
+    rows.push(...(result.data as Listing[]).filter((row) => !row.hidden_at || row.owner_id === userId));
     if (result.data!.length < 500) break;
   }
   const ids = [...new Set(rows.map((r) => r.owner_id))];
@@ -113,10 +117,12 @@ export function useMarketplaceListings(account?: AccountConnection) {
     void load();
     const refresh = () => void load();
     window.addEventListener("focus", refresh);
+    window.addEventListener(adminCatalogChanged, refresh);
     return () => {
       mounted.current = false;
       generation.current++;
       window.removeEventListener("focus", refresh);
+      window.removeEventListener(adminCatalogChanged, refresh);
     };
   }, [load]);
   async function save(update: SetStateAction<Product[]>) {

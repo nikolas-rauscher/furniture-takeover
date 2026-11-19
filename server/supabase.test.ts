@@ -540,6 +540,12 @@ test("Supabase migration enforces listing ownership, private chats and photo own
       "insert into public.listings(owner_id,title,price,location) values($1,'[Demo] Old desk',45,'Lausanne')",
       [retiredSeller],
     );
+    const earlyDemoSeller = demoSellers[1].id;
+    await db.query(
+      `insert into auth.users(id,email,banned_until,raw_app_meta_data)
+       values($1,'takeover-demo-arjun@example.invalid','infinity','{"demo_seed":"takeover-demo-v2"}')`,
+      [earlyDemoSeller],
+    );
     for (const name of [
       "202611060001_ai_quota.sql",
       "202611190001_thread_reading.sql",
@@ -559,6 +565,14 @@ test("Supabase migration enforces listing ownership, private chats and photo own
       "utf8",
     );
     await db.exec(seed);
+    assert.deepEqual(
+      (
+        await db.query("select email from auth.users where id=$1", [
+          earlyDemoSeller,
+        ])
+      ).rows,
+      [{ email: "takeover-demo-arjun@example.invalid" }],
+    );
     assert.equal(
       (
         await db.query(

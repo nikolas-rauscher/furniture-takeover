@@ -198,6 +198,14 @@
 .listing-detail-transport-note {
   margin: -4px 0 0;
 }
+/* Pako's face leads the offer action: he drafts it, the student sends it. */
+.listing-detail-actions .listing-detail-offer {
+  gap: 8px;
+}
+.listing-detail-offer > :first-child {
+  flex: none;
+  margin-block: -4px;
+}
 .listing-detail-seller {
   display: flex;
   align-items: center;
@@ -446,8 +454,13 @@
   .listing-detail-main {
     grid-template-columns: minmax(0, 1fr);
   }
+  /* A wider, shorter stage on phones leaves the name, price and first facts above the dock. */
   .listing-detail .photo-gallery-stage {
+    aspect-ratio: 16 / 10;
     max-height: 52dvh;
+  }
+  .listing-detail-heading h1 {
+    margin-bottom: 4px;
   }
   .listing-detail-card {
     padding: 16px;

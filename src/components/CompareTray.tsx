@@ -45,7 +45,7 @@ export default function CompareTray({
             animateIcon
             className="button primary small"
             disabled={count < 2}
-            title={count < 2 ? "Select one more listing to compare" : undefined}
+            title={count < 2 ? "Choose one more" : undefined}
             onClick={onCompare}
           >
             Compare

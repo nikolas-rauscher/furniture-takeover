@@ -60,7 +60,7 @@ export function useWatches({
   /** Starts or resumes the watch; false when it is running already. */
   function watch(target: WatchTarget): boolean {
     const search = watchSearch(target, location);
-    if (!search) throw new Error("A watch needs the item to look out for.");
+    if (!search) throw new Error("Enter the item you're looking for.");
     if (findWatch(jobs, search)?.paused === false) return false;
     const id = randomUuid();
     setJobs((current) => activateWatch(current, search, id));

@@ -69,9 +69,9 @@ export function matchFacts(item: Product, criteria: Criteria): string[] {
   const wanted =
     criteria.query || (criteria.category !== "All" ? criteria.category : "");
   return [
-    wanted ? `Matches "${wanted}"` : "Matches your search",
+    wanted ? `Matches ‘${wanted}’` : "Matches your search",
     hasBudget(criteria)
-      ? `${money(item.price)} (limit ${money(criteria.maxPrice)})`
+      ? `${money(item.price)}, within your ${money(criteria.maxPrice)} budget`
       : money(item.price),
     item.condition,
     item.pickupPoint?.name ?? item.location,

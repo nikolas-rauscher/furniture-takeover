@@ -31,7 +31,7 @@ export default function WatchForm({ queryRef, onWatch }: WatchFormProps) {
   return (
     <form
       className="watch-card"
-      aria-label="Watch for an item"
+      aria-label="New saved search"
       onSubmit={submit}
     >
       <Pako
@@ -40,7 +40,7 @@ export default function WatchForm({ queryRef, onWatch }: WatchFormProps) {
         className="watch-card-pako"
       />
       <label className="watch-card-query">
-        What should I look out for?
+        Item
         <Input
           ref={queryRef}
           value={query}
@@ -50,7 +50,7 @@ export default function WatchForm({ queryRef, onWatch }: WatchFormProps) {
         />
       </label>
       <label className="watch-card-price">
-        Up to (CHF)
+        Budget (CHF)
         <Input
           ref={priceField}
           type="number"
@@ -69,7 +69,7 @@ export default function WatchForm({ queryRef, onWatch }: WatchFormProps) {
         disabled={!query.trim()}
       >
         <Bell size={15} aria-hidden="true" />
-        Watch for it
+        Save search
       </Button>
     </form>
   );

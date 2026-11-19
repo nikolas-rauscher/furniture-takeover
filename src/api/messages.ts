@@ -9,7 +9,7 @@ export function resetMessageWorkspace(): void {
   localStorage.removeItem(workspaceKey);
 }
 
-function workspace() {
+export function getMessageWorkspace() {
   let id = localStorage.getItem(workspaceKey);
   if (!id) {
     id = randomUuid();
@@ -18,7 +18,7 @@ function workspace() {
   return id;
 }
 async function request(init?: RequestInit, path = "/api/messages") {
-  const workspaceId = workspace();
+  const workspaceId = getMessageWorkspace();
   const response = await fetch(path, {
     ...init,
     headers: {

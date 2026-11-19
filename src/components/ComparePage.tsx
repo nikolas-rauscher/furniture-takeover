@@ -21,8 +21,8 @@ const FACTS: Fact[] = [
   { label: "Condition", value: (item) => item.condition || "Not specified" },
   { label: "Dimensions", value: (item) => item.dimensions || "Not specified" },
   {
-    label: "Collection",
-    value: (item) => item.available || "Arrange with seller",
+    label: "Pickup",
+    value: (item) => item.available || "Ask the seller",
   },
 ];
 const PRICE: Fact = { label: "Price", value: (item) => money(item.price) };
@@ -42,7 +42,7 @@ function ListingImage({ item }: { item: Product }) {
 function FactTable({ items }: { items: Product[] }) {
   return (
     <table className="comparison-table">
-      <caption className="sr-only">Listings side by side</caption>
+      <caption className="sr-only">Listing comparison</caption>
       <thead>
         <tr>
           <td />
@@ -106,7 +106,11 @@ function ComparisonCard({
         ))}
       </dl>
       <div className="comparison-card-actions">
-        <Button className="button secondary small full" onClick={onOpen}>
+        <Button
+          className="button secondary small full"
+          aria-label={`Open ${item.title} listing`}
+          onClick={onOpen}
+        >
           Open listing
         </Button>
         <Button
@@ -135,7 +139,7 @@ export default function ComparePage({
           <ArrowLeft size={16} />
           Back
         </Button>
-        <h1>Compare items</h1>
+        <h1>Compare listings</h1>
       </div>
       {!loaded ? null : items.length ? (
         <>
@@ -158,7 +162,7 @@ export default function ComparePage({
         <div className="compare-empty">
           <Pako mood="wave" size={80} />
           <h2>Select listings to compare</h2>
-          <p>Tap the compare tile on up to three listings.</p>
+          <p>Choose Compare on two or three listings.</p>
           <Button className="button secondary" onClick={() => onBack()}>
             Choose listings
           </Button>

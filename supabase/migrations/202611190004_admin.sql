@@ -256,7 +256,9 @@ begin
  if exists(
   select 1 from jsonb_to_recordset(shipped.sellers) as d(id uuid,email text)
   join auth.users u on u.id=d.id or lower(u.email)=d.email
-  where u.id<>d.id or u.email is distinct from d.email or not takeover_admin.is_demo_seller(u.id)
+  where u.id<>d.id or u.email is null
+   or u.email not in (d.email,replace(d.email,'takeover-demo-v2-','takeover-demo-'))
+   or not takeover_admin.is_demo_seller(u.id)
  ) or exists(
   select 1 from jsonb_to_recordset(shipped.listings) as d(id uuid,"sellerId" uuid)
   join public.listings l on l.id=d.id where l.owner_id<>d."sellerId" or not (l.tags @> array['Demo'])

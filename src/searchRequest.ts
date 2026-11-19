@@ -83,7 +83,7 @@ export function isSavedSearches(value: unknown): value is SavedSearch[] {
 function searchText(criteria: Criteria, location: string) {
   return [
     criteria.query ||
-      (criteria.category === "All" ? "furniture" : criteria.category),
+      (criteria.category === "All" ? "second-hand items" : criteria.category),
     criteria.maxPrice >= 1_000_000
       ? "any budget"
       : "budget up to CHF " + criteria.maxPrice,

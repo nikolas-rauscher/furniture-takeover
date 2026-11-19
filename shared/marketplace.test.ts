@@ -115,7 +115,7 @@ for (const [text, expectedTitle] of [
   ["Bench for the garden, CHF 50", "Bench for the garden"],
   ["Oak wardrobe, CHF 120, pickup Friday", "Oak wardrobe"],
   ["Desk, CHF 65. Collection by Friday.", "Desk"],
-  ["", "Furniture for sale"],
+  ["", "Second-hand item"],
 ]) {
   test(`listing title preserves item words: ${JSON.stringify(text)}`, () => {
     assert.equal(listingTitle(text), expectedTitle);

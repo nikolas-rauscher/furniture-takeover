@@ -293,7 +293,7 @@ export function listingTitle(notes: string): string {
     .trim();
   return first
     ? (first[0].toUpperCase() + first.slice(1)).slice(0, 90)
-    : "Furniture for sale";
+    : "Second-hand item";
 }
 /** A listing the student wrote; sample listings play other students' items. */
 export const isMine = (item: Pick<Product, "own" | "demo">) =>
@@ -352,9 +352,9 @@ export function filterProducts(
   );
 }
 export function criteriaTitle(c: Criteria) {
-  const item = c.category === "All" ? c.query || "Furniture" : c.category;
+  const item = c.category === "All" ? c.query || "Items" : c.category;
   // 1,000,000 is the "Any budget" value; it is not a price to print.
-  return c.maxPrice >= 1_000_000 ? item : `${item} under CHF ${c.maxPrice}`;
+  return c.maxPrice >= 1_000_000 ? item : `${item} under ${money(c.maxPrice)}`;
 }
 export function shortDate(value: string) {
   return value

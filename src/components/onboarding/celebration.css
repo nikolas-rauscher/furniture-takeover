@@ -58,9 +58,9 @@
 }
 
 /*
- * Desktop opt-in: a compact lip card, Pako waving at its start. Tablets float it in the
- * corner; wider screens rest it under the header's right end, beside the home headline,
- * where it covers no listing and scrolls away with the page.
+ * Tablet and desktop opt-in: a compact lip card, Pako waving at its start. It rests under
+ * the header's right end, beside the short home headline, where it covers no listing and
+ * scrolls away with the page.
  */
 .ob-invite {
   position: fixed;
@@ -106,7 +106,7 @@
   background: var(--canvas);
   color: var(--ink);
 }
-@media (min-width: 1024px) {
+@media (min-width: 761px) {
   .ob-invite {
     position: absolute;
     top: calc(var(--app-header-height) + 8px);

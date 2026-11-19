@@ -86,7 +86,6 @@ import {
   listingFromDraft,
   prepareListingDraft,
 } from "./listingPreparation";
-import { HeroHeadline } from "./components/HeroHeadline";
 import {
   useEffect,
   useEffectEvent,
@@ -225,6 +224,11 @@ const DESTINATION_ORDER: Destination[] = [
 
 type Dialog =
   "filters" | "save" | "edit-search" | "location" | "help" | "clear" | null;
+/** The search pill's short name for an area: "EPFL" for "EPFL, Ecublens", "Vortex" for an FMEL residence. */
+function shortPlace(location: string) {
+  return location.split(",")[0].replace(/^FMEL\s+/, "").trim();
+}
+
 /** Results wait while Pako works and are ranked once his turn has finished. */
 function resultOrder(status: AgentRunState["status"]): ResultOrder {
   if (status === "running") return "pending";
@@ -732,9 +736,9 @@ export default function App({
         if (sellMode === "batch") return "Sell several items";
         return sellStep === 1 ? "New listing" : "Your listing";
       case "detail":
-        return selected?.title ?? "Listing not found";
+        return selected?.title ?? "Listing unavailable";
       case "compare":
-        return "Compare items";
+        return "Compare listings";
       case "settings":
         if (!account) return "Workspace settings";
         return signedIn ? "Account settings" : "Sign in";
@@ -750,9 +754,9 @@ export default function App({
         month: "short",
       })
     : "";
-  /** Why quick replies that ask Pako are paused. */
+  /** Why quick replies that ask Pako are paused; the footer under them says when they reset. */
   const allowancePause = quotaExhausted
-    ? `Daily allowance used up. Pako can reply again after ${quotaResets}.`
+    ? "I've used today's requests."
     : undefined;
   const configured =
     agentHealth?.configured === true && signedIn && !quotaExhausted;
@@ -1469,7 +1473,7 @@ export default function App({
       return;
     }
     setToastNotice({
-      message: `I saved “${query}”. New matches show up in Searches.`,
+      message: "Search saved. New matches show up in Searches.",
       mood: "search",
       action:
         view === "searches"
@@ -1931,24 +1935,29 @@ export default function App({
 
   // Until the first connection check answers, the footnote says nothing rather
   // than "Connecting…" that disappears a moment later.
+  // A signed-in account has a daily allowance; its chip's row is held while it loads.
+  const allowanceExpected =
+    Boolean(account) && signedIn && !agentHealth && !healthError;
   const connectionStatus =
     account && !signedIn ? (
       <div className="agent-footnote">
         <Button type="button" onClick={() => navigate("settings")}>
-          Sign in to use your agent
+          Sign in to ask Pako
         </Button>
       </div>
     ) : !agentHealth && !healthError ? null : quotaExhausted ? (
       <div className="agent-footnote" role="status">
-        Daily AI allowance used. Resets {quotaResets}. Listings and messages
-        remain available.
+        Today's requests reset on {quotaResets}.
       </div>
     ) : !configured || healthError ? (
       <div className="agent-footnote">
         <span role="status" title={healthError || undefined}>
-          {healthError ? "AI offline" : "AI not configured"}
+          {healthError
+            ? "Pako is offline. You can still browse listings."
+            : "Pako isn't set up here. You can still browse listings."}
         </span>
-        {(!configured || healthError) && (
+        {/* A failed turn offers its own Try again; one recovery button is enough. */}
+        {agentRun.state.status !== "error" && (
           <Button
             type="button"
             onClick={refreshHealth}
@@ -1958,23 +1967,21 @@ export default function App({
           </Button>
         )}
         {configured && agentHealth?.webSearchConfigured === false && (
-          <span>
-            Web search is unavailable. Your local listings are still accessible.
-          </span>
+          <span>I can't check other sites right now. I can still check takeover listings.</span>
         )}
       </div>
     ) : agentHealth?.quota ? (
       <div
         className={`agent-footnote${agentHealth.quota.remaining > 5 ? " quota-available" : ""}`}
         role="status"
-        aria-label={`${agentHealth.quota.remaining} of ${agentHealth.quota.limit} AI requests available today`}
+        aria-label={`${agentHealth.quota.remaining} of ${agentHealth.quota.limit} Pako requests left today`}
       >
         <Badge
           variant={
             agentHealth.quota.remaining <= 5 ? "destructive" : "secondary"
           }
         >
-          {agentHealth.quota.remaining} AI{" "}
+          {agentHealth.quota.remaining} Pako{" "}
           {agentHealth.quota.remaining === 1 ? "request" : "requests"} left
           today
         </Badge>
@@ -2021,7 +2028,7 @@ export default function App({
             onClick={() => openDestination("sell")}
           >
             <Plus size={17} aria-hidden="true" />
-            <span className="header-action-label">Sell furniture</span>
+            <span className="header-action-label">Sell an item</span>
           </Button>
           <Button
             ref={helpButton}
@@ -2225,7 +2232,7 @@ export default function App({
                     className={`agent-hero search-entry${hasSearchDraft ? " has-query" : ""}`}
                     aria-labelledby="agent-title"
                   >
-                    <HeroHeadline compact={false} />
+                    <h1 id="agent-title">What are you looking for?</h1>
                     <div className="agent-hero-guide">
                       <PakoReaction
                         className="agent-hero-pako"
@@ -2241,7 +2248,7 @@ export default function App({
                               className="agent-hero-matches"
                               onClick={() => openDestination("searches")}
                             >
-                              See them →
+                              See new matches
                             </Button>
                           </>
                         )}
@@ -2293,7 +2300,7 @@ export default function App({
                             value={query}
                             onChange={(event) => setQuery(event.target.value)}
                             rows={1}
-                            placeholder="A desk under CHF 80, nearby, ready to collect by Friday…"
+                            placeholder="Desk under CHF 80 near EPFL"
                             onKeyDown={(event) => {
                               if (
                                 event.key === "Enter" &&
@@ -2310,6 +2317,7 @@ export default function App({
                           <Button
                             type="button"
                             className="search-area"
+                            aria-label={`Search area: ${location}`}
                             onClick={() => {
                               setAreaDraft({
                                 location,
@@ -2319,7 +2327,7 @@ export default function App({
                             }}
                           >
                             <MapPin size={15} aria-hidden="true" />
-                            <span>{location}</span>
+                            <span>{shortPlace(location)}</span>
                             <ChevronDown size={13} aria-hidden="true" />
                           </Button>
                           <PhotoSearchButton
@@ -2338,7 +2346,7 @@ export default function App({
                               quotaExhausted
                             }
                           >
-                            Find it
+                            Search
                           </Button>
                         </div>
                       </form>
@@ -2355,7 +2363,13 @@ export default function App({
                         {photoSearchNotice.line}
                       </p>
                     )}
-                    {connectionStatus}
+                    {connectionStatus ??
+                      (allowanceExpected && (
+                        <div
+                          className="agent-footnote agent-footnote-pending"
+                          aria-hidden="true"
+                        />
+                      ))}
                     <AgentSuggestions
                       state={searchAssist}
                       onSelect={(suggestion) => {
@@ -2370,8 +2384,8 @@ export default function App({
                       <p>
                         <strong>Moving out?</strong>{" "}
                         <span>
-                          Just take photos. Pako writes the listing, you tap{" "}
-                          {listingSaveWords(Boolean(account)).verb}.
+                          Start with a photo. Pako drafts your listing for you
+                          to review.
                         </span>
                       </p>
                       <Button
@@ -2394,7 +2408,7 @@ export default function App({
                       backIcon={<SquarePen size={20} aria-hidden="true" />}
                       onBack={startNewSearch}
                       onAccount={() => navigate("settings")}
-                      quota={agentHealth?.quota}
+                      quota={healthError ? undefined : agentHealth?.quota}
                       preferences={
                         !reviewingListing
                           ? {
@@ -2674,20 +2688,9 @@ export default function App({
                   <>
                     <div className="section-heading">
                       <h2>Listings nearby</h2>
-                      <Button
-                        animateIcon
-                        className="button quiet"
-                        onClick={() => {
-                          setAccountTab("listings");
-                          navigate("account");
-                        }}
-                      >
-                        Manage listings
-                        <ArrowRight size={16} />
-                      </Button>
                       <p>
                         {account
-                          ? "Items shared on Takeover"
+                          ? "Listed on takeover"
                           : "From students around EPFL, UNIL and the FMEL residences."}
                       </p>
                     </div>
@@ -2701,10 +2704,11 @@ export default function App({
                   <div className="home-empty">
                     <Pako mood="idle" size={72} still />
                     <div>
-                      <h2>Nothing listed nearby yet</h2>
+                      <h2>No listings to show yet</h2>
                       <p>
-                        Ask me above and I'll check other second-hand sites
-                        too. Or be the first: list something with a photo.
+                        {agentHealth?.webSearchConfigured
+                          ? "Ask me to search other sites, or list an item."
+                          : "Be the first: list an item with a photo."}
                       </p>
                     </div>
                   </div>
@@ -2767,7 +2771,7 @@ export default function App({
                 <BatchSellFlow
                   location={location}
                   liveAgent={configured}
-                  quota={agentHealth?.quota}
+                  quota={healthError ? undefined : agentHealth?.quota}
                   onAccount={() => navigate("settings")}
                   start={batchStart}
                   onBack={() => {
@@ -2841,7 +2845,7 @@ export default function App({
                   }
                   agentConversation={listingConversation}
                   agentTools={listingTools}
-                  quota={agentHealth?.quota}
+                  quota={healthError ? undefined : agentHealth?.quota}
                   onAccount={() => navigate("settings")}
                   onPhotoSelected={upload}
                   onCreateDraft={() => void generateDraft()}
@@ -3068,7 +3072,7 @@ export default function App({
       )}
       {(modal === "save" || modal === "edit-search") && (
         <Modal
-          title={modal === "save" ? "Save this search" : "Edit saved search"}
+          title={modal === "save" ? "Save search" : "Edit search"}
           onClose={() => {
             setModal(null);
             setEditingJob(null);
