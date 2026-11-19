@@ -1426,9 +1426,9 @@ export default function App({
             value={listingInput}
             onChange={setListingInput}
             onSend={() => void runListing(listingInput)}
-            label="Tell the listing agent"
+            label="Tell Pako about your listing"
             placeholder="Add a detail…"
-            sendLabel="Send to listing agent"
+            sendLabel="Send to Pako"
             disabled={!configured || listingRun.state.status === "running"}
             onStop={
               listingRun.state.status === "running"
@@ -1964,13 +1964,13 @@ export default function App({
                               onSend={() =>
                                 void runSearch(followUp, criteria, true)
                               }
-                              label="Ask the agent"
+                              label="Ask Pako"
                               placeholder={
                                 reviewingListing
                                   ? "Ask about your listing…"
                                   : "Ask a follow-up…"
                               }
-                              sendLabel="Send to the agent"
+                              sendLabel="Send to Pako"
                               disabled={running || quotaExhausted}
                               onStop={running ? agentRun.cancel : undefined}
                             />
@@ -2046,6 +2046,7 @@ export default function App({
                               localMatches.length > 0 ? (
                                 <AgentListings
                                   listings={localMatches}
+                                  ranked={turn.status === "complete"}
                                   onOpen={openProduct}
                                   onOffer={continueOffer}
                                 />

@@ -11,8 +11,9 @@ import { useId, type ReactNode } from "react";
 import AgentRunDetails from "./AgentRunDetails";
 import AgentSources from "./AgentSources";
 import AgentWebResults from "./AgentWebResults";
-import { Ellipsis, MessageCircle } from "./icons";
-import { MessageAvatar } from "./ui/message";
+import { Ellipsis } from "./icons";
+import Pako from "./onboarding/Pako";
+import type { PakoMood } from "./onboarding/storyTypes";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +42,12 @@ type AgentRunPanelProps = AgentActionHandlers & {
   undoneActionIds?: readonly string[];
   actionNotices?: Readonly<Record<string, string>>;
 };
+
+/** Pako works while the run is busy and hops once the answer is in. */
+function pakoMood(status: AgentRunState["status"]): PakoMood {
+  if (status === "running") return "work";
+  return status === "complete" ? "happy" : "idle";
+}
 
 export default function AgentRunPanel({
   state,
@@ -124,20 +131,22 @@ export default function AgentRunPanel({
               : "Finished";
 
   // Without steps or reasoning, the activity line itself names the status.
+  // Only the live turn moves; earlier turns keep a resting Pako beside them.
+  const avatar = (
+    <span className="agent-pako" aria-hidden="true">
+      <Pako size={42} mood={pakoMood(state.status)} still={readOnly} />
+    </span>
+  );
   const detailsShowStatus =
     !running &&
     !state.steps.length &&
     !(state.reasoning ?? []).some((part) => part.text);
   const heading = (
     <div className={`agent-run-heading${compact ? " agent-run-sender" : ""}`}>
-      {compact && (
-        <MessageAvatar className="agent-avatar" aria-hidden="true">
-          <MessageCircle size={14} />
-        </MessageAvatar>
-      )}
+      {compact && avatar}
       <h2 id={headingId}>
         {compact
-          ? "Takeover AI"
+          ? "Pako"
           : waitingForAnswer
             ? "Let’s narrow it down"
             : running
@@ -150,7 +159,7 @@ export default function AgentRunPanel({
                     ? "Your message draft"
                     : state.inventoryMatchIds !== null || safeSources.length > 0
                       ? "Here’s what I found"
-                      : "Your agent’s response"}
+                      : "Pako’s answer"}
       </h2>
       {compact && (
         <span
@@ -205,15 +214,10 @@ export default function AgentRunPanel({
       aria-labelledby={headingId}
       aria-busy={running}
     >
-      <div className="agent-run-progress" aria-hidden="true">
-        <span />
-      </div>
       {!compact && (
         <div className="agent-run-identity">
-          <span className="agent-run-symbol" aria-hidden="true">
-            ✳
-          </span>
-          <span>Your agent</span>
+          {avatar}
+          <span className="agent-run-name">Pako</span>
           <span className="agent-run-status" role="status">
             <span key={statusLabel} className="agent-run-status-text">
               {statusLabel}
@@ -425,7 +429,7 @@ export default function AgentRunPanel({
       {state.error && (
         <div className="agent-run-recovery">
           <p className="agent-run-error" role="alert">
-            {state.error}
+            <strong>Sorry, I got stuck there.</strong> {state.error}
           </p>
           {!readOnly && !running && (
             <Button type="button" variant="outline" size="sm" onClick={onRetry}>

@@ -1,16 +1,14 @@
 import { useState, type ReactNode } from "react";
 import type { AgentReasoningPart } from "../../shared/runs";
 import type { AgentRunStep } from "../hooks/useAgentRun";
-import AgentActivity, { visibleTaskSteps } from "./AgentActivity";
+import AgentActivity, { StepMark, visibleTaskSteps } from "./AgentActivity";
 import AgentReasoning from "./AgentReasoning";
-import { Check, LoaderCircle, X } from "./icons";
 import {
   Trace,
   TraceCollapsible,
   TraceCollapsibleContent,
   TraceCollapsibleTrigger,
   TraceDescription,
-  TraceIcon,
   TraceLine,
   TraceTitle,
 } from "./ui/trace";
@@ -70,17 +68,17 @@ export default function AgentRunDetails({
       }
     >
       <TraceLine status={failed ? "error" : undefined}>
-        <TraceIcon>
-          {running ? (
-            <LoaderCircle animate />
-          ) : failed ? (
-            <X />
-          ) : unfinished || !hasDetails ? (
-            <span className="agent-trace-dot" />
-          ) : (
-            <Check />
-          )}
-        </TraceIcon>
+        <StepMark
+          state={
+            running
+              ? "running"
+              : failed
+                ? "failed"
+                : unfinished || !hasDetails
+                  ? "paused"
+                  : "done"
+          }
+        />
         <TraceTitle>
           {steps.length ? (
             currentStep ? (

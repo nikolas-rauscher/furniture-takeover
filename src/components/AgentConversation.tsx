@@ -3,7 +3,8 @@ import { useScrollFade } from "@animate-ui/react/primitives/effects/scroll-fade"
 import { emptyAgentRunState, type AgentRunState } from "../hooks/useAgentRun";
 import { motionBehavior } from "../uiMotion";
 import { PageTransitionShared } from "./animate-ui/components/page-transition";
-import { ChevronDown, MessageCircle } from "./icons";
+import { ChevronDown } from "./icons";
+import Pako from "./onboarding/Pako";
 import { Bubble, BubbleContent } from "./ui/bubble";
 import { Message, MessageContent } from "./ui/message";
 import {
@@ -125,11 +126,11 @@ export default function AgentConversation({
               {!state.id && (
                 <Empty className="agent-conversation-empty">
                   <EmptyHeader>
-                    <EmptyMedia variant="icon">
-                      <MessageCircle />
+                    <EmptyMedia className="agent-conversation-pako">
+                      <Pako size={64} mood="wave" />
                     </EmptyMedia>
                     <EmptyDescription>
-                      Tell your agent what you’d like to change.
+                      Tell Pako what you’d like to change.
                     </EmptyDescription>
                   </EmptyHeader>
                 </Empty>

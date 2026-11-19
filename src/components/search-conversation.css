@@ -19,7 +19,7 @@
   width: fit-content;
   max-width: min(78%, 64ch);
   padding: 12px 16px;
-  border-radius: 12px;
+  border-radius: 18px;
 }
 .search-message > span {
   display: block;
@@ -34,39 +34,18 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+/* Your request pops out of its corner, like the request bubble in the intro. */
 .user-message {
   margin-left: auto;
-  background: #edf0fa;
-  border-bottom-right-radius: 3px;
-  animation: search-message-reveal 200ms ease-out both;
+  background: var(--mist);
+  border-bottom-right-radius: 5px;
+  transform-origin: 100% 100%;
+  animation: search-message-pop 360ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
 }
-.previous-agent-message {
-  background: #fff;
-  border: 1px solid var(--line, #deded8);
-  border-bottom-left-radius: 3px;
-}
-.previous-agent-answer > * + * {
-  margin-top: 8px;
-}
-.previous-agent-answer h3,
-.previous-agent-answer h4 {
-  margin: 8px 0 4px;
-  font-size: 14px;
-  line-height: 1.4;
-}
-.previous-agent-answer > :first-child {
-  margin-top: 0;
-}
-.previous-agent-answer ul,
-.previous-agent-answer ol {
-  margin-bottom: 0;
-  padding-left: 20px;
-  font-size: 15px;
-  line-height: 1.5;
-}
-@keyframes search-message-reveal {
+@keyframes search-message-pop {
   from {
     opacity: 0;
+    transform: scale(0.9);
   }
 }
 @media (max-width: 600px) {
@@ -149,6 +128,14 @@
   gap: 8px;
   font-size: var(--type-caption);
 }
+/* The allowance reads as one of the intro's chips. */
+.chat-layout .composer-status [data-slot="badge"] {
+  height: auto;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: var(--type-caption);
+  font-weight: 650;
+}
 .app-layout:is(.chat-layout, .selling-chat-layout) .chat-composer-dock {
   padding-top: 6px;
 }
@@ -161,7 +148,7 @@
 .chat-composer-dock .chat-jump-latest {
   position: absolute;
   left: 50%;
-  bottom: calc(100% + 4px);
+  bottom: calc(100% + 8px);
   translate: -50% 0;
   transform: none;
   width: 40px;
@@ -170,9 +157,12 @@
   margin: 0;
   padding: 0;
   border-radius: 999px;
-  border: 1px solid var(--line, #e1e3eb);
-  background: var(--surface, #fff);
-  box-shadow: 0 4px 14px rgb(41 41 41 / 0.12);
+  border: 2px solid var(--card-line);
+  background: var(--surface);
+  color: var(--blue);
+  box-shadow:
+    0 3px 0 var(--lip),
+    0 10px 22px -12px rgb(41 41 41 / 0.3);
   transition:
     opacity 160ms ease-out,
     translate 220ms cubic-bezier(0.23, 1, 0.32, 1);
@@ -247,13 +237,12 @@
   font-size: 13px;
 }
 
-/* Chat turns use compact spacing in both current and previous responses. */
+/* The reply bubble frames every turn, so the panel inside it has no frame of its own. */
 .chat-workspace .agent-run-panel {
   margin: 0;
-  padding: 12px 14px;
-  border: 1px solid #e1e3eb;
-  border-radius: 12px 12px 12px 3px;
-  background: #fff;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 .chat-workspace .agent-run-identity {
   display: flex;
@@ -275,7 +264,8 @@
 }
 .chat-workspace .agent-run-header h2 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--type-label);
+  font-weight: 700;
   line-height: 1.4;
 }
 .chat-workspace .agent-run-actions {

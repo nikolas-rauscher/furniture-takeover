@@ -23,6 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import Pako from "./onboarding/Pako";
 import "./workspace-header.css";
 
 type WorkspaceHeaderProps = {
@@ -116,7 +117,7 @@ export default function WorkspaceHeader({
                 render={<Button variant="ghost" />}
                 aria-label={`AI allowance: ${quota.remaining} of ${quota.limit} requests left today`}
               >
-                AI
+                <Pako size={24} mood="idle" still />
                 <Badge
                   variant={quota.remaining <= 5 ? "destructive" : "secondary"}
                 >

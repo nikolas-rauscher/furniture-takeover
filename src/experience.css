@@ -874,10 +874,6 @@ label > textarea {
 }
 .listing-conversation .agent-run-changes {
   margin: 12px 0;
-  padding: 12px 14px;
-  border: 1px solid #e1e3eb;
-  border-radius: 12px 12px 12px 3px;
-  background: #fff;
 }
 .listing-conversation .agent-run-changes h3 { font-size: 15px; }
 .listing-conversation .agent-run-changes p { font-size: 14px; line-height: 1.5; }
@@ -1530,7 +1526,6 @@ html { scrollbar-gutter: stable; }
 
 /* Keep routine draft updates small so the conversation stays in place. */
 .agent-run-change-content { padding-top: 8px; }
-.listing-conversation .agent-run-changes { padding: 8px 12px; }
 @supports (interpolate-size: allow-keywords) {
   .agent-run-change { interpolate-size: allow-keywords; }
 }
@@ -1548,8 +1543,6 @@ html { scrollbar-gutter: stable; }
   }
 }
 .listing-conversation .agent-run-change {
-  padding: 0;
-  border-top: 0;
   max-width: none;
 }
 .agent-run-change-content > p { font-size: 14px; }

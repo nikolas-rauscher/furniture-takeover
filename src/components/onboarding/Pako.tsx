@@ -198,13 +198,13 @@ function Feet() {
   );
 }
 
-function BackFlap() {
+function BackFlap({ still }: { still: boolean }) {
   return (
     <motion.polygon
       className="ob-pako-back"
       points="56,66 144,66 138,42 62,42"
       style={pivot(BACK_HINGE)}
-      animate={BACK_SWAY}
+      animate={still ? undefined : BACK_SWAY}
     />
   );
 }
@@ -218,7 +218,15 @@ function Opening() {
   );
 }
 
-function Flap({ side, mood }: { side: Side; mood: PakoMood }) {
+function Flap({
+  side,
+  mood,
+  still,
+}: {
+  side: Side;
+  mood: PakoMood;
+  still: boolean;
+}) {
   const origin = pivot(FLAP_HINGES[side]);
   return (
     <motion.g style={origin} animate={flapRaise(mood, side)}>
@@ -227,7 +235,7 @@ function Flap({ side, mood }: { side: Side; mood: PakoMood }) {
           className="ob-pako-flap"
           points={FLAP_POINTS[side]}
           style={origin}
-          animate={flapSway(side)}
+          animate={still ? undefined : flapSway(side)}
         />
       </motion.g>
     </motion.g>
@@ -299,11 +307,19 @@ function HappyEyes() {
   );
 }
 
-function Face({ mood, talking }: { mood: PakoMood; talking: boolean }) {
+function Face({
+  mood,
+  talking,
+  still,
+}: {
+  mood: PakoMood;
+  talking: boolean;
+  still: boolean;
+}) {
   return (
     <g>
       <motion.g animate={eyeScan(mood)}>
-        <motion.g style={pivot(EYE_LINE)} animate={BLINK}>
+        <motion.g style={pivot(EYE_LINE)} animate={still ? undefined : BLINK}>
           <motion.g animate={eyeOpacity(mood, false)}>
             <OpenEyes />
           </motion.g>
@@ -323,19 +339,23 @@ function Face({ mood, talking }: { mood: PakoMood; talking: boolean }) {
   );
 }
 
-/** Pako, the moving box that guides the intro. Purely decorative. */
+/** Pako, the moving box that guides the intro and works as the agent. Purely decorative. */
 export default function Pako({
   mood,
   size,
   talking = false,
+  still = false,
   className,
 }: {
   mood: PakoMood;
   size: number;
   talking?: boolean;
+  /** Rests without breathing or blinking, e.g. beside earlier chat turns. */
+  still?: boolean;
   className?: string;
 }) {
   const reduced = useReducedMotion();
+  const pose = still ? "idle" : mood;
   return (
     <MotionConfig reducedMotion="user">
       <svg
@@ -353,18 +373,22 @@ export default function Pako({
           rx="46"
           ry="6"
           style={pivot(SHADOW)}
-          animate={shadowTarget(mood)}
+          animate={shadowTarget(pose)}
         />
-        <motion.g animate={hopTarget(mood)}>
+        <motion.g animate={hopTarget(pose)}>
           <Feet />
-          <motion.g style={pivot(FEET)} animate={squashTarget(mood)}>
-            <motion.g style={pivot(FEET)} animate={BREATHE}>
-              <BackFlap />
+          <motion.g style={pivot(FEET)} animate={squashTarget(pose)}>
+            <motion.g style={pivot(FEET)} animate={still ? undefined : BREATHE}>
+              <BackFlap still={still} />
               <Opening />
-              <Flap side="left" mood={mood} />
-              <Flap side="right" mood={mood} />
+              <Flap side="left" mood={pose} still={still} />
+              <Flap side="right" mood={pose} still={still} />
               <FrontFace />
-              <Face mood={mood} talking={talking && !reduced} />
+              <Face
+                mood={pose}
+                talking={talking && !reduced && !still}
+                still={still}
+              />
             </motion.g>
           </motion.g>
         </motion.g>
