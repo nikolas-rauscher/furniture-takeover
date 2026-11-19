@@ -87,11 +87,14 @@ export default function ListingDetailPage({
     selected.description.match(/Photo (?:illustrates|shows) [^\n]+/)?.[0] ?? "";
   const transport = transportGuidance(selected.title, selected.dimensions);
   const mine = isMine(selected);
-  const mobileContact = !mine && selected.status === "active";
+  /** Leads the main action's label where it docks at the bottom of a phone screen. */
+  const dockPrice = (
+    <span className="listing-detail-dock-price">
+      {money(selected.price)} ·{" "}
+    </span>
+  );
   return (
-    <article
-      className={`listing-detail${mobileContact ? " has-mobile-contact" : ""}`}
-    >
+    <article className="listing-detail">
       <Button className="back-link" type="button" onClick={onBack}>
         <ArrowLeft size={16} /> {backLabel}
       </Button>
@@ -206,13 +209,16 @@ export default function ListingDetailPage({
             <div className="listing-detail-actions">
               {mine ? (
                 <div className="listing-detail-owner-actions">
-                  <Button
-                    className="button secondary small"
-                    type="button"
-                    onClick={onEdit}
-                  >
-                    <Pencil size={16} /> Edit listing
-                  </Button>
+                  <div className="listing-detail-dock">
+                    <Button
+                      className="button secondary small"
+                      type="button"
+                      onClick={onEdit}
+                    >
+                      <Pencil size={16} />
+                      <span>{dockPrice}Edit listing</span>
+                    </Button>
+                  </div>
                   <Button
                     className="button secondary small"
                     type="button"
@@ -224,8 +230,8 @@ export default function ListingDetailPage({
               ) : (
                 <div
                   className={
-                    mobileContact && !availabilityPanel
-                      ? "listing-detail-mobile-contact"
+                    selected.status === "active" && !availabilityPanel
+                      ? "listing-detail-dock"
                       : undefined
                   }
                 >
@@ -237,7 +243,8 @@ export default function ListingDetailPage({
                       disabled={selected.status !== "active"}
                       onClick={onMessage}
                     >
-                      <MessageCircle size={17} /> Message seller
+                      <MessageCircle size={17} />
+                      <span>{dockPrice}Message seller</span>
                     </Button>
                   )}
                 </div>
