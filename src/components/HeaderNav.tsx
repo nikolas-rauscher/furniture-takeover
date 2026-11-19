@@ -47,8 +47,11 @@ export default function HeaderNav({
           onClick={() => onNavigate(id)}
         >
           {active === id && (
+            // Measured only when the page changes: a pill that loads or moves
+            // with its tab stays put, and glides only to another tab.
             <motion.span
               layoutId="header-nav-highlight"
+              layoutDependency={active}
               className="header-nav-highlight"
               transition={{ type: "spring", stiffness: 420, damping: 36 }}
               aria-hidden="true"

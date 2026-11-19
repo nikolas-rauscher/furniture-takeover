@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readRoute } from "./navigation.ts";
+import { historyPosition, readRoute } from "./navigation.ts";
 
 test("direct links preserve the selected workspace section on reload", () => {
   assert.equal(readRoute("#settings").view, "settings");
@@ -17,5 +17,12 @@ test("listing and conversation links restore their item without crashing on bad 
   assert.equal(readRoute("#messages/desk").view, "messages");
   for (const hash of ["", "#unknown", "#listing", "#listing/%invalid"]) {
     assert.equal(readRoute(hash).view, "discover");
+  }
+});
+
+test("history entries tell how far into the visit they are", () => {
+  assert.equal(historyPosition({ position: 3 }), 3);
+  for (const state of [null, undefined, "#saved", {}, { position: "3" }]) {
+    assert.equal(historyPosition(state), 0);
   }
 });

@@ -33,6 +33,7 @@ import Confetti from "./onboarding/Confetti";
 import Pako, { PAKO_FLIGHT_MS } from "./onboarding/Pako";
 import type { PakoMood } from "./onboarding/storyTypes";
 import PakoReaction from "./PakoReaction";
+import ProductGrid from "./ProductGrid";
 
 export type AccountTab = "favorites" | "listings" | "archive";
 
@@ -160,6 +161,8 @@ function PublishedStamp({ label }: { label: string }) {
 
 type AccountPageProps = {
   cloud?: boolean;
+  /** Whether the listings are known; until then the page shows only its title. */
+  loaded: boolean;
   accountTab: AccountTab;
   setAccountTab(tab: AccountTab): void;
   visibleListings: Product[];
@@ -170,7 +173,7 @@ type AccountPageProps = {
   onOpen(item: Product): void;
   onEdit(item: Product): void;
   onStatusChange(id: string, status: Product["status"]): void;
-  renderProduct(item: Product): ReactNode;
+  renderProduct(item: Product, arriving: boolean): ReactNode;
   /** The listing that was just published, celebrated for a few seconds. */
   publishedId: string | null;
   onCelebrationEnd(): void;
@@ -178,6 +181,7 @@ type AccountPageProps = {
 
 export default function AccountPage({
   cloud = false,
+  loaded,
   accountTab,
   setAccountTab,
   visibleListings,
@@ -265,9 +269,7 @@ export default function AccountPage({
   );
   const content = items.length ? (
     isSaved ? (
-      <div className="product-grid">
-        {items.map((item) => renderProduct(item))}
-      </div>
+      <ProductGrid items={items} renderProduct={renderProduct} />
     ) : (
       <div className="own-listings">
         {items.map((item) => (
@@ -436,15 +438,19 @@ export default function AccountPage({
               Create listing
             </Button>
           )}
-          <p>
-            {isSaved
-              ? `${savedListings.length} saved ${savedListings.length === 1 ? "item" : "items"}`
-              : cloud
-                ? "Your items, availability and selling progress."
-                : "Listings saved in this browser."}
-          </p>
+          {/* Saved items give their count, which is known once the listings are. */}
+          {(loaded || !isSaved) && (
+            <p>
+              {isSaved
+                ? `${savedListings.length} saved ${savedListings.length === 1 ? "item" : "items"}`
+                : cloud
+                  ? "Your items, availability and selling progress."
+                  : "Listings saved in this browser."}
+            </p>
+          )}
         </div>
-        {isSaved ? (
+        {/* Until the listings are known, no count, list or "no listings yet" shows. */}
+        {!loaded ? null : isSaved ? (
           <>
             {tabListings.length > 0 && toolbar}
             {content}

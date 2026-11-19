@@ -76,6 +76,8 @@ function DemoMessagesPage({
   onDeleted,
 }: MessagesPageProps) {
   const [conversations, setConversations] = useState<SellerConversation[]>([]);
+  /** The inbox calls itself empty only once it has heard back. */
+  const [loaded, setLoaded] = useState(false);
   const [selected, setSelected] = useState(listingId ?? "");
   const [showConversation, setShowConversation] = useState(Boolean(listingId));
   const [role, setRole] = useState<"buyer" | "seller">("buyer");
@@ -189,6 +191,7 @@ function DemoMessagesPage({
         .then((items) => {
           if (active && startedAt === revision.current) {
             setConversations(items);
+            setLoaded(true);
             setSelected((value) => value || items[0]?.listingId || "");
             setError("");
           }
@@ -258,7 +261,8 @@ function DemoMessagesPage({
                 onSelect={() => openThread(listing.id)}
               />
             )}
-          {!conversations.length &&
+          {loaded &&
+            !conversations.length &&
             (!listing || dismissedListing === listing.id) &&
             !error && <InboxEmpty onBrowse={onBrowse} />}
         </nav>
