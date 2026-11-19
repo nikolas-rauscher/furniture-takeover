@@ -1,3 +1,4 @@
+import { activityLines } from "../activityLines";
 import type { AgentRunStep } from "../hooks/useAgentRun";
 import { stepWords, type StepVoice } from "../pakoMoods";
 import { Check, LoaderCircle, X } from "./icons";
@@ -82,13 +83,6 @@ function ActivityStep({
   );
 }
 
-export function visibleTaskSteps(steps: readonly AgentRunStep[]) {
-  const hasWork = steps.some((step) => step.task && step.task !== "request");
-  return hasWork
-    ? steps.filter((step) => step.task && step.task !== "request")
-    : steps;
-}
-
 export default function AgentActivity({
   steps,
   running,
@@ -101,7 +95,7 @@ export default function AgentActivity({
   place?: string;
   voice?: StepVoice;
 }) {
-  const visible = visibleTaskSteps(steps);
+  const visible = activityLines(steps, place, voice);
   if (!visible.length) return null;
   return (
     <Trace className="agent-activity-list" role="list" aria-label="Agent steps">
