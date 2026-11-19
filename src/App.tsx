@@ -71,6 +71,7 @@ import MobileNav, { type MobileDestination } from "./MobileNav";
 import HeaderNav, { headerDestination } from "./components/HeaderNav";
 import CompareTray from "./components/CompareTray";
 import Toast, { type ToastAction } from "./components/Toast";
+import DatabaseStatus from "./components/DatabaseStatus";
 import Modal from "./components/Modal";
 import ProductCard from "./components/ProductCard";
 import SearchPreferencesFields from "./components/SearchPreferencesFields";
@@ -112,6 +113,7 @@ import type {
   AgentPreferencesPatchEvent,
 } from "../shared/actions";
 import { useAgentHealth } from "./hooks/useAgentHealth";
+import { useNoticeableWait } from "./hooks/useNoticeableWait";
 import { useFocused } from "./hooks/useFocused";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import { homeGuide, showedResults, turnAnnouncement } from "./pakoMoods";
@@ -314,6 +316,11 @@ export default function App({
   const database = useMarketplaceListings(account);
   const own = database.listings;
   const setOwn = database.setListings;
+  /** Listings show once they have loaded, or once loading failed and the status says why. */
+  const listingsSettled = database.ready || database.error !== "";
+  const slowListings = useNoticeableWait(
+    !database.ready || database.pending > 0,
+  );
   const [compared, setCompared] = useState<string[]>([]);
   const comparisonOrigin = useRef<View>("discover");
   /** Where the open listing was reached from; a listing opened by link leads back to Browse. */
@@ -398,6 +405,8 @@ export default function App({
   );
   const searchIsHome = !searching;
   const isHome = view === "discover" && searchIsHome;
+  /** Home shows its listings, or that there are none, once they are known. */
+  const showHomeListings = searchIsHome && listingsSettled;
   /** Pages whose composer or main action rests at the bottom of the screen. */
   const bottomDocked =
     (view === "discover" && !isHome) || view === "messages" || view === "sell";
@@ -1659,6 +1668,8 @@ export default function App({
     />
   );
 
+  // Until the first connection check answers, the footnote says nothing rather
+  // than "Connecting…" that disappears a moment later.
   const connectionStatus =
     account && !signedIn ? (
       <div className="agent-footnote">
@@ -1666,7 +1677,7 @@ export default function App({
           Sign in to use your agent
         </Button>
       </div>
-    ) : quotaExhausted ? (
+    ) : !agentHealth && !healthError ? null : quotaExhausted ? (
       <div className="agent-footnote" role="status">
         Daily AI allowance used. Resets {quotaResets}. Listings and messages
         remain available.
@@ -1674,13 +1685,7 @@ export default function App({
     ) : !configured || healthError ? (
       <div className="agent-footnote">
         <span role="status" title={healthError || undefined}>
-          {healthError
-            ? "AI offline"
-            : agentHealth
-              ? configured
-                ? "AI connected"
-                : "AI not configured"
-              : "Connecting…"}
+          {healthError ? "AI offline" : "AI not configured"}
         </span>
         {(!configured || healthError) && (
           <Button
@@ -1717,23 +1722,18 @@ export default function App({
 
   return (
     <>
-      {(!database.ready ||
-        database.pending > 0 ||
-        database.error ||
-        favoriteError) && (
-        <div className="database-status" role="status">
-          {database.error ||
-            favoriteError ||
-            (database.pending
+      <DatabaseStatus
+        message={
+          database.error ||
+          favoriteError ||
+          (slowListings
+            ? database.pending
               ? "Saving listing changes…"
-              : "Loading listings…")}
-          {database.error && (
-            <Button className="text-button" onClick={database.retry}>
-              Retry
-            </Button>
-          )}
-        </div>
-      )}
+              : "Loading listings…"
+            : "")
+        }
+        onRetry={database.error ? database.retry : undefined}
+      />
       <header className="app-header" data-scrolled={pageScrolled || undefined}>
         <a
           className="brand"
@@ -2259,7 +2259,7 @@ export default function App({
                   negotiations.items
                     .filter((item) => item.status === "draft")
                     .map((proposal) => proposalSummary(proposal))}
-                {searchIsHome && visibleListings.length > 0 && (
+                {showHomeListings && visibleListings.length > 0 && (
                   <>
                     <div className="section-heading">
                       <h2>Your local listings</h2>
@@ -2285,7 +2285,7 @@ export default function App({
                     </div>
                   </>
                 )}
-                {searchIsHome && !visibleListings.length && (
+                {showHomeListings && !visibleListings.length && (
                   <div className="home-empty">
                     <Pako mood="idle" size={72} still />
                     <div>
@@ -2379,6 +2379,7 @@ export default function App({
               <PageTransitionView key={`listing-${selectedId}`}>
                 <ListingDetailPage
                   selected={selected}
+                  loaded={listingsSettled}
                   cloud={!!account}
                   catalog={localListings}
                   renderProduct={productCard}
@@ -2441,6 +2442,7 @@ export default function App({
 
             <WorkspacePage active={view === "account"} pageKey={accountTab}>
               <AccountPage
+                loaded={listingsSettled}
                 accountTab={accountTab}
                 setAccountTab={(tab) => {
                   setAccountTab(tab);

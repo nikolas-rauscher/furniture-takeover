@@ -18,6 +18,8 @@ import "./listing-detail.css";
 type ListingDetailPageProps = {
   cloud?: boolean;
   selected?: Product;
+  /** Whether the listings are known; until then a missing listing may still come. */
+  loaded: boolean;
   catalog?: Product[];
   renderProduct?: (product: Product) => ReactNode;
   reportAction?: ReactNode;
@@ -36,6 +38,7 @@ type ListingDetailPageProps = {
 export default function ListingDetailPage({
   cloud = false,
   selected,
+  loaded,
   catalog = [],
   renderProduct,
   reportAction,
@@ -49,6 +52,7 @@ export default function ListingDetailPage({
   onEdit,
   onAskAgent,
 }: ListingDetailPageProps) {
+  if (!selected && !loaded) return null;
   if (!selected)
     return (
       <div className="listing-detail-missing">
