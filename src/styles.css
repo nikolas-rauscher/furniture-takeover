@@ -366,6 +366,25 @@ textarea {
 .linked-card {
   position: relative;
 }
+/* A number field that names its unit inside, like "5 km". */
+.input-with-unit {
+  position: relative;
+  display: block;
+}
+.input-with-unit > input {
+  width: 100%;
+  padding-right: 48px;
+}
+.input-with-unit > .input-unit {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  translate: 0 -50%;
+  color: var(--muted);
+  font-size: var(--type-label);
+  font-weight: 600;
+  pointer-events: none;
+}
 .linked-card .card-link::after {
   content: "";
   position: absolute;

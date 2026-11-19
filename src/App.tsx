@@ -2609,21 +2609,28 @@ export default function App({
               />
             </label>
             <label>
-              Distance (km)
-              <Input
-                required
-                type="number"
-                min="0"
-                max="500"
-                step="0.1"
-                value={Number.isNaN(areaDraft.radius) ? "" : areaDraft.radius}
-                onChange={(event) =>
-                  setAreaDraft((current) => ({
-                    ...current,
-                    radius: event.target.valueAsNumber,
-                  }))
-                }
-              />
+              <span>
+                Distance<span className="sr-only"> in kilometres</span>
+              </span>
+              <span className="input-with-unit">
+                <Input
+                  required
+                  type="number"
+                  min="0"
+                  max="500"
+                  step="0.1"
+                  value={Number.isNaN(areaDraft.radius) ? "" : areaDraft.radius}
+                  onChange={(event) =>
+                    setAreaDraft((current) => ({
+                      ...current,
+                      radius: event.target.valueAsNumber,
+                    }))
+                  }
+                />
+                <span className="input-unit" aria-hidden="true">
+                  km
+                </span>
+              </span>
             </label>
             <Button animateIcon className="button primary full" type="submit">
               Use this area
@@ -2673,7 +2680,7 @@ export default function App({
             </Button>
             <Button
               animateIcon
-              className="button primary"
+              className="button danger"
               onClick={() => {
                 setOwn([]);
                 setFavorites([]);
