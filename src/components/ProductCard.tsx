@@ -1,4 +1,3 @@
-import { motion } from "motion/react";
 import { Button } from "./ui/button";
 import { listingPhotos } from "../../shared/listingPhotos";
 import {
@@ -7,6 +6,8 @@ import {
   MapPin,
 } from "@/components/icons";
 import SaveToggle from "./SaveToggle";
+import { useEntrance } from "../hooks/useEntrance";
+import { cn } from "@/lib/utils";
 import { TODAY, money, type Product } from "../../shared/marketplace";
 import "./product-card.css";
 
@@ -21,8 +22,6 @@ type ProductCardProps = {
   onToggleFavorite: () => void;
   onToggleCompare: () => void;
 };
-
-const RISE = { duration: 0.56, ease: [0.16, 1, 0.3, 1] } as const;
 
 /** A sticker on the photo tells what matters before the details: sold, reserved or free. */
 function productSticker(product: Product) {
@@ -55,12 +54,14 @@ export default function ProductCard({
     .filter((tag) => Boolean(tag) && tag !== "Not specified")
     .slice(0, 3);
   const sticker = productSticker(product);
+  const entrance = useEntrance(arriving);
   return (
-    <motion.article
-      className="product-card linked-card"
-      initial={arriving ? { opacity: 0, y: 16 } : false}
-      animate={{ opacity: 1, y: 0 }}
-      transition={RISE}
+    <article
+      className={cn(
+        "product-card linked-card",
+        entrance.entering && "arriving",
+      )}
+      onAnimationEnd={entrance.onAnimationEnd}
     >
       <div className="product-photo">
         {product.image ? (
@@ -130,6 +131,6 @@ export default function ProductCard({
           {product.available}
         </p>
       </div>
-    </motion.article>
+    </article>
   );
 }

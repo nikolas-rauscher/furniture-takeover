@@ -74,6 +74,8 @@
   background: var(--surface);
   box-shadow: 0 3px 0 var(--lip);
   transition: border-color 160ms ease;
+}
+.agent-product-card.arriving {
   animation: agent-card-rise 460ms var(--ease-out) both;
   animation-delay: calc(140ms + var(--stagger, 0) * 70ms);
 }
@@ -207,7 +209,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .agent-product-card {
+  .agent-product-card.arriving {
     animation: none;
   }
   .agent-product-photo img {

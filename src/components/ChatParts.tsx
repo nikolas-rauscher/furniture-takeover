@@ -8,6 +8,7 @@ import {
 } from "react";
 import { Image as ImageIcon, LoaderCircle, Send } from "@/components/icons";
 import { cn } from "@/lib/utils";
+import { useEntrance } from "../hooks/useEntrance";
 import { useSaved } from "../hooks/useSaved";
 import { fitTextarea } from "../textarea";
 import Confetti from "./onboarding/Confetti";
@@ -78,9 +79,15 @@ export function ChatThreadCard({
   note?: string;
   onSelect?: () => void;
 }) {
+  // A thread rises in once, when it first appears, not on each return to the inbox.
+  const entrance = useEntrance(true);
   return (
     <Button
-      className={cn("chat-thread", active && "active")}
+      className={cn(
+        "chat-thread",
+        active && "active",
+        entrance.entering && "arriving",
+      )}
       aria-current={active || undefined}
       disabled={disabled}
       style={
@@ -89,6 +96,7 @@ export function ChatThreadCard({
         } as CSSProperties
       }
       onClick={onSelect}
+      onAnimationEnd={entrance.onAnimationEnd}
     >
       <ChatIdentity image={image} name={name} />
       <span className="chat-thread-copy">

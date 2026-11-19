@@ -59,6 +59,8 @@
     box-shadow 90ms var(--ease-out),
     border-color 160ms ease,
     background-color 160ms ease;
+}
+.chat-thread.arriving {
   animation: chat-thread-in 420ms var(--ease-out) both;
   animation-delay: calc(var(--thread-order, 0) * 45ms);
 }
