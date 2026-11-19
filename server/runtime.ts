@@ -313,6 +313,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
       let publicText = "";
       let outputLength = 0;
       let toolCalls = 0;
+      const stepSequence: { step: number; outcomes: string[] }[] = [];
       let reasoningLength = 0;
       let reasoningCount = 0;
       const reasoning = new Map<string, { id: string; startedAt: number }>();
@@ -680,12 +681,31 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
               "running",
             );
           },
-          onStepEnd: async ({ stepNumber }) =>
-            status(
+          onStepEnd: async ({ stepNumber, content, finishReason }) => {
+            const outcomes: string[] = [];
+            for (const part of content) {
+              if (part.type !== "tool-result" && part.type !== "tool-error") continue;
+              const name = Object.hasOwn(tools, part.toolName) ? part.toolName : "unknown_tool";
+              if (part.type === "tool-error") {
+                const error = part.error;
+                const reason = error instanceof RunError || error instanceof WebSearchError
+                  ? error.code : error instanceof Error && error.message.startsWith("ACTION_REJECTED:")
+                    ? "ACTION_REJECTED" : "INVALID_TOOL_CALL";
+                outcomes.push(name + ": " + reason);
+              } else {
+                const output = part.output;
+                const count = output && typeof output === "object" &&
+                  ["items", "displayedIds", "sources"].find(key => Array.isArray(Reflect.get(output, key)));
+                outcomes.push(name + (count ? ": " + Reflect.get(output as object, count).length + " " + count : ": completed"));
+              }
+            }
+            stepSequence.push({ step: stepNumber + 1, outcomes: outcomes.length ? outcomes : [finishReason] });
+            return status(
               `step-${stepNumber}`,
               stepLabel(stepNumber),
               "complete",
-            ),
+            );
+          },
           onToolExecutionStart: async ({ toolCall }) => {
             lastStage = toolLabel(toolCall.toolName);
             return status(
@@ -941,7 +961,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
           elapsedMs: Date.now() - startedAt,
           hint,
         };
-        console.error("[agent-run]", JSON.stringify(diagnostic));
+        console.error("[agent-run]", JSON.stringify(safe.code === "STEP_LIMIT" ? { ...diagnostic, stepSequence } : diagnostic));
         await send({
           type: "error",
           code: safe.code,

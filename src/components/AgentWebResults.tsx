@@ -36,6 +36,13 @@ export default function AgentWebResults({
     !failed &&
     !cancelled &&
     (!sources.length || awaitingSummary);
+  // Pako's status line already says he is searching; the section waits for something to show.
+  if (
+    (searching || reviewing) &&
+    !children &&
+    (!sources.length || awaitingSummary)
+  )
+    return null;
   const interrupted =
     cancelled ||
     (!running && searches.some((step) => step.state === "running"));

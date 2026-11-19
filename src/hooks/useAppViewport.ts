@@ -1,12 +1,5 @@
 import { useEffect } from "react";
 
-/** A tab bar that steps aside for the keyboard or an open thread takes no room. */
-function navigationHeight(navigation: HTMLElement) {
-  return getComputedStyle(navigation).visibility === "hidden"
-    ? 0
-    : navigation.getBoundingClientRect().height;
-}
-
 /** Keep the conversation and its composer inside the visible phone viewport. */
 export function useAppViewport() {
   useEffect(() => {
@@ -48,12 +41,14 @@ export function useAppViewport() {
         watchNavigation();
         // Enlarged text can grow the navigation. Its minimized size while
         // scrolling is ignored, so pages keep their spacing instead of reflowing.
+        // The bar is measured even while it steps aside: the stylesheet takes
+        // its room away then, so it is back as soon as the bar returns.
         if (!mobile.matches || !navigation)
           root.style.removeProperty("--mobile-nav-height");
         else if (!navigation.hasAttribute("data-minimized"))
           root.style.setProperty(
             "--mobile-nav-height",
-            `${navigationHeight(navigation)}px`,
+            `${navigation.getBoundingClientRect().height}px`,
           );
         if (keyboard && active instanceof HTMLElement)
           active.scrollIntoView({ block: "nearest", inline: "nearest" });

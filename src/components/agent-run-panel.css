@@ -631,6 +631,48 @@
 .agent-run-panel.conversation-agent {
   max-width: 720px;
 }
+/* Pako's applied search changes: one quiet line each, with Undo and the reason on demand. */
+.search-conversation .agent-run-changes {
+  gap: 8px;
+  margin-top: 16px;
+}
+.search-conversation .agent-change-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 12px;
+  padding: 4px 4px 4px 14px;
+  border-radius: var(--radius-card);
+  background: var(--canvas);
+}
+.search-conversation .agent-change-line > p {
+  flex: 1 1 18ch;
+  margin: 0;
+  padding: 8px 0;
+  font-size: var(--type-label);
+  line-height: 1.45;
+}
+.search-conversation .agent-change-line[data-undone] > p {
+  color: var(--muted);
+}
+.search-conversation .agent-change-line-actions {
+  display: flex;
+}
+.search-conversation .agent-change-line-actions .button {
+  min-height: 44px;
+}
+.search-conversation .agent-change-line-reason {
+  display: grid;
+  flex-basis: 100%;
+  gap: 6px;
+  padding: 0 10px 10px 0;
+  color: var(--muted);
+  font-size: var(--type-support);
+  line-height: 1.5;
+}
+.search-conversation .agent-change-line-reason > p {
+  margin: 0;
+}
 .agent-run-panel.conversation-agent .agent-run-identity {
   margin-bottom: 4px;
   font-size: 12px;
