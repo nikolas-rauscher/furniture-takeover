@@ -1502,8 +1502,8 @@ label > textarea {
   gap: 24px;
   align-items: center;
   padding: 24px 0;
-  border-bottom: 1px solid var(--paper-rule, #deded8);
-  color: var(--paper-muted, #70706b);
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
 }
 
 /* Keep the photograph independent of long descriptions. */

@@ -1,6 +1,8 @@
 import type {
   AdminInput,
   AdminListing,
+  AdminOutput,
+  AdminReport,
   ModerationAction,
 } from "../../../shared/admin.ts";
 import { campusPickupPoints } from "../../../shared/campusPickupPoints.ts";
@@ -35,6 +37,40 @@ const actionLabels: Record<ModerationAction, string> = {
 
 export const moderationActionLabel = (action: ModerationAction) =>
   actionLabels[action];
+
+type Block = AdminOutput<"list_blocks">[number];
+
+/** A blocked student's name, or a short ID when the account has none. */
+export const studentName = (block: Pick<Block, "name" | "studentId">) =>
+  block.name ?? `Student ${block.studentId.slice(0, 8)}`;
+
+/** What a report is about, in the words the log uses for it. */
+function reportSubject(target: AdminReport["target"]) {
+  return target.kind === "listing"
+    ? target.title
+    : `Message about ${target.listingTitle ?? "a listing"}`;
+}
+
+/**
+ * The names the moderation log shows for its target IDs, from the data the
+ * screen loaded: a report by what it is about, a listing by its title, a
+ * blocked student by name.
+ */
+export function logTargetNames({
+  reports,
+  blocks,
+  listings,
+}: {
+  reports: readonly AdminReport[];
+  blocks: readonly Block[];
+  listings: readonly Pick<AdminListing, "id" | "title">[];
+}): ReadonlyMap<string, string> {
+  const names = new Map<string, string>();
+  for (const { id, target } of reports) names.set(id, reportSubject(target));
+  for (const { id, title } of listings) names.set(id, title);
+  for (const block of blocks) names.set(block.studentId, studentName(block));
+  return names;
+}
 
 /** The actor of a moderation entry: Developer mode in the demo, a short account ID otherwise. */
 export function actorName(adminId: string) {

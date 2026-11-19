@@ -2,17 +2,10 @@ import {resolvePickupAt,formatPickup} from "./pickupTime.ts";
 import type {DealTerms} from "./deal.ts";
 import { z } from "zod";
 import { draftMessage } from "./dealMessages.ts";
+import { negotiationTermsSchema, type NegotiationTerms } from "./negotiationTerms.ts";
 
-export const negotiationTermsSchema = z
-  .object({
-    amount: z.number().finite().min(0).max(1_000_000).nullable(),
-    fulfillment: z.enum(["pickup", "shipping"]).nullable(),
-    pickupTime: z.string().trim().min(1).max(240).nullable(),
-    pickupPoint: z.string().trim().min(1).max(240).nullable(),
-    note: z.string().trim().min(1).max(1000).nullable(),
-  })
-  .strict();
-export type NegotiationTerms = z.infer<typeof negotiationTermsSchema>;
+export { negotiationTermsSchema, type NegotiationTerms } from "./negotiationTerms.ts";
+
 export const negotiationFields = [
   "amount",
   "fulfillment",

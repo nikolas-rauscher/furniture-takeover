@@ -132,6 +132,17 @@ function StripWords({ view }: { view: StripView }) {
   );
 }
 
+/**
+ * Open on pickup day, the pickup card's head carries the countdown, so the
+ * line above it only names the day instead of repeating it.
+ */
+function openStripView(view: StripView, props: Props): StripView {
+  const day =
+    props.phase === "agreed" ? pickupDay(props.deal, props.role, props.now) : null;
+  const countsDown = day && day.phase !== "booked" && day.change !== "received";
+  return countsDown ? { ...view, lead: "Pickup day", detail: "" } : view;
+}
+
 /** What the tiles say under their values: the words Pako read as agreed, or where to meet. */
 function termNotes(
   phase: DealPhase,
@@ -481,7 +492,7 @@ export default function DealCard(props: Props) {
         onClick={onToggle}
       >
         <DealTile image={cardImageFor(listing)} />
-        <StripWords view={view} />
+        <StripWords view={expanded ? openStripView(view, props) : view} />
         {view.status && <span className="deal-strip-status">{view.status}</span>}
         <ChevronDown
           size={18}

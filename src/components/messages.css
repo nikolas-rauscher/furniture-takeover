@@ -787,8 +787,18 @@
     min-height: 0;
     padding: 0;
   }
-  .messages-page.has-conversation > :is(.page-title, .quiet-caption) {
+  .messages-page.has-conversation > .quiet-caption,
+  .messages-page.has-conversation > .page-title > p {
     display: none;
+  }
+  /* The open thread fills the screen; its page heading stays for screen readers. */
+  .messages-page.has-conversation > .page-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   .inbox-controls {
     top: -4px;

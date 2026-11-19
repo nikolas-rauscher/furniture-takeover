@@ -2,7 +2,13 @@ import { useCallback, useState } from "react";
 import type { AdminOutput, AdminReport } from "../../../shared/admin.ts";
 import type { AdminApi } from "../../api/admin";
 import { Button } from "../ui/button";
-import { actorName, moderationActionLabel, shortDate } from "./adminFormat";
+import {
+  actorName,
+  logTargetNames,
+  moderationActionLabel,
+  shortDate,
+  studentName,
+} from "./adminFormat";
 import AdminLoad from "./AdminLoad";
 import ReasonDialog from "./ReasonDialog";
 import { useAdminResource } from "./useAdminResource";
@@ -18,9 +24,6 @@ type Step = {
   danger?: boolean;
   run: (reason: string) => Promise<unknown>;
 };
-
-const studentName = (block: Pick<Block, "name" | "studentId">) =>
-  block.name ?? `Student ${block.studentId.slice(0, 8)}`;
 
 /** The reported listing or message as students saw it. */
 function ReportTarget({ target }: { target: AdminReport["target"] }) {
@@ -163,7 +166,17 @@ function BlockedList({
   );
 }
 
-function ModerationLog({ entries }: { entries: readonly LogEntry[] }) {
+/** A log entry's target by name where the loaded reports and blocks know it, else a short ID. */
+const targetLabel = (id: string, names: ReadonlyMap<string, string>) =>
+  names.get(id) ?? id.slice(0, 8);
+
+function ModerationLog({
+  entries,
+  names,
+}: {
+  entries: readonly LogEntry[];
+  names: ReadonlyMap<string, string>;
+}) {
   if (entries.length === 0)
     return <p className="admin-empty">No moderation steps yet.</p>;
   return (
@@ -174,7 +187,7 @@ function ModerationLog({ entries }: { entries: readonly LogEntry[] }) {
           <span className="admin-log-reason">“{entry.reason}”</span>
           <span className="admin-listing-meta">
             {actorName(entry.adminId)} · {shortDate(entry.at)}
-            {entry.targetId && ` · ${entry.targetId}`}
+            {entry.targetId && ` · ${targetLabel(entry.targetId, names)}`}
           </span>
         </li>
       ))}
@@ -190,6 +203,7 @@ export default function AdminModeration({ api }: { api: AdminApi }) {
         api.listReports(),
         api.listBlocks(),
         api.listModerationLog(),
+        api.listDemoListings(),
       ]),
     [api],
   );
@@ -197,7 +211,7 @@ export default function AdminModeration({ api }: { api: AdminApi }) {
   const [step, setStep] = useState<Step | null>(null);
   return (
     <AdminLoad resource={resource} onRetry={reload} what="moderation">
-      {([reports, blocks, log]) => {
+      {([reports, blocks, log, listings]) => {
         const open = reports.filter((report) => !report.resolvedAt);
         const blockedIds = new Set(blocks.map((block) => block.studentId));
         return (
@@ -252,7 +266,10 @@ export default function AdminModeration({ api }: { api: AdminApi }) {
               </section>
               <section aria-labelledby="admin-log" className="admin-panel">
                 <h2 id="admin-log">Moderation log</h2>
-                <ModerationLog entries={log} />
+                <ModerationLog
+                  entries={log}
+                  names={logTargetNames({ reports, blocks, listings })}
+                />
               </section>
             </div>
             {step && (

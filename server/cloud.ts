@@ -8,6 +8,16 @@ import type { AgentQuota } from "../shared/agent.ts";
 /** Searches and listings share one daily allowance; reading replies has its own. */
 type AllowanceKind = "marketplace" | "thread";
 type Allowance = AgentQuota & { allowed: boolean };
+
+function quotaUnavailable(options?: ErrorOptions): AgentError {
+  return new AgentError(
+    503,
+    "QUOTA_UNAVAILABLE",
+    "AI usage limits are temporarily unavailable. Please retry shortly.",
+    options,
+  );
+}
+
 /** Loopback, private-network and Tailscale addresses; never a public host. */
 export function isPrivateHost(hostname: string): boolean {
   if (hostname === "localhost" || hostname === "[::1]") return true;
@@ -126,22 +136,26 @@ export function createCloud(
       body: JSON.stringify({ p_user: userId, p_kind: kind, p_spend: spend && !testing }),
       redirect: "error",
       signal: AbortSignal.timeout(10_000),
-    }).catch(() => null);
-    if (kind === "thread" && response?.status === 404)
+    }).catch((cause: unknown) => {
+      throw quotaUnavailable({ cause });
+    });
+    if (kind === "thread" && response.status === 404)
       throw new AgentError(
         503,
         "THREAD_READING_UNAVAILABLE",
         "Pako can't read replies here yet. This server still needs its reply reading update.",
       );
-    const value = await response?.json().catch(() => null);
-    if (!response?.ok && value?.message === "admin_student_blocked")
+    const value = await response.json().catch((cause: unknown) => {
+      throw quotaUnavailable({ cause });
+    });
+    if (!response.ok && value?.message === "admin_student_blocked")
       throw new AgentError(
         403,
         "admin_student_blocked",
         "This account cannot use Pako while it is blocked.",
       );
     if (
-      !response?.ok ||
+      !response.ok ||
       !value ||
       typeof value.allowed !== "boolean" ||
       !Number.isInteger(value.limit) ||
@@ -152,11 +166,7 @@ export function createCloud(
       typeof value.resetAt !== "string" ||
       !Number.isFinite(Date.parse(value.resetAt))
     )
-      throw new AgentError(
-        503,
-        "QUOTA_UNAVAILABLE",
-        "AI usage limits are temporarily unavailable. Please retry shortly.",
-      );
+      throw quotaUnavailable();
     if (!testing) return value;
     const budget = testBudgets[kind];
     const allowed = budget.used < budget.limit;
@@ -247,3 +257,8 @@ export function createCloud(
     },
   };
 }
+
+export type CloudAccess = Pick<
+  NonNullable<ReturnType<typeof createCloud>>,
+  "config" | "authorize" | "quota" | "spendReplyReading"
+>;

@@ -44,7 +44,7 @@
 }
 .admin-tab {
   flex: none;
-  min-height: 40px;
+  min-height: 44px;
   padding: 8px 16px;
   border: 2px solid var(--card-line);
   border-radius: 999px;

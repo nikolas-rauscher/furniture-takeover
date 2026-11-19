@@ -163,7 +163,10 @@
   line-height: 1.45;
   text-align: center;
 }
+/* The link sits in a caption line; its tap area reaches 44px without moving the text. */
 .thread-disclosure > .chat-listing-link {
+  margin-block: -14px;
+  padding-block: 14px;
   font-size: inherit;
 }
 

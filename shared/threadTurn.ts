@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { AgentQuota } from "./agent.ts";
-import { dealTermsSchema, isoInstantSchema } from "./deal.ts";
+import { dealTermsSchema, isoInstantSchema } from "./dealTerms.ts";
 import { THREAD_TURN_CHARS, THREAD_TURN_MESSAGES } from "./dealConfig.ts";
 
 /**

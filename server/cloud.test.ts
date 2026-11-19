@@ -109,12 +109,23 @@ test("daily quotas use the server key and verified user ID and fail closed on da
     cloud.quota("alice", true),
     /temporarily unavailable/,
   );
+  const networkError = new Error("network unavailable");
   globalThis.fetch = async () => {
-    throw new Error("network unavailable");
+    throw networkError;
   };
+  await assert.rejects(cloud.quota("alice", true), {
+    status: 503,
+    code: "QUOTA_UNAVAILABLE",
+    cause: networkError,
+  });
+
+  globalThis.fetch = async () => new Response("invalid JSON");
   await assert.rejects(
     cloud.quota("alice", true),
-    /temporarily unavailable/,
+    (error) =>
+      error instanceof AgentError &&
+      error.code === "QUOTA_UNAVAILABLE" &&
+      error.cause instanceof SyntaxError,
   );
 });
 test("cloud AI authorization verifies user and applies a per-user budget", async (t) => {

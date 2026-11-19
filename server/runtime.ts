@@ -1,20 +1,29 @@
 import { listingKeyFacts } from "./listing-facts.ts";
-import { askingPriceQuestion } from "./listing-questions.ts";
 import {
   createAgentTools,
   inventorySearch,
   type AgentToolState,
 } from "./agent-tools.ts";
 import { RunError } from "./errors.ts";
-import { buyerWorkflowTools, webEvidenceSkill } from "./agent-skills.ts";
 import { englishListingText, type ListingText } from "./listing-language.ts";
-import { answeredQuestions, isSkippedAnswer } from "./conversation.ts";
 import { listingInventory } from "../shared/listingInventory.ts";
-import { extractSearchConstraints, parseSearch, takeoverOnlyPattern, type Product } from "../shared/marketplace.ts";
+import {
+  extractSearchConstraints,
+  takeoverOnlyPattern,
+  type Product,
+} from "../shared/marketplace.ts";
 import { negotiationSchema } from "../shared/negotiation.ts";
 import { createNegotiationTools } from "./negotiation-tools.ts";
-import { buildAgentInstructions } from "./agent-instructions.ts";
-import { tool, ToolChoiceViolationError, ToolLoopAgent, type LanguageModel } from "ai";
+import {
+  buildAgentInstructions,
+  buildRunPrompt,
+} from "./agent-instructions.ts";
+import {
+  tool,
+  ToolChoiceViolationError,
+  ToolLoopAgent,
+  type LanguageModel,
+} from "ai";
 import { createDeepSeek } from "@ai-sdk/deepseek";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
@@ -23,13 +32,19 @@ import type {
   AgentRunRequest,
   AgentRunSource,
   AgentRuntimeHealth,
-  AgentTaskKind,
-  AgentToolFailure,
 } from "../shared/runs.ts";
-import { WebSearchError } from "./web-search.ts";
-import { marketplaceDomains } from "./marketplace-policy.ts";
-import { MAX_REASONING_CHARS, MAX_REASONING_PARTS } from "../shared/runs.ts";
-import { ActionRejection, dateSchema, listingDraftSchema, questionSchema } from "./actions.ts";
+import { dateSchema, listingDraftSchema, questionSchema } from "./actions.ts";
+import { createRunActivity } from "./run-activity.ts";
+import {
+  getRunMode,
+  getStepPolicy,
+  MAX_TOOL_CALLS,
+  needsPriceDecision,
+  reachedStepLimit,
+  type RunMode,
+} from "./run-policy.ts";
+import { finishRun, reportRunError } from "./run-result.ts";
+import { createRunStream, MAX_RUN_TEXT_CHARS } from "./run-stream.ts";
 
 export type AgentRuntimeConfig = {
   apiKey: string;
@@ -156,140 +171,120 @@ export function validateRunRequest(input: unknown): AgentRunRequest {
   return parsed.data;
 }
 
-/** Only route filter-only turns here. Requests to select or negotiate still need their tools. */
-function isSearchRefinement(request: AgentRunRequest) {
-  if (request.text.length > 500 || !request.context?.currentQuery ||
-      !(request.context.previousAnswer || request.context.recentMessages?.length)) return false;
-  const remainder = parseSearch(request.text).query
-    .replace(/\b(?:only|items?|search|budget|widen|expand|radius|to|the|cheaper|closer|EPFL|UNIL)\b|[:?]/gi, "").trim();
-  return !remainder && /\b(?:km|chf|budget|free|takeover|cheaper|closer|under|below)\b/i.test(request.text);
+async function runInventory(
+  request: AgentRunRequest,
+  config: AgentRuntimeConfig,
+) {
+  // Hosted inventory is server-owned; local mode also searches browser drafts.
+  const databaseRows = (await config.inventoryProvider?.()) ?? [];
+  // Pako finds things for the student to buy, so their own listings never count.
+  const ownIds = new Set(request.context?.ownListingIds);
+  const currentInventory = () => {
+    const databaseIds = new Set(databaseRows.map((item) => item.id));
+    return [
+      ...(config.inventoryAuthoritative
+        ? []
+        : (request.inventory ?? [])
+      ).filter((item) => !databaseIds.has(item.id)),
+      ...listingInventory(
+        databaseRows,
+        !request.context?.negotiation &&
+          (request.context?.intent ?? "search") === "search"
+          ? request.context
+          : undefined,
+      ),
+    ].filter((item) => !ownIds.has(item.id));
+  };
+  return currentInventory;
 }
 
-const MAX_STEPS = 8;
+async function applySearchPreferences(
+  request: AgentRunRequest,
+  { listingMode, negotiationMode, refinement }: RunMode,
+  constraints: ReturnType<typeof extractSearchConstraints>,
+  runId: string,
+  send: ReturnType<typeof createRunStream>["send"],
+) {
+  if (!listingMode && !negotiationMode) {
+    const previous = { ...request.context };
+    request.context ??= {};
+    if (constraints.maxPrice !== undefined) {
+      request.context.maxPrice = constraints.maxPrice;
+      if (request.context.budgetSpecified === false)
+        request.context.budgetSpecified = true;
+    }
+    if (constraints.radius !== undefined)
+      request.context.radius = constraints.radius;
+    if (takeoverOnlyPattern.test(request.text))
+      request.context.source = "takeover";
+    if (refinement) {
+      const campus = request.text.match(
+        /\b(?:closer to|near|of) (EPFL|UNIL)\b/i,
+      )?.[1];
+      if (campus) request.context.location = campus.toUpperCase();
+      const patch = Object.fromEntries(
+        (["maxPrice", "radius", "source", "location"] as const)
+          .filter((field) => previous[field] !== request.context?.[field])
+          .map((field) => [field, request.context?.[field]]),
+      );
+      if (Object.keys(patch).length)
+        await send({
+          type: "preferences_patch",
+          id: runId + "-filters",
+          patch,
+          reason: "Apply your updated search preferences.",
+          evidence: [{ kind: "seller", quote: request.text.trim() }],
+        });
+    }
+  }
+}
 
-const toolActivity: Record<string, { label: string; task: AgentTaskKind }> = {
-  web_search: { label: "Searching the web", task: "web" },
-  inventory_search: { label: "Searching takeover listings", task: "listings" },
-  show_takeover_listings: {
-    label: "Selecting takeover matches",
-    task: "listings",
-  },
-  finish_search: { label: "Summarizing your matches", task: "request" },
-  suggest_takeover_offer: { label: "Suggesting an offer", task: "listings" },
-  suggest_watch: {
-    label: "Offering to watch for this item",
-    task: "listings",
-  },
-  get_listing: { label: "Checking listing details", task: "listings" },
-  get_negotiation: { label: "Reading your proposal", task: "proposal" },
-  select_listing: { label: "Starting your proposal", task: "proposal" },
-  update_negotiation: { label: "Updating your proposal", task: "proposal" },
-  prepare_offer_draft: { label: "Preparing your draft", task: "proposal" },
-  discard_offer_draft: { label: "Discarding your draft", task: "proposal" },
-  ask_user: { label: "Asking a question", task: "request" },
-  propose_price: { label: "Suggesting a price", task: "listing" },
-  update_listing: { label: "Filling in your listing", task: "listing" },
-  update_search_preferences: {
-    label: "Updating search preferences",
-    task: "request",
-  },
-};
-const toolLabel = (name: string) => toolActivity[name]?.label ?? "Using a tool";
-const negotiationToolNames = new Set([
-  "get_listing",
-  "get_negotiation",
-  "select_listing",
-  "update_negotiation",
-  "prepare_offer_draft",
-  "discard_offer_draft",
-]);
-
-/** Translate known proposal validation failures; never forward arbitrary tool errors. */
-const negotiationToolFailure = (
-  name: string,
-  error: unknown,
-): AgentToolFailure | undefined => {
-  if (!negotiationToolNames.has(name)) return;
-  const message = error instanceof Error ? error.message : "";
-  if (message === "The offered amount must appear in the buyer quote.")
-    return {
-      code: "PROPOSAL_AMOUNT_UNCONFIRMED",
-      message:
-        "Confirm the CHF amount you want to offer before adding it to your proposal.",
-      retryable: true,
-    };
-  if (
-    message ===
-      "Only the buyer can set the offer amount, note or clear a proposal." ||
-    /^Use an exact (buyer|listing) quote for (amount|fulfillment|pickupTime|pickupPoint|note)\.$/.test(
-      message,
-    ) ||
-    /^Copy the supplied wording for (pickupTime|pickupPoint|note)\.$/.test(
-      message,
-    ) ||
-    message === "The quote must support the handover choice."
-  )
-    return {
-      code: "PROPOSAL_DETAIL_UNCONFIRMED",
-      message:
-        "That change needs a confirmed detail from you or the listing. Confirm what you want to add or change.",
-      retryable: true,
-    };
-  if (
-    message ===
-    "This draft changed. Read the current version before updating it."
-  )
-    return {
-      code: "PROPOSAL_CHANGED",
-      message: "Your proposal changed. Try again using its latest draft.",
-      retryable: true,
-    };
-  if (
-    message ===
-    "This Takeover listing is no longer available. Search for an active listing."
-  )
-    return {
-      code: "PROPOSAL_LISTING_UNAVAILABLE",
-      message:
-        "This listing is no longer available. Choose another active Takeover listing.",
-      retryable: false,
-    };
-  if (
-    message === "Select a Takeover listing first." ||
-    message ===
-      "This proposal is closed. Select the listing to start a new draft."
-  )
-    return {
-      code: "PROPOSAL_SELECTION_REQUIRED",
-      message: "Select a Takeover listing to start a new proposal.",
-      retryable: false,
-    };
+function initialToolState(
+  request: AgentRunRequest,
+  mode: RunMode,
+  braveApiKey: string,
+): AgentToolState {
+  const { listingAssist, negotiationMode } = mode;
+  const ownOnly = request.context?.source?.toLowerCase() === "takeover";
   return {
-    code: "PROPOSAL_STEP_FAILED",
-    message:
-      "That proposal step could not finish. Try again using the current draft.",
-    retryable: true,
+    firstDraft:
+      listingAssist &&
+      !request.context?.skippedQuestions?.length &&
+      request.context?.currentDraft?.price === null &&
+      (request.context.listingStart === true ||
+        (!request.context.previousQuestion &&
+          !request.context.previousAnswer &&
+          !request.context.answeredQuestions?.length &&
+          !request.context.recentMessages?.length)),
+    ownInventoryOnly: ownOnly,
+    allowWebSearch: Boolean(braveApiKey) && !ownOnly && !negotiationMode,
+    listingNeedsInput: false,
+    observedInventory: new Map(),
+    inventorySearched: false,
+    inventoryCurated: false,
+    webSearched: false,
+    displayedInventoryIds: [],
   };
-};
-const toolStepLabel = (name: string, input: unknown, listingMode: boolean) => {
-  if (listingMode) {
-    if (name === "web_search") return "Checking comparable prices online";
-    if (name === "ask_user") return "Preparing a quick question";
-    return toolLabel(name);
-  }
-  const label = toolLabel(name);
-  if (
-    (name === "web_search" || name === "inventory_search") &&
-    input &&
-    typeof input === "object" &&
-    "query" in input &&
-    typeof input.query === "string"
-  ) {
-    const query = input.query.replace(/\s+/g, " ").trim().slice(0, 180);
-    if (query) return `${label}: ${query}`;
-  }
-  return label;
-};
+}
+
+async function announceCatalogScan(
+  send: ReturnType<typeof createRunStream>["send"],
+) {
+  await send({
+    type: "status",
+    id: "takeover-catalog",
+    task: "listings",
+    label: "Searching takeover listings",
+    state: "running",
+  });
+  await send({
+    type: "status",
+    id: "takeover-catalog",
+    task: "listings",
+    label: "Takeover listings checked",
+    state: "complete",
+  });
+}
 
 export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
   const model = config.model?.trim() || "deepseek-flash";
@@ -305,7 +300,6 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
     async run(input, emit, callerSignal) {
       const runId = randomUUID();
       const startedAt = Date.now();
-      let lastStage = "Starting";
       const timeout = AbortSignal.timeout(
         Math.min(config.timeoutMs ?? 60_000, 60_000),
       );
@@ -316,144 +310,27 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
         ...(callerSignal ? [callerSignal] : []),
       ]);
       const sources: AgentRunSource[] = [];
-      const statuses = new Map<string, string>();
-      const statusTasks = new Map<string, AgentTaskKind>();
-      let publicBuffer = "";
-      let publicText = "";
-      let outputLength = 0;
-      let toolCalls = 0;
-      const stepSequence: { step: number; outcomes: string[] }[] = [];
-      let reasoningLength = 0;
-      let reasoningCount = 0;
-      const reasoning = new Map<string, { id: string; startedAt: number }>();
 
+      const stream = createRunStream({
+        runId,
+        sources,
+        emit,
+        callerSignal,
+        abort: () => controller.abort(),
+      });
+      const { send } = stream;
+      const activity = createRunActivity(stream.status);
       const questionController = new AbortController();
       const workSignal = AbortSignal.any([signal, questionController.signal]);
-      let streamFailed: unknown;
-      const send = async (event: AgentRunEvent) => {
-        if (event.type === "text_delta") publicText += event.text;
-        if (!callerSignal?.aborted) await emit(event);
-      };
-      const status = async (
-        id: string,
-        label: string,
-        state: "running" | "complete" | "error" | "needs_input",
-        task?: AgentTaskKind,
-        failure?: AgentToolFailure,
-        detail?: string,
-      ) => {
-        task ??= statusTasks.get(id);
-        if (task) statusTasks.set(id, task);
-        if (state === "running") statuses.set(id, label);
-        else statuses.delete(id);
-        await send({
-          type: "status",
-          id,
-          label,
-          state,
-          ...(task ? { task } : {}),
-          ...(detail ? { detail } : {}),
-          ...(failure ? { failure } : {}),
-        });
-      };
-      const cleanReferences = (value: string) =>
-        value.replace(/\[(?:web-\d+|\d+)\]/g, (token) =>
-          sources.some((source) => token === `[${source.id}]`) ? token : "",
-        );
-      const streamPublicText = async (delta: string, flush = false) => {
-        publicBuffer += delta;
-        const lastOpen = publicBuffer.lastIndexOf("[");
-        const hold =
-          !flush &&
-          lastOpen > publicBuffer.lastIndexOf("]") &&
-          publicBuffer.length - lastOpen <= 200
-            ? lastOpen
-            : publicBuffer.length;
-        if (hold > 0) {
-          await send({
-            type: "text_delta",
-            text: cleanReferences(publicBuffer.slice(0, hold)),
-          });
-          publicBuffer = publicBuffer.slice(hold);
-        }
-        if (flush && publicBuffer) {
-          await send({
-            type: "text_delta",
-            text: cleanReferences(publicBuffer),
-          });
-          publicBuffer = "";
-        }
-      };
+      let toolCalls = 0;
       try {
         const request = validateRunRequest(input);
-        // Hosted inventory is server-owned; local mode also searches browser drafts.
-        const databaseRows = (await config.inventoryProvider?.()) ?? [];
-        // Pako finds things for the student to buy, so their own listings never count.
-        const ownIds = new Set(request.context?.ownListingIds);
-        const currentInventory = () => {
-          const databaseIds = new Set(databaseRows.map((item) => item.id));
-          return [
-            ...(config.inventoryAuthoritative
-              ? []
-              : (request.inventory ?? [])
-            ).filter((item) => !databaseIds.has(item.id)),
-            ...listingInventory(
-              databaseRows,
-              !request.context?.negotiation &&
-                (request.context?.intent ?? "search") === "search"
-                ? request.context
-                : undefined,
-            ),
-          ].filter((item) => !ownIds.has(item.id));
-        };
-
-        const listingReview = request.context?.intent === "listing_review";
-        const listingAssist = request.context?.intent === "listing_assist";
-        const listingMode = listingReview || listingAssist;
-        const negotiationMode =
-          request.context?.intent === "negotiation" ||
-          Boolean(request.context?.negotiation);
+        const currentInventory = await runInventory(request, config);
+        const mode = getRunMode(request);
+        const { listingMode, listingAssist, refinement } = mode;
         const constraints = extractSearchConstraints(request.text);
-        const refinement = !listingMode && !negotiationMode && isSearchRefinement(request);
-        if (!listingMode && !negotiationMode) {
-          const previous = { ...request.context };
-          request.context ??= {};
-          if (constraints.maxPrice !== undefined) {
-            request.context.maxPrice = constraints.maxPrice;
-            if (request.context.budgetSpecified === false) request.context.budgetSpecified = true;
-          }
-          if (constraints.radius !== undefined) request.context.radius = constraints.radius;
-          if (takeoverOnlyPattern.test(request.text)) request.context.source = "takeover";
-          if (refinement) {
-            const campus = request.text.match(/\b(?:closer to|near|of) (EPFL|UNIL)\b/i)?.[1];
-            if (campus) request.context.location = campus.toUpperCase();
-            const patch = Object.fromEntries(
-              (["maxPrice", "radius", "source", "location"] as const)
-                .filter(field => previous[field] !== request.context?.[field])
-                .map(field => [field, request.context?.[field]]),
-            );
-            if (Object.keys(patch).length) await send({
-              type: "preferences_patch", id: runId + "-filters", patch,
-              reason: "Apply your updated search preferences.",
-              evidence: [{ kind: "seller", quote: request.text.trim() }],
-            });
-          }
-        }
-        const ownOnly = request.context?.source?.toLowerCase() === "takeover";
-        const state: AgentToolState = {
-          firstDraft: listingAssist && !request.context?.skippedQuestions?.length && request.context?.currentDraft?.price === null &&
-            (request.context.listingStart === true ||
-              (!request.context.previousQuestion && !request.context.previousAnswer &&
-               !request.context.answeredQuestions?.length && !request.context.recentMessages?.length)),
-          ownInventoryOnly: ownOnly,
-          allowWebSearch: Boolean(braveApiKey) && !ownOnly && !negotiationMode,
-          listingNeedsInput: false,
-          observedInventory: new Map(),
-          inventorySearched: false,
-          inventoryCurated: false,
-          webSearched: false,
-          displayedInventoryIds: [],
-        };
+        await applySearchPreferences(request, mode, constraints, runId, send);
+        const state = initialToolState(request, mode, braveApiKey);
 
         const claimTool = () => {
           signal.throwIfAborted();
@@ -462,7 +339,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
               "AWAITING_ANSWER",
               "Wait for the user's answer before using another tool.",
             );
-          if (++toolCalls > 12)
+          if (++toolCalls > MAX_TOOL_CALLS)
             throw new RunError(
               "TOOL_LIMIT",
               "The agent reached its tool limit.",
@@ -507,22 +384,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
         localInventory.forEach((item) =>
           state.observedInventory.set(item.id, item),
         );
-        if (!listingMode) {
-          await send({
-            type: "status",
-            id: "takeover-catalog",
-            task: "listings",
-            label: "Searching takeover listings",
-            state: "running",
-          });
-          await send({
-            type: "status",
-            id: "takeover-catalog",
-            task: "listings",
-            label: "Takeover listings checked",
-            state: "complete",
-          });
-        }
+        if (!listingMode) await announceCatalogScan(send);
         const tools = createAgentTools({
           request,
           state,
@@ -539,494 +401,122 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
           workSignal,
         });
         let refinementReply: string | undefined;
-        if (refinement) tools.finish_search = tool({
-          description: "Give the student the final comparison using the current cards and web evidence. The app already provides the matching cards and their actions.",
-          inputSchema: z.object({ text: z.string().trim().min(1).max(18_000)
-            .refine(text => !text.includes("｜｜DSML｜｜"), "Provide only the comparison in ordinary Markdown.") }),
-          execute: ({ text }) => {
-            claimTool();
-            refinementReply = text;
-            return { completed: true };
-          },
-        });
-        const needsPriceDecision = () => state.firstDraft && request.context?.currentDraft?.price == null;
-        const keyFacts = listingAssist ? listingKeyFacts(request) : undefined;
-        const stepLabel = (step: number) => listingMode
-          ? (step === 0 ? "Reading your listing details" : "Writing your listing")
-          : (step === 0 ? "Reading your request" : "Reviewing tool results");
-        const searchDetail = (name: string) => listingMode && name === "web_search"
-          ? request.context?.currentDraft?.title : undefined;
+        if (refinement)
+          tools.finish_search = tool({
+            description:
+              "Give the student the final comparison using the current cards and web evidence. The app already provides the matching cards and their actions.",
+            inputSchema: z.object({
+              text: z
+                .string()
+                .trim()
+                .min(1)
+                .max(MAX_RUN_TEXT_CHARS)
+                .refine(
+                  (text) => !text.includes("｜｜DSML｜｜"),
+                  "Provide only the comparison in ordinary Markdown.",
+                ),
+            }),
+            execute: ({ text }) => {
+              claimTool();
+              refinementReply = text;
+              return { completed: true };
+            },
+          });
+
+        const instructionContext = {
+          listingMode,
+          listingAssist,
+          keyFacts: listingAssist ? listingKeyFacts(request) : undefined,
+          localInventory,
+          previousMatches,
+        };
         const agent = new ToolLoopAgent({
           model: config.modelImpl ?? provider(model),
           instructions: buildAgentInstructions({
-            listingMode,
-            listingAssist,
-            keyFacts,
-            localInventory,
-            previousMatches,
+            ...instructionContext,
             allowWebSearch: state.allowWebSearch,
             ownInventoryOnly: state.ownInventoryOnly,
           }),
           tools,
-          // A draft prepared or discarded on the last step still gets its closing reply.
           stopWhen: [
             ({ steps }) =>
-              steps.length >= MAX_STEPS + Number(negotiations.isReadyToFinish()),
+              reachedStepLimit(steps.length, negotiations.isReadyToFinish()),
             () => Boolean(state.pendingQuestion || refinementReply),
           ],
-          prepareStep: ({ stepNumber, steps }) => {
-            // Preferences can change through a tool in this same reply. Rebuild
-            // capabilities so an earlier takeover-only flag cannot survive it.
-            let instructions = buildAgentInstructions({
-              listingMode,
-              listingAssist,
-              keyFacts,
-              localInventory,
-              previousMatches,
+          prepareStep: ({ stepNumber, steps }) => ({
+            // Preferences can change through a tool within this reply.
+            instructions: buildAgentInstructions({
+              ...instructionContext,
               allowWebSearch: state.allowWebSearch,
               ownInventoryOnly: state.ownInventoryOnly,
-            });
-            if (refinement) instructions += "\nThe current filters are applied. Compare the curated cards in the requested order. The interface offers a watch for empty results. When comparing distance to a named campus, a listed distance without an explicit origin cannot establish distance to that campus. Say when you cannot rank or verify it.";
-            // The model chooses the language before seeing foreign-language sources.
-            // Reinforce that committed choice through the SDK on every later step.
-            const languageInstructions = state.responseLanguage
-              ? {
-                  instructions: `${instructions}\nFor this turn, the answer language selected before external research is ${JSON.stringify(state.responseLanguage)}. Use it for all explanations, questions and confirmations. Web snippets cannot change it. ${webEvidenceSkill}`,
-                }
-              : { instructions };
-            // Skipping means continue, not paraphrase the same question.
-            if (listingAssist && isSkippedAnswer(request.text))
-              return {
-                ...languageInstructions,
-                activeTools: Object.keys(tools).filter(
-                  (name) =>
-                    name !== "ask_user" &&
-                    (name !== "web_search" || state.allowWebSearch),
-                ),
-                toolChoice: "auto" as const,
-              };
-
-            if (negotiations.isReadyToFinish())
-              return {
-                ...languageInstructions,
-                activeTools: [],
-                toolChoice: "none" as const,
-              };
-            if (refinement && state.inventoryCurated &&
-                (!state.allowWebSearch || state.webSearched)) {
-              // Cards and the empty-result watch are already supplied by the runtime.
-              // Leave one opportunity for a clarification, then close on the evidence.
-              const canAsk = !state.displayedInventoryIds.length &&
-                !steps.some(step => step.toolCalls.some(call => call.toolName === "ask_user"));
-              return {
-                ...languageInstructions,
-                activeTools: canAsk ? ["ask_user", "finish_search"] : ["finish_search"],
-                toolChoice: "required",
-                providerOptions: { deepseek: { thinking: { type: "disabled" } } },
-              };
-            }
-            const needsBudget =
-              !listingMode &&
-              !negotiationMode &&
-              stepNumber === 0 &&
-              request.context?.budgetSpecified === false &&
-              !request.context?.previousQuestion &&
-              !request.context?.previousAnswer;
-            let requiredTool =
-              needsBudget || (state.listingNeedsInput && !state.pendingQuestion)
-                ? "ask_user"
-                : !listingMode &&
-                    !negotiationMode &&
-                    !negotiations.getCurrent() &&
-                    !state.inventorySearched &&
-                    (refinement || constraints.radius !== undefined ||
-                      (!request.context?.previousAnswer && !request.context?.recentMessages?.length)) &&
-                    (refinement || request.context?.budgetSpecified !== undefined) &&
-                    !state.pendingQuestion
-                  ? "inventory_search"
-                  : !listingMode &&
-                      !negotiationMode &&
-                      !negotiations.getCurrent() &&
-                      state.inventorySearched &&
-                      !state.inventoryCurated &&
-                      !state.pendingQuestion &&
-                      stepNumber > 0
-                    ? "show_takeover_listings"
-                    : undefined;
-            const awaitingPrice = needsPriceDecision();
-            if (awaitingPrice && state.allowWebSearch && !state.webSearched)
-              requiredTool = "web_search";
-            else if (
-              awaitingPrice &&
-              (state.proposedPrice !== undefined || stepNumber === MAX_STEPS - 1 ||
-                (state.webSearched && sources.length < 2))
-            )
-              requiredTool = "ask_user";
-            // A selected external scope promises a real lookup during discovery.
-            // Once a proposal is active, ordinary handover replies stay focused.
-            if (
-              !requiredTool &&
-              !listingMode &&
-              !negotiationMode &&
-              !negotiations.getCurrent() &&
-              !state.pendingQuestion &&
-              state.inventoryCurated &&
-              state.allowWebSearch &&
-              !state.webSearched &&
-              (refinement || (request.context?.source &&
-                marketplaceDomains(request.context.source)?.length))
-            )
-              requiredTool = "web_search";
-            const requiresTool = Boolean(
-              requiredTool || awaitingPrice ||
-              (negotiations.getCurrent()?.status === "draft" &&
-                !negotiations.getCurrent()?.draft) ||
-              (stepNumber === 0 && (!listingMode || listingAssist)),
-            );
-            // DeepSeek cannot combine thinking with forced tool selection.
-            // Keep mandatory workflow steps enforced, then reason over the results.
-            return {
-              ...languageInstructions,
-              activeTools: requiredTool
-                ? [requiredTool]
-                : listingMode
-                  ? Object.keys(tools).filter(
-                      (name) => name !== "web_search" || state.allowWebSearch,
-                    )
-                  : buyerWorkflowTools(
-                      Object.keys(tools),
-                      Boolean(negotiations.getCurrent()),
-                      state.allowWebSearch,
-                    ),
-              toolChoice: requiresTool ? "required" : "auto",
-              providerOptions: {
-                deepseek: {
-                  thinking: { type: requiresTool ? "disabled" : "enabled" },
-                  reasoningEffort: "low",
-                },
-              },
-            };
-          },
-          // ToolLoopAgent forwards prepared stream options. Override streamText's
-          // default console logger so provider response bodies stay server-private.
+              refinement,
+              responseLanguage: state.responseLanguage,
+            }),
+            ...getStepPolicy(request, state, {
+              ...mode,
+              stepNumber,
+              toolNames: Object.keys(tools),
+              radiusChanged: constraints.radius !== undefined,
+              sourceCount: sources.length,
+              askedQuestion: steps.some((step) =>
+                step.toolCalls.some((call) => call.toolName === "ask_user"),
+              ),
+              proposal: negotiations.getCurrent(),
+              proposalReadyToFinish: negotiations.isReadyToFinish(),
+            }),
+          }),
+          // Provider response bodies stay server-private.
           prepareCall: (options) => ({
             ...options,
-            onError: ({ error }: { error: unknown }) => {
-              streamFailed = error;
-            },
+            onError: ({ error }: { error: unknown }) =>
+              stream.recordFailure(error),
           }),
           maxRetries: 2,
           maxOutputTokens: 4096,
           providerOptions: {
             deepseek: { thinking: { type: "enabled" }, reasoningEffort: "low" },
           },
-          onStepStart: async ({ stepNumber }) => {
-            lastStage =
-              stepNumber === 0
-                ? "Reading request"
-                : "Model step " + (stepNumber + 1);
-            return status(
-              `step-${stepNumber}`,
-              stepLabel(stepNumber),
-              "running",
-            );
-          },
-          onStepEnd: async ({ stepNumber, content, finishReason }) => {
-            const outcomes: string[] = [];
-            for (const part of content) {
-              if (part.type !== "tool-result" && part.type !== "tool-error") continue;
-              const name = Object.hasOwn(tools, part.toolName) ? part.toolName : "unknown_tool";
-              if (part.type === "tool-error") {
-                const error = part.error;
-                const reason = error instanceof RunError || error instanceof WebSearchError
-                  ? error.code : error instanceof ActionRejection
-                    ? error.message : "INVALID_TOOL_CALL";
-                outcomes.push(name + ": " + reason);
-              } else {
-                const output = part.output;
-                const arrays = output && typeof output === "object" ? Object.entries(output) : [];
-                const counted = arrays.find(([key, value]) =>
-                  ["items", "displayedIds", "sources"].includes(key) && Array.isArray(value));
-                outcomes.push(counted && Array.isArray(counted[1]) ? `${name}: ${counted[1].length} ${counted[0]}` : `${name}: completed`);
-              }
-            }
-            stepSequence.push({ step: stepNumber + 1, outcomes: outcomes.length ? outcomes : [finishReason] });
-            return status(
-              `step-${stepNumber}`,
-              stepLabel(stepNumber),
-              "complete",
-            );
-          },
-          onToolExecutionStart: async ({ toolCall }) => {
-            lastStage = toolLabel(toolCall.toolName);
-            return status(
-              toolCall.toolCallId,
-              toolStepLabel(toolCall.toolName, toolCall.input, listingMode),
-              "running",
-              toolActivity[toolCall.toolName]?.task,
-              undefined,
-              searchDetail(toolCall.toolName),
-            );
-          },
-          onToolExecutionEnd: async ({ toolCall, toolOutput }) => {
-            // Failed tools are returned to the model, so surface them for debugging.
-            if (toolOutput.type === "tool-error")
-              console.warn(
-                `Agent tool "${toolCall.toolName}" failed: ${
-                  toolOutput.error instanceof Error
-                    ? toolOutput.error.message
-                    : String(toolOutput.error)
-                }`,
-              );
-            const webError =
-              toolCall.toolName === "web_search" &&
-              toolOutput.type === "tool-error"
-                ? toolOutput.error
-                : null;
-            const failure: AgentToolFailure | undefined = webError
-              ? {
-                  code:
-                    webError instanceof WebSearchError ||
-                    webError instanceof RunError
-                      ? webError.code
-                      : "WEB_SEARCH_UNAVAILABLE",
-                  message:
-                    webError instanceof WebSearchError ||
-                    webError instanceof RunError
-                      ? webError.message
-                      : "Web search could not finish. Try again shortly.",
-                  retryable:
-                    !(
-                      webError instanceof WebSearchError ||
-                      webError instanceof RunError
-                    ) ||
-                    ![
-                      "WEB_SEARCH_AUTH",
-                      "WEB_SEARCH_QUOTA",
-                      "WEB_SEARCH_NOT_CONFIGURED",
-                      "WEB_SEARCH_LIMIT",
-                      "SOURCE_RESTRICTED",
-                      "INVALID_RESEARCH_SCOPE",
-                      "UNSUPPORTED_SOURCE",
-                    ].includes(webError.code),
-                }
-              : toolOutput.type === "tool-error"
-                ? negotiationToolFailure(toolCall.toolName, toolOutput.error)
-                : undefined;
-            const output =
-              toolOutput.type === "tool-result" ? toolOutput.output : null;
-            const needsInput =
-              output &&
-              typeof output === "object" &&
-              "needsInput" in output &&
-              Array.isArray(output.needsInput) &&
-              output.needsInput.length > 0;
-            const needsCorrection = listingAssist &&
-              ["ask_user", "update_listing", "propose_price"].includes(toolCall.toolName);
-            return status(
-              toolCall.toolCallId,
-              toolStepLabel(toolCall.toolName, toolCall.input, listingMode),
-              toolOutput.type === "tool-error"
-                ? (needsCorrection ? "needs_input" : "error")
-                : needsInput
-                  ? "needs_input"
-                  : "complete",
-              toolActivity[toolCall.toolName]?.task,
-              failure,
-              searchDetail(toolCall.toolName),
-            );
-          },
+          ...activity.callbacks(
+            tools,
+            listingMode,
+            listingAssist,
+            request.context?.currentDraft?.title,
+          ),
         });
         const result = await agent.stream({
-          prompt: JSON.stringify({
-            text: request.text,
-            completedClarifications: answeredQuestions(request),
-            conversationLanguageEvidence: {
-              latestUserMessage: request.text,
-              earlierUserMessages: (request.context?.recentMessages ?? [])
-                .filter((message) => message.role === "user")
-                .map((message) => message.text),
-              originalUserRequest: request.context?.originalRequest,
-            },
-            today: new Intl.DateTimeFormat("en-CA", {
-              timeZone: "Europe/Zurich",
-            }).format(new Date()),
-            timeZone: "Europe/Zurich",
-            context: request.context ?? {},
-            suppliedInventoryCount: request.inventory?.length ?? 0,
-          }),
+          prompt: buildRunPrompt(request),
           abortSignal: signal,
         });
-        for await (const part of result.fullStream) {
-          if (part.type === "reasoning-start") {
-            if (++reasoningCount > MAX_REASONING_PARTS) {
-              controller.abort();
-              throw new RunError(
-                "OUTPUT_LIMIT",
-                "The agent reached its thinking limit. Try a more focused request.",
-              );
-            }
-            // Provider part IDs may repeat in later tool steps.
-            const item = {
-              id: `${runId}-reasoning-${reasoningCount}`,
-              startedAt: performance.now(),
-            };
-            reasoning.set(part.id, item);
-            await send({ type: "reasoning_start", id: item.id });
-          } else if (part.type === "reasoning-delta") {
-            const item = reasoning.get(part.id);
-            if (!item) continue;
-            reasoningLength += part.text.length;
-            if (reasoningLength > MAX_REASONING_CHARS) {
-              controller.abort();
-              throw new RunError(
-                "OUTPUT_LIMIT",
-                "The agent reached its thinking limit. Try a more focused request.",
-              );
-            }
-            await send({
-              type: "reasoning_delta",
-              id: item.id,
-              text: part.text,
-            });
-          } else if (part.type === "reasoning-end") {
-            const item = reasoning.get(part.id);
-            if (!item) continue;
-            await send({
-              type: "reasoning_end",
-              id: item.id,
-              durationMs: Math.round(performance.now() - item.startedAt),
-            });
-            reasoning.delete(part.id);
-          } else if (part.type === "text-delta") {
-            outputLength += part.text.length;
-            if (outputLength > 18_000) {
-              controller.abort();
-              throw new RunError(
-                "OUTPUT_LIMIT",
-                "The response was too long. Try a more focused request.",
-              );
-            }
-            if (!refinement) await streamPublicText(part.text);
-          } else if (part.type === "error") streamFailed = part.error;
-          else if (part.type === "abort")
-            throw new RunError(
-              "REQUEST_CANCELLED",
-              "The agent run was cancelled.",
-            );
-          // Raw provider chunks and tool input fragments stay server-side.
-        }
+        await stream.consume(result.fullStream, !refinement);
         signal.throwIfAborted();
-        if (streamFailed && !(needsPriceDecision() && ToolChoiceViolationError.isInstance(streamFailed)))
-          throw streamFailed;
-        if (!state.pendingQuestion && needsPriceDecision()) {
-          state.pendingQuestion = askingPriceQuestion(`${runId}-price`, state.proposedPrice);
-          await send(state.pendingQuestion);
-        }
-        const completeSearch = async (text: string) => {
-          if (!listingMode && !negotiationMode && !negotiations.getCurrent() &&
-              !state.displayedInventoryIds.length &&
-              (state.inventoryCurated || state.webSearched || state.watchQuery)) {
-            const query = request.context?.currentQuery?.trim() || state.watchQuery ||
-              parseSearch(request.context?.originalRequest || request.text).query;
-            const price = request.context?.maxPrice;
-            if (query) await send({
-              type: "watch_suggestion",
-              query: query.slice(0, 120),
-              ...(price !== undefined && price < 1_000_000 && request.context?.budgetSpecified !== false
-                ? { maxPrice: price } : {}),
-            });
-          }
-          await send({ type: "complete", text, sources: [...sources], runId });
-        };
-        if (state.pendingQuestion) {
-          await streamPublicText("", true);
-          const rationale = state.priceReason && !publicText.includes(state.priceReason)
-            ? state.priceReason : "";
-          await completeSearch([publicText.trim(), rationale].filter(Boolean).join("\n\n") || state.pendingQuestion.question);
-          return;
-        }
-        if (refinementReply) {
-          const text = cleanReferences(refinementReply);
-          if (state.displayedInventoryIds.length) await send({
-            type: "offer_suggestion", listingId: state.displayedInventoryIds[0],
-          });
-          await send({ type: "text_delta", text });
-          await completeSearch(text);
-          return;
-        }
-        const text = cleanReferences(await result.text).trim();
-        const finishReason = await result.finishReason;
-        if (finishReason === "tool-calls")
-          throw new RunError(
-            "STEP_LIMIT",
-            "I couldn't finish the comparison.",
-          );
-        if (refinement || !text || finishReason !== "stop")
-          throw new RunError(
-            "INCOMPLETE_RESPONSE",
-            "The agent did not finish its answer. Please try again.",
-          );
-        await streamPublicText("", true);
-        await completeSearch(text);
-      } catch (error) {
-        const providerError =
-          error && typeof error === "object"
-            ? (error as {
-                name?: string;
-                statusCode?: number;
-                message?: string;
-                responseBody?: string;
-              })
-            : {};
-        const providerText = `${providerError.message ?? ""} ${providerError.responseBody ?? ""}`;
-        const hint =
-          providerError.statusCode === 401 || providerError.statusCode === 403
-            ? "The model provider rejected the backend credentials or access permissions."
-            : /tool_choice|tool choice/i.test(providerText)
-              ? "The model provider rejected the requested tool selection."
-              : /rate.?limit|too many requests/i.test(providerText) ||
-                  providerError.statusCode === 429
-                ? "The model provider is rate-limiting requests."
-                : /insufficient|balance|credit/i.test(providerText)
-                  ? "The model provider reported an account or credit limit."
-                  : /fetch|ECONN|network/i.test(providerText)
-                    ? "The backend could not reach the model provider."
-                    : "The model request failed; completed listing matches remain available.";
-        const safe = callerSignal?.aborted
-          ? new RunError("REQUEST_CANCELLED", "The agent run was cancelled.")
-          : timeout.aborted
-            ? new RunError(
-                "AGENT_TIMEOUT",
-                "The agent reached the one-minute limit. Try a narrower request.",
-              )
-            : error instanceof RunError || error instanceof WebSearchError
-              ? error
-              : new RunError(
-                  "AGENT_UNAVAILABLE",
-                  "The model could not finish the comparison. Your listing matches are still available. Try again.",
-                );
-        for (const [id, label] of statuses) await status(id, label, "error");
-        const diagnostic = {
+        if (
+          stream.failure &&
+          !(
+            needsPriceDecision(request, state) &&
+            ToolChoiceViolationError.isInstance(stream.failure)
+          )
+        )
+          throw stream.failure;
+        await finishRun({
+          request,
+          state,
+          mode,
+          hasProposal: Boolean(negotiations.getCurrent()),
+          refinementReply,
+          result,
+          stream,
+          sources,
           runId,
-          code: safe.code,
+        });
+      } catch (error) {
+        await reportRunError(error, {
+          callerSignal,
+          timeout,
+          stream,
+          activity,
           model,
-          errorType: String(providerError.name ?? "RunError")
-            .replace(/[^a-zA-Z0-9_]/g, "")
-            .slice(0, 80),
-          ...(Number.isInteger(providerError.statusCode)
-            ? { providerStatus: providerError.statusCode }
-            : {}),
-          stage: lastStage,
-          elapsedMs: Date.now() - startedAt,
-          hint,
-        };
-        console.error("[agent-run]", JSON.stringify(safe.code === "STEP_LIMIT" ? { ...diagnostic, stepSequence } : diagnostic));
-        await send({
-          type: "error",
-          code: safe.code,
-          message: safe.message,
-          diagnostic,
+          runId,
+          startedAt,
         });
       }
     },

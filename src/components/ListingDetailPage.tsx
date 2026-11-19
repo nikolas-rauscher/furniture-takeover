@@ -68,6 +68,32 @@ function ListingDeal({ view }: { view: StripView }) {
   );
 }
 
+/** One tap opens the offer card with Pako's proposal in Messages. */
+function OfferButton({
+  label,
+  primary,
+  onOffer,
+}: {
+  label: string;
+  primary: boolean;
+  onOffer: () => void;
+}) {
+  return (
+    <Button
+      className={`button ${primary ? "primary full" : "secondary"} listing-detail-offer`}
+      type="button"
+      data-prefetch="messages"
+      onClick={onOffer}
+    >
+      <PakoReaction mood="idle" size={26} still />
+      <span>
+        {label}
+        <span className="listing-detail-offer-agent"> with Pako</span>
+      </span>
+    </Button>
+  );
+}
+
 /** The transport estimate in a facts tile: short, so it stays one line in any font. */
 const TRANSPORT_TILES = {
   car: "Estate car may do",
@@ -242,48 +268,62 @@ export default function ListingDetailPage({
               ) : (
                 <>
                   {deal && <ListingDeal view={deal} />}
-                  <div
-                    className={
-                      (selected.status === "active" || deal) &&
-                      !availabilityPanel
-                        ? "listing-detail-dock"
-                        : undefined
-                    }
-                  >
-                    {availabilityPanel ??
-                      (deal ? (
-                        <Button
-                          animateIcon
-                          className="button primary full"
-                          type="button"
-                          onClick={onOpenChat}
-                        >
-                          <MessageCircle size={17} />
-                          <span>{dockPrice}Open conversation</span>
-                        </Button>
-                      ) : (
-                        <Button
-                          animateIcon
-                          className="button primary full"
-                          type="button"
-                          disabled={selected.status !== "active"}
-                          data-prefetch="messages"
-                          onClick={onMessage}
-                        >
-                          <MessageCircle size={17} />
-                          <span>{dockPrice}Message seller</span>
-                        </Button>
-                      ))}
-                  </div>
-                  {!deal && canOffer(selected) && (
+                  {availabilityPanel ? (
+                    <>
+                      {availabilityPanel}
+                      {canOffer(selected) && (
+                        <OfferButton
+                          label={offerLabel(selected)}
+                          primary={false}
+                          onOffer={onOffer}
+                        />
+                      )}
+                    </>
+                  ) : deal ? (
+                    <div className="listing-detail-dock">
+                      <Button
+                        animateIcon
+                        className="button primary full"
+                        type="button"
+                        onClick={onOpenChat}
+                      >
+                        <MessageCircle size={17} />
+                        <span>{dockPrice}Open conversation</span>
+                      </Button>
+                    </div>
+                  ) : canOffer(selected) ? (
+                    // Pako's offer leads, as on search results; the seller stays one tap away.
+                    <div className="listing-detail-dock listing-detail-buy">
+                      <OfferButton
+                        label={offerLabel(selected)}
+                        primary
+                        onOffer={onOffer}
+                      />
+                      <Button
+                        className="button secondary listing-detail-message"
+                        type="button"
+                        data-prefetch="messages"
+                        aria-label="Message seller"
+                        onClick={onMessage}
+                      >
+                        <MessageCircle size={17} aria-hidden="true" />
+                        <span>
+                          Message
+                          <span className="listing-detail-message-object">
+                            {" "}
+                            seller
+                          </span>
+                        </span>
+                      </Button>
+                    </div>
+                  ) : (
                     <Button
-                      className="button secondary listing-detail-offer"
+                      className="button primary full"
                       type="button"
-                      data-prefetch="messages"
-                      onClick={onOffer}
+                      disabled
                     >
-                      <PakoReaction mood="idle" size={26} still />
-                      {offerLabel(selected)} with Pako
+                      <MessageCircle size={17} />
+                      Message seller
                     </Button>
                   )}
                 </>

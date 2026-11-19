@@ -5,6 +5,7 @@ import {
   actorName,
   draftOf,
   listingInput,
+  logTargetNames,
   matchesFilter,
   newDraft,
   placeOfMeetingPoint,
@@ -72,4 +73,52 @@ test("places and actors read plainly", () => {
     actorName("0f9c2b4e-1111-4222-8333-944445555666"),
     "Admin 0f9c2b4e",
   );
+});
+
+test("the moderation log names reports, listings and blocked students", () => {
+  const studentId = "6d1f2a52-56b1-4a8e-9a39-27a7b3d0c002";
+  const report = {
+    reporterId: "6d1f2a52-56b1-4a8e-9a39-27a7b3d0c003",
+    studentId,
+    reason: "Spam",
+    createdAt: "2026-11-19T21:15:00.000Z",
+    resolvedAt: null,
+  };
+  const names = logTargetNames({
+    reports: [
+      {
+        ...report,
+        id: "6d1f2a52-56b1-4a8e-9a39-27a7b3d0c004",
+        target: {
+          kind: "listing",
+          id: "demo-1",
+          title: "Desk lamp",
+          description: "",
+          hidden: false,
+        },
+      },
+      {
+        ...report,
+        id: "6d1f2a52-56b1-4a8e-9a39-27a7b3d0c005",
+        target: {
+          kind: "message",
+          id: "m-1",
+          conversationId: "c-1",
+          listingId: "demo-2",
+          body: "Pay first",
+        },
+      },
+    ],
+    blocks: [
+      { studentId, name: null, reason: "Spam", at: "2026-11-19T21:16:00.000Z" },
+    ],
+    listings: [{ id: "demo-3", title: "Bookshelf" }],
+  });
+  assert.equal(names.get("6d1f2a52-56b1-4a8e-9a39-27a7b3d0c004"), "Desk lamp");
+  assert.equal(names.get("demo-3"), "Bookshelf");
+  assert.equal(
+    names.get("6d1f2a52-56b1-4a8e-9a39-27a7b3d0c005"),
+    "Message about a listing",
+  );
+  assert.equal(names.get(studentId), "Student 6d1f2a52");
 });

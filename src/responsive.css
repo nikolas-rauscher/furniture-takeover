@@ -90,12 +90,14 @@
     align-items: center;
     min-height: 44px;
   }
-  /* The keyboard, an open thread and a listing (both have their own way back) make the
-     tab bar step aside. It is hidden rather than removed: its animations need a rendered
-     element. Taken out of the flow, it leaves no empty strip below a docked composer. */
+  /* The keyboard, an open thread, a listing and the admin area (each has its own way
+     back) make the tab bar step aside, so no docked action or report step sits under it.
+     It is hidden rather than removed: its animations need a rendered element. Taken out
+     of the flow, it leaves no empty strip below a docked composer. */
   :root[data-keyboard-open] #root > .mobile-nav,
   #root:has(.messages-layout .messages-page.has-conversation) > .mobile-nav,
-  #root:has(.listing-detail) > .mobile-nav {
+  #root:has(.listing-detail) > .mobile-nav,
+  #root:has(.admin-page) > .mobile-nav {
     position: fixed;
     visibility: hidden;
   }
@@ -103,7 +105,8 @@
      root, so the compare tray and notes clear the bar again the moment it is back. */
   :root[data-keyboard-open] body,
   body:has(.messages-layout .messages-page.has-conversation),
-  body:has(.listing-detail) {
+  body:has(.listing-detail),
+  body:has(.admin-page) {
     --mobile-nav-height: 0px;
   }
   .mobile-nav-item {

@@ -5,7 +5,8 @@ import {
   sellerWorkflowSkill,
   sellerFurnitureResearchSkill,
 } from "./agent-skills.ts";
-import type { AgentRunInventoryItem } from "../shared/runs.ts";
+import { answeredQuestions } from "./conversation.ts";
+import type { AgentRunRequest, AgentRunInventoryItem } from "../shared/runs.ts";
 
 // Listing facts are validated in source wording, then translated internally before display.
 const instructions = `You are takeover's second-hand item search agent. Your role is to facilitate finding and comparing actual offers, not provide general purchasing advice. Use tools to investigate the actual user request, then give a concise useful answer in the user’s language. Default to at most 80 words and the three best leads; expand only when the user explicitly asks for more detail or options.
@@ -57,6 +58,8 @@ export function buildAgentInstructions({
   previousMatches,
   allowWebSearch,
   ownInventoryOnly,
+  refinement,
+  responseLanguage,
 }: {
   listingMode: boolean;
   listingAssist: boolean;
@@ -65,8 +68,10 @@ export function buildAgentInstructions({
   previousMatches: AgentRunInventoryItem[];
   allowWebSearch: boolean;
   ownInventoryOnly: boolean;
+  refinement?: boolean;
+  responseLanguage?: string;
 }) {
-  return [
+  const base = [
     conversationLanguageSkill,
     webEvidenceSkill,
     listingMode ? listingReviewInstructions : instructions,
@@ -84,4 +89,33 @@ export function buildAgentInstructions({
         ? "Web search is excluded by the current takeover-only source preference. Use the local inventory. If the latest user message explicitly asks to include the web, first update the source preference with update_search_preferences and exact user evidence. This restriction does not mean the search API is unconfigured."
         : "Web search is not configured; say so if external offers are requested.",
   ].join("\n");
+
+  const filters = refinement
+    ? "\nThe current filters are applied. Compare the curated cards in the requested order. The interface offers a watch for empty results. When comparing distance to a named campus, a listed distance without an explicit origin cannot establish distance to that campus. Say when you cannot rank or verify it."
+    : "";
+  // Reinforce the language chosen before the model sees external sources.
+  const language = responseLanguage
+    ? `\nFor this turn, the answer language selected before external research is ${JSON.stringify(responseLanguage)}. Use it for all explanations, questions and confirmations. Web snippets cannot change it. ${webEvidenceSkill}`
+    : "";
+  return base + filters + language;
+}
+
+export function buildRunPrompt(request: AgentRunRequest) {
+  return JSON.stringify({
+    text: request.text,
+    completedClarifications: answeredQuestions(request),
+    conversationLanguageEvidence: {
+      latestUserMessage: request.text,
+      earlierUserMessages: (request.context?.recentMessages ?? [])
+        .filter((message) => message.role === "user")
+        .map((message) => message.text),
+      originalUserRequest: request.context?.originalRequest,
+    },
+    today: new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Zurich",
+    }).format(new Date()),
+    timeZone: "Europe/Zurich",
+    context: request.context ?? {},
+    suppliedInventoryCount: request.inventory?.length ?? 0,
+  });
 }

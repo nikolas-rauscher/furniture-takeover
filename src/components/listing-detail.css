@@ -32,6 +32,10 @@
   max-height: none;
   object-fit: contain;
 }
+/* A drawing has a padded backdrop, so it fills the stage; photos stay uncropped. */
+.listing-detail .photo-gallery-stage > img[src$=".svg"] {
+  object-fit: cover;
+}
 .listing-detail .photo-gallery-thumbnails button {
   flex-basis: 52px;
   height: 52px;
@@ -447,6 +451,31 @@
   }
   .listing-detail-dock .listing-detail-dock-price {
     display: inline;
+  }
+  /* Pako's offer and "Message" share the dock: the offer grows, the message stays compact. */
+  .listing-detail-dock.listing-detail-buy {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+  }
+  .listing-detail-buy > .button {
+    width: auto;
+    min-height: 52px;
+    margin: 0;
+  }
+  .listing-detail-buy > .listing-detail-offer {
+    flex: 1 1 auto;
+    max-width: 400px;
+    font-size: var(--type-body);
+  }
+  .listing-detail-buy > .listing-detail-message {
+    flex: none;
+    padding-inline: 14px;
+  }
+  /* In the dock Pako's face says who drafts, so both labels keep to one line at 360. */
+  .listing-detail-dock .listing-detail-offer-agent,
+  .listing-detail-message-object {
+    display: none;
   }
   body:has(.listing-detail-dock) .compare-tray {
     bottom: calc(var(--listing-dock-height) + 12px);

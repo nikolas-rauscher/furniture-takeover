@@ -1,6 +1,6 @@
 import { formatPickup } from "./pickupTime.ts";
 import type { DealRole, DealTerms, LateMinutes } from "./deal.ts";
-import type { NegotiationTerms } from "./negotiation.ts";
+import type { NegotiationTerms } from "./negotiationTerms.ts";
 
 /** The words students send about a deal, in one place so every screen says the same. */
 

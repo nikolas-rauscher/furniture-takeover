@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { Button } from "./ui/button";
 import { ArrowLeft, Image as ImageIcon } from "@/components/icons";
 import { money, type Product } from "../../shared/marketplace";
+import { cardImageFor } from "../../shared/listingPhotos";
 import Pako from "./onboarding/Pako";
 import "./compare-page.css";
 
@@ -29,7 +30,13 @@ const PRICE: Fact = { label: "Price", value: (item) => money(item.price) };
 
 function ListingImage({ item }: { item: Product }) {
   return item.image ? (
-    <img src={item.image} alt={item.title} />
+    <img
+      src={cardImageFor(item)}
+      alt={item.title}
+      width={640}
+      height={480}
+      decoding="async"
+    />
   ) : (
     <span className="listing-no-photo">
       <ImageIcon size={28} aria-hidden="true" />
@@ -50,7 +57,7 @@ function FactTable({ items }: { items: Product[] }) {
             <th key={item.id} scope="col">
               <span className="comparison-table-thumb" aria-hidden="true">
                 {item.image ? (
-                  <img src={item.image} alt="" />
+                  <img src={cardImageFor(item)} alt="" decoding="async" />
                 ) : (
                   <ImageIcon size={16} />
                 )}

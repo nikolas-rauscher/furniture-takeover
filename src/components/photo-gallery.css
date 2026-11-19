@@ -103,7 +103,7 @@
 }
 .photo-gallery-actions > span {
   margin-left: auto;
-  color: #777;
+  color: var(--muted);
 }
 .photo-gallery-actions button {
   min-height: 44px;
