@@ -1658,7 +1658,6 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
 .selling-photo-layout .sell-inputs [data-slot="field-label"] { margin: 0; width: 100%; flex-direction: row; color: var(--ink); font-size: var(--type-label); font-weight: 500; line-height: 1.4; }
 .sell-field-optional { margin-left: auto; color: var(--muted); font-size: var(--type-caption); font-weight: 400; }
 .selling-photo-layout .sell-inputs textarea { min-height: 80px; height: 6.25rem; resize: none; padding: 10px 12px; overflow-y: auto; }
-.selling-photo-layout .photo-suggestions-button { min-height: 44px; padding: 8px 12px; margin-top: -8px; font-size: var(--type-label); text-align: left; align-self: flex-start; }
 .selling-photo-layout .pickup-location-heading { gap: 4px 8px; }
 .selling-photo-layout .pickup-location-heading [data-slot="field-label"] { width: auto; }
 .selling-photo-layout .pickup-location-heading button { min-height: 44px; }

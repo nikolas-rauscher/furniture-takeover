@@ -23,7 +23,7 @@ import ListingDetailPage from "./components/ListingDetailPage";
 import ComparePage from "./components/ComparePage";
 import SavedSearchesPage from "./components/SavedSearchesPage";
 import { listingPhotos, MAX_LISTING_PHOTOS } from "../shared/listingPhotos";
-import { readListingPhoto, sortListingPhotos } from "./listingPhotos";
+import { readListingPhoto } from "./listingPhotos";
 import { randomUuid } from "./randomUuid";
 import type { PhotoGroup } from "../shared/agent";
 import WorkspacePage from "./components/WorkspacePage";
@@ -101,15 +101,12 @@ import PhotoSearchButton, { imageFrom } from "./components/PhotoSearchButton";
 import BatchSellFlow, { type BatchStart } from "./components/BatchSellFlow";
 import { batchItem, itemsFromGroups } from "./batchListings";
 import { batchStepNote } from "./sellingCelebration";
-import PhotoSplitQuestion from "./components/PhotoSplitQuestion";
 import AgentSuggestions from "./components/AgentSuggestions";
 import AgentRunPanel from "./components/AgentRunPanel";
 import { useAgentRun } from "./hooks/useAgentRun";
-import {
-  assistRequestKey,
-  useAgentAssist,
-  type TypingAssistRequest,
-} from "./hooks/useAgentAssist";
+import { useAgentAssist } from "./hooks/useAgentAssist";
+import { useListingAnalysis } from "./hooks/useListingAnalysis";
+import type { PakoAbsence } from "./sellGuide";
 import { useListingConversation } from "./hooks/useListingConversation";
 import { useSaved } from "./hooks/useSaved";
 import { useWatches } from "./alerts/useWatches";
@@ -199,15 +196,6 @@ function newDraft(location: string): ListingDraft {
     location,
     pickup: "",
     category: "All",
-  };
-}
-/** The photo analysis of a draft: its photos, the student's note and the pickup place. */
-function listingAssistRequest(draft: ListingDraft): TypingAssistRequest {
-  return {
-    intent: "listing",
-    text: draft.raw,
-    images: listingPhotos(draft),
-    context: { location: draft.location },
   };
 }
 /** What changing a listing's status tells the seller. */
@@ -374,12 +362,9 @@ export default function App({
   }
   const listing = useListingConversation({ draftRef, setDraft });
   const [sellStep, setSellStep] = useState(1);
+  /** The student fills in the listing's details themselves, without Pako. */
+  const [manualListing, setManualListing] = useState(false);
   const [sellMode, setSellMode] = useState<"single" | "batch">("single");
-  // Set when several photos turn out to show different items.
-  const [photoSplit, setPhotoSplit] = useState<{
-    photos: string[];
-    groups: PhotoGroup[];
-  } | null>(null);
   const [batchStart, setBatchStart] = useState<BatchStart | undefined>();
   // Several sorted items, created one after another with the listing agent.
   const [batchQueue, setBatchQueue] = useState<{
@@ -612,6 +597,12 @@ export default function App({
     : undefined;
   const configured =
     agentHealth?.configured === true && signedIn && !quotaExhausted;
+  /** Why Pako cannot help with selling right now; nothing while that is still being checked. */
+  const pakoAbsence: PakoAbsence | undefined = quotaExhausted
+    ? "allowance"
+    : healthError || agentHealth?.configured === false
+      ? "offline"
+      : undefined;
   const normalizedFilterDraft = {
     ...filterDraft,
     category: "All",
@@ -644,15 +635,18 @@ export default function App({
     typing: searchFocused || hasSearchDraft,
     location,
   });
-  const listingAssist = useAgentAssist(
-    configured &&
+  const listingAnalysis = useListingAnalysis({
+    photos: listingPhotos(draft),
+    note: draft.raw,
+    location: draft.location,
+    active:
       view === "sell" &&
       sellMode === "single" &&
       sellStep === 1 &&
-      !busy
-      ? listingAssistRequest(draft)
-      : null,
-  );
+      !editingListing &&
+      !busy,
+    available: configured,
+  });
 
   useEffect(
     () => () => {
@@ -814,8 +808,8 @@ export default function App({
     listing.resetForNewDraft();
     setDraft(newDraft(pickupLocation));
     setSellStep(1);
+    setManualListing(false);
     setSellMode("single");
-    setPhotoSplit(null);
     setBatchStart(undefined);
     setBatchQueue(null);
     setEditingListing(null);
@@ -1338,11 +1332,8 @@ export default function App({
       }
     }
   }
-  /**
-   * `together` skips the different-items check after the seller chose one listing;
-   * `keepTitle` keeps a title the seller already wrote instead of the agent's.
-   */
-  async function generateDraft({ together = false, keepTitle = false } = {}) {
+  /** `keepTitle` keeps a title the seller already wrote instead of the agent's. */
+  async function generateDraft({ keepTitle = false } = {}) {
     // The ref, not state: a batch item may start right after a cancelled read.
     if (imageReader.current) {
       setUploadError("Your photo is still loading.");
@@ -1360,22 +1351,12 @@ export default function App({
     setUploadError("");
     try {
       const photos = listingPhotos(start);
-      if (!together && photos.length > 1) {
-        // Sorting is a hint: if it fails, draft one listing as before.
-        const groups = await sortListingPhotos(photos, controller.signal).catch(
-          () => null,
-        );
-        if (controller.signal.aborted) return;
-        if (groups && groups.length > 1) {
-          setPhotoSplit({ photos, groups });
-          return;
-        }
-      }
       setSellStep(2);
-      const request = listingAssistRequest(start);
-      const response =
-        finishedAnalysis(request) ??
-        (await requestAgentAssist(request, { signal: controller.signal }));
+      const response = await listingAnalysis.ensure({
+        photos,
+        note: start.raw,
+        location: start.location,
+      });
       if (controller.signal.aborted) return;
       const current = draftRef.current;
       const prepared = prepareListingDraft(current, response.metadata);
@@ -1396,26 +1377,6 @@ export default function App({
     } finally {
       if (listingRequest.current === controller) setBusy(false);
     }
-  }
-  /** The photo analysis Pako already finished for exactly these photos, notes and place. */
-  function finishedAnalysis(request: TypingAssistRequest) {
-    return listingAssist.status === "success" &&
-      listingAssist.requestKey === assistRequestKey(request)
-      ? listingAssist.response
-      : null;
-  }
-  function addListingSuggestion(suggestion: string) {
-    setDraft((current) => ({
-      ...current,
-      raw: suggestion.slice(0, 4000),
-    }));
-    window.requestAnimationFrame(() => {
-      const field = document.querySelector<HTMLTextAreaElement>(
-        ".sell-inputs textarea",
-      );
-      field?.focus();
-      field?.setSelectionRange(field.value.length, field.value.length);
-    });
   }
   async function publish(event: FormEvent) {
     event.preventDefault();
@@ -1472,10 +1433,11 @@ export default function App({
     draftId.current = randomUuid();
     setEditingListing(null);
     setUploadError("");
-    setPhotoSplit(null);
     setDraft(next);
-    setSellStep(1);
-    void generateDraft({ together: true, keepTitle: true });
+    // Without Pako the next item opens as plain details for the student to fill in.
+    setManualListing(!configured);
+    setSellStep(configured ? 1 : 2);
+    if (configured) void generateDraft({ keepTitle: true });
   }
   function startBatchListings(drafts: ListingDraft[]) {
     if (!drafts.length) return;
@@ -1563,7 +1525,42 @@ export default function App({
     });
     setSellStep(2);
     setSellMode("single");
+    setManualListing(false);
     setUploadError("");
+  }
+  /** Pako's piles become one listing each, or open for the student to check first. */
+  function separateItems(groups: PhotoGroup[], review: boolean) {
+    const photos = listingPhotos(draftRef.current);
+    if (!review) {
+      startBatchListings(
+        itemsFromGroups(photos, groups, draftRef.current.location).map(
+          (item) => item.draft,
+        ),
+      );
+      return;
+    }
+    setBatchStart({ photos, groups, review });
+    setSellMode("batch");
+  }
+  /** Goes on to the details without Pako, keeping what he made of the photos in step 1. */
+  function fillInDetails() {
+    const analysis =
+      sellStep === 1 && listingAnalysis.insight.status === "ready"
+        ? listingAnalysis.insight.response
+        : undefined;
+    listingRequest.current?.abort();
+    listing.cancel();
+    setDraft((current) => {
+      const prepared = analysis
+        ? prepareListingDraft(current, analysis.metadata)
+        : current;
+      return {
+        ...prepared,
+        description: prepared.description.trim() || current.raw,
+      };
+    });
+    setManualListing(true);
+    setSellStep(2);
   }
   async function setStatus(id: string, status: Product["status"]) {
     const listing = own.find((item) => item.id === id);
@@ -1649,6 +1646,8 @@ export default function App({
         batch: sellBatch,
       })}
       configured={configured}
+      asleep={quotaExhausted}
+      onManual={fillInDetails}
     />
   );
   const productCard = (item: Product, arriving = false) => (
@@ -2465,12 +2464,18 @@ export default function App({
                   photoReading={photoReading}
                   uploadError={uploadError}
                   liveAgent={configured}
-                  listingAssist={listingAssist}
+                  photoInsight={listingAnalysis.insight}
+                  pakoAbsence={pakoAbsence}
+                  pakoBack={quotaResets || undefined}
+                  manual={manualListing}
+                  onFillIn={fillInDetails}
+                  onRetryPako={refreshHealth}
                   onBack={() =>
                     transitionPage("nav-back", () => {
                       if (sellStep === 2 && !editingListing) {
                         listingRequest.current?.abort();
                         listing.resetConversation();
+                        setManualListing(false);
                         setSellStep(1);
                       } else if (editingListing) navigate("account");
                       else if (batchQueue) backToBatchSorting();
@@ -2513,7 +2518,19 @@ export default function App({
                   onAccount={() => navigate("settings")}
                   onPhotoSelected={upload}
                   onCreateDraft={() => void generateDraft()}
-                  onSuggestionSelected={addListingSuggestion}
+                  sortFailed={listingAnalysis.sortFailed}
+                  onSeparate={separateItems}
+                  onKeepTogether={listingAnalysis.keepTogether}
+                  onSortYourself={() =>
+                    separateItems(
+                      listingPhotos(draftRef.current).map((_, index) => ({
+                        photos: [index],
+                        label: "",
+                      })),
+                      true,
+                    )
+                  }
+                  onNotesDone={listingAnalysis.flushNote}
                   onPublish={publish}
                   batch={sellBatch}
                   onSellSeveral={
@@ -2527,36 +2544,6 @@ export default function App({
                         }
                   }
                 />
-                {photoSplit && (
-                  <PhotoSplitQuestion
-                    photos={photoSplit.photos}
-                    groups={photoSplit.groups}
-                    onClose={() => setPhotoSplit(null)}
-                    onTogether={() => {
-                      setPhotoSplit(null);
-                      void generateDraft({ together: true });
-                    }}
-                    onSeparate={(groups, review) => {
-                      if (!review) {
-                        startBatchListings(
-                          itemsFromGroups(
-                            photoSplit.photos,
-                            groups,
-                            draft.location,
-                          ).map((item) => item.draft),
-                        );
-                        return;
-                      }
-                      setBatchStart({
-                        photos: photoSplit.photos,
-                        groups,
-                        review,
-                      });
-                      setPhotoSplit(null);
-                      setSellMode("batch");
-                    }}
-                  />
-                )}
                 {connectionStatus}
               </>
             </WorkspacePage>

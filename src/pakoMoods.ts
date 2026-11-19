@@ -312,6 +312,7 @@ const TRAY_MOODS: Record<Exclude<TrayPhase, "working">, PakoMood> = {
   asking: "listen",
   done: "happy",
   error: "dizzy",
+  asleep: "sleep",
 };
 
 /** Pako in the tray: he works like in the thread, listens while he asks and reacts at the end. */
@@ -348,6 +349,8 @@ export function listingAnnouncement(
         : "";
     case "done":
       return spoken(turn.questions.length ? "" : answer, tray.closing);
+    case "asleep":
+      return spoken(tray.closing);
     default:
       return "";
   }

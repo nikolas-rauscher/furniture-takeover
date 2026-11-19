@@ -7,18 +7,14 @@ export type AgentAssistState = {
   status: "idle" | "loading" | "success" | "error";
   response: AssistResponse | null;
   error: string | null;
-  /** The request the status and response belong to. */
-  requestKey: string | null;
   retry: () => void;
 };
 
-type Result = Omit<AgentAssistState, "retry">;
+type Result = Omit<AgentAssistState, "retry"> & { requestKey: string | null };
 
 // Keep this explicit: object identity must not trigger another API call, and a
 // photo is sent only when the caller explicitly opts in for a listing request.
-export function assistRequestKey(
-  request: TypingAssistRequest | null,
-): string | null {
+function requestKeyFor(request: TypingAssistRequest | null): string | null {
   if (
     !request ||
     (request.text.trim().length < 3 &&
@@ -49,7 +45,7 @@ export function assistRequestKey(
 export function useAgentAssist(
   request: TypingAssistRequest | null,
 ): AgentAssistState {
-  const requestKey = assistRequestKey(request);
+  const requestKey = requestKeyFor(request);
   const [attempt, setAttempt] = useState(0);
   const completed = useRef<{
     requestKey: string;
@@ -121,8 +117,20 @@ export function useAgentAssist(
   // Pausing a visited tab keeps its completed suggestions in place. An empty
   // or changed input still hides results that belong to the previous text.
   if (!request && (result.status === "success" || result.status === "error"))
-    return { ...result, retry };
-  if (!requestKey || result.requestKey !== requestKey)
-    return { status: "idle", response: null, error: null, requestKey, retry };
-  return { ...result, retry };
+    return {
+      status: result.status,
+      response: result.response,
+      error: result.error,
+      retry,
+    };
+  if (!requestKey)
+    return { status: "idle", response: null, error: null, retry };
+  if (result.requestKey !== requestKey)
+    return { status: "idle", response: null, error: null, retry };
+  return {
+    status: result.status,
+    response: result.response,
+    error: result.error,
+    retry,
+  };
 }

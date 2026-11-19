@@ -7,7 +7,9 @@ import {
 import {
   asksPrice,
   closingLine,
+  PICKUP_QUESTION,
   priceSuggestion,
+  restingLine,
   trayPhase,
 } from "../listingQuestions";
 import { listingAnnouncement } from "../pakoMoods";
@@ -30,6 +32,10 @@ type Props = {
   saveAction: string;
   /** Pako can be reached; without him the composer rests. */
   configured: boolean;
+  /** The day's allowance is used up. */
+  asleep: boolean;
+  /** The student goes on without Pako and fills in the details. */
+  onManual: () => void;
 };
 
 /**
@@ -44,21 +50,29 @@ export default function ListingConversation({
   editing,
   saveAction,
   configured,
+  asleep,
+  onManual,
 }: Props) {
   const turn = starting ? startingListingTurn : listing.state;
   const question = listing.activeQuestion;
-  const queue = listing.state.questions;
+  const queue = listing.queue;
+  const fromRun = queue.filter((item) => item.id !== PICKUP_QUESTION.id);
   const phase = trayPhase({
     starting,
     status: listing.state.status,
     asking: question !== undefined,
+    asleep,
   });
-  const closing = closingLine(missingDetails(draft), saveAction);
+  const closing =
+    phase === "asleep"
+      ? restingLine(saveAction)
+      : closingLine(missingDetails(draft), saveAction);
   const announcement = listingAnnouncement(turn, {
     phase,
     question: question && {
       text: plainAnswer(question.question),
-      first: queue[0]?.id === question.id,
+      // His explanation is read with the first question his run asks.
+      first: fromRun[0]?.id === question.id,
     },
     closing: `${closing.title} ${closing.text}`,
   });
@@ -87,11 +101,16 @@ export default function ListingConversation({
                   : undefined
               }
               focusRequest={listing.priceReviews}
+              waiting={listing.running && !listing.askingOwnQuestion}
+              onPickupDate={
+                listing.askingOwnQuestion ? listing.choosePickupDate : undefined
+              }
               onChoose={listing.choose}
               onPrice={listing.choosePrice}
               onSkip={listing.skip}
               onLater={listing.decideLater}
               onRetry={listing.retry}
+              onManual={onManual}
             />
             <AgentComposer
               value={listing.input}

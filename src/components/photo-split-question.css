@@ -1,18 +1,7 @@
-/* Pako asks whether the photos show several things; each pile is a little stack of photos. */
+/* The piles Pako sorted the photos into, under his question; each pile is a little stack of photos. */
 .split-question {
   display: grid;
-  gap: 16px;
-}
-.split-question-pako {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-.split-question-pako > p {
-  margin: 0;
-  font-size: var(--type-body);
-  font-weight: 600;
-  line-height: 1.45;
+  gap: 12px;
 }
 .split-question-groups {
   display: grid;
@@ -65,12 +54,8 @@
   color: var(--muted);
   font-size: var(--type-caption);
 }
-.split-question-actions {
-  display: grid;
-  gap: 10px;
-}
 .split-question .split-question-more {
-  justify-self: center;
+  justify-self: start;
 }
 .split-question-recount {
   display: grid;
