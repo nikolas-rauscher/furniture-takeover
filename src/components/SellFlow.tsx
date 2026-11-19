@@ -42,8 +42,11 @@ import ListingChecklist, {
   type ListingCheck,
 } from "./ListingChecklist";
 import WorkspaceHeader from "./WorkspaceHeader";
-import Guide, { type GuideBubble } from "./onboarding/Guide";
-import type { PakoMood } from "./onboarding/storyTypes";
+import Guide from "./onboarding/Guide";
+import type { PhotoInsight } from "../hooks/useListingAnalysis";
+import { useMomentPassed } from "../hooks/useMomentPassed";
+import { isReaction, REACTION_MS } from "../pakoMoods";
+import { sellGuide, WRITE_ACTION } from "../sellGuide";
 import { listingPhotos } from "../../shared/listingPhotos";
 import "./sell-flow.css";
 
@@ -189,68 +192,6 @@ function DescriptionPreview({ text }: { text: string }) {
   );
 }
 
-type PhotoStepGuide = { mood: PakoMood; bubble: GuideBubble };
-
-/**
- * What Pako says beside the photos: what to do next, or what he is busy with.
- * He sleeps once the day's allowance is used and listens while details are written.
- */
-function photoStepGuide({
-  photoCount,
-  photoReading,
-  busy,
-  quota,
-  typing,
-}: {
-  photoCount: number;
-  photoReading: boolean;
-  busy: boolean;
-  quota?: AgentQuota;
-  /** The Details field has focus or text. */
-  typing: boolean;
-}): PhotoStepGuide {
-  if (busy)
-    return {
-      mood: "work",
-      bubble: {
-        id: "writing",
-        title: "Writing your listing…",
-        text: "I'm looking at your photos and notes.",
-      },
-    };
-  if (photoReading)
-    return {
-      mood: "work",
-      bubble: { id: "reading", text: "Loading your photo…" },
-    };
-  if (quota?.remaining === 0)
-    return {
-      mood: "sleep",
-      bubble: {
-        id: "quota",
-        title: "That's all for today",
-        text: "I've used today's writing allowance. Try again tomorrow.",
-      },
-    };
-  if (photoCount === 0)
-    return {
-      mood: typing ? "listen" : "wave",
-      bubble: {
-        id: "empty",
-        title: "Snap what's left in your room",
-        text: "Add a few photos. I'll write the title, description and price.",
-      },
-    };
-  return {
-    mood: typing ? "listen" : "happy",
-    bubble: {
-      id: "ready",
-      title: "Looking good!",
-      text: "Add a note if you like, then tap Create draft.",
-    },
-  };
-}
-
 type SellFlowProps = {
   cloud?: boolean;
   draft: ListingDraft;
@@ -261,6 +202,8 @@ type SellFlowProps = {
   photoReading?: boolean;
   uploadError: string;
   liveAgent: boolean;
+  /** What Pako made of the photos so far. */
+  photoInsight: PhotoInsight;
   agentConversation?: ReactNode;
   agentTools?: ReactNode;
   agentWorking?: boolean;
@@ -298,6 +241,7 @@ export default function SellFlow({
   photoReading = false,
   uploadError,
   liveAgent,
+  photoInsight,
   agentConversation,
   agentTools,
   agentWorking = false,
@@ -371,13 +315,23 @@ export default function SellFlow({
   const notesFocused = useFocused(notesField);
   const canCreateDraft =
     liveAgent && !unavailable && photos.length > 0 && quota?.remaining !== 0;
-  const guide = photoStepGuide({
+  const guide = sellGuide({
     photoCount: photos.length,
     photoReading,
-    busy,
-    quota,
-    typing: notesFocused || draft.raw.trim() !== "",
+    preparing: busy,
+    allowanceUsed: quota?.remaining === 0,
+    hasPlace: Boolean(draft.location.trim()),
+    typing: notesFocused,
+    insight: photoInsight,
   });
+  // A reaction plays once for its moment, then Pako rests.
+  const reacted = useMomentPassed(
+    isReaction(guide.mood)
+      ? { id: guide.bubble.id, ms: REACTION_MS[guide.mood] }
+      : null,
+  );
+  /** Pako recognised the item, so the button invites the tap that writes the listing. */
+  const inviting = photoInsight.status === "ready" && guide.mood !== "think";
   const photoEditor = (
     <PhotoGallery
       images={photos}
@@ -444,7 +398,19 @@ export default function SellFlow({
         <div className="sell-layout" aria-busy={unavailable}>
           <div className="sell-photo-content" ref={photoContent}>
             <div className="sell-guide">
-              <Guide mood={guide.mood} layout="guide" bubble={guide.bubble} />
+              <Guide
+                mood={reacted ? "idle" : guide.mood}
+                layout="guide"
+                bubble={guide.bubble}
+              />
+              {photoInsight.status === "failed" && (
+                <Button
+                  className="button secondary small sell-guide-retry"
+                  onClick={photoInsight.retry}
+                >
+                  Try again
+                </Button>
+              )}
             </div>
             <div className="photo-upload-panel">
               {photos.length ? (
@@ -516,6 +482,7 @@ export default function SellFlow({
               type="submit"
               form={formId}
               disabled={!canCreateDraft}
+              data-invite={(inviting && canCreateDraft) || undefined}
             >
               {unavailable ? (
                 <LoaderCircle animate size={18} aria-hidden="true" />
@@ -526,7 +493,7 @@ export default function SellFlow({
                 ? "Loading photo…"
                 : busy
                   ? "Preparing draft…"
-                  : "Create draft"}
+                  : WRITE_ACTION}
             </Button>
           </div>
         </div>

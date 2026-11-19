@@ -2437,6 +2437,7 @@ export default function App({
                   photoReading={photoReading}
                   uploadError={uploadError}
                   liveAgent={configured}
+                  photoInsight={listingAnalysis.insight}
                   onBack={() =>
                     transitionPage("nav-back", () => {
                       if (sellStep === 2 && !editingListing) {

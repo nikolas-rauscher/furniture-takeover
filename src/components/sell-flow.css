@@ -387,3 +387,30 @@
     animation-timing-function: steps(1, end);
   }
 }
+
+/* Once Pako has recognised the item, the main button lifts once and glows, inviting the tap. */
+.sell-photo-footer .button[data-invite] {
+  animation: sell-invite 900ms var(--ease-out) 900ms both;
+}
+@keyframes sell-invite {
+  40% {
+    translate: 0 -3px;
+    box-shadow:
+      0 calc(var(--button-depth) + 3px) 0 var(--button-lip),
+      0 0 0 6px color-mix(in srgb, var(--blue) 18%, transparent);
+  }
+}
+/* Try again sits under the bubble, beside Pako. */
+.sell-guide > .sell-guide-retry {
+  margin: 8px 0 0 calc(84px + 10px);
+}
+@media (max-width: 760px) {
+  .sell-guide > .sell-guide-retry {
+    margin-left: calc(60px + 10px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sell-photo-footer .button[data-invite] {
+    animation: none;
+  }
+}

@@ -18,7 +18,8 @@ export type PhotoInsight =
   | { status: "empty" }
   /** He looks at the photos, or only at a changed note. */
   | { status: "reading"; noteOnly: boolean }
-  | { status: "ready"; response: AssistResponse }
+  /** He looked at the photos together with this note. */
+  | { status: "ready"; response: AssistResponse; note: string }
   | { status: "failed"; error: string; retry: () => void }
   | { status: "unavailable" };
 
@@ -169,7 +170,11 @@ export function useListingAnalysis({
     : !available
       ? { status: "unavailable" }
       : settled && ready?.key === key
-        ? { status: "ready", response: ready.response }
+        ? {
+            status: "ready",
+            response: ready.response,
+            note: settledNote.trim(),
+          }
         : settled && failed?.key === key
           ? { status: "failed", error: failed.error, retry }
           : {
