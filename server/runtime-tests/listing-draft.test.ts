@@ -272,3 +272,31 @@ test("listing inputs bound photo hints, queued questions and editable tap fields
     }).success,
   );
 });
+
+test("polishing suppresses skipped topics and fields in main and queued questions", async () => {
+  const charger = { listingField: "description", question: "Does it come with a power adapter?" };
+  const model = new MockLanguageModelV4({
+    doStream: [
+      toolCall("ask_user", charger, "reworded"),
+      toolCall("ask_user", {
+        question: "How long does the battery last?",
+        listingField: "other",
+        followUps: [charger, { listingField: "dimensions", question: "How big is it?" }],
+      }, "battery"),
+    ],
+  });
+  const events = await eventsFor(createAgentRuntime({ apiKey: "test", modelImpl: model }), {
+    text: "Polish the description",
+    context: {
+      intent: "listing_assist",
+      currentDraft: { ...blankDraft, title: "Laptop", price: 40 },
+      skippedQuestions: [
+        { question: "Is the charger included?", listingField: "other" },
+        { question: "What are its measurements?", listingField: "dimensions" },
+      ],
+    },
+  });
+  const questions = events.filter((event) => event.type === "question");
+  assert.deepEqual(questions.map((question) => question.id), ["battery"]);
+  assert.equal(questions[0].followUps, undefined);
+});

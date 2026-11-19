@@ -60,6 +60,7 @@ export type AgentRunRequest = {
     currentDraft?: AgentListingDraft;
     previousQuestion?: string;
     negotiation?: Negotiation;
+    skippedQuestions?: Pick<AgentListingQuestion, "question" | "listingField">[];
     answeredQuestions?: { question: string; answer: string }[];
     recentMessages?: { role: "user" | "assistant"; text: string }[];
   };
@@ -119,4 +120,4 @@ export type AgentRuntimeHealth = {
   model: string;
   webSearchConfigured: boolean;
 };
-import type { AgentActionEvent, AgentListingDraft } from "./actions.ts";
+import type { AgentActionEvent, AgentListingDraft, AgentListingQuestion } from "./actions.ts";

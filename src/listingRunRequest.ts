@@ -74,6 +74,11 @@ export function listingRunRequest({
       ...(note ? { originalRequest: note.slice(0, 4000) } : {}),
       previousAnswer: conversation.text.slice(0, 6000),
       answeredQuestions: answeredQuestions(turns),
+      skippedQuestions: turns.flatMap((turn) =>
+        turn.questions
+          .filter((item) => turn.answers[item.id] === "Skipped")
+          .map(({ question, listingField }) => ({ question, listingField })),
+      ),
       recentMessages: recentMessages(turns),
       ...(options.question ? { previousQuestion: options.question } : {}),
       ...(options.start ? { listingStart: true } : {}),
