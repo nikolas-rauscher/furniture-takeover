@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "@/components/icons";
 import Pako from "./onboarding/Pako";
+import type { PakoMood } from "./onboarding/storyTypes";
 import { Button } from "./ui/button";
 import "./toast.css";
 
@@ -14,12 +15,19 @@ export type ToastAction = {
 type ToastProps = {
   /** An empty message hides the toast. */
   message: string;
+  /** How Pako brings the note: calm by default, in love when a favourite is saved. */
+  mood?: PakoMood;
   action?: ToastAction;
   onDismiss: () => void;
 };
 
 /** Pako brings a short note that springs up above the page and leaves on its own. */
-export default function Toast({ message, action, onDismiss }: ToastProps) {
+export default function Toast({
+  message,
+  mood = "idle",
+  action,
+  onDismiss,
+}: ToastProps) {
   return (
     <AnimatePresence>
       {message && (
@@ -37,7 +45,7 @@ export default function Toast({ message, action, onDismiss }: ToastProps) {
           }}
           transition={{ type: "spring", stiffness: 420, damping: 30 }}
         >
-          <Pako mood="idle" size={34} className="toast-pako" />
+          <Pako mood={mood} size={34} className="toast-pako" />
           <span className="toast-message">{message}</span>
           {action && (
             <Button

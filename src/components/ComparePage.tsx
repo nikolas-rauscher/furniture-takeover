@@ -90,7 +90,7 @@ export default function ComparePage({
         </div>
       ) : (
         <div className="compare-empty">
-          <Pako mood="idle" size={80} />
+          <Pako mood="wave" size={80} />
           <h2>Select listings to compare</h2>
           <p>Tap the compare tile on up to three listings.</p>
           <Button className="button secondary" onClick={() => onBack()}>

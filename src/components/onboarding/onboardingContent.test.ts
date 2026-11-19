@@ -10,6 +10,7 @@ import {
   itemById,
   items,
   offersFor,
+  placeName,
   places,
   storyActs,
 } from "./onboardingContent.ts";
@@ -104,4 +105,14 @@ test("every option has its own id and unknown ids fail loudly", () => {
 test("every place can be stored as the search area", () => {
   for (const place of places)
     assert.ok(isSearchArea({ location: place.searchArea, radius: 5 }));
+});
+
+test("Pako names an intro place by its own name and any other area by its first part", () => {
+  assert.equal(placeName("FMEL Vortex, Chavannes-près-Renens"), "Vortex");
+  assert.equal(placeName("EPFL, Ecublens"), "EPFL");
+  assert.equal(placeName("Lausanne"), "Lausanne");
+  assert.equal(
+    placeName("Avenue de Morges 12, Lausanne"),
+    "Avenue de Morges 12",
+  );
 });

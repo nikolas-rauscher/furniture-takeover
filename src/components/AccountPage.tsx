@@ -28,8 +28,11 @@ import {
 } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { money, type Product } from "../../shared/marketplace";
+import { useMomentPassed } from "../hooks/useMomentPassed";
 import Confetti from "./onboarding/Confetti";
-import Pako from "./onboarding/Pako";
+import Pako, { PAKO_FLIGHT_MS } from "./onboarding/Pako";
+import type { PakoMood } from "./onboarding/storyTypes";
+import PakoReaction from "./PakoReaction";
 
 export type AccountTab = "favorites" | "listings" | "archive";
 
@@ -50,6 +53,7 @@ function statusLabel(status: Product["status"], cloud: boolean) {
 }
 
 type Celebration = { title: string; text: string };
+type PublishCelebration = Celebration & { listingId: string };
 
 const CELEBRATIONS: Record<"cloud" | "local", Celebration> = {
   cloud: {
@@ -61,17 +65,21 @@ const CELEBRATIONS: Record<"cloud" | "local", Celebration> = {
 
 /**
  * How many of the visitor's listings found a new home, as a friendly progress
- * bar. Right after publishing, the same card celebrates: Pako cheers once, with
- * confetti from his box, instead of a second Pako repeating the news.
+ * bar. Right after publishing, the same card celebrates instead of a second
+ * Pako repeating the news: he flies the listing in on beating lids, lands and
+ * cheers while confetti leaves his box.
  */
 function SellingProgress({
   listings,
   celebration,
 }: {
   listings: Product[];
-  celebration: Celebration | null;
+  celebration: PublishCelebration | null;
 }) {
   const headingId = useId();
+  const landed = useMomentPassed(
+    celebration && { id: celebration.listingId, ms: PAKO_FLIGHT_MS },
+  );
   const count = (status: Product["status"]) =>
     listings.filter((item) => item.status === status).length;
   const sold = count("sold");
@@ -79,18 +87,22 @@ function SellingProgress({
   const counts = (["active", "reserved", "sold"] as const).filter(
     (status) => count(status) > 0,
   );
+  const pakoMood: PakoMood = celebration
+    ? landed
+      ? "cheer"
+      : "deliver"
+    : sold === total
+      ? "happy"
+      : "idle";
   return (
     <section className="selling-progress" aria-labelledby={headingId}>
       <span className="selling-progress-pako">
-        {celebration && (
+        {celebration && landed && (
           <span className="selling-progress-burst" aria-hidden="true">
             <Confetti />
           </span>
         )}
-        <Pako
-          mood={celebration ? "cheer" : sold === total ? "happy" : "idle"}
-          size={56}
-        />
+        <Pako mood={pakoMood} size={56} />
       </span>
       <div className="selling-progress-body" aria-live="polite">
         <h2 id={headingId}>
@@ -389,7 +401,7 @@ export default function AccountPage({
   ) : (
     <div className="empty-state">
       <span className="empty-state-pako">
-        <Pako mood={filtered ? "idle" : "wave"} size={96} />
+        <PakoReaction mood={filtered ? "sad" : "wave"} size={96} />
       </span>
       <h2>
         {filtered
@@ -469,8 +481,11 @@ export default function AccountPage({
               <SellingProgress
                 listings={visibleListings}
                 celebration={
-                  items.some((item) => item.id === publishedId)
-                    ? CELEBRATIONS[cloud ? "cloud" : "local"]
+                  publishedId && items.some((item) => item.id === publishedId)
+                    ? {
+                        ...CELEBRATIONS[cloud ? "cloud" : "local"],
+                        listingId: publishedId,
+                      }
                     : null
                 }
               />

@@ -12,7 +12,7 @@ import { money, type Product } from "../../shared/marketplace";
 import { relatedListings } from "../../shared/relatedListings";
 import PhotoGallery from "./PhotoGallery";
 import SaveToggle from "./SaveToggle";
-import Pako from "./onboarding/Pako";
+import PakoReaction from "./PakoReaction";
 import "./listing-detail.css";
 
 type ListingDetailPageProps = {
@@ -52,7 +52,7 @@ export default function ListingDetailPage({
   if (!selected)
     return (
       <div className="listing-detail-missing">
-        <Pako mood="idle" size={88} />
+        <PakoReaction mood="sad" size={88} />
         <h1>Listing not found</h1>
         <p>It may have been sold or removed in the meantime.</p>
         <Button className="button secondary" onClick={onBack}>

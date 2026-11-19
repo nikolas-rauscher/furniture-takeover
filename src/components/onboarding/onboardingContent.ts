@@ -310,6 +310,10 @@ function byId<T extends { id: string }>(list: T[], id: T["id"]): T {
 }
 
 export const placeById = (id: PlaceId) => byId(places, id);
+/** How Pako names a search area: an intro place by its own name, any other area by its first part. */
+export const placeName = (searchArea: string) =>
+  places.find((place) => place.searchArea === searchArea)?.name ??
+  searchArea.split(",")[0].trim();
 export const itemById = (id: ItemId) => byId(items, id);
 export const intentById = (id: Intent) => byId(intentOptions, id);
 

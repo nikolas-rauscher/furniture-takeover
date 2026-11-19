@@ -96,9 +96,10 @@ const hopShadow = (airborne: number, repeat: boolean): TargetAndTransition => ({
   transition: hopTiming(repeat),
 });
 
-/** Take off, hover twice on beating flaps, land with a squash, rest. */
+/** One delivery flight: take off, hover twice on beating flaps, land with a squash, rest. */
+export const PAKO_FLIGHT_MS = 2400;
 const DELIVER: Transition = {
-  duration: 2.4,
+  duration: PAKO_FLIGHT_MS / 1000,
   times: [0, 0.16, 0.32, 0.48, 0.64, 0.84, 1],
   repeat: Infinity,
   ease: "easeInOut",

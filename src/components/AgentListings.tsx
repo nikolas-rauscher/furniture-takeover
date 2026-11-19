@@ -13,6 +13,10 @@ import { useReducedMotion } from "motion/react";
 import type { CSSProperties } from "react";
 import "./agent-listings.css";
 
+/** Pako can draft an offer only for someone else's listing that is still active. */
+export const canOffer = (item: Product) =>
+  !item.own && item.status === "active";
+
 export default function AgentListings({
   listings,
   ranked,
@@ -29,7 +33,7 @@ export default function AgentListings({
   const reducedMotion = useReducedMotion();
   /** Cards rise in one after another; the delay stops growing after a few. */
   const card = (item: Product, index: number) => {
-    const canOffer = !item.own && item.status === "active";
+    const offerable = canOffer(item);
     const details = [
       item.condition,
       item.dimensions,
@@ -82,9 +86,9 @@ export default function AgentListings({
               className="agent-product-offer"
               variant="outline"
               size="sm"
-              onClick={() => (canOffer ? onOffer(item) : onOpen(item))}
+              onClick={() => (offerable ? onOffer(item) : onOpen(item))}
             >
-              {!canOffer
+              {!offerable
                 ? "View listing"
                 : item.price === 0
                   ? "Plan pickup with Pako"

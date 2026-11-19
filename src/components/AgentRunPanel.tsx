@@ -12,8 +12,7 @@ import AgentRunDetails from "./AgentRunDetails";
 import AgentSources from "./AgentSources";
 import AgentWebResults from "./AgentWebResults";
 import { Ellipsis } from "./icons";
-import Pako from "./onboarding/Pako";
-import type { PakoMood } from "./onboarding/storyTypes";
+import PakoReaction from "./PakoReaction";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +22,7 @@ import {
 import type { AgentRunState } from "../hooks/useAgentRun";
 import { safeSourceUrl } from "../api/runs";
 import { splitSearchAnswer } from "./agentAnswer";
+import { agentTurnPako, workingLine } from "../pakoMoods";
 import "./agent-run-panel.css";
 
 type AgentRunPanelProps = AgentActionHandlers & {
@@ -33,21 +33,21 @@ type AgentRunPanelProps = AgentActionHandlers & {
   className?: string;
   localListings?: ReactNode;
   outcome?: ReactNode;
+  /** Replies the student can tap; they appear once the answer is fully shown. */
+  quickReplies?: ReactNode;
+  /** The search area as Pako names it while he searches. */
+  place?: string;
   showHistory?: boolean;
   splitSearchResults?: boolean;
   conversational?: boolean;
   externalComposer?: boolean;
   readOnly?: boolean;
+  /** The composer has text, so Pako listens once the turn has ended. */
+  typing?: boolean;
   appliedActionIds?: readonly string[];
   undoneActionIds?: readonly string[];
   actionNotices?: Readonly<Record<string, string>>;
 };
-
-/** Pako works while the run is busy and hops once the answer is in. */
-function pakoMood(status: AgentRunState["status"]): PakoMood {
-  if (status === "running") return "work";
-  return status === "complete" ? "happy" : "idle";
-}
 
 export default function AgentRunPanel({
   state,
@@ -57,11 +57,14 @@ export default function AgentRunPanel({
   className = "",
   localListings,
   outcome,
+  quickReplies,
+  place,
   showHistory = true,
   splitSearchResults = false,
   conversational = false,
   externalComposer = false,
   readOnly = false,
+  typing = false,
   onAnswer,
   onSkipQuestion,
   onApplyAction,
@@ -132,9 +135,16 @@ export default function AgentRunPanel({
 
   // Without steps or reasoning, the activity line itself names the status.
   // Only the live turn moves; earlier turns keep a resting Pako beside them.
+  const pako = agentTurnPako(state, { textShown: displayText, typing });
+  const pakoLine = running ? workingLine(state, place) : undefined;
   const avatar = (
     <span className="agent-pako" aria-hidden="true">
-      <Pako size={42} mood={pakoMood(state.status)} still={readOnly} />
+      <PakoReaction
+        size={42}
+        mood={pako.mood}
+        talking={pako.talking}
+        still={readOnly}
+      />
     </span>
   );
   const detailsShowStatus =
@@ -230,7 +240,7 @@ export default function AgentRunPanel({
           key={`details-${state.turnKey || state.id}`}
           reasoning={state.reasoning}
           steps={state.steps}
-          running={running}
+          workingLine={pakoLine}
           heading={heading}
           actions={actions}
           status={statusLabel}
@@ -254,11 +264,7 @@ export default function AgentRunPanel({
               {turn.request && (
                 <p className="agent-run-history-request">{turn.request}</p>
               )}
-              <AgentRunDetails
-                reasoning={turn.reasoning}
-                steps={turn.steps}
-                running={false}
-              />
+              <AgentRunDetails reasoning={turn.reasoning} steps={turn.steps} />
               {turn.text && (
                 <div className="agent-run-answer">
                   {answerBlocks(turn.text, turn.sources)}
@@ -296,7 +302,7 @@ export default function AgentRunPanel({
           key={`details-${state.turnKey || state.id}`}
           reasoning={state.reasoning}
           steps={state.steps}
-          running={running}
+          workingLine={pakoLine}
         />
       )}
       {splitSearchResults &&
@@ -426,6 +432,7 @@ export default function AgentRunPanel({
         />
       ))}
       {outcome}
+      {!textArriving && quickReplies}
       {state.error && (
         <div className="agent-run-recovery">
           <p className="agent-run-error" role="alert">
@@ -471,9 +478,21 @@ export default function AgentRunPanel({
       )}
     </section>
   );
-  return compact ? (
-    panel
-  ) : (
-    <AutoHeight className="auto-height">{panel}</AutoHeight>
+  // Announced from outside the panel: assistive technology holds back live
+  // updates inside a region that is marked busy while the agent works.
+  const announcement = pakoLine !== undefined && (
+    <p className="sr-only" aria-live="polite">
+      {pakoLine}
+    </p>
+  );
+  return (
+    <>
+      {compact ? (
+        panel
+      ) : (
+        <AutoHeight className="auto-height">{panel}</AutoHeight>
+      )}
+      {announcement}
+    </>
   );
 }

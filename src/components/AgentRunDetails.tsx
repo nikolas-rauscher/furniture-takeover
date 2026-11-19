@@ -16,26 +16,22 @@ import {
 export default function AgentRunDetails({
   reasoning = [],
   steps = [],
-  running,
+  workingLine,
   heading,
   actions,
   status,
 }: {
   reasoning?: readonly AgentReasoningPart[];
   steps?: readonly AgentRunStep[];
-  running: boolean;
+  /** What Pako is doing while the agent works; absent once the turn has stopped. */
+  workingLine?: string;
   heading?: ReactNode;
   actions?: ReactNode;
   status?: string;
 }) {
   const [open, setOpen] = useState<boolean>();
+  const running = workingLine !== undefined;
   const taskSteps = visibleTaskSteps(steps);
-  // While the agent works, one line names the current step and updates in place;
-  // an open list would grow step by step and push the results below it around.
-  const currentStep = running
-    ? ([...taskSteps].reverse().find((step) => step.state === "running") ??
-      taskSteps.at(-1))
-    : undefined;
   const hasReasoning = reasoning.some(
     (part) => part.text || (running && part.status === "streaming"),
   );
@@ -79,21 +75,21 @@ export default function AgentRunDetails({
                   : "done"
           }
         />
+        {/* One line updates in place while the agent works; an open list would grow step
+            by step and push the results below it around. */}
         <TraceTitle>
-          {steps.length ? (
-            currentStep ? (
-              <span key={currentStep.id} className="agent-run-current-step">
-                {currentStep.label}
-              </span>
-            ) : hasHeader ? (
+          {running ? (
+            <span key={workingLine} className="agent-run-current-step">
+              {workingLine}
+            </span>
+          ) : steps.length ? (
+            hasHeader ? (
               `${taskSteps.length} ${taskSteps.length === 1 ? "step" : "steps"}`
             ) : (
               "Activity"
             )
           ) : hasReasoning ? (
             "Reasoning"
-          ) : running ? (
-            "Working…"
           ) : (
             (status ?? "Activity")
           )}

@@ -86,6 +86,48 @@
   font-weight: 700;
   color: var(--ink);
 }
+/* On phones Pako's name sits above his live line, like a chat contact's status, so the
+   line beside his avatar has the width to be read. */
+@media (max-width: 600px) {
+  .agent-run-details-header {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "avatar name status actions"
+      "avatar line line line";
+    align-items: center;
+    gap: 0 var(--space-label);
+  }
+  .agent-run-details-header > .agent-run-sender {
+    display: contents;
+  }
+  .agent-run-details-header .agent-pako {
+    grid-area: avatar;
+  }
+  .agent-run-details-header .agent-run-sender > h2 {
+    grid-area: name;
+    align-self: end;
+  }
+  .agent-run-details-header .agent-run-header-status {
+    grid-area: status;
+  }
+  /* The menu keeps its full tap target without setting the height of the name's row. */
+  .agent-run-details-header > .agent-run-actions {
+    grid-area: actions;
+    margin-block: -7px;
+  }
+  .agent-run-details-header > [data-slot="trace-collapsible-trigger"] {
+    position: relative;
+    grid-area: line;
+    min-height: 28px;
+  }
+  /* An invisible margin keeps the slim line as easy to tap as the other controls. */
+  .agent-run-details-header > [data-slot="trace-collapsible-trigger"]::after {
+    content: "";
+    position: absolute;
+    inset: -8px 0;
+  }
+}
 .agent-run-details [data-slot="trace-line"] {
   gap: 8px;
   font-size: var(--type-support);
