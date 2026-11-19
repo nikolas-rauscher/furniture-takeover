@@ -15,8 +15,14 @@ export type QuickReply =
   | { kind: "offer"; text: string; listingId: string }
   /** Puts the two best matches side by side on the comparison page. */
   | { kind: "compare"; text: string; listingIds: [string, string] }
-  /** Starts the watch Pako offered; the tap creates it, never the agent. */
-  | { kind: "watch"; text: string; query: string; maxPrice?: number }
+  /** Starts the watch Pako offered, as far out as the search looks; the tap creates it, never the agent. */
+  | {
+      kind: "watch";
+      text: string;
+      query: string;
+      maxPrice?: number;
+      radius: number;
+    }
   /** The offered watch is on already: a confirmation, not a button. */
   | { kind: "watching"; text: string };
 
@@ -133,9 +139,10 @@ export const usesAllowance = (reply: QuickReply) =>
 function watchReply({
   turn,
   watching,
+  search,
 }: QuickRepliesInput): QuickReply | undefined {
   const suggestion = turn.watchSuggestion;
-  if (!suggestion) return;
+  if (!suggestion || !search) return;
   if (watching)
     return { kind: "watching", text: `Watching for “${suggestion.query}”` };
   return {
@@ -147,6 +154,7 @@ function watchReply({
     ...(suggestion.maxPrice === undefined
       ? {}
       : { maxPrice: suggestion.maxPrice }),
+    radius: search.criteria.radius,
   };
 }
 

@@ -3,7 +3,12 @@ import type { Product } from "../../shared/marketplace";
 import type { SavedSearch } from "../searchRequest";
 import type { AlertItem } from "./matching";
 import { useAlerts } from "./useAlerts";
-import { activateWatch, findWatch, watchSearch } from "./watch";
+import {
+  activateWatch,
+  findWatch,
+  watchSearch,
+  type WatchTarget,
+} from "./watch";
 import { randomUuid } from "../randomUuid";
 
 /** A new match as the Searches page shows it: the alert with its listing and search. */
@@ -48,13 +53,13 @@ export function useWatches({
       : [];
   });
 
-  function isWatching(query: string, maxPrice?: number) {
-    const search = watchSearch(query, location, maxPrice);
+  function isWatching(target: WatchTarget) {
+    const search = watchSearch(target, location);
     return search !== undefined && findWatch(jobs, search)?.paused === false;
   }
   /** Starts or resumes the watch; false when it is running already. */
-  function watch(query: string, maxPrice?: number): boolean {
-    const search = watchSearch(query, location, maxPrice);
+  function watch(target: WatchTarget): boolean {
+    const search = watchSearch(target, location);
     if (!search) throw new Error("A watch needs the item to look out for.");
     if (findWatch(jobs, search)?.paused === false) return false;
     const id = randomUuid();

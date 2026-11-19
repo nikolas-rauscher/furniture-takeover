@@ -109,6 +109,7 @@ import type { PakoAbsence } from "./sellGuide";
 import { useListingConversation } from "./hooks/useListingConversation";
 import { useSaved } from "./hooks/useSaved";
 import { useWatches } from "./alerts/useWatches";
+import type { WatchTarget } from "./alerts/watch";
 import { demandLadder, similarListings } from "./alerts/matching";
 import SellerInsight from "./alerts/SellerInsight";
 import {
@@ -1191,7 +1192,7 @@ export default function App({
   function chooseQuickReply(reply: TappableReply, shown: Product[]) {
     if (reply.kind === "ask") void runSearch(reply.text, criteria, true);
     else if (reply.kind === "compare") compareListings(reply.listingIds);
-    else if (reply.kind === "watch") keepWatch(reply.query, reply.maxPrice);
+    else if (reply.kind === "watch") keepWatch(reply);
     else {
       const item = shown.find((listing) => listing.id === reply.listingId);
       if (!item)
@@ -1242,8 +1243,8 @@ export default function App({
     return true;
   }
   /** Pako keeps watch for an item, or says the watch is running already. */
-  function keepWatch(query: string, maxPrice?: number) {
-    if (!watches.watch(query, maxPrice)) {
+  function keepWatch({ query, maxPrice, radius }: WatchTarget) {
+    if (!watches.watch({ query, maxPrice, radius })) {
       setToastNotice({
         message: `I'm already keeping an eye out for “${query}”.`,
         mood: "search",
@@ -2235,10 +2236,11 @@ export default function App({
                           negotiating: Boolean(negotiations.active),
                           watching:
                             turn.watchSuggestion !== undefined &&
-                            watches.isWatching(
-                              turn.watchSuggestion.query,
-                              turn.watchSuggestion.maxPrice,
-                            ),
+                            committedSearch !== null &&
+                            watches.isWatching({
+                              ...turn.watchSuggestion,
+                              radius: committedSearch.criteria.radius,
+                            }),
                           listings: localMatches.map((item) => ({
                             id: item.id,
                             title: item.title,
@@ -2419,7 +2421,9 @@ export default function App({
                   onDismissMatch={({ alert }) => watches.dismiss(alert.id)}
                   onMarkAllSeen={watches.markAllRead}
                   onTogglePause={watches.togglePause}
-                  onWatch={keepWatch}
+                  onWatch={(query, maxPrice) =>
+                    keepWatch({ query, maxPrice, radius: searchArea.radius })
+                  }
                   onFind={goHome}
                   onRun={(job) => {
                     const search = restoreSearch(job, location);

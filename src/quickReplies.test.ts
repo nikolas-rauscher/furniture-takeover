@@ -337,6 +337,7 @@ test("when nothing fits yet, keeping watch comes first, ahead of two broader sea
           text: "Tell me when one is listed",
           query: "green armchair",
           maxPrice: 120,
+          radius: 5,
         },
         { kind: "ask", text: "Raise my budget to CHF 105" },
         { kind: "ask", text: "Search within 10 km" },

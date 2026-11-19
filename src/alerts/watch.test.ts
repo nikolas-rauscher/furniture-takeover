@@ -3,7 +3,10 @@ import test from "node:test";
 import type { SavedSearch } from "../searchRequest.ts";
 import { activateWatch, findWatch, watchSearch } from "./watch.ts";
 
-const search = watchSearch("Desk", "Lausanne", 100)!;
+const search = watchSearch(
+  { query: "Desk", maxPrice: 100, radius: 20 },
+  "Lausanne",
+)!;
 const saved: SavedSearch = {
   id: "my-desk",
   title: "My desk search",
@@ -79,4 +82,13 @@ test("a legacy saved search uses the current location and seed records are ignor
   const seeded = { ...legacy, id: "seed-search", paused: false };
   assert.equal(findWatch([seeded, legacy], search), legacy);
   assert.equal(activateWatch([seeded, legacy], search, "new-id")[0], seeded);
+});
+
+test("a watch looks as far out as the search that offered it", () => {
+  const near = watchSearch({ query: "Grand piano", maxPrice: 15, radius: 5 }, "EPFL, Ecublens")!;
+  assert.equal(near.criteria.radius, 5);
+  assert.equal(near.criteria.maxPrice, 15);
+  assert.match(near.text, /within 5 km of EPFL, Ecublens/);
+  const wider = watchSearch({ query: "Grand piano", maxPrice: 15, radius: 20 }, "EPFL, Ecublens")!;
+  assert.equal(findWatch(activateWatch([], near, "near"), wider), undefined);
 });
