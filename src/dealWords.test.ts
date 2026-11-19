@@ -7,8 +7,10 @@ import {
   eventChip,
   openTerms,
   shownTerms,
+  slotLabel,
   termPrice,
   termsSummary,
+  threadDealNote,
 } from "./dealWords.ts";
 
 const terms: DealTerms = {
@@ -206,4 +208,27 @@ test("terms travel with a message only while it states them", () => {
     attachedTermsNote("CHF 40 at FMEL Vortex · outside reception", terms).line,
     "Your text no longer mentions 18:00, so it will be sent as a normal message without updating the deal.",
   );
+});
+
+test("pickup chips say today and tomorrow, then the weekday, then the date", () => {
+  const now = new Date("2026-11-19T13:05:00.000Z");
+  assert.equal(slotLabel("2026-11-19T17:00:00.000Z", now), "Today 18:00");
+  assert.equal(slotLabel("2026-11-20T17:00:00.000Z", now), "Tomorrow 18:00");
+  assert.equal(slotLabel("2026-11-21T10:00:00.000Z", now), "Sat 11:00");
+  assert.equal(slotLabel("2026-11-27T17:00:00.000Z", now), "Fri 27 Nov, 18:00");
+  // Zurich's midnight decides the day, not UTC's.
+  assert.equal(slotLabel("2026-11-19T23:30:00.000Z", now), "Tomorrow 00:30");
+});
+
+test("a thread card names its deal in a few words", () => {
+  const offer = deal({ proposal: { by: "seller", terms, messageId: "m1" } });
+  assert.equal(threadDealNote(offer, "buyer"), "Offer · CHF 40");
+  assert.equal(threadDealNote(offer, "seller"), "Your offer · CHF 40");
+  assert.equal(
+    threadDealNote(deal({ status: "agreed", agreed: { terms, at: "2026-11-19T13:00:00.000Z" } }), "buyer"),
+    "Agreed · Fri 18:00",
+  );
+  assert.equal(threadDealNote(deal({ status: "cancelled" }), "buyer"), "Deal cancelled");
+  assert.equal(threadDealNote(deal(), "buyer"), undefined);
+  assert.equal(threadDealNote(null, "buyer"), undefined);
 });

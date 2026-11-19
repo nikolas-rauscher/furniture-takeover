@@ -46,8 +46,7 @@ export type DealOption =
     }
   | { kind: "edit"; id: string; label: string; entry: OfferEntry }
   /** Puts a message in the composer; sending it is a second tap. */
-  | { kind: "write"; id: string; label: string; message: string }
-  | { kind: "find_similar"; id: string; label: string };
+  | { kind: "write"; id: string; label: string; message: string };
 
 export type DealOptions = { primary?: DealOption; secondary: DealOption[] };
 
@@ -223,14 +222,8 @@ export function dealOptions({
     }
     case "agreed":
       return { secondary: [cancelDeal(role, otherName, listing.title)] };
+    // Pako's tray offers Find similar for these, as for any gone listing.
     case "cancelled":
-      return role === "buyer"
-        ? {
-            secondary: [
-              { kind: "find_similar", id: "similar", label: "Find similar" },
-            ],
-          }
-        : NONE;
     case "gone":
     case "completed":
       return NONE;
