@@ -62,7 +62,7 @@ export function useMessagesInbox({
     : rows?.reads && userId
       ? unreadCount(
           rows.threads.map((thread) =>
-            accountInboxThread(thread.id, rows.latest[thread.id], userId),
+            accountInboxThread(thread.id, rows.latest[thread.id], userId, rows.systemLatest[thread.id]),
           ),
           rows.reads,
         )

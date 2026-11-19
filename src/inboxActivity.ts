@@ -44,6 +44,16 @@ export function nextReadMarker(
 /** A local conversation from the student's side: in the local demo the student is the buyer. */
 export function demoInboxThread(conversation: SellerConversation): InboxThread {
   const latest = conversation.messages.at(-1);
+  const systemAt = conversation.systemEvents?.at(-1)?.at;
+  if (
+    systemAt &&
+    (!latest || Date.parse(systemAt) >= Date.parse(latest.createdAt))
+  ) {
+    return {
+      readKey: conversation.id + ":buyer",
+      latest: { from: "them", at: systemAt },
+    };
+  }
   return {
     readKey: `${conversation.id}:buyer`,
     latest: latest && {
@@ -58,7 +68,20 @@ export function accountInboxThread(
   conversationId: string,
   latest: { sender_id: string; created_at: string } | undefined,
   userId: string,
+  event?: { sender_id: string | null; created_at: string },
 ): InboxThread {
+  if (
+    event &&
+    (!latest || Date.parse(event.created_at) >= Date.parse(latest.created_at))
+  ) {
+    return {
+      readKey: conversationId,
+      latest: {
+        from: event.sender_id === userId ? "me" : "them",
+        at: event.created_at,
+      },
+    };
+  }
   return {
     readKey: conversationId,
     latest: latest && {
@@ -79,9 +102,39 @@ export function effectiveStatus(
     : listing.status;
 }
 export function dealActivity(deal: Deal | undefined | null, role: DealRole) {
-  if (deal?.status === "agreed") return "Pickup booked";
+  if (deal?.status === "agreed")
+    return deal.agreed?.terms.fulfillment === "shipping"
+      ? "Agreed"
+      : "Pickup booked";
   if (deal?.status === "completed") return "Completed";
   if (deal?.status === "cancelled") return "Cancelled";
   if (deal?.proposal)
     return deal.proposal.by === role ? "Waiting" : "Your turn";
+}
+
+/** The three live deals for Home, prioritising a response before an upcoming handover. */
+export function homeDeals(
+  deals: readonly Deal[],
+  roleFor: (deal: Deal) => DealRole,
+) {
+  const priority = (deal: Deal) =>
+    deal.proposal && deal.proposal.by !== roleFor(deal)
+      ? 0
+      : deal.status === "agreed"
+        ? 1
+        : 2;
+  return deals
+    .filter(
+      (deal) =>
+        deal.status === "agreed" || (deal.status === "open" && deal.proposal),
+    )
+    .sort((a, b) => {
+      const order = priority(a) - priority(b);
+      if (order) return order;
+      const aTime = a.agreed?.terms.pickupAt,
+        bTime = b.agreed?.terms.pickupAt;
+      if (aTime && bTime) return Date.parse(aTime) - Date.parse(bTime);
+      return Date.parse(b.updatedAt) - Date.parse(a.updatedAt);
+    })
+    .slice(0, 3);
 }
