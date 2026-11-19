@@ -1,0 +1,41 @@
+/* Reporting stays a quiet action next to a message or listing until it is needed. */
+.report {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  font-size: var(--type-caption);
+}
+.chat-message > .report {
+  padding: 0 6px;
+}
+.report-toggle {
+  padding: 2px 0;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 600;
+}
+.report-toggle:hover {
+  color: var(--danger);
+}
+.report-form {
+  display: grid;
+  gap: 8px;
+  width: min(100%, 360px);
+}
+.report-form label {
+  font-size: var(--type-support);
+}
+.report-form textarea {
+  width: 100%;
+  min-height: 70px;
+  max-height: 120px;
+  resize: none;
+}
+.report-form .button {
+  justify-self: start;
+}
+.report-notice {
+  color: var(--muted);
+  font-size: var(--type-caption);
+  line-height: 1.5;
+}

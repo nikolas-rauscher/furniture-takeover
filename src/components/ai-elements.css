@@ -17,7 +17,7 @@
 .agent-user-bubble .user-message {
   max-width: 100%;
   background: var(--mist);
-  padding: var(--space-label) var(--space-field);
+  padding: 10px 14px;
 }
 .agent-response-message > [data-slot="message-content"] {
   gap: 0;
@@ -26,12 +26,24 @@
   width: 100%;
   max-width: min(100%, 56rem);
 }
+/* Pako's reply: a speech bubble whose sharp corner points at Pako above it. */
 .agent-response-bubble .agent-response-content {
   width: 100%;
-  padding: var(--space-field);
-  border: 1px solid var(--line);
-  border-radius: 12px;
+  padding: 12px 16px 16px;
+  border: 2px solid var(--card-line);
+  border-radius: 6px 22px 22px 22px;
   background: var(--surface);
+  font-size: var(--type-body);
+}
+/* A new reply rises into place, like the messages in the intro. */
+.search-conversation-turn:not(.is-archived) .agent-response-message {
+  animation: agent-reply-rise 420ms var(--ease-out) 80ms both;
+}
+@keyframes agent-reply-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
 }
 .agent-response-content .agent-run-details {
   max-width: none;
@@ -60,6 +72,13 @@
   min-height: 0;
   padding: 24px;
 }
+.agent-conversation-empty .agent-conversation-pako {
+  margin-bottom: 4px;
+}
+.agent-conversation-empty [data-slot="empty-description"] {
+  color: var(--ink);
+  font-weight: 600;
+}
 @media (max-height: 620px) {
   .agent-conversation-empty {
     padding: 8px;
@@ -74,8 +93,6 @@
 }
 .agent-prompt-form .assistant-composer {
   height: auto;
-  border-color: var(--line);
-  background: var(--surface);
 }
 .agent-prompt-form [data-slot="input-group-addon"] {
   padding: 0;
@@ -90,13 +107,39 @@
 .agent-sources {
   margin-block: var(--space-label) 0;
 }
+/* The source line is a small pill that opens the list of pages. */
 .agent-sources [data-slot="trace-collapsible-trigger"] {
   max-width: 100%;
-  min-height: var(--control-size);
+  min-height: 36px;
+  padding: 4px 12px 4px 6px;
   border: 0;
-  padding: 0;
-  background: transparent;
+  border-radius: 999px;
+  background: var(--canvas);
   font: inherit;
+  transition: background-color 160ms ease;
+}
+.agent-sources [data-slot="trace-collapsible-trigger"]:hover {
+  background: var(--selected);
+}
+.agent-sources
+  [data-slot="trace-collapsible-trigger"]
+  > [data-slot="trace-line"]
+  > [data-slot="trace-icon"] {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--sky);
+  color: var(--blue);
+}
+.agent-sources
+  [data-slot="trace-collapsible-trigger"]
+  > [data-slot="trace-line"]
+  > [data-slot="trace-icon"]
+  svg {
+  width: 14px;
+  height: 14px;
 }
 .agent-sources [data-slot="trace-collapsible-trigger"]:focus-visible {
   outline: 2px solid var(--focus-ring);
@@ -109,6 +152,8 @@
 }
 .agent-sources [data-slot="trace-title"] {
   flex: 0 0 auto;
+  color: var(--ink);
+  font-weight: 650;
 }
 /* The domains fill what is left of the line and shorten first. */
 .agent-sources .agent-source-domains {
@@ -121,7 +166,7 @@
   color: var(--muted);
 }
 .agent-sources [data-slot="trace-collapsible-content-inner"] {
-  margin-left: 0;
+  margin: 10px 0 2px;
   padding-left: 0;
   border: 0;
 }
@@ -129,6 +174,8 @@
   box-sizing: border-box;
   max-width: min(320px, calc(100vw - 32px));
   padding: 14px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
   font: 13px/1.6 var(--font-family);
 }
 .agent-citation-preview strong,
@@ -145,7 +192,9 @@
 }
 .agent-citation-preview a {
   color: var(--blue);
+  font-weight: 650;
   text-decoration: underline;
+  text-underline-offset: 3px;
 }
 @media (max-width: 480px) {
   .agent-message-scroller .agent-user-bubble {
@@ -161,12 +210,10 @@
   .agent-message-scroller .agent-user-bubble {
     max-width: 92%;
   }
-  /* On phones the answer sits on the page like a reply, not in a box around the listing cards. */
+  /* On phones the bubble keeps its frame but gives the listing cards the width. */
   .agent-response-bubble .agent-response-content {
-    padding: 4px 2px;
-    border: 0;
-    border-radius: 0;
-    background: none;
+    padding: 10px 12px 12px;
+    border-radius: 6px 20px 20px 20px;
   }
   .agent-message-scroller .agent-run-answer {
     font-size: var(--type-body);
@@ -179,7 +226,8 @@
 @media (prefers-reduced-motion: reduce) {
   [data-slot="hover-card-content"],
   [data-slot="tooltip-content"],
-  [data-slot="message-scroller-button"] {
+  [data-slot="message-scroller-button"],
+  .search-conversation-turn:not(.is-archived) .agent-response-message {
     animation: none;
     transition: none;
   }

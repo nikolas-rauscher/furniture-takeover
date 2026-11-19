@@ -1,0 +1,216 @@
+/* Offers Pako prepares: the intro's deal card, a slim bar in the chat, and his drafts. */
+.deal-tile {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--sand);
+  color: var(--kraft-deep);
+  object-fit: cover;
+}
+
+.deal-card {
+  display: grid;
+  gap: 14px;
+  max-width: 640px;
+  margin: 0 0 var(--space-group);
+  padding: 16px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-stage);
+  background: var(--surface);
+  box-shadow:
+    0 4px 0 var(--lip),
+    0 18px 34px -26px rgb(41 41 41 / 0.45);
+}
+.deal-card[data-unavailable] {
+  background: var(--canvas);
+}
+.deal-card-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.deal-card-heading {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.deal-card-heading > strong {
+  overflow: hidden;
+  font-size: var(--type-item);
+  font-weight: 700;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.deal-card-heading > span {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  color: var(--muted);
+  font-size: var(--type-caption);
+}
+.deal-card-terms {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.deal-card-terms > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 9px 12px;
+  border-radius: 14px;
+  background: var(--canvas);
+}
+.deal-card-terms > div[data-term="offer"] {
+  background: var(--selected);
+}
+.deal-card-terms dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 600;
+}
+.deal-card-terms dt svg {
+  color: var(--blue);
+}
+.deal-card-terms dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--type-label);
+  font-weight: 700;
+  line-height: 1.35;
+}
+.deal-card-terms > div[data-term="offer"] dd {
+  color: var(--blue-dark);
+  font-size: var(--type-item);
+  font-variant-numeric: tabular-nums;
+}
+/* Pako's message, set like his bubbles in the intro's chat. */
+.deal-card-message {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+.deal-card-message > strong {
+  padding: 0 6px;
+  color: var(--blue);
+  font-size: var(--type-caption);
+  font-weight: 700;
+}
+.deal-card-bubble,
+.pako-draft-bubble {
+  max-width: 92%;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 18px 18px 6px 18px;
+  background: var(--blue);
+  color: var(--on-primary);
+  font-size: var(--type-label);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.deal-card-note {
+  color: var(--muted);
+  font-size: var(--type-caption);
+}
+.deal-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+/* In the agent chat the offer waits in a slim bar above the composer. */
+.deal-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 8px 8px 8px 10px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 3px 0 var(--lip);
+}
+.deal-bar .deal-tile {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+.deal-bar-copy {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.35;
+}
+.deal-bar-copy strong,
+.deal-bar-copy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.deal-bar-copy strong {
+  font-size: var(--type-label);
+  font-weight: 700;
+}
+.deal-bar-copy span {
+  color: var(--muted);
+  font-size: var(--type-caption);
+}
+.deal-bar-dismiss {
+  color: var(--muted);
+}
+
+/* A message Pako drafted inside the agent's reply. */
+.pako-draft[data-slot="item"] {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-stage);
+  background: var(--surface);
+}
+.pako-draft-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pako-draft-content {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+.pako-draft-content > strong {
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 700;
+}
+.pako-draft-note {
+  color: var(--muted);
+  font-size: var(--type-caption);
+}
+
+@media (max-width: 560px) {
+  .deal-card {
+    padding: 14px;
+  }
+  .deal-card-terms {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .deal-card-actions > .button.primary {
+    width: 100%;
+  }
+}

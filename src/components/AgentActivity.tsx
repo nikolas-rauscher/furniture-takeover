@@ -9,6 +9,25 @@ import {
 } from "./ui/trace";
 import "./agent-activity.css";
 
+export type StepMarkState = "running" | "done" | "failed" | "paused";
+
+/** The round mark before a step: a spinner while it runs, a check drawn once it is done. */
+export function StepMark({ state }: { state: StepMarkState }) {
+  return (
+    <TraceIcon className="agent-step-mark" data-mark={state}>
+      {state === "running" ? (
+        <LoaderCircle animate />
+      ) : state === "failed" ? (
+        <X />
+      ) : state === "paused" ? (
+        <span className="agent-trace-dot" />
+      ) : (
+        <Check animate />
+      )}
+    </TraceIcon>
+  );
+}
+
 function ActivityStep({
   step,
   running,
@@ -36,17 +55,17 @@ function ActivityStep({
       role="listitem"
       status={failed ? "error" : active ? "running" : undefined}
     >
-      <TraceIcon>
-        {active ? (
-          <LoaderCircle animate />
-        ) : failed ? (
-          <X />
-        ) : stopped || needsInput ? (
-          <span className="agent-trace-dot" />
-        ) : (
-          <Check />
-        )}
-      </TraceIcon>
+      <StepMark
+        state={
+          active
+            ? "running"
+            : failed
+              ? "failed"
+              : stopped || needsInput
+                ? "paused"
+                : "done"
+        }
+      />
       <TraceTitle>{step.label}</TraceTitle>
       <TraceDescription
         className={visibleStatus ? "agent-step-status" : "sr-only"}

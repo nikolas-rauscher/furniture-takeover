@@ -226,27 +226,12 @@
   :root[data-compact-viewport] .selling-chat-layout .page-title {
     display: none;
   }
-  :root[data-compact-viewport] .messages-page .conversation-composer {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
-  }
-  :root[data-compact-viewport] .messages-page .reply-assistance {
-    grid-column: 1 / -1;
-  }
   :root[data-compact-viewport] .messages-page .reply-assistance-action > small,
-  :root[data-compact-viewport] .messages-page .composer-actions > small {
-    display: none;
-  }
   :root[data-compact-viewport]
     .messages-page
     .conversation-composer
-    > textarea {
-    height: 44px;
-    min-height: 44px;
-    max-height: 72px;
-  }
-  :root[data-compact-viewport] .messages-page .composer-actions .button {
-    min-height: 44px;
+    > .pako-label {
+    display: none;
   }
 }
 

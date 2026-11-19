@@ -462,6 +462,7 @@ export default function Account({
             </label>
             <Button
               type="submit"
+              className="button secondary"
               disabled={busy || email === session.user.email}
             >
               Change email
@@ -489,11 +490,16 @@ export default function Account({
                 onChange={(e) => setPassword(e.target.value)}
               />
             </label>
-            <Button type="submit" disabled={busy || password.length < 8}>
+            <Button
+              type="submit"
+              className="button secondary"
+              disabled={busy || password.length < 8}
+            >
               Update password
             </Button>
             <Button
               type="button"
+              className="button quiet"
               disabled={busy}
               onClick={() =>
                 void act(async () => {
@@ -515,6 +521,7 @@ export default function Account({
                 <div className="account-blocked" key={b.blocked_id}>
                   <span>{b.name}</span>
                   <Button
+                    className="button secondary small"
                     disabled={busy}
                     onClick={() =>
                       void act(async () => {
@@ -549,6 +556,7 @@ export default function Account({
               listing URLs.
             </p>
             <Button
+              className="button secondary"
               disabled={busy}
               onClick={() => void act(exportData, "Account export downloaded.")}
             >
@@ -579,7 +587,11 @@ export default function Account({
                 autoComplete="off"
               />
             </label>
-            <Button type="submit" disabled={busy || confirmation !== "DELETE"}>
+            <Button
+              type="submit"
+              className="button danger"
+              disabled={busy || confirmation !== "DELETE"}
+            >
               Delete my account permanently
             </Button>
           </form>

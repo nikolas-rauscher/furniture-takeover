@@ -86,6 +86,7 @@ export default function AgentComposer({
             animateIcon
             size="icon-sm"
             variant="plain"
+            className="agent-composer-send"
             type={onStop ? "button" : "submit"}
             aria-label={onStop ? "Stop agent" : sendLabel}
             title={onStop ? "Stop agent" : sendLabel}

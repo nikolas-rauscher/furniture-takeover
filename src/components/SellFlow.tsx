@@ -13,6 +13,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import {
   Armchair,
   Image as ImageIcon,
@@ -20,6 +21,7 @@ import {
   Check,
   LoaderCircle,
   MapPin,
+  Sparkles,
 } from "@/components/icons";
 import {
   TODAY,
@@ -31,9 +33,14 @@ import type { AgentAssistState } from "../hooks/useAgentAssist";
 import type { AgentQuota } from "../../shared/agent";
 import Modal from "./Modal";
 import PhotoGallery from "./PhotoGallery";
+import SnapTarget from "./SnapTarget";
 import ListingChecklist from "./ListingChecklist";
 import WorkspaceHeader from "./WorkspaceHeader";
+import Guide, { type GuideBubble } from "./onboarding/Guide";
+import Pako from "./onboarding/Pako";
+import type { PakoMood } from "./onboarding/storyTypes";
 import { listingPhotos } from "../../shared/listingPhotos";
+import "./sell-flow.css";
 
 export type ListingDraft = {
   image: string;
@@ -49,6 +56,70 @@ export type ListingDraft = {
   pickup: string;
   category: Category;
 };
+
+/** A detail Pako just filled in settles into place instead of jumping. */
+const previewSwap = {
+  initial: { opacity: 0, y: 6 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -4 },
+  transition: { type: "spring", stiffness: 420, damping: 34 },
+} as const;
+
+type PhotoStepGuide = { mood: PakoMood; bubble: GuideBubble };
+
+/** What Pako says beside the photos: what to do next, or what he is busy with. */
+function photoStepGuide({
+  photoCount,
+  photoReading,
+  busy,
+  quota,
+}: {
+  photoCount: number;
+  photoReading: boolean;
+  busy: boolean;
+  quota?: AgentQuota;
+}): PhotoStepGuide {
+  if (busy)
+    return {
+      mood: "work",
+      bubble: {
+        id: "writing",
+        title: "Writing your listing…",
+        text: "I'm looking at your photos and notes.",
+      },
+    };
+  if (photoReading)
+    return {
+      mood: "work",
+      bubble: { id: "reading", text: "Loading your photo…" },
+    };
+  if (quota?.remaining === 0)
+    return {
+      mood: "idle",
+      bubble: {
+        id: "quota",
+        title: "That's all for today",
+        text: "I've used today's writing allowance. Try again tomorrow.",
+      },
+    };
+  if (photoCount === 0)
+    return {
+      mood: "wave",
+      bubble: {
+        id: "empty",
+        title: "Snap what's left in your room",
+        text: "Add a few photos. I'll write the title, description and price.",
+      },
+    };
+  return {
+    mood: "happy",
+    bubble: {
+      id: "ready",
+      title: "Looking good!",
+      text: "Add a note if you like, then tap Create draft.",
+    },
+  };
+}
 
 type SellFlowProps = {
   cloud?: boolean;
@@ -138,6 +209,12 @@ export default function SellFlow({
   const notesId = useId();
   const canCreateDraft =
     liveAgent && !unavailable && photos.length > 0 && quota?.remaining !== 0;
+  const guide = photoStepGuide({
+    photoCount: photos.length,
+    photoReading,
+    busy,
+    quota,
+  });
   const photoEditor = (
     <PhotoGallery
       images={photos}
@@ -160,7 +237,7 @@ export default function SellFlow({
   }, [step]);
 
   return (
-    <>
+    <MotionConfig reducedMotion="user">
       {photosOpen && (
         <Modal title="Listing photos" onClose={() => setPhotosOpen(false)}>
           {photoEditor}
@@ -191,8 +268,18 @@ export default function SellFlow({
       {isPhotoStep ? (
         <div className="sell-layout" aria-busy={unavailable}>
           <div className="sell-photo-content">
+            <div className="sell-guide">
+              <Guide mood={guide.mood} layout="guide" bubble={guide.bubble} />
+            </div>
             <div className="photo-upload-panel">
-              {photoEditor}
+              {photos.length ? (
+                photoEditor
+              ) : (
+                <SnapTarget
+                  disabled={unavailable}
+                  onFilesSelected={onPhotoSelected}
+                />
+              )}
               {uploadError && (
                 <p className="form-error" role="alert">
                   {uploadError}
@@ -304,12 +391,16 @@ export default function SellFlow({
           <div className="sell-photo-footer">
             <Button
               animateIcon
-              className="button primary full"
+              className="button primary large full"
               type="submit"
               form={formId}
               disabled={!canCreateDraft}
             >
-              {unavailable && <LoaderCircle animate size={17} />}
+              {unavailable ? (
+                <LoaderCircle animate size={18} aria-hidden="true" />
+              ) : (
+                <Sparkles size={18} aria-hidden="true" />
+              )}
               {photoReading
                 ? "Loading photo…"
                 : busy
@@ -359,7 +450,7 @@ export default function SellFlow({
             >
               <Button
                 type="button"
-                className="text-button listing-edit-button"
+                className="button secondary listing-edit-button"
                 aria-label="Edit listing details"
                 onClick={() => setFieldsOpen(true)}
               >
@@ -493,11 +584,11 @@ export default function SellFlow({
               )}
               <Button
                 animateIcon
-                className="button primary full"
+                className="button primary large"
                 type="submit"
                 disabled={agentWorking || busy || photoReading}
               >
-                <Check size={17} />
+                <Check size={18} />
                 {busy
                   ? "Saving…"
                   : editing
@@ -543,26 +634,61 @@ export default function SellFlow({
                 </span>
               </span>
             </Button>
-            <div>
-              <span className="source-label">
-                <Armchair size={13} />
-                takeover
-              </span>
-              <h2>{draft.title || "Your item"}</h2>
-              <strong>
+            <div aria-busy={agentWorking}>
+              <AnimatePresence initial={false} mode="wait">
+                {agentWorking ? (
+                  <motion.span
+                    key="writing"
+                    className="listing-preview-status"
+                    {...previewSwap}
+                  >
+                    <Pako mood="work" size={36} />
+                    <span className="chip">
+                      <Sparkles size={14} aria-hidden="true" />
+                      Pako is writing…
+                    </span>
+                  </motion.span>
+                ) : (
+                  <motion.span
+                    key="source"
+                    className="source-label"
+                    {...previewSwap}
+                  >
+                    <Armchair size={13} />
+                    takeover
+                  </motion.span>
+                )}
+              </AnimatePresence>
+              <motion.h2 key={draft.title} {...previewSwap}>
+                {draft.title || "Your item"}
+              </motion.h2>
+              <motion.strong key={draft.price} {...previewSwap}>
                 {draft.price ? money(Number(draft.price)) : "Price not set"}
-              </strong>
+              </motion.strong>
               {draft.description && (
                 <p className="listing-preview-description">
                   {draft.description}
                 </p>
               )}
               {(draft.condition || draft.dimensions) && (
-                <p>
-                  {[draft.condition, draft.dimensions]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
+                <dl className="listing-preview-facts">
+                  {draft.condition && (
+                    <div>
+                      <dt>Condition</dt>
+                      <motion.dd key={draft.condition} {...previewSwap}>
+                        {draft.condition}
+                      </motion.dd>
+                    </div>
+                  )}
+                  {draft.dimensions && measurementField && (
+                    <div>
+                      <dt>{measurementField.label}</dt>
+                      <motion.dd key={draft.dimensions} {...previewSwap}>
+                        {draft.dimensions}
+                      </motion.dd>
+                    </div>
+                  )}
+                </dl>
               )}
               <p>
                 <MapPin size={14} />
@@ -578,6 +704,6 @@ export default function SellFlow({
           </aside>
         </div>
       )}
-    </>
+    </MotionConfig>
   );
 }

@@ -2,6 +2,7 @@ import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import Pako from "../components/onboarding/Pako";
 import { fail } from "./client";
 export default function Auth({
   client,
@@ -20,6 +21,7 @@ export default function Auth({
   const [notice, setNotice] = useState("");
   return (
     <section className="account-auth">
+      <Pako mood="wave" size={80} className="account-auth-pako" />
       <h1>
         {mode === "reset"
           ? "Reset password"
@@ -114,7 +116,7 @@ export default function Auth({
         <Button
           animateIcon
           type="submit"
-          className="button primary"
+          className="button primary large full"
           disabled={busy}
         >
           {busy
@@ -131,6 +133,7 @@ export default function Auth({
         <div className="account-actions">
           {mode === "reset" && (
             <Button
+              className="button quiet"
               onClick={() => {
                 setMode("login");
                 setNotice("");
@@ -140,6 +143,7 @@ export default function Auth({
             </Button>
           )}
           <Button
+            className="button quiet"
             onClick={() => {
               setMode("reset");
               setNotice("");

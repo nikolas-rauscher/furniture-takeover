@@ -1229,28 +1229,6 @@ textarea {
   margin-top: 15px;
   font-size: 11px;
 }
-.status {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  border-radius: 4px;
-  background: var(--mist);
-  color: var(--blue);
-  font-size: 9px;
-  padding: 4px 6px;
-  font-weight: 500;
-}
-.status > i {
-  width: 4px;
-  height: 4px;
-  display: block;
-  background: currentColor;
-  border-radius: 50%;
-}
-.status.muted {
-  background: #f0f1f4;
-  color: #8f95a3;
-}
 .steps {
   display: flex;
   align-items: center;
@@ -1301,9 +1279,6 @@ textarea {
 }
 .upload-zone {
   height: 360px;
-  border: 1.5px dashed #cdd5ea;
-  border-radius: 13px;
-  background: #f8f9fe;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1346,6 +1321,7 @@ textarea {
 .upload-zone.has-image {
   padding: 0;
   border-style: solid;
+  border-color: var(--card-line);
 }
 .upload-zone > img {
   height: 100%;
@@ -1415,8 +1391,6 @@ textarea {
 }
 .listing-preview {
   align-self: start;
-  border: 1px solid var(--line);
-  border-radius: 11px;
   overflow: hidden;
   position: sticky;
   top: 107px;
@@ -1456,7 +1430,7 @@ textarea {
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  color: #929aaa;
+  color: var(--muted);
   margin-top: 7px;
 }
 .listing-preview > .preview-note {

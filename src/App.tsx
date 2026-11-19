@@ -12,6 +12,7 @@ import { readRoute, type View } from "./navigation";
 import type { AccountConnection } from "./cloud/AccountSession";
 import Auth from "./cloud/Auth";
 import AccountSettings from "./cloud/Account";
+import LocalSettings from "./components/LocalSettings";
 import Report from "./cloud/Report";
 import { useMarketplaceListings } from "./cloud/useMarketplaceListings";
 import { useFavorites } from "./cloud/useFavorites";
@@ -305,6 +306,10 @@ export default function App({
   const [sellStep, setSellStep] = useState(1);
   const [editingListing, setEditingListing] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState("");
+  /** A listing that was just published; My listings celebrates it briefly. */
+  const [publishedListing, setPublishedListing] = useState<string | null>(
+    null,
+  );
   const hasSellingDraft = useRef(view === "sell");
   const [photoReading, setPhotoReading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -911,6 +916,7 @@ export default function App({
         proposal={proposal}
         compact={compact}
         title={item?.title ?? "Unavailable listing"}
+        image={item?.image}
         unavailable={!available}
         disabled={running}
         onReview={() => {
@@ -1331,6 +1337,7 @@ export default function App({
       return;
     }
     hasSellingDraft.current = false;
+    if (!editingListing) setPublishedListing(item.id);
     setAccountTab("listings");
     navigate("account");
     setToast(
@@ -1426,9 +1433,9 @@ export default function App({
             value={listingInput}
             onChange={setListingInput}
             onSend={() => void runListing(listingInput)}
-            label="Tell the listing agent"
+            label="Tell Pako about your listing"
             placeholder="Add a detail…"
-            sendLabel="Send to listing agent"
+            sendLabel="Send to Pako"
             disabled={!configured || listingRun.state.status === "running"}
             onStop={
               listingRun.state.status === "running"
@@ -1648,33 +1655,12 @@ export default function App({
                     />
                   </div>
                 ) : (
-                  <section className="local-settings-page">
-                    <div className="page-title">
-                      <h1>Workspace settings</h1>
-                      <p>
-                        Your listings and preferences are saved in this browser.
-                      </p>
-                    </div>
-                    {connectionStatus}
-                    <Button
-                      className="button secondary"
-                      onClick={() => void database.addDemo()}
-                    >
-                      Add sample listings
-                    </Button>
-                    <Button
-                      className="text-button"
-                      onClick={() => setModal("help")}
-                    >
-                      How the agent works
-                    </Button>
-                    <Button
-                      className="text-button"
-                      onClick={() => setModal("clear")}
-                    >
-                      Clear local workspace
-                    </Button>
-                  </section>
+                  <LocalSettings
+                    connectionStatus={connectionStatus}
+                    onAddDemo={() => void database.addDemo()}
+                    onHelp={() => setModal("help")}
+                    onClear={() => setModal("clear")}
+                  />
                 )}
               </PageTransitionView>
             )}
@@ -1964,13 +1950,13 @@ export default function App({
                               onSend={() =>
                                 void runSearch(followUp, criteria, true)
                               }
-                              label="Ask the agent"
+                              label="Ask Pako"
                               placeholder={
                                 reviewingListing
                                   ? "Ask about your listing…"
                                   : "Ask a follow-up…"
                               }
-                              sendLabel="Send to the agent"
+                              sendLabel="Send to Pako"
                               disabled={running || quotaExhausted}
                               onStop={running ? agentRun.cancel : undefined}
                             />
@@ -2046,6 +2032,7 @@ export default function App({
                               localMatches.length > 0 ? (
                                 <AgentListings
                                   listings={localMatches}
+                                  ranked={turn.status === "complete"}
                                   onOpen={openProduct}
                                   onOffer={continueOffer}
                                 />
@@ -2305,6 +2292,8 @@ export default function App({
                 onEdit={editListing}
                 onStatusChange={setStatus}
                 renderProduct={productCard}
+                publishedId={publishedListing}
+                onCelebrationEnd={() => setPublishedListing(null)}
               />
             </WorkspacePage>
           </main>

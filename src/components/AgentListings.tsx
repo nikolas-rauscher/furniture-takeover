@@ -10,20 +10,25 @@ import {
   CarouselPrevious,
 } from "./ui/carousel";
 import { useReducedMotion } from "motion/react";
+import type { CSSProperties } from "react";
 import "./agent-listings.css";
 
 export default function AgentListings({
   listings,
+  ranked,
   onOpen,
   onOffer,
 }: {
   listings: readonly Product[];
+  /** Pako has finished and shows his matches best first. */
+  ranked: boolean;
   onOpen: (item: Product) => void;
   onOffer: (item: Product) => void;
 }) {
   const multiple = listings.length > 1;
   const reducedMotion = useReducedMotion();
-  const card = (item: Product) => {
+  /** Cards rise in one after another; the delay stops growing after a few. */
+  const card = (item: Product, index: number) => {
     const canOffer = !item.own && item.status === "active";
     const details = [
       item.condition,
@@ -33,7 +38,13 @@ export default function AgentListings({
       .filter((value) => value && value !== "Not specified")
       .join(" · ");
     return (
-      <article className="agent-product-card">
+      <article
+        className="agent-product-card"
+        style={{ "--stagger": Math.min(index, 4) } as CSSProperties}
+      >
+        {ranked && multiple && index === 0 && (
+          <span className="agent-product-best">Best match</span>
+        )}
         <Button
           className="agent-product-photo"
           variant="plain"
@@ -75,8 +86,8 @@ export default function AgentListings({
               {!canOffer
                 ? "View listing"
                 : item.price === 0
-                  ? "Arrange pickup"
-                  : "Prepare an offer"}
+                  ? "Plan pickup with Pako"
+                  : "Draft an offer with Pako"}
             </Button>
           </div>
         </div>
@@ -112,7 +123,7 @@ export default function AgentListings({
                 className="agent-product-slide"
                 aria-label={`${index + 1} of ${listings.length}`}
               >
-                {card(item)}
+                {card(item, index)}
               </CarouselItem>
             ))}
           </CarouselContent>
@@ -123,8 +134,8 @@ export default function AgentListings({
             <h3>On Takeover</h3>
             <Badge variant="secondary">{listings.length}</Badge>
           </div>
-          {listings.map((item) => (
-            <div key={item.id}>{card(item)}</div>
+          {listings.map((item, index) => (
+            <div key={item.id}>{card(item, index)}</div>
           ))}
         </>
       )}

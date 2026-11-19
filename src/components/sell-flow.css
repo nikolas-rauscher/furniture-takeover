@@ -1,0 +1,200 @@
+/* Selling from photos: Pako guides the photo step, then fills in the listing card. */
+.sell-guide {
+  grid-area: guide;
+  min-width: 0;
+}
+
+/* The empty photo step is a viewfinder onto a room, with one big shutter. */
+.snap-target {
+  --snap-floor: 72%;
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  flex: 1 1 0;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  min-height: 260px;
+  padding: 32px 20px;
+  overflow: hidden;
+  border-radius: var(--radius-stage);
+  background: linear-gradient(
+    to bottom,
+    var(--sand) 0 var(--snap-floor),
+    #ecd6b7 var(--snap-floor) 100%
+  );
+  transition: box-shadow 160ms ease;
+}
+.snap-target[data-dragging] {
+  box-shadow: inset 0 0 0 3px var(--blue);
+}
+.snap-target-corners {
+  position: absolute;
+  inset: 16px;
+  z-index: -1;
+  width: calc(100% - 32px);
+  height: calc(100% - 32px);
+  fill: none;
+  stroke: var(--surface);
+  stroke-width: 3px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.snap-target-corners path {
+  vector-effect: non-scaling-stroke;
+}
+.snap-target-shutter {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 0;
+  color: var(--ink);
+  font-size: var(--type-body);
+  font-weight: 700;
+}
+.snap-target-lens {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 92px;
+  border: 8px solid var(--surface);
+  border-radius: 50%;
+  background: var(--blue);
+  color: var(--on-primary);
+  box-shadow:
+    0 5px 0 var(--lip),
+    0 14px 28px rgb(41 41 41 / 0.14);
+  transition:
+    transform 90ms var(--ease-out),
+    box-shadow 90ms var(--ease-out),
+    background-color 160ms ease;
+}
+.snap-target-lens::after {
+  content: "";
+  position: absolute;
+  inset: -14px;
+  border: 3px solid var(--blue);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  animation: snap-target-pulse 1.8s var(--ease-out) infinite;
+}
+@keyframes snap-target-pulse {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.9);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+}
+.snap-target-shutter:not(:disabled):hover .snap-target-lens {
+  background: #3c58c7;
+}
+.snap-target-shutter:not(:disabled):active .snap-target-lens {
+  transform: translateY(5px);
+  box-shadow:
+    0 0 0 var(--lip),
+    0 8px 18px rgb(41 41 41 / 0.12);
+}
+.snap-target-shutter:disabled .snap-target-lens {
+  background: var(--lip);
+}
+.snap-target-shutter:disabled .snap-target-lens::after {
+  animation: none;
+}
+.snap-target-hint {
+  max-width: 30ch;
+  text-wrap: balance;
+  color: color-mix(in srgb, var(--kraft-deep), var(--ink) 35%);
+  font-size: var(--type-support);
+  line-height: 1.45;
+  text-align: center;
+}
+
+/* Photos pop into the strip as they arrive. */
+.view-sell .photo-attachment {
+  animation: sell-photo-pop 420ms var(--ease-out) both;
+}
+@keyframes sell-photo-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Next to Publish, editing the details is a light outline without a lip. */
+.view-sell .listing-edit-button {
+  --button-depth: 0px;
+}
+
+/* The draft reads like the intro's listing card while Pako fills it in. */
+.listing-preview-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.listing-preview-status .chip svg {
+  animation: sell-sparkle 1.4s ease-in-out infinite;
+}
+@keyframes sell-sparkle {
+  50% {
+    opacity: 0.45;
+    transform: rotate(18deg) scale(0.9);
+  }
+}
+.listing-preview-facts {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 12px 0 0;
+  border-top: 2px solid var(--card-line);
+}
+.listing-preview-facts > div {
+  display: grid;
+  grid-template-columns: minmax(84px, auto) minmax(0, 1fr);
+  gap: 12px;
+  font-size: var(--type-label);
+  line-height: 1.4;
+}
+.listing-preview-facts dt {
+  color: var(--muted);
+}
+.listing-preview-facts dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .snap-target {
+    --snap-floor: 88%;
+    flex: 0 0 auto;
+    min-height: 232px;
+    padding: 24px 16px;
+  }
+  /* A smaller Pako keeps the photos and the button on one screen. */
+  .sell-guide .ob-guide[data-layout="guide"] .ob-pako {
+    width: 60px;
+    height: 60px;
+  }
+  .selling-chat-layout .listing-preview-facts,
+  .selling-chat-layout .listing-preview-status {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-sell .photo-attachment,
+  .listing-preview-status .chip svg,
+  .snap-target-lens::after {
+    animation: none;
+  }
+}

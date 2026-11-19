@@ -3,6 +3,7 @@ import { Textarea } from "../components/ui/textarea";
 import { useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fail } from "./client";
+import "./report.css";
 export default function Report({
   client,
   listingId,
@@ -17,12 +18,13 @@ export default function Report({
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState("");
   return (
-    <div className="account-report">
-      <Button onClick={() => setOpen((v) => !v)}>
+    <div className="report">
+      <Button className="report-toggle" onClick={() => setOpen((v) => !v)}>
         {open ? "Cancel report" : "Report"}
       </Button>
       {open && (
         <form
+          className="report-form"
           onSubmit={async (e) => {
             e.preventDefault();
             setBusy(true);
@@ -60,12 +62,20 @@ export default function Report({
               onChange={(e) => setText(e.target.value)}
             />
           </label>
-          <Button type="submit" disabled={busy || !text.trim()}>
+          <Button
+            type="submit"
+            className="button danger small"
+            disabled={busy || !text.trim()}
+          >
             Submit report
           </Button>
         </form>
       )}
-      {notice && <p role="status">{notice}</p>}
+      {notice && (
+        <p className="report-notice" role="status">
+          {notice}
+        </p>
+      )}
     </div>
   );
 }

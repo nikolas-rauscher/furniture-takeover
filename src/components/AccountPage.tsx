@@ -1,4 +1,11 @@
-import { useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useId,
+  useState,
+  type ReactNode,
+} from "react";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { SelectField } from "./ui/select-field";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Button } from "./ui/button";
@@ -12,16 +19,132 @@ import {
 } from "./ui/dropdown-menu";
 import {
   Archive,
-  Camera,
+  Check,
   Ellipsis,
-  Heart,
+  MapPin,
   Pencil,
   Plus,
   Image as ImageIcon,
 } from "@/components/icons";
+import { cn } from "@/lib/utils";
 import { money, type Product } from "../../shared/marketplace";
+import Confetti from "./onboarding/Confetti";
+import Guide from "./onboarding/Guide";
+import Pako from "./onboarding/Pako";
 
 export type AccountTab = "favorites" | "listings" | "archive";
+
+/** How long Pako celebrates a listing that was just published. */
+const CELEBRATION_MS = 6000;
+
+const STATUS_LABELS: Record<Product["status"], string> = {
+  active: "Active",
+  reserved: "Reserved",
+  sold: "Sold",
+  withdrawn: "Archived",
+};
+
+function statusLabel(status: Product["status"], cloud: boolean) {
+  return status === "active" && !cloud
+    ? "Active locally"
+    : STATUS_LABELS[status];
+}
+
+/** How many of the visitor's listings found a new home, as a friendly progress bar. */
+function SellingProgress({ listings }: { listings: Product[] }) {
+  const headingId = useId();
+  const count = (status: Product["status"]) =>
+    listings.filter((item) => item.status === status).length;
+  const sold = count("sold");
+  const total = listings.length;
+  const counts = (["active", "reserved", "sold"] as const).filter(
+    (status) => count(status) > 0,
+  );
+  return (
+    <section className="selling-progress" aria-labelledby={headingId}>
+      <Pako mood={sold === total ? "happy" : "idle"} size={56} />
+      <div className="selling-progress-body">
+        <h2 id={headingId}>
+          {sold === total
+            ? `All ${total} passed on!`
+            : `${sold} of ${total} passed on`}
+        </h2>
+        <div
+          className="selling-progress-bar"
+          role="progressbar"
+          aria-labelledby={headingId}
+          aria-valuemin={0}
+          aria-valuemax={total}
+          aria-valuenow={sold}
+        >
+          <motion.span
+            initial={{ width: 0 }}
+            animate={{ width: `${(sold / total) * 100}%` }}
+            transition={{ type: "spring", stiffness: 140, damping: 22 }}
+          />
+        </div>
+        <ul className="selling-progress-counts">
+          {counts.map((status) => (
+            <li key={status} className="chip" data-status={status}>
+              {count(status)} {STATUS_LABELS[status].toLowerCase()}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+/** Pako cheers, with confetti from his box, when a listing has just gone up. */
+function PublishCelebration({ cloud }: { cloud: boolean }) {
+  return (
+    <motion.div
+      className="listing-celebration"
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+      transition={{ type: "spring", stiffness: 380, damping: 32 }}
+    >
+      <span className="listing-celebration-burst" aria-hidden="true">
+        <Confetti />
+      </span>
+      <Guide
+        mood="cheer"
+        layout="guide"
+        bubble={
+          cloud
+            ? {
+                id: "published",
+                title: "It's live!",
+                text: "Students nearby can see your listing now.",
+              }
+            : {
+                id: "saved",
+                title: "Saved!",
+                text: "Your listing is ready in this browser.",
+              }
+        }
+      />
+    </motion.div>
+  );
+}
+
+/** The intro's rubber stamp lands on the listing that was just published. */
+function PublishedStamp({ label }: { label: string }) {
+  return (
+    <motion.span
+      className="published-stamp"
+      aria-hidden="true"
+      initial={{ opacity: 0, scale: 1.6, rotate: -16 }}
+      animate={{ opacity: 1, scale: 1, rotate: -8 }}
+      transition={{ type: "spring", stiffness: 520, damping: 18, delay: 0.3 }}
+    >
+      <Check size={16} strokeWidth={3} />
+      {label}
+    </motion.span>
+  );
+}
+
 type AccountPageProps = {
   cloud?: boolean;
   accountTab: AccountTab;
@@ -35,6 +158,9 @@ type AccountPageProps = {
   onEdit(item: Product): void;
   onStatusChange(id: string, status: Product["status"]): void;
   renderProduct(item: Product): ReactNode;
+  /** The listing that was just published, celebrated for a few seconds. */
+  publishedId: string | null;
+  onCelebrationEnd(): void;
 };
 
 export default function AccountPage({
@@ -50,7 +176,15 @@ export default function AccountPage({
   onEdit,
   onStatusChange,
   renderProduct,
+  publishedId,
+  onCelebrationEnd,
 }: AccountPageProps) {
+  const endCelebration = useEffectEvent(onCelebrationEnd);
+  useEffect(() => {
+    if (!publishedId) return;
+    const timer = setTimeout(() => endCelebration(), CELEBRATION_MS);
+    return () => clearTimeout(timer);
+  }, [publishedId]);
   const [filters, setFilters] = useState<
     Record<AccountTab, { query: string; status: string }>
   >({
@@ -125,7 +259,16 @@ export default function AccountPage({
     ) : (
       <div className="own-listings">
         {items.map((item) => (
-          <article className="own-listing" key={item.id}>
+          <article
+            className={cn(
+              "own-listing",
+              item.id === publishedId && "is-published",
+            )}
+            key={item.id}
+          >
+            {item.id === publishedId && (
+              <PublishedStamp label={cloud ? "Live" : "Saved"} />
+            )}
             {item.status === "withdrawn" ? (
               <div
                 className="own-listing-image listing-archived-image"
@@ -161,23 +304,19 @@ export default function AccountPage({
                   )}
                 </h2>
                 <span
-                  className={`status ${item.status !== "active" ? "muted" : ""}`}
+                  className="chip own-listing-status"
+                  data-status={item.status}
                 >
-                  {item.status === "active"
-                    ? cloud
-                      ? "Active"
-                      : "Active locally"
-                    : item.status === "withdrawn"
-                      ? "Archived"
-                      : item.status === "reserved"
-                        ? "Reserved"
-                        : "Sold"}
+                  {statusLabel(item.status, cloud)}
                 </span>
               </div>
               <strong>{money(item.price)}</strong>
               <p>
-                {item.location}
-                {item.available ? ` · ${item.available}` : ""}
+                <MapPin size={14} aria-hidden="true" />
+                <span>
+                  {item.location}
+                  {item.available ? ` · ${item.available}` : ""}
+                </span>
               </p>
             </div>
             <div className="listing-actions">
@@ -242,7 +381,9 @@ export default function AccountPage({
     )
   ) : (
     <div className="empty-state">
-      {isSaved ? <Heart size={28} /> : <Camera size={28} />}
+      <span className="empty-state-pako">
+        <Pako mood={filtered ? "idle" : "wave"} size={96} />
+      </span>
       <h2>
         {filtered
           ? isSaved
@@ -281,45 +422,56 @@ export default function AccountPage({
     </div>
   );
   return (
-    <section className="items-page">
-      <div className="page-title title-with-action">
-        <h1>{isSaved ? "Saved items" : "My listings"}</h1>
-        {!isSaved && (
-          <Button variant="default" onClick={onSell}>
-            <Plus size={16} />
-            Create listing
-          </Button>
+    <MotionConfig reducedMotion="user">
+      <section className="items-page">
+        <div className="page-title title-with-action">
+          <h1>{isSaved ? "Saved items" : "My listings"}</h1>
+          {!isSaved && (
+            <Button variant="default" onClick={onSell}>
+              <Plus size={16} />
+              Create listing
+            </Button>
+          )}
+          <p>
+            {isSaved
+              ? `${savedListings.length} saved ${savedListings.length === 1 ? "item" : "items"}`
+              : cloud
+                ? "Your items, availability and selling progress."
+                : "Listings saved in this browser."}
+          </p>
+        </div>
+        {isSaved ? (
+          <>
+            {toolbar}
+            {content}
+          </>
+        ) : (
+          <Tabs
+            value={accountTab}
+            onValueChange={(value) => setAccountTab(value as AccountTab)}
+          >
+            <TabsList className="account-tabs" aria-label="Your listings">
+              <TabsTrigger value="listings">
+                Listings<span>{visibleListings.length}</span>
+              </TabsTrigger>
+              <TabsTrigger value="archive">
+                Archive<span>{archivedListings.length}</span>
+              </TabsTrigger>
+            </TabsList>
+            <AnimatePresence>
+              {accountTab === "listings" &&
+                items.some((item) => item.id === publishedId) && (
+                  <PublishCelebration key="celebration" cloud={cloud} />
+                )}
+            </AnimatePresence>
+            {accountTab === "listings" && visibleListings.length > 0 && (
+              <SellingProgress listings={visibleListings} />
+            )}
+            {toolbar}
+            <TabsContent value={accountTab}>{content}</TabsContent>
+          </Tabs>
         )}
-        <p>
-          {isSaved
-            ? `${savedListings.length} saved ${savedListings.length === 1 ? "item" : "items"}`
-            : cloud
-              ? "Your items, availability and selling progress."
-              : "Listings saved in this browser."}
-        </p>
-      </div>
-      {isSaved ? (
-        <>
-          {toolbar}
-          {content}
-        </>
-      ) : (
-        <Tabs
-          value={accountTab}
-          onValueChange={(value) => setAccountTab(value as AccountTab)}
-        >
-          <TabsList className="account-tabs" aria-label="Your listings">
-            <TabsTrigger value="listings">
-              Listings<span>{visibleListings.length}</span>
-            </TabsTrigger>
-            <TabsTrigger value="archive">
-              Archive<span>{archivedListings.length}</span>
-            </TabsTrigger>
-          </TabsList>
-          {toolbar}
-          <TabsContent value={accountTab}>{content}</TabsContent>
-        </Tabs>
-      )}
-    </section>
+      </section>
+    </MotionConfig>
   );
 }

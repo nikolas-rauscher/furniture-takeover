@@ -7,17 +7,25 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 .agent-listings-heading h3 {
   margin: 0;
   font-size: var(--type-label);
-  font-weight: 550;
+  font-weight: 700;
+}
+.agent-listings-heading [data-slot="badge"] {
+  height: auto;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--selected);
+  color: var(--blue-dark);
+  font-weight: 700;
 }
 .agent-carousel-controls {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   margin-left: auto;
 }
 .agent-carousel-controls [data-slot^="carousel-"] {
@@ -26,10 +34,13 @@
   translate: none;
   /* Animate UI aligns overlay arrows; these controls belong in the header. */
   transform: none !important;
-  width: 44px;
-  height: 44px;
-  margin: 0;
-  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  margin: 0 0 3px;
+  padding: 0;
+  border-radius: 50%;
+  color: var(--blue);
 }
 /* Base UI keeps boundary controls focusable via aria-disabled. */
 .agent-carousel-controls [aria-disabled="true"] {
@@ -38,6 +49,8 @@
 }
 .agent-product-track {
   margin-left: -12px;
+  /* Room for the card lips and the sticker above the first card. */
+  padding-block: 12px 4px;
   align-items: stretch;
 }
 .agent-product-slide {
@@ -45,48 +58,84 @@
   flex-basis: calc(100% - 28px);
   padding-left: 12px;
 }
-/* A result is a compact row: small photo, the facts, one action. The answer below
-   it stays in view instead of being pushed off the screen by a large card. */
+/* A result is the intro's offer card: photo tile, the facts, the price, one action.
+   It stays compact so Pako's explanation below remains in view. */
 .agent-product-card {
+  position: relative;
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
+  grid-template-columns: 88px minmax(0, 1fr);
   gap: 12px;
   align-items: start;
   width: 100%;
   min-width: 0;
   padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
   background: var(--surface);
+  box-shadow: 0 3px 0 var(--lip);
+  transition: border-color 160ms ease;
+  animation: agent-card-rise 460ms var(--ease-out) both;
+  animation-delay: calc(140ms + var(--stagger, 0) * 70ms);
+}
+.agent-product-card:hover {
+  border-color: #c9d2f3;
+}
+@keyframes agent-card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
 }
 .has-single-product .agent-product-card {
   max-width: 36rem;
+  margin-top: 10px;
+}
+/* A sticker on Pako's first pick, like a label on a moving box. */
+.agent-product-best {
+  position: absolute;
+  top: -11px;
+  left: 18px;
+  z-index: 1;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--sun);
+  color: var(--ink);
+  font-size: var(--type-caption);
+  font-weight: 700;
+  line-height: 1.4;
+  box-shadow: 0 2px 6px -2px rgb(41 41 41 / 0.3);
+  transform: rotate(-2deg);
+  pointer-events: none;
 }
 .agent-product-card .agent-product-photo {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 96px;
-  height: 96px;
+  width: 88px;
+  height: 88px;
   overflow: hidden;
   min-width: 0;
   min-height: 0;
   padding: 0;
-  border-radius: 8px;
-  color: var(--muted);
-  background: var(--mist);
+  border-radius: 12px;
+  color: var(--kraft-deep);
+  background: var(--sand);
 }
 .agent-product-photo img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: scale 260ms var(--ease-out);
+}
+.agent-product-photo:hover img {
+  scale: 1.04;
 }
 .agent-product-content {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  min-height: 96px;
+  min-height: 88px;
   gap: 2px;
 }
 .agent-product-content h4 {
@@ -100,9 +149,12 @@
   text-align: left;
   white-space: normal;
   font-size: var(--type-item);
-  font-weight: 550;
+  font-weight: 650;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+.agent-product-card .agent-product-title:hover {
+  color: var(--blue);
 }
 .agent-product-content p {
   margin: 0;
@@ -118,24 +170,38 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 4px 12px;
+  gap: 6px 12px;
   margin-top: auto;
-  padding-top: 6px;
+  padding-top: 8px;
 }
 .agent-product-price {
   color: var(--ink);
   font-size: 1.0625rem;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.4;
+  font-variant-numeric: tabular-nums;
 }
 .agent-product-card .agent-product-offer {
-  min-height: 40px;
-  padding: 6px 14px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 12px;
   color: var(--blue);
   font-size: var(--type-support);
 }
 .agent-product-photo:focus-visible {
   outline-offset: -3px;
+}
+@container agent-listings (max-width: 22rem) {
+  .agent-product-card {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+  .agent-product-card .agent-product-photo {
+    width: 72px;
+    height: 72px;
+  }
+  .agent-product-content {
+    min-height: 72px;
+  }
 }
 @container agent-listings (min-width: 35rem) {
   .agent-product-slide {
@@ -145,5 +211,13 @@
 @container agent-listings (min-width: 58rem) {
   .agent-product-slide {
     flex-basis: 33.333333%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent-product-card {
+    animation: none;
+  }
+  .agent-product-photo img {
+    transition: none;
   }
 }
