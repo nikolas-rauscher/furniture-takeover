@@ -62,6 +62,23 @@ function boundedString(
   );
 }
 
+/** An optional bounded list of short texts, such as listing IDs or photo keywords. */
+function optionalList(
+  value: unknown,
+  maxItems: number,
+  maxLength: number,
+  invalid: () => AgentRunError,
+): string[] | undefined {
+  if (value === undefined) return undefined;
+  if (
+    !Array.isArray(value) ||
+    value.length > maxItems ||
+    !value.every((item) => boundedString(item, maxLength))
+  )
+    throw invalid();
+  return [...value];
+}
+
 function validDate(value: unknown): value is string {
   return (
     typeof value === "string" &&
@@ -298,7 +315,96 @@ function requestContext(
       text: item.text,
     }));
   }
+  const previousMatchIds = optionalList(
+    value.previousMatchIds,
+    100,
+    120,
+    invalid,
+  );
+  if (previousMatchIds) context.previousMatchIds = previousMatchIds;
+  Object.assign(context, listingHistory(value, invalid));
   return context;
+}
+
+type ListingHistory = Pick<
+  NonNullable<AgentRunRequest["context"]>,
+  "listingStart" | "photoAnalysis" | "skippedQuestions" | "answeredQuestions"
+>;
+
+/** What a listing run builds on: its start, the photos' hints and the questions so far. */
+function listingHistory(
+  value: Record<string, unknown>,
+  invalid: () => AgentRunError,
+): ListingHistory {
+  const history: ListingHistory = {};
+  if (value.listingStart !== undefined) {
+    if (typeof value.listingStart !== "boolean") throw invalid();
+    history.listingStart = value.listingStart;
+  }
+  if (value.photoAnalysis !== undefined) {
+    const analysis = value.photoAnalysis;
+    if (
+      !record(analysis) ||
+      Object.keys(analysis).some(
+        (key) => key !== "missingDetails" && key !== "keywords",
+      )
+    )
+      throw invalid();
+    const missingDetails = optionalList(
+      analysis.missingDetails,
+      12,
+      240,
+      invalid,
+    );
+    const keywords = optionalList(analysis.keywords, 12, 120, invalid);
+    history.photoAnalysis = {
+      ...(missingDetails ? { missingDetails } : {}),
+      ...(keywords ? { keywords } : {}),
+    };
+  }
+  if (value.skippedQuestions !== undefined) {
+    const skipped = value.skippedQuestions;
+    if (
+      !Array.isArray(skipped) ||
+      skipped.length > 30 ||
+      !skipped.every(
+        (item) =>
+          record(item) &&
+          boundedString(item.question, 500) &&
+          (item.listingField === undefined ||
+            QUESTION_FIELDS.includes(item.listingField as string)),
+      )
+    )
+      throw invalid();
+    history.skippedQuestions = skipped.map((item) => ({
+      question: item.question,
+      ...(item.listingField === undefined
+        ? {}
+        : {
+            listingField:
+              item.listingField as AgentListingQuestion["listingField"],
+          }),
+    }));
+  }
+  if (value.answeredQuestions !== undefined) {
+    const answered = value.answeredQuestions;
+    if (
+      !Array.isArray(answered) ||
+      answered.length > 30 ||
+      !answered.every(
+        (item) =>
+          record(item) &&
+          boundedString(item.question, 500, true) &&
+          boundedString(item.answer, 4000, true),
+      )
+    )
+      throw invalid();
+    history.answeredQuestions = answered.map((item) => ({
+      question: item.question,
+      answer: item.answer,
+    }));
+  }
+  return history;
 }
 
 export function safeSourceUrl(value: string): string | null {
