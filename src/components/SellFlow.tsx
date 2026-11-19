@@ -30,6 +30,7 @@ import {
   type Category,
 } from "../../shared/marketplace";
 import type { AgentAssistState } from "../hooks/useAgentAssist";
+import { useFocused } from "../hooks/useFocused";
 import type { AgentQuota } from "../../shared/agent";
 import Modal from "./Modal";
 import PhotoGallery from "./PhotoGallery";
@@ -66,17 +67,23 @@ const previewSwap = {
 
 type PhotoStepGuide = { mood: PakoMood; bubble: GuideBubble };
 
-/** What Pako says beside the photos: what to do next, or what he is busy with. */
+/**
+ * What Pako says beside the photos: what to do next, or what he is busy with.
+ * He sleeps once the day's allowance is used and listens while details are written.
+ */
 function photoStepGuide({
   photoCount,
   photoReading,
   busy,
   quota,
+  typing,
 }: {
   photoCount: number;
   photoReading: boolean;
   busy: boolean;
   quota?: AgentQuota;
+  /** The Details field has focus or text. */
+  typing: boolean;
 }): PhotoStepGuide {
   if (busy)
     return {
@@ -94,7 +101,7 @@ function photoStepGuide({
     };
   if (quota?.remaining === 0)
     return {
-      mood: "idle",
+      mood: "sleep",
       bubble: {
         id: "quota",
         title: "That's all for today",
@@ -103,7 +110,7 @@ function photoStepGuide({
     };
   if (photoCount === 0)
     return {
-      mood: "wave",
+      mood: typing ? "listen" : "wave",
       bubble: {
         id: "empty",
         title: "Snap what's left in your room",
@@ -111,7 +118,7 @@ function photoStepGuide({
       },
     };
   return {
-    mood: "happy",
+    mood: typing ? "listen" : "happy",
     bubble: {
       id: "ready",
       title: "Looking good!",
@@ -206,6 +213,8 @@ export default function SellFlow({
   const unavailable = busy || photoReading;
   const formId = useId();
   const notesId = useId();
+  const notesField = useRef<HTMLTextAreaElement>(null);
+  const notesFocused = useFocused(notesField);
   const canCreateDraft =
     liveAgent && !unavailable && photos.length > 0 && quota?.remaining !== 0;
   const guide = photoStepGuide({
@@ -213,6 +222,7 @@ export default function SellFlow({
     photoReading,
     busy,
     quota,
+    typing: notesFocused || draft.raw.trim() !== "",
   });
   const photoEditor = (
     <PhotoGallery
@@ -303,6 +313,7 @@ export default function SellFlow({
                   Details<span className="sell-field-optional">Optional</span>
                 </FieldLabel>
                 <Textarea
+                  ref={notesField}
                   id={notesId}
                   rows={3}
                   maxLength={4000}

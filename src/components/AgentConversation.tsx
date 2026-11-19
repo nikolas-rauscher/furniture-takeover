@@ -27,6 +27,8 @@ type AgentConversationProps = {
   context?: ReactNode;
   /** Names the newest request bubble, so text typed elsewhere can morph into it. */
   requestTransitionName?: string;
+  /** The composer has text, so the waiting Pako listens. */
+  typing?: boolean;
 };
 
 export default function AgentConversation({
@@ -36,6 +38,7 @@ export default function AgentConversation({
   footer,
   context,
   requestTransitionName,
+  typing = false,
 }: AgentConversationProps) {
   const headingId = useId();
   const viewport = useRef<HTMLDivElement>(null);
@@ -128,7 +131,7 @@ export default function AgentConversation({
                 <Empty className="agent-conversation-empty">
                   <EmptyHeader>
                     <EmptyMedia className="agent-conversation-pako">
-                      <Pako size={64} mood="wave" />
+                      <Pako size={64} mood={typing ? "listen" : "wave"} />
                     </EmptyMedia>
                     <EmptyDescription>
                       Tell Pako what you’d like to change.

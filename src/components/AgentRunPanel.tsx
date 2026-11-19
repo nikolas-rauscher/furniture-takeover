@@ -12,8 +12,7 @@ import AgentRunDetails from "./AgentRunDetails";
 import AgentSources from "./AgentSources";
 import AgentWebResults from "./AgentWebResults";
 import { Ellipsis } from "./icons";
-import Pako from "./onboarding/Pako";
-import type { PakoMood } from "./onboarding/storyTypes";
+import PakoReaction from "./PakoReaction";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +22,7 @@ import {
 import type { AgentRunState } from "../hooks/useAgentRun";
 import { safeSourceUrl } from "../api/runs";
 import { splitSearchAnswer } from "./agentAnswer";
+import { agentTurnPako } from "../pakoMoods";
 import "./agent-run-panel.css";
 
 type AgentRunPanelProps = AgentActionHandlers & {
@@ -38,16 +38,12 @@ type AgentRunPanelProps = AgentActionHandlers & {
   conversational?: boolean;
   externalComposer?: boolean;
   readOnly?: boolean;
+  /** The composer has text, so Pako listens once the turn has ended. */
+  typing?: boolean;
   appliedActionIds?: readonly string[];
   undoneActionIds?: readonly string[];
   actionNotices?: Readonly<Record<string, string>>;
 };
-
-/** Pako works while the run is busy and hops once the answer is in. */
-function pakoMood(status: AgentRunState["status"]): PakoMood {
-  if (status === "running") return "work";
-  return status === "complete" ? "happy" : "idle";
-}
 
 export default function AgentRunPanel({
   state,
@@ -62,6 +58,7 @@ export default function AgentRunPanel({
   conversational = false,
   externalComposer = false,
   readOnly = false,
+  typing = false,
   onAnswer,
   onSkipQuestion,
   onApplyAction,
@@ -132,9 +129,15 @@ export default function AgentRunPanel({
 
   // Without steps or reasoning, the activity line itself names the status.
   // Only the live turn moves; earlier turns keep a resting Pako beside them.
+  const pako = agentTurnPako(state, { textShown: displayText, typing });
   const avatar = (
     <span className="agent-pako" aria-hidden="true">
-      <Pako size={42} mood={pakoMood(state.status)} still={readOnly} />
+      <PakoReaction
+        size={42}
+        mood={pako.mood}
+        talking={pako.talking}
+        still={readOnly}
+      />
     </span>
   );
   const detailsShowStatus =

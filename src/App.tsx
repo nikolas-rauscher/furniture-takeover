@@ -105,6 +105,8 @@ import type {
   AgentPreferencesPatchEvent,
 } from "../shared/actions";
 import { useAgentHealth } from "./hooks/useAgentHealth";
+import { useFocused } from "./hooks/useFocused";
+import { homeGuide } from "./pakoMoods";
 import {
   defaults,
   criteriaTitle,
@@ -234,6 +236,8 @@ export default function App({
   const [view, setView] = useState<View>(readRoute(window.location.hash).view);
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState("");
+  const searchField = useRef<HTMLTextAreaElement>(null);
+  const searchFocused = useFocused(searchField);
   const [followUp, setFollowUp] = useState("");
 
   const [onboardingRecord] = useState(readOnboarding);
@@ -474,6 +478,12 @@ export default function App({
         }
       : null,
   );
+  const heroGuide = homeGuide({
+    allowanceUsed: quotaExhausted,
+    suggestionsLoading: searchAssist.status === "loading",
+    typing: searchFocused || hasSearchDraft,
+    location,
+  });
   const listingAssist = useAgentAssist(
     configured && view === "sell" && sellStep === 1 && !busy
       ? {
@@ -1437,6 +1447,7 @@ export default function App({
     <section className="listing-conversation" aria-label="Listing agent">
       <AgentConversation
         state={listingRun.state}
+        typing={listingInput.trim() !== ""}
         footer={
           <AgentComposer
             value={listingInput}
@@ -1465,6 +1476,7 @@ export default function App({
             conversational
             externalComposer
             readOnly={archived}
+            typing={listingInput.trim() !== ""}
             showHistory={false}
             state={turn}
             onCancel={() => {
@@ -1758,17 +1770,11 @@ export default function App({
                     <div className="agent-hero-guide">
                       <Pako
                         className="agent-hero-pako"
-                        mood={
-                          searchAssist.status === "loading"
-                            ? "work"
-                            : hasSearchDraft
-                              ? "happy"
-                              : "wave"
-                        }
+                        mood={heroGuide.mood}
                         size={64}
                       />
                       <p className="ob-bubble agent-hero-bubble">
-                        Tell me what you need. I'll search around {location}.
+                        {heroGuide.line}
                       </p>
                     </div>
                     <PageTransitionShared name="agent-composer">
@@ -1781,6 +1787,7 @@ export default function App({
                       >
                         <PageTransitionShared name="agent-query">
                           <Textarea
+                            ref={searchField}
                             aria-label="Search furniture"
                             maxLength={4000}
                             value={query}
@@ -1903,6 +1910,7 @@ export default function App({
                     <AgentConversation
                       state={agentRun.state}
                       requestTransitionName="agent-query"
+                      typing={followUp.trim() !== ""}
                       context={
                         negotiations.active &&
                         !activeDraftInChat &&
@@ -1988,6 +1996,7 @@ export default function App({
                             state={turn}
                             externalComposer
                             readOnly={archived}
+                            typing={followUp.trim() !== ""}
                             outcome={
                               turn.proposal?.draft && (
                                 <MessageDraftPreview
