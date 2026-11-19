@@ -74,10 +74,6 @@
 .account-settings .account-danger h2 {
   color: var(--danger);
 }
-/* Secondary settings actions are outlines; only saving keeps the lip. */
-.account-settings .button.secondary {
-  --button-depth: 0px;
-}
 .account-blocked {
   display: flex;
   align-items: center;
@@ -815,9 +811,8 @@
   height: 44px;
   color: var(--muted);
 }
-/* Actions inside a card stay light: a soft fill without a lip. */
+/* Actions inside a card stay light: a soft fill instead of an outline. */
 .items-page .listing-actions .button.secondary {
-  --button-depth: 0px;
   --button-face: var(--canvas);
   border-color: transparent;
 }

@@ -81,6 +81,7 @@ export default function AgentListings({
             <Button
               className="agent-product-offer"
               variant="outline"
+              size="sm"
               onClick={() => (canOffer ? onOffer(item) : onOpen(item))}
             >
               {!canOffer
