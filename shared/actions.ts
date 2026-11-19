@@ -27,12 +27,24 @@ export type AgentPreferencesPatch = {
   source?: string;
   location?: string;
 };
-export type AgentQuestionEvent = {
-  type: "question";
-  id: string;
+export type AgentTapAnswer = {
+  label: string;
+  patch?: AgentListingPatch;
+  /** Append to the latest description when the seller taps this answer. */
+  appendDescription?: string;
+  acceptsProposal?: true;
+};
+export type AgentListingQuestion = {
+  listingField?: keyof AgentListingPatch | "other";
+  choiceActions?: AgentTapAnswer[];
   question: string;
   choices?: string[];
   input?: { type: "price"; min: number; max: number; step: number; value?: number };
+};
+export type AgentQuestionEvent = AgentListingQuestion & {
+  type: "question";
+  id: string;
+  followUps?: AgentListingQuestion[];
 };
 export type AgentListingPatchEvent = {
   type: "listing_patch";

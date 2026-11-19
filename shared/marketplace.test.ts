@@ -1,9 +1,11 @@
+import { listingInventory } from "./listingInventory.ts";
 import { products } from "../src/testing/fixtures.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
   parseSearch as parseSearchAtDate,
-  filterProducts,
+  filterProducts as filterProductsAtDate,
+  type Product,
   defaults,
   migrateSaved,
   listingTitle,
@@ -13,15 +15,13 @@ import {
 // Calendar examples use a fixed Monday, independent of when CI runs.
 const parseSearch = (text: string, base = defaults) =>
   parseSearchAtDate(text, base, "2026-10-12");
-test("unverified legacy distances cannot exclude local offers or prove radius matches", () => {
-  const item = { ...products[0], location: "Berlin", distance: 0 };
-  const criteria = { ...defaults, radius: 1 };
-  // These are candidates requiring a pickup-distance check, not verified radius matches.
-  assert.equal(filterProducts([item], criteria).length, 1);
-  assert.equal(
-    filterProducts([{ ...item, distance: 400 }], criteria).length,
-    1,
-  );
+const filterProducts = (items: Product[], criteria: typeof defaults) =>
+  filterProductsAtDate(items, criteria, "2026-10-12");
+
+test("radius includes the boundary and keeps listings without a recorded distance", () => {
+  const items = [0, 1, 1.1].map((distance) => ({ ...products[0], distance }));
+  assert.deepEqual(filterProducts(items, { ...defaults, radius: 1 }), items.slice(0, 2));
+  assert.deepEqual(filterProducts(items, { ...defaults, radius: 0 }), items.slice(0, 1));
 });
 for (const text of [
   "Ich suche einen Schreibtisch bis 80 CHF, maximal 5 km entfernt, bis Friday",
@@ -347,4 +347,24 @@ test("supported marketplace source phrases are preferences rather than item keyw
     assert.equal(criteria.query, "desk");
     assert.equal(criteria.source, source);
   }
+});
+
+test("a buyer can collect through Friday while both pickup windows overlap", () => {
+  const dates = [
+    ["mover leaving Sunday", "Pickup by Sunday", "2026-10-18"],
+    ["seller leaving Wednesday", "Flexible pickup", "2026-10-14"],
+    ["Friday handover", "Available from 2026-10-16", "2026-10-16"],
+    ["flexible", "Flexible pickup", ""],
+    ["already expired", "Flexible pickup", "2026-10-11"],
+    ["Saturday start", "Weekend pickup", ""],
+    ["moving in next week", "Available from 2026-10-19", ""],
+  ];
+  const items = dates.map(([id, available, pickupBy]) => ({ ...products[0], id, available, pickupBy }));
+  const criteria = parseSearch("pickup by Friday");
+  const expected = dates.slice(0, 4).map(([id]) => id);
+  assert.deepEqual(filterProducts(items, criteria).map((item) => item.id), expected);
+  assert.deepEqual(
+    listingInventory(items, { pickupBy: criteria.pickup }, "2026-10-12").map((item) => item.id),
+    expected,
+  );
 });

@@ -49,7 +49,13 @@ const sourceEvidenceSchema = z
   })
   .strict();
 const reasonSchema = z.string().trim().min(1).max(500);
-export const questionSchema = z
+const answerLabel = z.string().trim().min(1).max(120);
+const tapAnswer = z.object({
+  label: answerLabel,
+  patch: z.object(listingFields).partial().strict().optional(),
+  appendDescription: z.string().trim().min(1).max(160).optional(),
+}).strict();
+const questionFields = z
   .object({
     question: z.string().trim().min(1).max(500),
     listingField: z
@@ -91,12 +97,15 @@ export const questionSchema = z
       )
       .optional(),
     choices: z
-      .array(z.string().trim().min(1).max(120))
+      .array(z.union([answerLabel, tapAnswer]))
       .min(1)
       .max(5)
       .optional(),
   })
   .strict();
+export const questionSchema = questionFields.extend({
+  followUps: z.array(questionFields.omit({ input: true })).max(2).optional(),
+});
 export const listingUpdateSchema = z
   .object({
     patch: z
@@ -231,17 +240,82 @@ function wantsClear(field: string, text: string) {
   ).test(text);
 }
 
+function chfAmounts(text: string) {
+  const amount = String.raw`(\d{1,3}(?:[’',. ]\d{3})+(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)`;
+  // In "MacBook 2020 CHF 400", CHF belongs to the following amount.
+  const currency = new RegExp(
+    String.raw`\b(?:CHF|Fr\.?)\s*${amount}|${amount}\s*CHF\b(?!\s*\d)`,
+    "gi",
+  );
+  return [...text.matchAll(currency)].map((match) => ({
+    price: Number((match[1] ?? match[2])
+      .replace(/[’' ]|[.,](?=\d{3}(?:\D|$))/g, "")
+      .replace(",", ".")),
+    index: match.index,
+    length: match[0].length,
+  }));
+}
+
 function chfPrices(text: string): number[] {
-  const amount = "(\\d+(?:[’' ]\\d{3})*(?:[.,]\\d{1,2})?)";
-  return [
-    ...text.matchAll(
-      new RegExp(`(?:CHF|Fr\\.?)\\s*${amount}|${amount}\\s*CHF`, "gi"),
-    ),
-  ]
-    .map((match) =>
-      Number((match[1] ?? match[2]).replace(/[’' ]/g, "").replace(",", ".")),
-    )
+  return chfAmounts(text).map(({ price }) => price)
     .filter((price) => Number.isFinite(price) && price >= 0 && price <= 10_000);
+}
+
+export const priceProposalSchema = z.object({
+  price: z.number().finite().positive().max(10_000).multipleOf(0.01),
+  sourceIds: z.array(z.string().min(1).max(160)).min(2).max(4),
+}).strict();
+
+function comparableQuote(source: AgentRunSource) {
+  const text = source.title + " " + source.snippet;
+  if (/\b(?:sold|retail|original price|originally|new price|previous price|starting (?:bid|price)|start(?:ing)? at|auction start|startpreis|startgebot|neupreis|verkauft|vendu|prix neuf|mise à prix)\b/i.test(text))
+    fail("Use fixed asking prices, excluding auction starts, retail and sold prices.");
+
+  const amounts = [source.title, source.snippet].flatMap((part) =>
+    chfAmounts(part).map((amount) => ({ ...amount, part })),
+  );
+  const first = amounts[0];
+  if (!first || first.price <= 0 || first.price > 10_000 ||
+      amounts.some(({ price }) => price !== first.price))
+    fail("Choose an offer with one unambiguous positive CHF asking price.");
+  const incidentalCost = /\b(?:shipping|postage|deposit|delivery|versand(?:kosten)?|port|livraison)\s*[:=]?\s*$/i;
+  if (amounts.some(({ part, index }) => incidentalCost.test(part.slice(0, index))))
+    fail("Use the asking price of the item itself.");
+  const quote = first.part.slice(
+    Math.max(0, first.index - 100),
+    first.index + first.length + 100,
+  ).trim();
+  return { price: first.price, quote };
+}
+
+export function proposePrice(
+  input: z.infer<typeof priceProposalSchema>,
+  sources: AgentRunSource[],
+  offerSourceIds: Set<string>,
+  id: string,
+): AgentListingPatchEvent {
+  const { price, sourceIds } = priceProposalSchema.parse(input);
+  if (new Set(sourceIds).size !== sourceIds.length)
+    fail("Choose distinct comparable offers.");
+
+  const prices: number[] = [];
+  const evidence = sourceIds.map((sourceId) => {
+    const source = sources.find((item) => item.id === sourceId);
+    if (!source || !offerSourceIds.has(sourceId))
+      fail("Choose individual offers returned by this search.");
+    const comparable = comparableQuote(source);
+    prices.push(comparable.price);
+    return { kind: "source" as const, sourceId, quote: comparable.quote };
+  });
+  const low = Math.min(...prices);
+  const high = Math.max(...prices);
+  if (price < low || price > high)
+    fail("Suggest a price within the observed asking-price range.");
+  const citations = sourceIds.map((sourceId) => `[${sourceId}]`).join(" ");
+  return {
+    type: "listing_patch", id, patch: { price }, requiresAcceptance: true, evidence,
+    reason: `Suggested CHF ${price} based on ${prices.length} offers asking CHF ${low}–${high}. ${citations}`,
+  };
 }
 
 function latestSellerPrice(request: AgentRunRequest): number | null {

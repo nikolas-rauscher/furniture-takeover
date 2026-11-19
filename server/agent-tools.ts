@@ -1,6 +1,7 @@
 import { tool, type ToolSet } from "ai";
 import { z } from "zod";
 import { RunError } from "./errors.ts";
+import { askingPriceQuestion, formatQuestion } from "./listing-questions.ts";
 import { repeatedQuestion } from "./conversation.ts";
 import { inventoryWords } from "./inventory-terms.ts";
 import { searchWeb } from "./web-search.ts";
@@ -15,6 +16,8 @@ import type {
 } from "../shared/runs.ts";
 import {
   questionSchema,
+  priceProposalSchema,
+  proposePrice,
   listingUpdateSchema,
   preferencesUpdateSchema,
   prepareListingAction,
@@ -24,6 +27,9 @@ import {
 // Shared by this run's tools and the runtime's tool-selection policy.
 export type AgentToolState = {
   pendingQuestion?: AgentQuestionEvent;
+  firstDraft: boolean;
+  proposedPrice?: number;
+  priceReason?: string;
   listingNeedsInput: boolean;
   ownInventoryOnly: boolean;
   allowWebSearch: boolean;
@@ -169,12 +175,34 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
           !/\b(?:pickup|pick up|collect(?:ion)?|handover|handed over|hand over|condition|shipping|delivery|postage|when|where)\b/i.test(
             parsedQuestion.question,
           );
-        if (parsedQuestion.input && !asksPrice) delete parsedQuestion.input;
-        state.pendingQuestion = {
-          type: "question",
-          id: toolCallId,
-          ...parsedQuestion,
+        const priceQuestion = parsedQuestion.listingField
+          ? parsedQuestion.listingField === "price"
+          : asksPrice;
+        if (!priceQuestion) delete parsedQuestion.input;
+        if (parsedQuestion.input && parsedQuestion.input.value === undefined)
+          throw new Error("Supply a grounded slider value, or omit the price control.");
+        if (listingAssist && priceQuestion && parsedQuestion.input &&
+            parsedQuestion.input.value !== (state.proposedPrice ?? savedPrice))
+          throw new Error("Use the validated proposal or saved price, or omit the slider.");
+        const { followUps = [], ...main } = parsedQuestion;
+        const needsPrice = state.firstDraft && savedPrice == null;
+        const queued = followUps.filter((followUp) => {
+          if (!listingAssist || repeatedQuestion(followUp.question, request)) return false;
+          const field = followUp.listingField;
+          if (field === "price") return false;
+          return !field || field === "other" || field === "description" ||
+            !request.context?.currentDraft?.[field];
+        }).map(formatQuestion);
+        let question: AgentQuestionEvent = {
+          type: "question", id: toolCallId, ...formatQuestion(main),
         };
+        if (needsPrice || (priceQuestion && state.proposedPrice !== undefined)) {
+          if (!priceQuestion) queued.unshift(formatQuestion(main));
+          question = askingPriceQuestion(toolCallId, state.proposedPrice);
+          if (priceQuestion) question.question = main.question;
+        }
+        if (queued.length) question.followUps = queued.slice(0, question.listingField === "price" ? 2 : 1);
+        state.pendingQuestion = question;
         questionController.abort();
         await send(state.pendingQuestion);
         return { awaitingUser: true };
@@ -182,12 +210,28 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
     }),
     ...(listingAssist
       ? {
+          propose_price: tool({
+            description: "Suggest a positive CHF price for acceptance. Select two to four comparable fixed-price offers from this search. The server quotes them.",
+            inputSchema: priceProposalSchema,
+            execute: async (input, { toolCallId }) => {
+              claimTool();
+              if (state.proposedPrice !== undefined)
+                throw new Error("A price has already been proposed. Ask for the seller’s decision.");
+              const action = proposePrice(input, sources, offerSourceIds, toolCallId);
+              state.proposedPrice = input.price;
+              state.priceReason = action.reason;
+              await send(action);
+              return { price: input.price, reason: action.reason };
+            },
+          }),
           update_listing: tool({
             description:
-              "Update only changed listing fields, with exact quotes from a current or earlier user-authored reply or the current draft. When adding to the description, preserve its full text verbatim and append the exact new answer on a separate line; include exact quotes for both. Omit unchanged and unspecified fields; do not submit a whole draft. For a condition answer Used: patch {condition: Used}, seller quote Used. Research can propose only a sourced CHF price for later acceptance. Does not save or publish.",
+              "Update only changed listing fields, with exact quotes from a current or earlier user-authored reply or the current draft. When adding to the description, preserve its full text verbatim and append the exact new answer on a separate line; include exact quotes for both. Omit unchanged and unspecified fields; do not submit a whole draft. For a condition answer Used: patch {condition: Used}, seller quote Used. Use propose_price for researched prices. Does not save or publish.",
             inputSchema: listingUpdateSchema,
             execute: async (input, { toolCallId }) => {
               claimTool();
+              if (input.evidence.some((item) => item.kind === "source"))
+                throw new Error("Use propose_price with comparable offer IDs for a researched price.");
               const prepared = prepareListingAction(
                 input,
                 request,
@@ -404,6 +448,8 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                   "INVALID_RESEARCH_SCOPE",
                   "Product specifications are only available when reviewing or preparing a listing.",
                 );
+              if (state.firstDraft && !state.webSearched && purpose === "product_info")
+                throw new Error("Start with comparable offers using purpose offers.");
               state.responseLanguage ??= selectedLanguage;
               state.webSearched = true;
               const requestedSource = request.context?.source;

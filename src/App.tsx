@@ -932,11 +932,15 @@ export default function App({
     );
     storeSearch(search);
 
-    const request = agentSearchRequest(search, activeListings);
-    if (question)
-      request.context = { ...request.context, previousQuestion: question };
     const currentProposal =
       proposal ?? (preserveHistory ? negotiations.current() : undefined);
+    const request = agentSearchRequest(
+      search,
+      activeListings,
+      Boolean(currentProposal),
+    );
+    if (question)
+      request.context = { ...request.context, previousQuestion: question };
     request.context = {
       ...request.context,
       ...(currentProposal

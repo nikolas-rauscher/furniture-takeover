@@ -292,19 +292,12 @@ test("researching an asking price emits real source evidence and an acceptance-o
         "price-research",
       ),
       toolCall(
-        "update_listing",
-        {
-          patch: { price: 80 },
-          reason:
-            "A tentative starting price based on one comparable asking price; review it before accepting.",
-          evidence: [
-            { kind: "source", sourceId: "web-1", quote: "Asking CHF 80" },
-          ],
-        },
+        "propose_price",
+        { price: 80, sourceIds: ["web-1", "web-2"] },
         "price-proposal",
       ),
       answer(
-        "One comparable asks CHF 80 [web-1]. You can accept or keep your price.",
+        "One of the two desks asks CHF 80 [web-1]. You can accept or keep your price.",
       ),
     ],
   });
@@ -321,6 +314,11 @@ test("researching an asking price emits real source evidence and an acceptance-o
                 title: "White desk in Lausanne",
                 url: "https://www.ricardo.ch/fr/a/test-desk-123456789/",
                 description: "Asking CHF 80. Pickup in Lausanne.",
+              },
+              {
+                title: "White desk",
+                url: "https://www.ricardo.ch/fr/a/another-desk-234567890/",
+                description: "Asking CHF 85.",
               },
             ],
           },
@@ -423,7 +421,7 @@ test("listing specification research returns actual sources but cannot authorize
       text: "Research manufacturer specifications",
       context: {
         intent: "listing_assist",
-        currentDraft: { ...blankDraft, title: "Desk" },
+        currentDraft: { ...blankDraft, title: "Desk", price: 60 },
       },
     },
   );
@@ -443,7 +441,7 @@ test("listing specification research returns actual sources but cannot authorize
       (event) =>
         event.type === "status" &&
         event.id === "invalid-spec-price" &&
-        event.state === "error",
+        event.state === "needs_input",
     ),
   );
 });

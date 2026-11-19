@@ -1,3 +1,5 @@
+import { listingInventory } from "../shared/listingInventory.ts";
+import { products } from "./testing/fixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { defaults, type Product } from "../shared/marketplace.ts";
@@ -264,4 +266,15 @@ test("a default budget remains unspecified until the user supplies one", () => {
     ).context?.budgetSpecified,
     true,
   );
+});
+
+test("the closer reply filters browser and database inventory before the result cap", () => {
+  const initial = newSearch("desk", defaults, "Lausanne");
+  const closer = newSearch("Closer: within 2 km", initial.criteria, "Lausanne", initial);
+  const item = { ...products[0], source: "takeover" as const, status: "active" as const };
+  const outside = Array.from({ length: 100 }, (_, index) => ({ ...item, id: String(index), distance: 2.1 }));
+  const inventory = [...outside, { ...item, id: "boundary", distance: 2 }];
+  const request = agentSearchRequest(closer, inventory);
+  assert.deepEqual(request.inventory?.map(({ id }) => id), ["boundary"]);
+  assert.deepEqual(listingInventory(inventory, request.context), request.inventory);
 });

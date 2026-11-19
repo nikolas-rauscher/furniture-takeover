@@ -67,7 +67,7 @@ const ANY_BUDGET = 1_000_000;
 const MAX_RADIUS_KM = 500;
 /* The parser reads a free budget only from an amount, so the reply names one. */
 const FREE_ONLY = "Free items only (CHF 0)";
-const READY_THIS_WEEKEND = "Ready this weekend";
+const COLLECT_BY_SUNDAY = "Collect by Sunday";
 
 /**
  * What the student can tap after Pako's latest finished answer: acting on the
@@ -140,7 +140,7 @@ function narrowerSearches(
   if (closer !== undefined) replies.push(ask(`Closer: within ${closer} km`));
   if (criteria.maxPrice > 0) replies.push(ask(FREE_ONLY));
   if (!criteria.pickup || criteria.pickup > weekendDeadline(today))
-    replies.push(ask(READY_THIS_WEEKEND));
+    replies.push(ask(COLLECT_BY_SUNDAY));
   return replies;
 }
 
@@ -207,7 +207,7 @@ function widerRadius(radius: number) {
 
 /** The pickup deadline the weekend reply sets, read the way its follow-up will be read. */
 function weekendDeadline(today: string) {
-  const { pickup } = extractSearchConstraints(READY_THIS_WEEKEND, today);
+  const { pickup } = extractSearchConstraints(COLLECT_BY_SUNDAY, today);
   if (!pickup) throw new Error("The weekend reply must name a pickup date.");
   return pickup;
 }
