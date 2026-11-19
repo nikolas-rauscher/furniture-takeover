@@ -4,7 +4,6 @@ import {
   dealTermsSchema,
   messageStatesTerms,
   missingTerms,
-  termsComplete,
   type DealTerms,
 } from "./deal.ts";
 
@@ -79,10 +78,10 @@ test("a pickup is stated by its Zurich clock time, or by its words without one",
 });
 
 test("terms are complete with a price and either shipping or a concrete pickup", () => {
-  assert.equal(termsComplete(pickup), true);
-  assert.equal(
-    termsComplete({ ...none, amount: 30, fulfillment: "shipping" }),
-    true,
+  assert.deepEqual(missingTerms(pickup), []);
+  assert.deepEqual(
+    missingTerms({ ...none, amount: 30, fulfillment: "shipping" }),
+    [],
   );
   assert.deepEqual(missingTerms({ ...pickup, pickupAt: null }), ["pickupTime"]);
   assert.deepEqual(missingTerms(none), [

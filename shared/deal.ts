@@ -42,9 +42,6 @@ export function missingTerms(terms: DealTerms): DealTermField[] {
   return missing;
 }
 
-export const termsComplete = (terms: DealTerms) =>
-  missingTerms(terms).length === 0;
-
 /** Words that state a price of zero in the languages students write in. */
 const FREE_WORDS = /\b(?:free|gratuit|gratuite|gratis|kostenlos)\b/i;
 
