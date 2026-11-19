@@ -8,7 +8,7 @@ import { Button } from "./components/ui/button";
 import { Badge } from "./components/ui/badge";
 import { Textarea } from "./components/ui/textarea";
 import { Input } from "./components/ui/input";
-import { readRoute, type View } from "./navigation";
+import { historyPosition, readRoute, type View } from "./navigation";
 import type { AccountConnection } from "./cloud/AccountSession";
 import Auth from "./cloud/Auth";
 import AccountSettings from "./cloud/Account";
@@ -48,6 +48,7 @@ import { prepareListingDraft } from "./listingPreparation";
 import { HeroHeadline } from "./components/HeroHeadline";
 import {
   useEffect,
+  useEffectEvent,
   useLayoutEffect,
   useRef,
   useState,
@@ -127,7 +128,7 @@ import {
   type Criteria,
   type Product,
 } from "../shared/marketplace";
-import { transitionPage } from "./pageTransition";
+import { transitionPage, type PageDirection } from "./pageTransition";
 import {
   PageTransition,
   PageTransitionShared,
@@ -610,6 +611,17 @@ export default function App({
     imageReader.current = null;
     setPhotoReading(false);
   }
+  /** Where the page on screen sits in this tab's history. */
+  const historyPlace = useRef(historyPosition(window.history.state));
+  /** Adds a history entry one step after the current one. */
+  function pushRoute(url: string) {
+    historyPlace.current += 1;
+    window.history.pushState({ position: historyPlace.current }, "", url);
+  }
+  /** Changes the current history entry's address; its place stays. */
+  function replaceRoute(url: string) {
+    window.history.replaceState(window.history.state, "", url);
+  }
   function navigate(next: View, fromHistory = false) {
     if (
       !signedIn &&
@@ -649,29 +661,36 @@ export default function App({
             ? "#listings"
             : `#${next}`;
       if (window.location.hash !== hash)
-        window.history.pushState(
-          null,
-          "",
-          window.location.pathname + window.location.search + hash,
-        );
+        pushRoute(window.location.pathname + window.location.search + hash);
     }
     setModal(null);
   }
-  useEffect(() => {
-    const restore = () => {
-      const route = readRoute(window.location.hash);
-      transitionPage("nav-back", () => {
-        setAccountTab(route.accountTab);
-        setMessageListingId(
-          route.view === "messages" ? route.listingId : undefined,
-        );
-        if (route.view === "detail") setSelectedId(route.listingId ?? null);
-        navigate(route.view, true);
-      });
-    };
-    window.addEventListener("popstate", restore);
-    return () => window.removeEventListener("popstate", restore);
+  /** Shows the page Back or Forward led to, moving the way the step went. */
+  const showHistoryEntry = useEffectEvent((direction: PageDirection) => {
+    const route = readRoute(window.location.hash);
+    transitionPage(direction, () => {
+      setAccountTab(route.accountTab);
+      setMessageListingId(
+        route.view === "messages" ? route.listingId : undefined,
+      );
+      if (route.view === "detail") setSelectedId(route.listingId ?? null);
+      navigate(route.view, true);
+    });
   });
+  useEffect(() => {
+    const onPopState = (event: PopStateEvent) => {
+      const position = historyPosition(event.state);
+      const direction =
+        position < historyPlace.current ? "nav-back" : "nav-forward";
+      historyPlace.current = position;
+      // React renders a transition that starts during popstate at once, without
+      // its page transition. Started just after the event, Back and Forward
+      // move the page together with the tab highlight, like a tap does.
+      setTimeout(() => showHistoryEntry(direction), 0);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
   useEffect(() => {
     if (!signedIn && ["sell", "messages", "account", "searches"].includes(view))
       navigate("settings");
@@ -686,12 +705,7 @@ export default function App({
       setMessageListingId(listingId);
     }
     navigate("messages");
-    if (listingId)
-      window.history.replaceState(
-        null,
-        "",
-        `#messages/${encodeURIComponent(listingId)}`,
-      );
+    if (listingId) replaceRoute(`#messages/${encodeURIComponent(listingId)}`);
   }
   function goHome() {
     scrollPositions.current.delete("home");
@@ -787,8 +801,7 @@ export default function App({
       else {
         setAccountTab(destination === "favorites" ? "favorites" : "listings");
         navigate("account");
-        if (destination === "favorites" && signedIn)
-          window.history.replaceState(null, "", "#saved");
+        if (destination === "favorites" && signedIn) replaceRoute("#saved");
       }
     });
   }
@@ -816,11 +829,7 @@ export default function App({
       setSelectedId(item.id);
       navigate("detail");
     });
-    window.history.replaceState(
-      null,
-      "",
-      `#listing/${encodeURIComponent(item.id)}`,
-    );
+    replaceRoute(`#listing/${encodeURIComponent(item.id)}`);
   }
   async function toggleFavorite(id: string) {
     if (!signedIn) {
@@ -929,11 +938,7 @@ export default function App({
     cancelPhotoRead();
     setView("discover");
     if (window.location.hash)
-      window.history.pushState(
-        null,
-        "",
-        window.location.pathname + window.location.search,
-      );
+      pushRoute(window.location.pathname + window.location.search);
     setModal(null);
     setSearching(true);
     if (!preserveHistory) setQuery(search.originalRequest);
@@ -1881,9 +1886,7 @@ export default function App({
                   });
                   setMessageProposal(undefined);
                 }}
-                onDeleted={() =>
-                  window.history.replaceState(null, "", "#messages")
-                }
+                onDeleted={() => replaceRoute("#messages")}
                 listings={own}
                 account={account}
                 listing={own.find((item) => item.id === messageListingId)}
@@ -2448,9 +2451,7 @@ export default function App({
                 accountTab={accountTab}
                 setAccountTab={(tab) => {
                   setAccountTab(tab);
-                  window.history.pushState(
-                    null,
-                    "",
+                  pushRoute(
                     tab === "favorites"
                       ? "#saved"
                       : tab === "archive"
