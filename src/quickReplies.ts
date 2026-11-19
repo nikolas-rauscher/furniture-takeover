@@ -85,7 +85,7 @@ const COLLECT_BY_SUNDAY = "Collect by Sunday";
 /**
  * What the student can tap after Pako's latest finished answer: keeping watch
  * when nothing fits yet, acting on the best matches or narrowing the search
- * after results, broadening it after an empty search. Every reply comes from
+ * after student listings, broadening it when none fit. Every reply comes from
  * the turn and the search's own criteria.
  */
 export function quickReplies(input: QuickRepliesInput): QuickReplies {
@@ -108,12 +108,16 @@ export function quickReplies(input: QuickRepliesInput): QuickReplies {
       replies: [watch, ...broader].slice(0, MAX_BROADER_SEARCHES),
     };
   }
+  // Web results alone mean no student listing fits: widen the search, never narrow it.
+  const studentMatches = Boolean(turn.inventoryMatchIds?.length);
   return {
     line: null,
     replies: [
       ...(watch ? [watch] : []),
       ...listingActions(input.listings),
-      ...narrowerSearches(search.criteria, budget, input.today),
+      ...(studentMatches
+        ? narrowerSearches(search.criteria, budget, input.today)
+        : broaderSearches(search.criteria, budget)),
     ].slice(0, MAX_NEXT_STEPS),
   };
 }
