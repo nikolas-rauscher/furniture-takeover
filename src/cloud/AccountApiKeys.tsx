@@ -93,6 +93,7 @@ export default function AccountApiKeys() {
           {!status && !loading && (
             <Button
               type="button"
+              className="button secondary small"
               onClick={() => setAttempt((value) => value + 1)}
             >
               Retry loading keys
@@ -177,6 +178,7 @@ export default function AccountApiKeys() {
               {saved?.saved && (
                 <Button
                   type="button"
+                  className="button secondary"
                   disabled={unavailable}
                   onClick={() => void updateKey(provider.id, true)}
                 >

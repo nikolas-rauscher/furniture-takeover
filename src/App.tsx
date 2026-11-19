@@ -12,6 +12,7 @@ import { readRoute, type View } from "./navigation";
 import type { AccountConnection } from "./cloud/AccountSession";
 import Auth from "./cloud/Auth";
 import AccountSettings from "./cloud/Account";
+import LocalSettings from "./components/LocalSettings";
 import Report from "./cloud/Report";
 import { useMarketplaceListings } from "./cloud/useMarketplaceListings";
 import { useFavorites } from "./cloud/useFavorites";
@@ -305,6 +306,10 @@ export default function App({
   const [sellStep, setSellStep] = useState(1);
   const [editingListing, setEditingListing] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState("");
+  /** A listing that was just published; My listings celebrates it briefly. */
+  const [publishedListing, setPublishedListing] = useState<string | null>(
+    null,
+  );
   const hasSellingDraft = useRef(view === "sell");
   const [photoReading, setPhotoReading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -1332,6 +1337,7 @@ export default function App({
       return;
     }
     hasSellingDraft.current = false;
+    if (!editingListing) setPublishedListing(item.id);
     setAccountTab("listings");
     navigate("account");
     setToast(
@@ -1649,33 +1655,12 @@ export default function App({
                     />
                   </div>
                 ) : (
-                  <section className="local-settings-page">
-                    <div className="page-title">
-                      <h1>Workspace settings</h1>
-                      <p>
-                        Your listings and preferences are saved in this browser.
-                      </p>
-                    </div>
-                    {connectionStatus}
-                    <Button
-                      className="button secondary"
-                      onClick={() => void database.addDemo()}
-                    >
-                      Add sample listings
-                    </Button>
-                    <Button
-                      className="text-button"
-                      onClick={() => setModal("help")}
-                    >
-                      How the agent works
-                    </Button>
-                    <Button
-                      className="text-button"
-                      onClick={() => setModal("clear")}
-                    >
-                      Clear local workspace
-                    </Button>
-                  </section>
+                  <LocalSettings
+                    connectionStatus={connectionStatus}
+                    onAddDemo={() => void database.addDemo()}
+                    onHelp={() => setModal("help")}
+                    onClear={() => setModal("clear")}
+                  />
                 )}
               </PageTransitionView>
             )}
@@ -2307,6 +2292,8 @@ export default function App({
                 onEdit={editListing}
                 onStatusChange={setStatus}
                 renderProduct={productCard}
+                publishedId={publishedListing}
+                onCelebrationEnd={() => setPublishedListing(null)}
               />
             </WorkspacePage>
           </main>
