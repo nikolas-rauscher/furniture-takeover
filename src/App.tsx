@@ -105,11 +105,8 @@ import PhotoSplitQuestion from "./components/PhotoSplitQuestion";
 import AgentSuggestions from "./components/AgentSuggestions";
 import AgentRunPanel from "./components/AgentRunPanel";
 import { useAgentRun } from "./hooks/useAgentRun";
-import {
-  assistRequestKey,
-  useAgentAssist,
-  type TypingAssistRequest,
-} from "./hooks/useAgentAssist";
+import { useAgentAssist } from "./hooks/useAgentAssist";
+import { useListingAnalysis } from "./hooks/useListingAnalysis";
 import { useListingConversation } from "./hooks/useListingConversation";
 import { useSaved } from "./hooks/useSaved";
 import { useWatches } from "./alerts/useWatches";
@@ -199,15 +196,6 @@ function newDraft(location: string): ListingDraft {
     location,
     pickup: "",
     category: "All",
-  };
-}
-/** The photo analysis of a draft: its photos, the student's note and the pickup place. */
-function listingAssistRequest(draft: ListingDraft): TypingAssistRequest {
-  return {
-    intent: "listing",
-    text: draft.raw,
-    images: listingPhotos(draft),
-    context: { location: draft.location },
   };
 }
 /** What changing a listing's status tells the seller. */
@@ -644,15 +632,18 @@ export default function App({
     typing: searchFocused || hasSearchDraft,
     location,
   });
-  const listingAssist = useAgentAssist(
-    configured &&
+  const listingAnalysis = useListingAnalysis({
+    photos: listingPhotos(draft),
+    note: draft.raw,
+    location: draft.location,
+    active:
       view === "sell" &&
       sellMode === "single" &&
       sellStep === 1 &&
-      !busy
-      ? listingAssistRequest(draft)
-      : null,
-  );
+      !editingListing &&
+      !busy,
+    available: configured,
+  });
 
   useEffect(
     () => () => {
@@ -1372,10 +1363,11 @@ export default function App({
         }
       }
       setSellStep(2);
-      const request = listingAssistRequest(start);
-      const response =
-        finishedAnalysis(request) ??
-        (await requestAgentAssist(request, { signal: controller.signal }));
+      const response = await listingAnalysis.ensure({
+        photos,
+        note: start.raw,
+        location: start.location,
+      });
       if (controller.signal.aborted) return;
       const current = draftRef.current;
       const prepared = prepareListingDraft(current, response.metadata);
@@ -1396,26 +1388,6 @@ export default function App({
     } finally {
       if (listingRequest.current === controller) setBusy(false);
     }
-  }
-  /** The photo analysis Pako already finished for exactly these photos, notes and place. */
-  function finishedAnalysis(request: TypingAssistRequest) {
-    return listingAssist.status === "success" &&
-      listingAssist.requestKey === assistRequestKey(request)
-      ? listingAssist.response
-      : null;
-  }
-  function addListingSuggestion(suggestion: string) {
-    setDraft((current) => ({
-      ...current,
-      raw: suggestion.slice(0, 4000),
-    }));
-    window.requestAnimationFrame(() => {
-      const field = document.querySelector<HTMLTextAreaElement>(
-        ".sell-inputs textarea",
-      );
-      field?.focus();
-      field?.setSelectionRange(field.value.length, field.value.length);
-    });
   }
   async function publish(event: FormEvent) {
     event.preventDefault();
@@ -2465,7 +2437,6 @@ export default function App({
                   photoReading={photoReading}
                   uploadError={uploadError}
                   liveAgent={configured}
-                  listingAssist={listingAssist}
                   onBack={() =>
                     transitionPage("nav-back", () => {
                       if (sellStep === 2 && !editingListing) {
@@ -2513,7 +2484,7 @@ export default function App({
                   onAccount={() => navigate("settings")}
                   onPhotoSelected={upload}
                   onCreateDraft={() => void generateDraft()}
-                  onSuggestionSelected={addListingSuggestion}
+                  onNotesDone={listingAnalysis.flushNote}
                   onPublish={publish}
                   batch={sellBatch}
                   onSellSeveral={

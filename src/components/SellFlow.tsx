@@ -32,7 +32,6 @@ import {
   shortDate,
   type Category,
 } from "../../shared/marketplace";
-import type { AgentAssistState } from "../hooks/useAgentAssist";
 import { useFocused } from "../hooks/useFocused";
 import type { AgentQuota } from "../../shared/agent";
 import Modal from "./Modal";
@@ -262,7 +261,6 @@ type SellFlowProps = {
   photoReading?: boolean;
   uploadError: string;
   liveAgent: boolean;
-  listingAssist: AgentAssistState;
   agentConversation?: ReactNode;
   agentTools?: ReactNode;
   agentWorking?: boolean;
@@ -278,7 +276,8 @@ type SellFlowProps = {
   onDraftChange: (changes: Partial<ListingDraft>) => void;
   onPhotoSelected: (files: File[]) => void;
   onCreateDraft: () => void;
-  onSuggestionSelected: (suggestion: string) => void;
+  /** The student left the Details field, so what they wrote counts now. */
+  onNotesDone: () => void;
   onPublish: (event: FormEvent<HTMLFormElement>) => void;
   /** Switch to uploading several items at once. */
   onSellSeveral?: () => void;
@@ -299,7 +298,6 @@ export default function SellFlow({
   photoReading = false,
   uploadError,
   liveAgent,
-  listingAssist,
   agentConversation,
   agentTools,
   agentWorking = false,
@@ -309,7 +307,7 @@ export default function SellFlow({
   onDraftChange,
   onPhotoSelected,
   onCreateDraft,
-  onSuggestionSelected,
+  onNotesDone,
   onPublish,
   onSellSeveral,
   batch,
@@ -392,7 +390,6 @@ export default function SellFlow({
     />
   );
   const [fieldsOpen, setFieldsOpen] = useState(false);
-  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   // On phones the photo step scrolls above its Create draft bar; the edge fades instead of cutting.
   const photoContent = useRef<HTMLDivElement>(null);
@@ -401,7 +398,6 @@ export default function SellFlow({
   useEffect(() => {
     headingRef.current?.focus({ preventScroll: true });
     setFieldsOpen(false);
-    setSuggestionsOpen(false);
   }, [step]);
 
   return (
@@ -495,82 +491,17 @@ export default function SellFlow({
                 <Textarea
                   ref={notesField}
                   id={notesId}
-                  rows={3}
+                  rows={2}
                   maxLength={4000}
                   disabled={unavailable}
                   value={draft.raw}
                   onChange={(event) =>
                     onDraftChange({ raw: event.target.value })
                   }
-                  placeholder="Price, condition or pickup details…"
+                  onBlur={onNotesDone}
+                  placeholder="Anything Pako can't see? Model, size, defects…"
                 />
               </Field>
-              {(photos.length > 0 || draft.raw.trim()) && (
-                <Button
-                  type="button"
-                  className="text-button photo-suggestions-button"
-                  disabled={
-                    unavailable ||
-                    listingAssist.status === "idle" ||
-                    listingAssist.status === "loading"
-                  }
-                  onClick={() => setSuggestionsOpen(true)}
-                >
-                  {listingAssist.status === "loading"
-                    ? "Combining photos & notes…"
-                    : "Improve description"}
-                </Button>
-              )}
-              {suggestionsOpen && (
-                <Modal
-                  title="Improve description"
-                  onClose={() => setSuggestionsOpen(false)}
-                >
-                  {listingAssist.status === "success" &&
-                  listingAssist.response?.metadata.description ? (
-                    <>
-                      <p className="quiet-caption">
-                        Based on your photos and everything you wrote. Using
-                        this replaces the notes below.
-                      </p>
-                      <p className="proposal-message-preview">
-                        {listingAssist.response.metadata.description}
-                      </p>
-                      <Button
-                        animateIcon
-                        className="button primary"
-                        type="button"
-                        onClick={() => {
-                          onSuggestionSelected(
-                            listingAssist.response!.metadata.description!,
-                          );
-                          setSuggestionsOpen(false);
-                        }}
-                      >
-                        Use this description
-                      </Button>
-                    </>
-                  ) : (
-                    <div role="status">
-                      <p>
-                        {listingAssist.status === "loading"
-                          ? "Combining your photos and notes…"
-                          : (listingAssist.error ??
-                            "No description available yet.")}
-                      </p>
-                      {listingAssist.status !== "loading" && (
-                        <Button
-                          type="button"
-                          className="button secondary"
-                          onClick={listingAssist.retry}
-                        >
-                          Try again
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                </Modal>
-              )}
               <PickupLocationInput
                 value={draft.location}
                 disabled={unavailable}
