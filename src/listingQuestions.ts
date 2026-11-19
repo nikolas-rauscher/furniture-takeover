@@ -292,22 +292,19 @@ export function handoverQuestion(
 
 /**
  * The questions of this turn in the order Pako asks them: his own pickup question
- * first while he researches, then the run's, which leave pickup to him.
+ * first, asked or answered, then the run's, which leave pickup to him.
  */
 export function questionQueue(
   questions: readonly AgentQuestionEvent[],
   pickup: AgentQuestionEvent | undefined,
 ): AgentQuestionEvent[] {
-  const ownPickup =
-    pickup !== undefined ||
-    questions.some((question) => question.id === PICKUP_QUESTION.id);
+  const own =
+    pickup ?? questions.find((question) => question.id === PICKUP_QUESTION.id);
   const fromRun = questions.filter(
     (question) =>
-      !ownPickup ||
-      question.id === PICKUP_QUESTION.id ||
-      !isPickupQuestion(question),
+      question.id !== PICKUP_QUESTION.id && (!own || !isPickupQuestion(question)),
   );
-  return pickup ? [pickup, ...fromRun] : fromRun;
+  return own ? [own, ...fromRun] : fromRun;
 }
 
 /** Pako's line when his allowance runs out while he writes the listing. */
