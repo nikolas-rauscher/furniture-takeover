@@ -108,8 +108,13 @@ export default function AgentRunPanel({
   const standaloneActions = state.actions.filter(
     (action) => !priceSuggestions.includes(action),
   );
-  const waitingForAnswer = state.questions.some(
+  // Queued questions wait their turn: only the next one shows beside the answered ones.
+  const nextQuestion = state.questions.find(
     (question) => !state.answers[question.id],
+  );
+  const waitingForAnswer = nextQuestion !== undefined;
+  const shownQuestions = state.questions.filter(
+    (question) => question === nextQuestion || state.answers[question.id],
   );
 
   const searchAnswer = splitSearchAnswer(displayText, textArriving);
@@ -392,7 +397,7 @@ export default function AgentRunPanel({
           ))}
         </div>
       )}
-      {state.questions.map((question) => (
+      {shownQuestions.map((question) => (
         <AgentQuestion
           key={question.id}
           question={question}

@@ -3,8 +3,10 @@ import assert from "node:assert/strict";
 import {
   applyAgentRunEvent,
   answerAgentQuestion,
+  answerLocalQuestion,
   beginAgentRun,
   emptyAgentRunState,
+  unanswerAgentQuestion,
   type AgentRunState,
 } from "./useAgentRun.ts";
 
@@ -392,4 +394,83 @@ test("tool-created message drafts stay with their turn and revisions do not rewr
     beginAgentRun(revised, "New search", "reset-turn", false).history.length,
     0,
   );
+});
+
+const priceQuestion = {
+  type: "question" as const,
+  id: "ask-1",
+  listingField: "price" as const,
+  question: "What asking price would you like?",
+  followUps: [
+    {
+      question: "Can the desk be taken apart?",
+      listingField: "other" as const,
+    },
+    { question: "Is the top scratched?", choices: ["No scratches"] },
+  ],
+};
+
+test("Pako's queued follow-ups become questions of their own, in order, right after his question", () => {
+  const asking = applyAgentRunEvent(initial, priceQuestion);
+  assert.deepEqual(
+    asking.questions.map((question) => question.id),
+    ["ask-1", "ask-1:1", "ask-1:2"],
+  );
+  assert.equal("followUps" in asking.questions[0], false);
+  assert.deepEqual(asking.questions[2], {
+    type: "question",
+    id: "ask-1:2",
+    question: "Is the top scratched?",
+    choices: ["No scratches"],
+  });
+  const repeated = applyAgentRunEvent(asking, priceQuestion);
+  assert.equal(
+    repeated.questions.length,
+    3,
+    "a repeated event replaces itself",
+  );
+  const answered = answerAgentQuestion(
+    asking,
+    "ask-1:1",
+    "Can be disassembled",
+  );
+  const next = beginAgentRun(answered, "Polish it", "run-2");
+  assert.equal(next.history[0].answers["ask-1:1"], "Can be disassembled");
+});
+
+test("an answer can be taken back, and Pako's own question joins the turn once answered", () => {
+  const asking = applyAgentRunEvent(initial, priceQuestion);
+  const answered = answerAgentQuestion(asking, "ask-1", "Use CHF 40");
+  assert.deepEqual(unanswerAgentQuestion(answered, "ask-1").answers, {});
+  assert.equal(unanswerAgentQuestion(asking, "ask-1"), asking);
+  const pickup = {
+    type: "question" as const,
+    id: "pako-pickup",
+    question: "When can buyers pick it up?",
+  };
+  const local = answerLocalQuestion(asking, pickup, "Weekday evenings");
+  assert.equal(local.questions.at(-1), pickup);
+  assert.equal(local.answers["pako-pickup"], "Weekday evenings");
+  const again = answerLocalQuestion(
+    unanswerAgentQuestion(local, "pako-pickup"),
+    pickup,
+    "Weekends",
+  );
+  assert.equal(
+    again.questions.filter((question) => question.id === "pako-pickup").length,
+    1,
+  );
+  assert.equal(again.answers["pako-pickup"], "Weekends");
+});
+
+test("the explanation stays next to a question Pako is still waiting on", () => {
+  const asking = applyAgentRunEvent(initial, priceQuestion);
+  const completed = applyAgentRunEvent(asking, {
+    type: "complete",
+    text: "Suggested CHF 40 based on 3 offers asking CHF 35–51. [web-1]",
+    sources: [],
+    runId: "run-1",
+  });
+  assert.match(completed.text, /Suggested CHF 40/);
+  assert.equal(completed.questions.length, 3);
 });
