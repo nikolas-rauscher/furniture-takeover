@@ -84,10 +84,31 @@ const proposalSchema = z
           .object({
             label: z.string().trim().min(1).max(40),
             kind: z.enum(THREAD_OPTION_KINDS),
-            message: z.string().trim().min(1).max(600),
+            message: z
+              .string()
+              .trim()
+              .min(1)
+              .max(600)
+              .optional()
+              .describe(
+                "For a short question, write the complete question as label and omit message. Otherwise write a draft containing only what the label says.",
+              ),
             terms: proposedTermsSchema.optional(),
           })
-          .strict(),
+          .strict()
+          .refine(
+            (option) =>
+              option.message !== undefined ||
+              (option.kind === "ask" && /[?？]$/.test(option.label)),
+            {
+              message:
+                "Supply a message unless the label is the complete question.",
+            },
+          )
+          .transform((option) => ({
+            ...option,
+            message: option.message ?? option.label,
+          })),
       )
       .min(1)
       .max(3),

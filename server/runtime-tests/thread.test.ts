@@ -660,3 +660,30 @@ test("condition replies can describe the listing or ask what to check in one rea
   assert.equal(turn.agreement.status, "none");
   assert.equal(model.doStreamCalls.length, 1);
 });
+
+test("a short question label is the exact composer draft when no message is supplied", async (t) => {
+  const question = "Which pickup window suits you?";
+  const { model, agent } = agentReading(
+    t,
+    reading({
+      facts: {},
+      stance: "question",
+      options: [
+        option({
+          label: "Confirm availability",
+          message: "Yes, it's still available.",
+        }),
+        { kind: "ask", label: question },
+      ],
+    }),
+  );
+  const turn = await agent.turn(bike);
+  assert.deepEqual(turn.options[1], {
+    id: "opt-2",
+    kind: "ask",
+    label: question,
+    message: question,
+    terms: null,
+  });
+  assert.equal(model.doStreamCalls.length, 1);
+});
