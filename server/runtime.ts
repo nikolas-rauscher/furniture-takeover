@@ -14,7 +14,7 @@ import type { Product } from "../shared/marketplace.ts";
 import { negotiationSchema } from "../shared/negotiation.ts";
 import { createNegotiationTools } from "./negotiation-tools.ts";
 import { buildAgentInstructions } from "./agent-instructions.ts";
-import { ToolChoiceViolationError, ToolLoopAgent, stepCountIs, type LanguageModel } from "ai";
+import { ToolChoiceViolationError, ToolLoopAgent, type LanguageModel } from "ai";
 import { createDeepSeek } from "@ai-sdk/deepseek";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
@@ -147,6 +147,9 @@ export function validateRunRequest(input: unknown): AgentRunRequest {
     );
   return parsed.data;
 }
+
+/** Model steps in one run before it stops with a step-limit error. */
+const MAX_STEPS = 8;
 
 const toolActivity: Record<string, { label: string; task: AgentTaskKind }> = {
   web_search: { label: "Searching the web", task: "web" },
@@ -508,7 +511,12 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
             ownInventoryOnly: state.ownInventoryOnly,
           }),
           tools,
-          stopWhen: [stepCountIs(8), () => Boolean(state.pendingQuestion)],
+          // A draft prepared or discarded on the last step still gets its closing reply.
+          stopWhen: [
+            ({ steps }) =>
+              steps.length >= MAX_STEPS + Number(negotiations.isReadyToFinish()),
+            () => Boolean(state.pendingQuestion),
+          ],
           prepareStep: ({ stepNumber }) => {
             // Preferences can change through a tool in this same reply. Rebuild
             // capabilities so an earlier takeover-only flag cannot survive it.
@@ -579,7 +587,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
               requiredTool = "web_search";
             else if (
               awaitingPrice &&
-              (state.proposedPrice !== undefined || stepNumber === 7 ||
+              (state.proposedPrice !== undefined || stepNumber === MAX_STEPS - 1 ||
                 (state.webSearched && sources.length < 2))
             )
               requiredTool = "ask_user";
