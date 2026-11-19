@@ -186,18 +186,20 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
           throw new Error("Use the validated proposal or saved price, or omit the slider.");
         const { followUps = [], ...main } = parsedQuestion;
         const needsPrice = state.firstDraft && savedPrice == null;
+        const title = listingAssist ? request.context?.currentDraft?.title : undefined;
+        const formattedMain = formatQuestion(main, title);
         const queued = followUps.filter((followUp) => {
           if (!listingAssist || repeatedQuestion(followUp.question, request, followUp.listingField)) return false;
           const field = followUp.listingField;
           if (field === "price") return false;
           return !field || field === "other" || field === "description" ||
             !request.context?.currentDraft?.[field];
-        }).map(formatQuestion);
+        }).map((question) => formatQuestion(question, title));
         let question: AgentQuestionEvent = {
-          type: "question", id: toolCallId, ...formatQuestion(main),
+          type: "question", id: toolCallId, ...formattedMain,
         };
         if (needsPrice || (priceQuestion && state.proposedPrice !== undefined)) {
-          if (!priceQuestion) queued.unshift(formatQuestion(main));
+          if (!priceQuestion) queued.unshift(formattedMain);
           question = askingPriceQuestion(toolCallId, state.proposedPrice);
           if (priceQuestion) question.question = main.question;
         }

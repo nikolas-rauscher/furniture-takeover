@@ -100,6 +100,7 @@ const questionFields = z
       .array(z.union([answerLabel, tapAnswer]))
       .min(1)
       .max(5)
+      .describe("For measurements, use listingField dimensions and offer relevant exact sizes with units and a matching dimensions patch. The seller can also type their own measurements.")
       .optional(),
   })
   .strict();

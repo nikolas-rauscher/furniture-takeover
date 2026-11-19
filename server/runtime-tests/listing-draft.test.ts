@@ -300,3 +300,35 @@ test("polishing suppresses skipped topics and fields in main and queued question
   assert.deepEqual(questions.map((question) => question.id), ["battery"]);
   assert.equal(questions[0].followUps, undefined);
 });
+
+test("desk measurement questions offer local dimensions patches in the main question and queue", async () => {
+  const question = {
+    question: "What are the width, depth and height of the desk?",
+    listingField: "dimensions",
+  };
+  for (const queued of [false, true]) {
+    const measured = "125 x 55 x 72 cm";
+    const model = new MockLanguageModelV4({
+      doStream: toolCall("ask_user", queued ? {
+        question: "Does the desk come apart?",
+        listingField: "other",
+        followUps: [{ ...question, choices: [measured, "Not sure"] }],
+      } : question, "details"),
+    });
+    const events = await eventsFor(createAgentRuntime({ apiKey: "test", modelImpl: model }), {
+      text: "Polish the description",
+      context: { intent: "listing_assist", currentDraft: { ...blankDraft, title: "Study desk", price: 50 } },
+    });
+    const main = events.find((event) => event.type === "question");
+    const dimensions = queued ? main?.followUps?.[0] : main;
+    assert.equal(dimensions?.listingField, "dimensions");
+    const actions = dimensions.choiceActions ?? [];
+    assert.ok(actions.length > 0);
+    for (const action of actions) {
+      assert.ok(dimensions.choices?.includes(action.label));
+      assert.deepEqual(action.patch, { dimensions: action.label });
+    }
+    if (queued) assert.deepEqual(actions.map((action) => action.label), [measured]);
+    assert.ok(!events.some((event) => event.type === "listing_patch"));
+  }
+});
