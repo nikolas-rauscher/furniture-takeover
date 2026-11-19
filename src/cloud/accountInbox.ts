@@ -1,11 +1,16 @@
-import {readDeal} from "./deals.ts";
-import type {Deal} from "../../shared/deal.ts";
+import { readDeal } from "./deals.ts";
+import type { Deal } from "../../shared/deal.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Conversation, Message } from "./client.ts";
 import { fail, missingFromSchema } from "./client.ts";
 
 export type InboxRows = {
-  deals:Record<string,Deal>|null;
+  deals: Record<string, Deal> | null;
+  /** The newest message-less event per conversation, for visible read markers. */
+  systemLatest: Record<
+    string,
+    { sender_id: string | null; created_at: string }
+  >;
   threads: Conversation[];
   /** The newest message of each conversation. */
   latest: Record<string, Message>;
@@ -18,7 +23,7 @@ export type InboxRows = {
 
 /** One load of the inbox: conversations, their newest messages, archives, blocks, names and read markers. */
 export async function loadInbox(client: SupabaseClient): Promise<InboxRows> {
-  const [cs, as, bs, ms, rs, ds] = await Promise.all([
+  const [cs, as, bs, ms, rs, ds, es] = await Promise.all([
     client
       .from("conversations")
       .select("*")
@@ -32,8 +37,14 @@ export async function loadInbox(client: SupabaseClient): Promise<InboxRows> {
       .limit(200),
     client.from("conversation_reads").select("conversation_id, last_read_at"),
     client.from("deals").select("*"),
+    client
+      .from("deal_events")
+      .select("conversation_id,actor_role,created_at")
+      .is("message_id", null)
+      .order("created_at", { ascending: false }),
   ]);
-  if(!missingFromSchema(ds.error))fail(ds.error);
+  if (!missingFromSchema(ds.error)) fail(ds.error);
+  if (!missingFromSchema(es.error)) fail(es.error);
   fail(cs.error);
   fail(as.error);
   fail(bs.error);
@@ -48,8 +59,28 @@ export async function loadInbox(client: SupabaseClient): Promise<InboxRows> {
     ? await client.from("profiles").select("*").in("id", ids)
     : { data: [], error: null };
   fail(profiles.error);
+  const byId = new Map(rows.map((thread) => [thread.id, thread]));
+  const systemLatest: InboxRows["systemLatest"] = {};
+  for (const event of es.data ?? []) {
+    const thread = byId.get(event.conversation_id);
+    if (thread)
+      systemLatest[thread.id] ??= {
+        sender_id:
+          event.actor_role === "seller"
+            ? thread.seller_id
+            : event.actor_role === "buyer"
+              ? thread.buyer_id
+              : null,
+        created_at: event.created_at,
+      };
+  }
   return {
-    deals:ds.error?null:Object.fromEntries((ds.data??[]).map(r=>[r.conversation_id,readDeal(r)])),
+    systemLatest,
+    deals: ds.error
+      ? null
+      : Object.fromEntries(
+          (ds.data ?? []).map((row) => [row.conversation_id, readDeal(row)]),
+        ),
     threads: rows.sort((a, b) =>
       (latest[b.id]?.created_at ?? b.created_at).localeCompare(
         latest[a.id]?.created_at ?? a.created_at,

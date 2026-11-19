@@ -183,3 +183,25 @@ for (const end of ["buyer deletion", "seller deletion", "sold", "active"])
       await db.close();
     }
   });
+
+test("an action cannot reuse a plain message or bypass participant grants",async()=>{
+ const {db,as,act,message,conversation}=await setup();
+ try{
+ const offer=dealScenarios[0].steps[0];
+ await assert.rejects(act(offer.action,"Could I get it for 20?",0,message),/message_conflict/);
+ assert.equal(await count(db,"select * from public.deals"),0);
+ const id=randomUUID();
+ await act(offer.action,offer.body,0,id);
+ await assert.rejects(act(offer.action,offer.body+"!",1,id),/message_conflict/);
+ await as(null);
+ await assert.rejects(act(offer.action,offer.body,1),/permission denied/);
+ await assert.rejects(db.exec("select * from public.deal_events"),/permission denied/);
+ await as(buyer);
+ await assert.rejects(db.exec("update public.deals set version=5"),/permission denied/);
+ await assert.rejects(db.query("insert into public.deal_events(conversation_id,kind) values($1,'accepted')",[conversation]),/permission denied/);
+ await db.exec("reset role");
+ await db.query("delete from public.messages where id=$1",[id]);
+ assert.equal(await count(db,"select * from public.deals where proposal_message_id is null"),1);
+ assert.equal(await count(db,"select * from public.deal_events where message_id is null"),1);
+ }finally{await db.close();}
+});

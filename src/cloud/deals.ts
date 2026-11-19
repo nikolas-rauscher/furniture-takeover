@@ -72,6 +72,7 @@ export async function sendAccountDeal(
     .single<DealRow>();
   if (error) {
     if (missingFromSchema(error)) throw new Error(dealUpdateNeeded);
+    if (!error.code) throw new Error("Could not reach the server. Check the conversation and retry.");
     throw Object.assign(new Error(dealErrorMessage(error.message)), {
       key: error.message,
     });

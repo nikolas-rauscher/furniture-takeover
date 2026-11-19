@@ -10,6 +10,7 @@ function query(result: Result) {
   const builder = {
     select: () => builder,
     order: () => builder,
+    is: () => builder,
     limit: () => builder,
     in: () => builder,
     then: (resolve: (value: unknown) => void) =>
@@ -21,6 +22,7 @@ function query(result: Result) {
 const me = "11111111-1111-4111-8111-111111111111";
 const tables = (reads: Result): Record<string, Result> => ({
   deals:{data:[]},
+  deal_events:{data:[]},
   conversations: {
     data: [
       {

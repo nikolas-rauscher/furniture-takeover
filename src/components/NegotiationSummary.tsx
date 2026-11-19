@@ -1,57 +1,27 @@
 import { motion } from "motion/react";
-import { useState } from "react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Item, ItemHeader, ItemContent, ItemActions } from "./ui/item";
-import {
-  Banknote,
-  Clock,
-  Handshake,
-  MapPin,
-  Package,
-  X,
-} from "@/components/icons";
+import { X } from "@/components/icons";
 import type { Negotiation } from "../../shared/negotiation";
-import { money } from "../../shared/marketplace";
 import { PakoLabel } from "./ChatParts";
+import { termPrice } from "../dealWords";
+import { DealTermsGrid, DealTile } from "./DealTerms";
 import "./negotiation.css";
 
 /** The agreed terms slide up like the deal card in the intro. */
 const SLIDE_UP = { type: "spring", stiffness: 380, damping: 32 } as const;
-const HANDOVER: Record<
-  NonNullable<Negotiation["terms"]["fulfillment"]>,
-  string
-> = {
-  pickup: "Pickup",
-  shipping: "Shipping",
+/** What an offer draft's tiles say while Pako and the buyer have not settled a term. */
+const UNDECIDED = {
+  amount: "Not decided",
+  fulfillment: "Not decided",
+  pickupTime: "Not decided",
+  pickupPoint: "Ask the seller",
 };
-
-/** The listing's photo, or a parcel when there is none or it cannot load. */
-function DealTile({ image }: { image?: string }) {
-  const [brokenImage, setBrokenImage] = useState<string>();
-  return image && image !== brokenImage ? (
-    <img
-      className="deal-tile"
-      src={image}
-      alt=""
-      onError={() => setBrokenImage(image)}
-    />
-  ) : (
-    <span className="deal-tile" aria-hidden="true">
-      <Package size={18} />
-    </span>
-  );
-}
 
 function dealStatus(proposal: Negotiation, unavailable: boolean) {
   if (unavailable) return "Listing unavailable";
   return proposal.draft ? "Ready for review" : "In progress";
-}
-
-function offerText(proposal: Negotiation) {
-  return proposal.terms.amount === null
-    ? "Not decided"
-    : money(proposal.terms.amount);
 }
 
 export default function NegotiationSummary({
@@ -93,7 +63,7 @@ export default function NegotiationSummary({
               : [
                   proposal.terms.amount === null
                     ? "Offer draft"
-                    : money(proposal.terms.amount),
+                    : termPrice(proposal.terms.amount),
                   proposal.draft ? "Message ready" : "Draft in progress",
                 ].join(" · ")}
           </span>
@@ -117,10 +87,9 @@ export default function NegotiationSummary({
         </Button>
       </motion.section>
     );
-  const pickup = proposal.terms.fulfillment !== "shipping";
   return (
     <motion.section
-      className="deal-card"
+      className="deal-card offer-proposal"
       data-unavailable={unavailable || undefined}
       aria-label={`Offer proposal for ${title}`}
       initial={{ opacity: 0, y: 24 }}
@@ -142,44 +111,7 @@ export default function NegotiationSummary({
           </span>
         </div>
       </div>
-      <dl className="deal-card-terms">
-        <div data-term="offer">
-          <dt>
-            <Banknote size={14} aria-hidden="true" />
-            Offer
-          </dt>
-          <dd>{offerText(proposal)}</dd>
-        </div>
-        <div>
-          <dt>
-            <Handshake size={14} aria-hidden="true" />
-            Handover
-          </dt>
-          <dd>
-            {proposal.terms.fulfillment
-              ? HANDOVER[proposal.terms.fulfillment]
-              : "Not decided"}
-          </dd>
-        </div>
-        {pickup && (
-          <>
-            <div>
-              <dt>
-                <Clock size={14} aria-hidden="true" />
-                Pickup time
-              </dt>
-              <dd>{proposal.terms.pickupTime ?? "Not decided"}</dd>
-            </div>
-            <div>
-              <dt>
-                <MapPin size={14} aria-hidden="true" />
-                Meeting point
-              </dt>
-              <dd>{proposal.terms.pickupPoint ?? "Ask the seller"}</dd>
-            </div>
-          </>
-        )}
-      </dl>
+      <DealTermsGrid terms={proposal.terms} unknown={UNDECIDED} />
       {proposal.draft && (
         <div className="deal-card-message" aria-label="Message draft">
           <strong>Message to seller</strong>

@@ -107,7 +107,7 @@ export function createMessagesStore(path: string) {
             listingId: value.listingId,
             title: value.title,
             seller: value.seller,
-            ...(value.buyerKey ? {buyerKey:value.buyerKey} : {}),
+            ...(value.buyerKey ? { buyerKey: value.buyerKey } : {}),
             messages: [],
           };
       if (conversation.deletedAt) {
@@ -223,12 +223,26 @@ export function createMessagesStore(path: string) {
     list,
     act(workspace: string, input: unknown) {
       const parsed = dealInput.safeParse(input);
-      if (!parsed.success)
+      if (!parsed.success) {
+        const path = parsed.error.issues[0].path;
+        const key =
+          path[0] === "text"
+            ? "message_invalid"
+            : path.includes("terms")
+              ? "terms_invalid"
+              : path.includes("reason")
+                ? "reason_invalid"
+                : path[0] === "action"
+                  ? "action_invalid"
+                  : "INVALID_DEAL";
         throw new AgentError(
           400,
-          "INVALID_DEAL",
-          "Check the offer and try again.",
+          key,
+          key === "INVALID_DEAL"
+            ? "Check the offer and try again."
+            : dealErrorMessage(key),
         );
+      }
       return append(workspace, parsed.data, parsed.data);
     },
     setDeleted(

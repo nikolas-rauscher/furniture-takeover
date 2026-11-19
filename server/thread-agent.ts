@@ -15,7 +15,7 @@ import {
   type DealTerms,
   turnTerms,
 } from "../shared/deal.ts";
-import { resolvePickupAt } from "../shared/pickupTime.ts";
+import { formatPickup, resolvePickupAt } from "../shared/pickupTime.ts";
 import {
   OTHER_TOKEN,
   THREAD_OPTION_KINDS,
@@ -372,11 +372,12 @@ function agreementOf(
   proposal: Proposal,
   request: ThreadTurnRequest,
   pickupAt: string | null,
+  now: Date,
 ): ThreadTurn["agreement"] {
   if (proposal.stance !== "accepts") return { status: "none", missing: [] };
-  const missing = missingTerms(
-    turnTerms({facts:proposal.facts,pickupAt}, request.deal?.agreed ?? null),
-  );
+  const terms = turnTerms({ facts: proposal.facts, pickupAt }, request.deal?.agreed ?? null);
+  const missing = missingTerms(terms);
+  if (terms.fulfillment === "pickup" && terms.pickupAt && Date.parse(terms.pickupAt) <= now.getTime()) missing.push("pickupTime");
   return missing.length
     ? { status: "partial", missing }
     : { status: "complete", missing: [] };
@@ -409,7 +410,7 @@ function groundProposal(
     stance: proposal.stance,
     facts: proposal.facts,
     pickupAt,
-    agreement: agreementOf(proposal, request, pickupAt),
+    agreement: agreementOf(proposal, request, pickupAt, now),
     options: proposal.options.map((option, index) => ({
       id: `opt-${index + 1}`,
       label: option.label,
@@ -540,6 +541,10 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
         const result = await agent.stream({
           prompt: JSON.stringify({
             ...request,
+            pickupLabels: {
+              agreed: request.deal?.agreed?.pickupAt ? formatPickup(request.deal.agreed.pickupAt) : null,
+              proposed: request.deal?.proposal?.terms.pickupAt ? formatPickup(request.deal.proposal.terms.pickupAt) : null,
+            },
             now: zurichNow.format(now),
             timeZone: ZONE,
             campusMeetingPoints: campusPickupPoints.map((point) => point.name),

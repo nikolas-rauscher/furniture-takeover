@@ -100,3 +100,11 @@ test("each inbox reads its threads from the student's side", () => {
     latest: undefined,
   });
 });
+
+test("a system event counts as new activity until the viewer reads it",()=>{
+ const at="2026-11-19T13:00:00Z";
+ const thread=demoInboxThread({id:"c",title:"Desk",listingId:"desk",seller:"Seller",messages:[],systemEvents:[{kind:"superseded",at}]});
+ assert.ok(isUnread(thread,{}));
+ assert.equal(isUnread(thread,{[thread.readKey]:at}),false);
+ assert.deepEqual(accountInboxThread("c",undefined,"buyer",{sender_id:null,created_at:at}).latest,thread.latest);
+});

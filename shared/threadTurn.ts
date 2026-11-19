@@ -90,6 +90,8 @@ export const threadTurnRequestSchema = z
     const last = request.messages.at(-1);
     if (request.trigger === "reply" && last?.from !== "them")
       issue("A reply reading needs the other student's message last.");
+    if (request.trigger === "reply" && last?.structured)
+      issue("Structured messages already carry their terms on the deal card.");
     if (request.trigger === "ask" && !request.instruction)
       issue("Asking Pako needs an instruction.");
     if (
