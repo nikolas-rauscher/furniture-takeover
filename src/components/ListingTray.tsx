@@ -230,6 +230,8 @@ export default function ListingTray({
   const tray = useRef<HTMLElement>(null);
   const titleNode = useRef<HTMLElement | null>(null);
   const focusNext = useRef(false);
+  /** The element in the tray that had focus last. */
+  const lastFocused = useRef<Element | null>(null);
   const [chosen, setChosen] = useState<string>();
   const answered = queue.filter((item) => turn.answers[item.id]).length;
   const cheering =
@@ -255,11 +257,16 @@ export default function ListingTray({
   }, [focusRequest]);
 
   if (phase === "hidden") return null;
+  /** Focus was in the tray, on something that went away with the content before. */
+  const focusLost = () =>
+    document.activeElement === document.body &&
+    lastFocused.current !== null &&
+    !lastFocused.current.isConnected;
   /** Each content's title takes focus as it arrives, when focus was in the tray before. */
   const title = (node: HTMLElement | null) => {
     if (!node) return;
     titleNode.current = node;
-    if (!focusNext.current) return;
+    if (!focusNext.current && !focusLost()) return;
     focusNext.current = false;
     node.focus({ preventScroll: true });
   };
@@ -424,6 +431,9 @@ export default function ListingTray({
       ref={tray}
       className="listing-tray"
       data-phase={phase}
+      onFocus={(event) => {
+        lastFocused.current = event.target;
+      }}
       aria-labelledby={phase === "asking" ? headingId : undefined}
       aria-label={phase === "asking" ? undefined : "Pako"}
     >
