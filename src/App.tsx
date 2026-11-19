@@ -113,6 +113,7 @@ import type {
 } from "../shared/actions";
 import { useAgentHealth } from "./hooks/useAgentHealth";
 import { useFocused } from "./hooks/useFocused";
+import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import { homeGuide, showedResults } from "./pakoMoods";
 import {
   TODAY,
@@ -480,6 +481,30 @@ export default function App({
   const running = agentRun.state.status === "running";
   const hasSearchDraft = query.trim().length > 0;
   const searchHeading = "Your search";
+  /** The page on screen as the browser tab names it; home keeps the app's own title. */
+  function pageName(): string | null {
+    switch (view) {
+      case "discover":
+        if (isHome) return null;
+        return reviewingListing ? "Listing review" : searchHeading;
+      case "searches":
+        return "Saved searches";
+      case "account":
+        return accountTab === "favorites" ? "Saved items" : "My listings";
+      case "messages":
+        return "Messages";
+      case "sell":
+        return sellStep === 1 ? "New listing" : "Your listing";
+      case "detail":
+        return selected?.title ?? "Listing not found";
+      case "compare":
+        return "Compare items";
+      case "settings":
+        if (!account) return "Workspace settings";
+        return signedIn ? "Account settings" : "Sign in";
+    }
+  }
+  useDocumentTitle(pageName());
   const quotaExhausted = agentHealth?.quota?.remaining === 0;
   const quotaResets = agentHealth?.quota
     ? new Date(agentHealth.quota.resetAt).toLocaleString([], {
