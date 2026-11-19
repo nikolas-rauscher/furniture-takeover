@@ -68,12 +68,23 @@ function workingMood(steps: readonly AgentRunStep[]): PakoMood {
   return latest ? toolMood(latest.task) : "think";
 }
 
+type Findings = Pick<TurnFacts, "inventoryMatchIds" | "sources">;
+const hasFindings = (turn: Findings) =>
+  Boolean(turn.inventoryMatchIds?.length) || turn.sources.length > 0;
+
 /** The agent searched listings or the web and came back with neither. */
-function foundNothing(turn: TurnFacts): boolean {
+export function foundNothing(
+  turn: Findings & Pick<TurnFacts, "steps">,
+): boolean {
   const searched = agentToolSteps(turn.steps).some((step) =>
     isSearchTask(step.task),
   );
-  return searched && !turn.inventoryMatchIds?.length && !turn.sources.length;
+  return searched && !hasFindings(turn);
+}
+
+/** The turn has ended with listings or web results to look at. */
+export function showedResults(turn: Findings & Pick<TurnFacts, "status">) {
+  return turn.status === "complete" && hasFindings(turn);
 }
 
 function endingMood(turn: TurnFacts): PakoMood {

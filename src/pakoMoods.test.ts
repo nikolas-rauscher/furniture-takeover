@@ -4,8 +4,10 @@ import type { AgentRunStep } from "./hooks/useAgentRun.ts";
 import type { AgentTaskKind } from "../shared/runs.ts";
 import {
   agentTurnPako,
+  foundNothing,
   homeGuide,
   isReaction,
+  showedResults,
   workingLine,
 } from "./pakoMoods.ts";
 
@@ -251,5 +253,40 @@ test("Pako's working line reads the request, names the latest search in the intr
     line([...reviewing, web], "Two desks"),
     "Checking other second-hand sites…",
     "a search started after the first words still names the search",
+  );
+});
+
+test("a turn found nothing only after searching, and showed results once it ended with some", () => {
+  const searched = [reading, step("inventory", "complete", "listings")];
+  const facts = (overrides: Partial<Parameters<typeof agentTurnPako>[0]>) =>
+    turn({ status: "complete", steps: searched, ...overrides });
+  assert.equal(foundNothing(facts({ inventoryMatchIds: [] })), true);
+  assert.equal(foundNothing(facts({ inventoryMatchIds: ["desk-1"] })), false);
+  assert.equal(
+    foundNothing(facts({ steps: [catalogChecked, reading] })),
+    false,
+    "answering without a search is not an empty search",
+  );
+  assert.equal(showedResults(facts({ inventoryMatchIds: ["desk-1"] })), true);
+  assert.equal(
+    showedResults(
+      facts({
+        sources: [
+          {
+            id: "web-1",
+            title: "Desk",
+            url: "https://example.com",
+            snippet: "",
+          },
+        ],
+      }),
+    ),
+    true,
+  );
+  assert.equal(showedResults(facts({ inventoryMatchIds: [] })), false);
+  assert.equal(
+    showedResults(turn({ inventoryMatchIds: ["desk-1"] })),
+    false,
+    "results only count once the turn has ended",
   );
 });

@@ -19,6 +19,14 @@ import { Empty, EmptyHeader, EmptyMedia, EmptyDescription } from "./ui/empty";
 import "./search-conversation.css";
 import "./ai-elements.css";
 
+/** Keeps focus in the conversation when the control that had it is about to go away. */
+export function focusConversation(from: Element) {
+  from
+    .closest(".chat-workspace")
+    ?.querySelector<HTMLElement>('[aria-label="Conversation messages"]')
+    ?.focus({ preventScroll: true });
+}
+
 type AgentConversationProps = {
   state: AgentRunState;
   requestLabel?: (request: string) => string;
@@ -157,14 +165,7 @@ export default function AgentConversation({
             aria-label="Latest messages"
             title="Latest messages"
             behavior={motionBehavior()}
-            onClick={(event) => {
-              event.currentTarget
-                .closest(".chat-workspace")
-                ?.querySelector<HTMLElement>(
-                  '[aria-label="Conversation messages"]',
-                )
-                ?.focus({ preventScroll: true });
-            }}
+            onClick={(event) => focusConversation(event.currentTarget)}
           >
             <ChevronDown size={18} aria-hidden="true" />
           </MessageScrollerButton>

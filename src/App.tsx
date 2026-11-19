@@ -37,9 +37,13 @@ import {
   markNegotiationSent,
   type Negotiation,
 } from "../shared/negotiation";
-import AgentConversation from "./components/AgentConversation";
-import AgentListings from "./components/AgentListings";
+import AgentConversation, {
+  focusConversation,
+} from "./components/AgentConversation";
+import AgentListings, { canOffer } from "./components/AgentListings";
 import AgentComposer from "./components/AgentComposer";
+import AgentQuickReplies from "./components/AgentQuickReplies";
+import { quickReplies, type QuickReply } from "./quickReplies";
 import { prepareListingDraft } from "./listingPreparation";
 import { HeroHeadline } from "./components/HeroHeadline";
 import {
@@ -106,8 +110,9 @@ import type {
 } from "../shared/actions";
 import { useAgentHealth } from "./hooks/useAgentHealth";
 import { useFocused } from "./hooks/useFocused";
-import { homeGuide } from "./pakoMoods";
+import { homeGuide, showedResults } from "./pakoMoods";
 import {
+  TODAY,
   defaults,
   criteriaTitle,
   money,
@@ -373,8 +378,9 @@ export default function App({
     favorites.includes(item.id),
   );
   const selected = localListings.find((item) => item.id === selectedId);
-  const comparison = visibleListings.filter((item) =>
-    compared.includes(item.id),
+  /** In the order they were picked, so Pako's best match leads when he compares the top two. */
+  const comparison = compared.flatMap((id) =>
+    visibleListings.filter((item) => item.id === id),
   );
   const searchIsHome = !searching;
   const isHome = view === "discover" && searchIsHome;
@@ -462,6 +468,18 @@ export default function App({
   const hasSearchDraft = query.trim().length > 0;
   const searchHeading = "Your search";
   const quotaExhausted = agentHealth?.quota?.remaining === 0;
+  const quotaResets = agentHealth?.quota
+    ? new Date(agentHealth.quota.resetAt).toLocaleString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        day: "numeric",
+        month: "short",
+      })
+    : "";
+  /** Why quick replies that ask Pako are paused. */
+  const allowancePause = quotaExhausted
+    ? `Daily allowance used up. Pako can reply again after ${quotaResets}.`
+    : undefined;
   const configured =
     agentHealth?.configured === true && signedIn && !quotaExhausted;
   const normalizedFilterDraft = {
@@ -941,6 +959,22 @@ export default function App({
       location,
     );
     void performSearch(search, undefined, proposal, Boolean(agentRun.state.id));
+  }
+  /** Shows exactly these listings side by side, replacing an earlier selection. */
+  function compareListings(ids: string[]) {
+    setCompared(ids);
+    openComparison();
+  }
+  /** A tapped quick reply takes the same path as typing it or using the listing's own button. */
+  function chooseQuickReply(reply: QuickReply, shown: Product[]) {
+    if (reply.kind === "ask") void runSearch(reply.text, criteria, true);
+    else if (reply.kind === "compare") compareListings(reply.listingIds);
+    else {
+      const item = shown.find((listing) => listing.id === reply.listingId);
+      if (!item)
+        throw new Error("The offer reply names a listing Pako did not show.");
+      continueOffer(item);
+    }
   }
   function proposalSummary(proposal: Negotiation, compact = false) {
     const item = own.find((item) => item.id === proposal.listingId);
@@ -1545,14 +1579,8 @@ export default function App({
       </div>
     ) : quotaExhausted ? (
       <div className="agent-footnote" role="status">
-        Daily AI allowance used. Resets{" "}
-        {new Date(agentHealth!.quota!.resetAt).toLocaleString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          day: "numeric",
-          month: "short",
-        })}
-        . Listings and messages remain available.
+        Daily AI allowance used. Resets {quotaResets}. Listings and messages
+        remain available.
       </div>
     ) : !configured || healthError ? (
       <div className="agent-footnote">
@@ -1963,13 +1991,8 @@ export default function App({
                                 size="icon-sm"
                                 aria-label="Clear comparison"
                                 onClick={(event) => {
-                                  const messages = event.currentTarget
-                                    .closest(".chat-workspace")
-                                    ?.querySelector<HTMLElement>(
-                                      '[aria-label="Conversation messages"]',
-                                    );
+                                  focusConversation(event.currentTarget);
                                   setCompared([]);
-                                  messages?.focus({ preventScroll: true });
                                 }}
                               >
                                 <X size={16} aria-hidden="true" />
@@ -1990,7 +2013,10 @@ export default function App({
                               placeholder={
                                 reviewingListing
                                   ? "Ask about your listing…"
-                                  : "Ask a follow-up…"
+                                  : !negotiations.active &&
+                                      showedResults(agentRun.state)
+                                    ? "Ask Pako for cheaper, closer or bigger…"
+                                    : "Ask a follow-up…"
                               }
                               sendLabel="Send to Pako"
                               disabled={running || quotaExhausted}
@@ -2009,6 +2035,19 @@ export default function App({
                           );
                           return item ? [item] : [];
                         });
+                        const nextReplies = quickReplies({
+                          turn,
+                          latest: !archived,
+                          search: committedSearch,
+                          negotiating: Boolean(negotiations.active),
+                          listings: localMatches.map((item) => ({
+                            id: item.id,
+                            title: item.title,
+                            price: item.price,
+                            offerable: canOffer(item),
+                          })),
+                          today: TODAY,
+                        });
                         return (
                           <AgentRunPanel
                             state={turn}
@@ -2019,6 +2058,17 @@ export default function App({
                               committedSearch
                                 ? placeName(committedSearch.location)
                                 : undefined
+                            }
+                            quickReplies={
+                              nextReplies.replies.length > 0 && (
+                                <AgentQuickReplies
+                                  {...nextReplies}
+                                  pausedReason={allowancePause}
+                                  onSelect={(reply) =>
+                                    chooseQuickReply(reply, localMatches)
+                                  }
+                                />
+                              )
                             }
                             outcome={
                               turn.proposal?.draft && (

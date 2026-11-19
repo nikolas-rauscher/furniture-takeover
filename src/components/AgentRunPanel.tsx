@@ -33,6 +33,8 @@ type AgentRunPanelProps = AgentActionHandlers & {
   className?: string;
   localListings?: ReactNode;
   outcome?: ReactNode;
+  /** Replies the student can tap; they appear once the answer is fully shown. */
+  quickReplies?: ReactNode;
   /** The search area as Pako names it while he searches. */
   place?: string;
   showHistory?: boolean;
@@ -55,6 +57,7 @@ export default function AgentRunPanel({
   className = "",
   localListings,
   outcome,
+  quickReplies,
   place,
   showHistory = true,
   splitSearchResults = false,
@@ -429,6 +432,7 @@ export default function AgentRunPanel({
         />
       ))}
       {outcome}
+      {!textArriving && quickReplies}
       {state.error && (
         <div className="agent-run-recovery">
           <p className="agent-run-error" role="alert">
