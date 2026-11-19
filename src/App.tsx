@@ -2704,22 +2704,23 @@ export default function App({
                   agentWorking={listingRun.state.status === "running"}
                   insight={
                     <SellerInsight
-                      price={
-                        draft.price.trim() ? Number(draft.price) : Number.NaN
-                      }
-                      ladder={demandLadder(savedSearches, {
-                        title: draft.title,
-                        price: draft.price.trim()
-                          ? Number(draft.price)
-                          : Number.NaN,
-                        condition: draft.condition,
-                        pickupBy: draft.pickup,
-                      })}
                       similar={similarListings(
                         visibleListings,
                         draft.title,
                         editingListing ?? undefined,
                       )}
+                      ladder={
+                        developerMode
+                          ? demandLadder(savedSearches, {
+                              title: draft.title,
+                              price: draft.price.trim()
+                                ? Number(draft.price)
+                                : Number.NaN,
+                              condition: draft.condition,
+                              pickupBy: draft.pickup,
+                            })
+                          : undefined
+                      }
                     />
                   }
                   agentConversation={listingConversation}

@@ -306,7 +306,8 @@
   }
   .selling-chat-layout .listing-preview-facts,
   .selling-chat-layout .listing-preview-status,
-  .selling-chat-layout .listing-preview-photo-caption {
+  .selling-chat-layout .listing-preview-photo-caption,
+  .selling-chat-layout .listing-preview .seller-insight {
     display: none;
   }
   /* In the chat the draft shrinks to a thumbnail with a tiny photo count. */

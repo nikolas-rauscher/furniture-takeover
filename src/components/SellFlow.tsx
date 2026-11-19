@@ -224,7 +224,7 @@ type SellFlowProps = {
   agentConversation?: ReactNode;
   agentTools?: ReactNode;
   agentWorking?: boolean;
-  /** Demand and price context for the listing being written. */
+  /** Prices of similar listings for the one being written, beside its price. */
   insight?: ReactNode;
   quota?: AgentQuota;
   onAccount: () => void;
@@ -671,6 +671,7 @@ export default function SellFlow({
                         />
                       </label>
                     </div>
+                    {insight}
                     <h2 className="form-section-title collection-title">
                       Collection
                     </h2>
