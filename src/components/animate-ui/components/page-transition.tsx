@@ -5,6 +5,7 @@ import { AnimateView } from "motion/react-animate-view";
 import {
   blur,
   ease,
+  toCssTiming,
   useShouldReduceMotion,
 } from "@animate-ui/react/utils/motion";
 
@@ -33,7 +34,16 @@ type EffectAnimation = {
   exit: TargetAndTransition;
 };
 
-const SLIDE = 60;
+// Pages move like the intro's steps: a short glide in the direction of travel on
+// the intro's spring, while the old page steps aside quickly.
+const SLIDE = 48;
+const SLIDE_AWAY = 32;
+const STEP_SPRING = {
+  type: "spring",
+  stiffness: 420,
+  damping: 36,
+  mass: 0.8,
+} as const;
 // Starts moving on the tap and settles softly, like a native push; Animate UI's default eases in first.
 const PUSH_TRANSITION = { duration: 0.42, ease: ease.out };
 const BANDS = 5;
@@ -74,8 +84,8 @@ function bandFrames(back: boolean, { top, bottom }: Frame) {
 const ROOT_STYLE =
   ":root[data-page-transition]::view-transition-old(root){display:none}:root[data-page-transition]::view-transition-new(root){animation:none}";
 
-// Same curve as the push, so a shared element lands together with the page fade.
-const SHARE = { duration: 0.42, ease: ease.out };
+// Same spring as the pages, so a shared element lands together with them.
+const SHARE = STEP_SPRING;
 
 // Only a page change hides the old page: other view transitions (a theme
 // switch) keep theirs.
@@ -128,17 +138,17 @@ const EFFECTS: Record<
     },
   }),
   slide: (back) => {
-    const from = back ? -SLIDE : SLIDE;
+    const direction = back ? -1 : 1;
     return {
       enter: {
         opacity: [0, 1],
-        transform: [`translateX(${from}px)`, "none"],
-        transition: { duration: 0.4, ease: ease.out },
+        transform: [`translateX(${direction * SLIDE}px)`, "none"],
+        transition: STEP_SPRING,
       },
       exit: {
         opacity: [1, 0],
-        transform: ["none", `translateX(${-from}px)`],
-        transition: { duration: 0.2, ease: ease.leave },
+        transform: ["none", `translateX(${-direction * SLIDE_AWAY}px)`],
+        transition: { duration: 0.14, ease: ease.in },
       },
     };
   },
@@ -277,11 +287,12 @@ type PageAnimations = {
   exit: (types: string[]) => TargetAndTransition;
 };
 
-function nativeEasing(ease: unknown): string {
-  if (ease === "linear") return "linear";
-  if (Array.isArray(ease) && ease.length === 4)
-    return `cubic-bezier(${ease.join(",")})`;
-  throw new Error("A page effect needs a cubic-bezier or linear ease.");
+/** Web Animations timing for a page effect; springs become a `linear()` curve. */
+function pageTiming(transition: TargetAndTransition["transition"]) {
+  if (!transition) throw new Error("A page effect needs a transition.");
+  if (transition.type !== "spring" && typeof transition.duration !== "number")
+    throw new Error("A page effect needs a duration or a spring.");
+  return { ...toCssTiming(transition), fill: "both" as const };
 }
 
 /**
@@ -294,8 +305,7 @@ function animatePageLayers(
   side: "old" | "new",
   { transition, ...keyframes }: TargetAndTransition,
 ) {
-  if (typeof transition?.duration !== "number")
-    throw new Error("A page effect needs a duration.");
+  const timing = pageTiming(transition);
   const layers = new Set<string>();
   for (const animation of document.getAnimations()) {
     const pseudo = (animation.effect as KeyframeEffect | null)?.pseudoElement;
@@ -305,11 +315,6 @@ function animatePageLayers(
     animation.cancel();
     layers.add(match[2]);
   }
-  const timing = {
-    duration: transition.duration * 1000,
-    easing: nativeEasing(transition.ease),
-    fill: "both" as const,
-  };
   const animations = [...layers].map((layer) =>
     document.documentElement.animate(keyframes as PropertyIndexedKeyframes, {
       ...timing,

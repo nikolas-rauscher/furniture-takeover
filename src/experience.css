@@ -1,4 +1,4 @@
-/* Quiet paper surfaces with room for the task, rather than decorative panels. */
+/* The header is a calm shelf: tactile pills, one tactile call to action. */
 .app-header {
   /* Own layer during page transitions, so sliding pages never cover the header. */
   view-transition-name: app-header;
@@ -6,7 +6,8 @@
   flex: 0 0 var(--app-header-height);
   padding: 0 max(var(--space-page), calc((100vw - 1240px) / 2));
   gap: var(--space-section);
-  background: #fbfbf9;
+  border-bottom: 2px solid var(--card-line);
+  background: var(--background);
 }
 .brand {
   font-size: 29px;
@@ -14,41 +15,119 @@
   letter-spacing: -1.4px;
 }
 .app-header nav {
+  align-self: center;
+  gap: 4px;
   margin-left: 0;
-  gap: var(--space-group);
 }
-.app-header nav > button {
-  font-size: 14px;
+/* The active page carries a pill that glides between tabs, like the phone tab bar. */
+.app-header .header-nav-item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 8px 15px;
+  border-radius: 999px;
   color: var(--muted);
+  font-size: var(--type-label);
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    scale 120ms var(--ease-out);
 }
-.app-header nav > button.active:after {
-  height: 1px;
-  border-radius: 0;
-  background: var(--ink);
+.app-header .header-nav-item:not([aria-current]):hover {
+  background: rgb(41 41 41 / 0.045);
+  color: var(--ink);
+}
+.app-header .header-nav-item:active {
+  scale: 0.96;
+}
+.app-header .header-nav-item[aria-current="page"] {
+  color: var(--blue-dark);
+}
+.header-nav-highlight {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--selected);
+  box-shadow: inset 0 0 0 2px rgb(52 78 181 / 0.14);
+}
+.header-nav-label,
+.app-header .nav-count {
+  position: relative;
 }
 .nav-count {
-  background: none;
+  min-width: 22px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--canvas);
   color: var(--muted);
-  padding: 0;
-  font-size: 11px;
+  font-size: var(--type-caption);
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+}
+.header-nav-item[aria-current="page"] .nav-count {
+  background: var(--surface);
+  color: var(--blue-dark);
 }
 .header-actions {
-  gap: 24px;
+  gap: 12px;
 }
 .header-actions .sell-nav {
-  background: none;
-  border: 0;
-  color: var(--ink);
-  padding: 10px 0;
-  font-size: 14px;
-  font-weight: 450;
+  --button-depth: 3px;
+  min-height: 40px;
+  padding: 7px 16px 7px 13px;
 }
-.header-actions .button.primary.sell-nav:not(:disabled):hover {
-  background: none;
-  color: var(--blue);
+/* The account button stands on the same lip as the button beside it. */
+.app-header .icon-button {
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--card-line);
+  background: var(--surface);
+  box-shadow: 0 3px 0 var(--lip);
+  transition:
+    transform 90ms var(--ease-out),
+    box-shadow 90ms var(--ease-out),
+    background-color 160ms ease,
+    color 160ms ease;
 }
-.sell-nav > svg {
-  display: none;
+.app-header .icon-button:hover {
+  background: var(--selected);
+}
+.app-header .icon-button:not(:disabled):active {
+  scale: 1;
+  transform: translateY(3px);
+  box-shadow: 0 0 0 var(--lip);
+}
+.app-header .icon-button.active {
+  border-color: var(--blue);
+  background: var(--selected);
+  color: var(--blue-dark);
+  box-shadow: 0 3px 0 var(--blue-dark);
+}
+/* Narrow desktop windows keep every tab: Sell shrinks to its plus. */
+@media (min-width: 761px) and (max-width: 960px) {
+  .app-header {
+    gap: var(--space-group);
+  }
+  .app-header .header-nav-item {
+    padding: 8px 11px;
+  }
+  .header-actions .sell-nav {
+    width: 40px;
+    padding: 0;
+  }
+  .sell-nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
 }
 .avatar {
   background: #eeeee9;
@@ -91,7 +170,7 @@ label > textarea {
 }
 .page-title h1 {
   font-size: var(--type-title);
-  font-weight: 550;
+  font-weight: 700;
   letter-spacing: -0.025em;
   margin-bottom: 18px;
 }
@@ -100,9 +179,22 @@ label > textarea {
   line-height: 1.6;
   max-width: var(--measure-prose);
 }
+/* Back is a soft pill that lights up under the pointer. */
 .back-link {
+  display: inline-flex;
+  min-height: 36px;
+  margin: 0 0 32px -8px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 999px;
   font-size: 13px;
-  margin: 0 0 32px;
+  font-weight: 600;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+.back-link:hover {
+  background: var(--canvas);
+  color: var(--blue-dark);
 }
 
 /* The opening task is deliberately one writing surface. */
@@ -545,17 +637,6 @@ label > textarea {
 .assistant-panel.mobile-open {
   z-index: 60;
 }
-.compare-tray {
-  border-radius: 4px;
-  left: 50%;
-}
-.toast {
-  pointer-events: none;
-}
-.toast > .icon-button {
-  pointer-events: auto;
-}
-
 .comparison-grid {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
@@ -935,16 +1016,17 @@ label > textarea {
 }
 .modal {
   width: 580px;
-  padding: 36px;
-  border-radius: 6px;
+  padding: 32px;
+  border-radius: 28px;
 }
 .modal-heading {
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 }
 .modal-heading h2 {
   font-size: var(--type-section);
-  line-height: 1.35;
-  font-weight: 500;
+  line-height: 1.3;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 .modal-intro {
   font-size: 14px;
@@ -1024,20 +1106,8 @@ label > textarea {
   .brand {
     font-size: 26px;
   }
-  .app-header nav {
-    gap: 20px;
-  }
-  .app-header nav > button {
-    font-size: 12px;
-  }
   .header-actions {
     gap: 14px;
-  }
-  .header-actions .sell-nav {
-    font-size: 12px !important;
-    width: auto;
-    min-height: 36px !important;
-    padding: 8px 0 !important;
   }
   .focused-layout .main-content,
   .main-content {
@@ -1139,12 +1209,6 @@ label > textarea {
     width: 32px;
     height: 32px;
     font-size: 12px;
-  }
-  .app-header nav {
-    left: 24px;
-    right: 24px;
-    height: 44px;
-    gap: 28px;
   }
   .focused-layout .main-content,
   .main-content {
@@ -1410,7 +1474,7 @@ label > textarea {
   }
   .modal {
     padding: 28px 24px;
-    border-radius: 6px;
+    border-radius: 24px;
   }
   .modal-heading h2 {
     font-size: 22px;
@@ -1503,13 +1567,6 @@ label > textarea {
   .mobile-assistant-toggle.above-comparison {
     bottom: calc(156px + env(safe-area-inset-bottom, 0px));
   }
-  .compare-tray {
-    left: 16px;
-    right: 16px;
-    bottom: calc(88px + env(safe-area-inset-bottom, 0px));
-    transform: none;
-    justify-content: space-between;
-  }
   body:has(.compare-tray) .main-content {
     padding-bottom: calc(180px + env(safe-area-inset-bottom, 0px));
   }
@@ -1517,9 +1574,6 @@ label > textarea {
   .product-card .favorite-button {
     width: 44px;
     height: 44px;
-  }
-  .toast {
-    bottom: calc(152px + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -1535,9 +1589,11 @@ label > textarea {
 
 .database-status {
   padding: 8px 24px;
-  background: #edf0fa;
-  color: #344eb5;
-  font-size: 12px;
+  border-bottom: 2px solid #dbe3fa;
+  background: var(--selected);
+  color: var(--blue-dark);
+  font-size: var(--type-support);
+  font-weight: 600;
   text-align: center;
 }
 

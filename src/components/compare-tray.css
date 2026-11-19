@@ -1,0 +1,65 @@
+/* Picked listings wait in a tactile tray above the page until they are compared. */
+.compare-tray {
+  position: fixed;
+  right: 0;
+  bottom: 24px;
+  left: 0;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: fit-content;
+  max-width: calc(100vw - 24px);
+  margin-inline: auto;
+  padding: 8px 8px 10px 16px;
+  border: 2px solid var(--card-line);
+  border-radius: 999px;
+  background: var(--surface);
+  white-space: nowrap;
+  box-shadow:
+    0 4px 0 var(--lip),
+    0 18px 36px -14px rgb(41 41 41 / 0.28);
+}
+.compare-tray-count {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: var(--type-label);
+  font-weight: 600;
+}
+.compare-tray-count > svg {
+  color: var(--blue);
+}
+.compare-tray-count > strong {
+  display: inline-block;
+  min-width: 24px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--blue);
+  color: var(--on-primary);
+  font-weight: 700;
+  text-align: center;
+}
+.compare-tray > .icon-button {
+  width: 36px;
+  height: 36px;
+  color: var(--muted);
+}
+.compare-tray > .icon-button:hover {
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+@media (max-width: 760px) {
+  .compare-tray {
+    right: 12px;
+    bottom: calc(var(--mobile-nav-height) + 12px);
+    left: 12px;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+    width: auto;
+    border-radius: 22px;
+  }
+}

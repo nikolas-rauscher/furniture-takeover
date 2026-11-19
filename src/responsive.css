@@ -46,14 +46,14 @@
      goes with page length would shift the centred tab bar sideways on every tab switch. */
   html {
     scrollbar-width: thin;
-    scrollbar-color: #c7cbd3 transparent;
+    scrollbar-color: var(--lip) transparent;
   }
   html::-webkit-scrollbar {
     width: 5px;
   }
   html::-webkit-scrollbar-thumb {
     border-radius: 4px;
-    background: #c7cbd3;
+    background: var(--lip);
   }
   .app-header .icon-button {
     width: 44px;
@@ -143,12 +143,6 @@
   .job-actions > button {
     min-height: 44px;
   }
-  .compare-tray {
-    bottom: calc(var(--mobile-nav-height) + 12px);
-    max-width: calc(100% - 24px);
-    gap: 8px;
-    flex-wrap: wrap;
-  }
   body:has(.compare-tray)
     .app-layout:not(
       .chat-layout,
@@ -158,11 +152,6 @@
     )
     > .main-content {
     padding-bottom: calc(var(--mobile-nav-height) + 104px);
-  }
-  .toast {
-    bottom: calc(var(--mobile-nav-height) + 16px);
-    max-width: calc(100% - 24px);
-    overflow-wrap: anywhere;
   }
   .modal-backdrop {
     padding: 12px;
@@ -236,7 +225,7 @@
   }
   :root[data-compact-viewport]
     .messages-page.has-conversation
-    > :is(.page-title, .account-inbox-notice),
+    > :is(.page-title, .quiet-caption),
   :root[data-compact-viewport] .chat-layout .search-title,
   :root[data-compact-viewport] .chat-layout .results-controls,
   :root[data-compact-viewport] .selling-chat-layout .listing-preview,
