@@ -5,6 +5,7 @@ import { dealScenarios } from "./dealScenarios.ts";
 for (const scenario of dealScenarios)
   test(scenario.name, () => {
     let deal: Deal | null = null;
+    let listingStatus: "active" | "reserved" | "sold" = "active";
     for (const step of scenario.steps) {
       const apply = () =>
         applyDealAction({
@@ -13,7 +14,7 @@ for (const scenario of dealScenarios)
           now: new Date("2026-11-19T10:00:00Z"),
           conversationId: "thread",
           listingId: "desk",
-          listingStatus: "active",
+          listingStatus,
         });
       if (step.error) assert.throws(apply, new RegExp(step.error));
       else {
@@ -21,6 +22,7 @@ for (const scenario of dealScenarios)
         assert.equal(result.event.kind, step.kind);
         assert.equal(result.statusChange, step.statusChange);
         deal = result.deal;
+        listingStatus = result.statusChange ?? listingStatus;
       }
     }
   });

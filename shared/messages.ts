@@ -16,7 +16,7 @@ export type SellerConversation = {
   image?: string;
   buyerKey?: string;
   deal?: Deal;
-  systemEvents?: {kind:"superseded";at:string}[];
+  systemEvents?: {kind: "superseded" | "pickup_check_due" | "pickup_expired";at:string}[];
   deletedAt?: string;
   messages: ChatMessage[];
 };

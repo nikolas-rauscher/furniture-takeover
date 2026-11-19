@@ -100,6 +100,8 @@ export async function sendAccountDeal(
       ? undefined
       : deal.status === "agreed"
         ? "reserved"
+        : deal.status === "completed" && action.type === "complete_shipping"
+          ? "sold"
         : deal.status === "cancelled" && deal.agreed
           ? "active"
           : undefined;
@@ -127,8 +129,8 @@ export async function sendAccountPickup(
   if (error) throw rpcFailure(error, pickupUpdateNeeded);
   const deal = readDeal(data!);
   if (deal.version !== expectedVersion + 1) return { deal };
-  if (action.type === "picked_up" && deal.status === "completed") return { deal, statusChange: "sold" };
-  if (deal.status === "cancelled" && (action.type === "cancel_pickup" || action.type === "release_no_show"))
+  if ((action.type === "picked_up" || action.type === "confirm_pickup_happened") && deal.status === "completed") return { deal, statusChange: "sold" };
+  if (deal.status === "cancelled" && (action.type === "cancel_pickup" || action.type === "release_no_show" || action.type === "release_stale_pickup"))
     return { deal, statusChange: "active" };
   return { deal };
 }

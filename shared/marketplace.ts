@@ -34,6 +34,12 @@ export type Product = {
   own?: boolean;
   demo?: boolean;
 };
+/** A saved card keeps its status and the price the student originally saved. */
+export type SavedListing = Product & {
+  priceAtSave: number | null;
+  priceDropped: boolean;
+};
+
 export type Criteria = {
   category: Category;
   maxPrice: number;

@@ -28,8 +28,8 @@ export type PakoAvailability = "ready" | "unconfigured" | "missing";
 
 export type PakoTrayState =
   | { phase: "idle" }
-  | { phase: "reading" }
-  | { phase: "asking" }
+  | { phase: "reading"; retrying?: boolean }
+  | { phase: "asking"; retrying?: boolean }
   | {
       phase: "ready";
       turn: ThreadTurn;
@@ -46,7 +46,7 @@ export type PakoTrayState =
 
 type Ask = { instruction: string; draft: string };
 type Attempt = { key: string; forMessageId: string | null; asked: boolean } & (
-  { status: "running" } | { status: "failed"; code: string; message: string }
+  { status: "running"; retrying?: boolean } | { status: "failed"; code: string; message: string }
 );
 type Reading = {
   key: string;
@@ -166,10 +166,15 @@ export function usePakoThread({
     const asked = Boolean(ask);
     setAttempt({ key, forMessageId, asked, status: "running" });
     try {
-      const { turn, allowance } = await requestThreadTurn(
-        threadTurnRequest({ role, listing, messages, deal, ask }),
-        controller.signal,
-      );
+      const payload = threadTurnRequest({ role, listing, messages, deal, ask });
+      const { signal } = controller;
+      const { turn, allowance } = await requestThreadTurn(payload, signal).catch(async (error: unknown) => {
+        if (!(error instanceof AgentApiError) || error.code !== "TOO_MANY_REQUESTS" || signal.aborted) throw error;
+        setAttempt({ key, forMessageId, asked, status: "running", retrying: true });
+        await new Promise((resolve) => setTimeout(resolve, 1_000));
+        signal.throwIfAborted();
+        return requestThreadTurn(payload, signal);
+      });
       if (controller.signal.aborted) return;
       if (allowance) onRemaining(allowance.remaining);
       setShown({ key, forMessageId, turn, asked, unsaved: false });
@@ -223,7 +228,7 @@ export function usePakoThread({
         ? { phase: "unavailable", reason: available }
         : { phase: "idle" };
   else if (ownAttempt?.status === "running")
-    tray = { phase: ownAttempt.asked ? "asking" : "reading" };
+    tray = { phase: ownAttempt.asked ? "asking" : "reading", retrying: ownAttempt.retrying };
   else if (
     ownAttempt?.status === "failed" &&
     ownAttempt.forMessageId === latestId

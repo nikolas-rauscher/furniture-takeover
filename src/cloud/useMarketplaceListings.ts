@@ -12,6 +12,7 @@ import type { Product } from "../../shared/marketplace";
 import { listingPhotos } from "../../shared/listingPhotos";
 import { useListings } from "../hooks/useListings";
 import { fail, photoUrl, type Listing } from "./client";
+import { refreshPickupChecks } from "./accountInbox";
 import { listingPhotoBlob } from "./listingPhoto";
 import { withCardImages } from "../cardPhotos";
 import { randomUuid } from "../randomUuid";
@@ -51,6 +52,7 @@ export function toProduct(
   };
 }
 export async function loadProducts(client: SupabaseClient, userId?: string) {
+  if (userId) await refreshPickupChecks(client, true);
   const rows: Listing[] = [];
   for (let offset = 0; ; offset += 500) {
     const result = await client
@@ -255,7 +257,7 @@ export function useMarketplaceListings(account?: AccountConnection) {
         ready,
         error,
         pending,
-        retry: () => void load(),
+        retry: load,
         addDemo: async () => false,
       }
     : demo;

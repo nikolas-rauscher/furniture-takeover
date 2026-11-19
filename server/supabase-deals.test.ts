@@ -15,6 +15,9 @@ import { messageStatesTerms, type DealTerms, type DealAction } from "../shared/d
 import { NO_SHOW_AFTER_MINUTES, SIGNAL_WINDOW } from "../shared/dealConfig.ts";
 import { formatPickup } from "../shared/pickupTime.ts";
 
+const bugsMigration = "202611200004_bugs_and_features.sql";
+const throughBugs = [pickupMigration, adminMigration, reviewMigration, dealRulesMigration, "202611200003_card_photos.sql", bugsMigration];
+
 const storeTerms = (terms: DealTerms) => ({
   amount: terms.amount,
   fulfillment: terms.fulfillment,
@@ -55,7 +58,7 @@ for (const scenario of dealScenarios)
     const { db, as, act, listing } = await setup();
     try {
       await db.exec("reset role");
-      await applyMigrations(db, [pickupMigration, adminMigration, reviewMigration, dealRulesMigration]);
+      await applyMigrations(db, throughBugs);
       let version = 0;
       for (const step of scenario.steps) {
         await as(step.actor === "buyer" ? buyer : seller);
@@ -470,6 +473,139 @@ test("every terms message states its terms in the demo and the deal RPC", async 
         assert.equal(rows[0].ok, true, body);
       }
     }
+  } finally {
+    await db.close();
+  }
+});
+
+for (const ending of ["confirm_pickup_happened", "release_stale_pickup", "expired", "release_no_show"] as const) {
+  test(`Pickup follow-up RPC handles ${ending} and retains the conversation history`, async () => {
+    const { db, act, as, conversation, listing } = await setup();
+    const pickupAt = new Date(Date.now() + 60 * 60_000).toISOString();
+    const terms: DealTerms = {
+      amount: 30, fulfillment: "pickup", pickupAt, pickupTime: formatPickup(pickupAt), pickupPoint: "Atrium",
+    };
+    const offer = offerMessage("desk", terms);
+    const dismiss = (action: string, version = 2) =>
+      db.query<{ status: string; version: number }>(
+        "select status,version from public.pickup_action($1,$2,'Pickup follow-up',$3,$4)",
+        [conversation, randomUUID(), action, version],
+      );
+    const refresh = () => db.query("select public.refresh_pickup_checks()");
+    const movePickup = async (hoursAgo: number) => {
+      const at = new Date(Date.now() - hoursAgo * 60 * 60_000).toISOString();
+      await db.exec("reset role");
+      await db.query(
+        "update public.deals set pickup_at=$2, agreed=agreed || $3::jsonb where conversation_id=$1",
+        [conversation, at, { pickup_at: at, pickup_time: formatPickup(at) }],
+      );
+    };
+    try {
+      await db.exec("reset role");
+      await applyMigrations(db, throughBugs);
+      await as(buyer);
+      await act({ type: "propose", terms }, offer, 0);
+      await as(seller);
+      await act({ type: "accept", terms }, offer, 1);
+      await assert.rejects(dismiss("confirm_pickup_happened"), /pickup_check_not_due/);
+
+      if (ending === "release_no_show") {
+        await movePickup(1);
+        await as(buyer);
+        assert.deepEqual((await dismiss(ending)).rows, [{ status: "cancelled", version: 3 }]);
+      } else {
+        await movePickup(25);
+        await as(stranger);
+        await refresh();
+        await as(buyer);
+        assert.equal(await count(db, "select * from public.deal_events where kind='pickup_check_due'"), 0);
+        await refresh();
+        await as(seller);
+        await refresh();
+        assert.equal(await count(db, "select * from public.deal_events where kind='pickup_check_due' and actor_role is null"), 1);
+        assert.equal(await count(db, "select * from public.listings where status='reserved'"), 1);
+        await as(buyer);
+        if (ending === "expired") {
+          await movePickup(49);
+          await as(buyer);
+          await assert.rejects(dismiss("confirm_pickup_happened"), /pickup_unavailable/);
+          await as(stranger);
+          await db.query("select public.refresh_pickup_checks(true)");
+          assert.equal(await count(db, "select * from public.deal_events"), 0);
+          await as(buyer);
+          await refresh();
+          assert.deepEqual((await db.query("select status,outcome,version from public.deals")).rows, [
+            { status: "cancelled", outcome: "pickup_expired", version: 3 },
+          ]);
+          assert.equal(await count(db, "select * from public.deal_events where kind='pickup_expired' and actor_role is null"), 1);
+        } else {
+          assert.deepEqual((await dismiss(ending)).rows, [
+            { status: ending === "confirm_pickup_happened" ? "completed" : "cancelled", version: 3 },
+          ]);
+        }
+      }
+      const status = ending === "confirm_pickup_happened" ? "sold" : "active";
+      for (const student of [buyer, seller]) {
+        await as(student);
+        assert.deepEqual((await db.query("select status from public.listings where id=$1", [listing])).rows, [{ status }]);
+      }
+      if (status === "active") {
+        await as(buyer);
+        assert.deepEqual(await act({ type: "propose", terms }, offer, 3), { status: "open", version: 4 });
+        assert.deepEqual((await db.query("select agreed, outcome, no_show_at, pickup_checked_at from public.deals")).rows, [
+          { agreed: null, outcome: null, no_show_at: null, pickup_checked_at: null },
+        ]);
+        assert.equal(await count(db, "select * from public.deal_events where kind='accepted'"), 1);
+      }
+    } finally {
+      await db.close();
+    }
+  });
+}
+
+test("saved listing price snapshots and sold visibility are scoped to the saver", async () => {
+  const { db, as, listing } = await setup();
+  try {
+    await as(buyer);
+    await db.query("insert into public.saved_listings(listing_id) values ($1)", [listing]);
+    await db.exec("reset role");
+    await applyMigrations(db, throughBugs);
+    await as(buyer);
+    assert.deepEqual((await db.query("select price_at_save from public.saved_listings")).rows, [{ price_at_save: null }]);
+    await as(stranger);
+    await db.query("insert into public.saved_listings(listing_id,price_at_save) values ($1,5)", [listing]);
+    assert.deepEqual((await db.query("select price_at_save from public.saved_listings")).rows, [{ price_at_save: "30.00" }]);
+    await as(seller);
+    await db.query("update public.listings set status='sold',price=20 where id=$1", [listing]);
+    await as(stranger);
+    assert.deepEqual((await db.query("select l.status,l.price<s.price_at_save as cheaper from public.listings l join public.saved_listings s on s.listing_id=l.id")).rows, [
+      { status: "sold", cheaper: true },
+    ]);
+    await as(null);
+    assert.equal(await count(db, "select * from public.listings"), 0);
+    await as(stranger);
+    await db.query("delete from public.saved_listings where listing_id=$1", [listing]);
+    assert.equal(await count(db, "select * from public.listings"), 0);
+  } finally {
+    await db.close();
+  }
+});
+
+test("the signup trigger checks exact university domains and preserves trusted demo seeding", async () => {
+  const { db } = await setup();
+  const create = (email: string | null, userMetadata = {}, appMetadata = {}) =>
+    db.query("insert into auth.users(id,email,raw_user_meta_data,raw_app_meta_data) values ($1,$2,$3,$4)",
+      [randomUUID(), email, userMetadata, appMetadata]);
+  try {
+    await db.exec("reset role");
+    await applyMigrations(db, throughBugs);
+    const demoMeta = { demo_seed: "takeover-demo-v2", synthetic: true };
+    await create("first@EPFL.CH");
+    await create("second@unil.ch");
+    for (const email of ["personal@gmail.com", "x@eng.epfl.ch", "x@epfl.ch.example.org", "x@home-unil.ch", null])
+      await assert.rejects(create(email, demoMeta), /Sign up with your @epfl.ch or @unil.ch address/);
+    await create("catalogue@example.invalid", {}, demoMeta);
+    assert.equal(await count(db, "select * from auth.users"), 6);
   } finally {
     await db.close();
   }

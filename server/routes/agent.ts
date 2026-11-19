@@ -1,3 +1,4 @@
+import { DEFAULT_AGENT_CONCURRENCY } from "../config.ts";
 import { AgentError } from "../errors.ts";
 import { isJson, MAX_BODY_BYTES, readBody, send } from "../http-io.ts";
 import { validateThreadTurnRequest } from "../thread-agent.ts";
@@ -35,14 +36,42 @@ export function createAgentRoutes(
   >,
 ): RouteTable {
   let active = 0;
-  const maxConcurrent = options.maxConcurrent ?? 4;
+  const maxConcurrent = options.maxConcurrent ?? DEFAULT_AGENT_CONCURRENCY;
+  const waiting = new Set<(entered: boolean) => void>();
+
+  function acquire(signal: AbortSignal): Promise<boolean> {
+    signal.throwIfAborted();
+    if (active < maxConcurrent) {
+      active++;
+      return Promise.resolve(true);
+    }
+    if (waiting.size >= maxConcurrent) return Promise.resolve(false);
+    return new Promise((resolve) => {
+      const abort = () => finish(false);
+      const timer = setTimeout(abort, 1_200);
+      const finish = (entered: boolean) => {
+        waiting.delete(finish);
+        clearTimeout(timer);
+        signal.removeEventListener("abort", abort);
+        resolve(entered);
+      };
+      waiting.add(finish);
+      signal.addEventListener("abort", abort, { once: true });
+    });
+  }
+
+  function release() {
+    const next = waiting.values().next().value;
+    if (next) next(true);
+    else active--;
+  }
 
   function withAgentRequest(
     handle: AgentHandler,
     bodyLimit = MAX_BODY_BYTES,
   ): RouteHandler {
     return async (context) => {
-      const { request, response, actor } = context;
+      const { request, response, actor, signal } = context;
       if (request.method !== "POST")
         throw new AgentError(
           405,
@@ -61,17 +90,18 @@ export function createAgentRoutes(
           "BODY_TOO_LARGE",
           "This request is too large. Reduce the size of the request.",
         );
-      if (active >= maxConcurrent) {
+      const body = await readBody(request, bodyLimit);
+      if (!(await acquire(signal))) {
+        signal.throwIfAborted();
         response.setHeader("Retry-After", "1");
         throw new AgentError(
           429,
           "TOO_MANY_REQUESTS",
-          "The agent is handling other requests. Please try again shortly.",
+          "Pako is busy. Your request hasn’t started. Try again shortly.",
         );
       }
-      active++;
       try {
-        const body = await readBody(request, bodyLimit);
+        signal.throwIfAborted();
         const authorization = request.headers.authorization;
         const agents =
           actor && authorization && options.forAccount
@@ -83,7 +113,7 @@ export function createAgentRoutes(
               };
         await handle(context, body, agents);
       } finally {
-        active--;
+        release();
       }
     };
   }

@@ -24,13 +24,7 @@ export function useNegotiations() {
       key,
     ),
   );
-  const [items, setItems] = useState<Negotiation[]>(() => {
-    try {
-      return repository.list();
-    } catch {
-      return [];
-    }
-  });
+  const [items, setItems] = useState<Negotiation[]>([]);
   const [error, setError] = useState("");
   const activeId = useRef<string | null>(null);
   const [active, setActive] = useState<string | null>(null);
@@ -71,7 +65,8 @@ export function useNegotiations() {
         }
         localStorage.setItem(migrationKey, "complete");
       } catch {
-        // Keep every draft if delivery or storage cannot be verified; retry next mount.
+        if (!cancelled)
+          setError("I couldn't verify which saved drafts were already sent. Reload to try again.");
       }
     }
     void reconcileLegacyDrafts();

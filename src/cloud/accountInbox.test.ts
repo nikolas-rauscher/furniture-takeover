@@ -53,6 +53,7 @@ const tables = (reads: Result): Record<string, Result> => ({
 const clientWith = (rows: Record<string, Result>) =>
   ({
     from: (table: string) => query(rows[table]),
+    rpc: () => Promise.resolve({ error: null }),
   }) as unknown as SupabaseClient;
 
 test("without the reply reading update the inbox still loads, and says read markers are missing", async () => {

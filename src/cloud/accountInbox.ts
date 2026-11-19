@@ -21,8 +21,14 @@ export type InboxRows = {
   reads: Record<string, string> | null;
 };
 
+export async function refreshPickupChecks(client: SupabaseClient, catalog = false) {
+  const { error } = await client.rpc("refresh_pickup_checks", { p_catalog: catalog });
+  if (!missingFromSchema(error)) fail(error);
+}
+
 /** One load of the inbox: conversations, their newest messages, archives, blocks, names and read markers. */
 export async function loadInbox(client: SupabaseClient): Promise<InboxRows> {
+  await refreshPickupChecks(client);
   const [cs, as, bs, ms, rs, ds, es] = await Promise.all([
     client
       .from("conversations")

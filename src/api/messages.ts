@@ -86,7 +86,7 @@ export async function sendDemoDeal(
   messageId = randomUuid(),
 ): Promise<{
   conversation: SellerConversation;
-  statusChange?: "active" | "reserved";
+  statusChange?: "active" | "reserved" | "sold";
 }> {
   return request(
     {

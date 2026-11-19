@@ -168,6 +168,7 @@ const GONE_LEAD: Record<
 };
 
 function cancelledDetail(deal: Deal, role: DealRole, other: string) {
+  if (deal.outcome?.kind === "pickup_expired") return "Pickup unconfirmed · available again";
   if (deal.outcome?.kind === "listing_reopened")
     return "The listing is available again";
   return deal.outcome?.by === role ? "You cancelled" : `${other} cancelled`;
@@ -450,6 +451,10 @@ export function eventChip(event: DealEvent): string {
       return "Listing available again · deal ended";
     case "completed":
       return "Sold ✓";
+    case "pickup_check_due":
+      return "Pako · Did the pickup happen?";
+    case "pickup_expired":
+      return "Pickup unconfirmed · listing available again";
   }
 }
 

@@ -185,7 +185,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
           throw new Error("Supply a grounded slider value, or omit the price control.");
         if (listingAssist && priceQuestion && parsedQuestion.input &&
             parsedQuestion.input.value !== (state.proposedPrice ?? savedPrice))
-          throw new Error("Use the validated proposal or saved price, or omit the slider.");
+          delete parsedQuestion.input;
         const { followUps = [], ...main } = parsedQuestion;
         const needsPrice = state.firstDraft && savedPrice == null;
         const title = listingAssist ? request.context?.currentDraft?.title : undefined;

@@ -14,6 +14,8 @@ const messages: Record<string, string> = {
   sign_in_required: "Sign in to update the deal.",
   reason_invalid: "Choose a reason for cancelling.",
   action_invalid: "Choose an available deal action.",
+  shipping_unavailable: "Only the seller can complete an agreed shipping deal.",
+  pickup_check_not_due: "The pickup follow-up opens one day after the booked time.",
   pickup_unavailable: "This conversation has no booked pickup.",
   pickup_terms_changed: "Choose a new time and keep the price and meeting point.",
   too_early: "This action is not available yet. Check the pickup time.",

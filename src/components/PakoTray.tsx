@@ -329,7 +329,9 @@ export default function PakoTray({
       />
     );
   else if (state.phase === "reading" || state.phase === "asking")
-    actions = <ReadingChips />;
+    actions = state.retrying
+      ? <small className="thread-tray-hint" role="status">Pako is busy. Trying again…</small>
+      : <ReadingChips />;
   else if (state.phase === "paused")
     actions = (
       <div className="thread-tray-actions">

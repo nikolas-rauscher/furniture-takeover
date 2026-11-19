@@ -106,7 +106,7 @@ export const dealSchema = z
     agreed: z.object({ terms: dealTermsSchema, at: z.string() }).nullable(),
     outcome: z
       .object({
-        kind: z.enum(["picked_up", "cancelled", "no_show", "listing_reopened"]),
+        kind: z.enum(["picked_up", "cancelled", "no_show", "listing_reopened", "shipped", "pickup_expired"]),
         by: roleSchema.nullable(),
         at: z.string(),
       })
@@ -128,6 +128,7 @@ export const dealActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("accept"), terms: dealTermsSchema }).strict(),
   z.object({ type: z.literal("withdraw") }).strict(),
   z.object({ type: z.literal("decline") }).strict(),
+  z.object({ type: z.literal("complete_shipping") }).strict(),
   z
     .object({
       type: z.literal("cancel"),
@@ -144,6 +145,8 @@ export type DealEventKind =
   | "cancelled"
   | "superseded"
   | "listing_reopened"
+  | "pickup_check_due"
+  | "pickup_expired"
   | "completed";
 export type DealEvent = { kind: DealEventKind; terms: DealTerms | null };
 
@@ -158,6 +161,8 @@ export const pickupActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("release_no_show") }).strict(),
   z.object({ type: z.literal("cancel_pickup"), reason: z.literal("cant_make_it") }).strict(),
   z.object({ type: z.literal("picked_up") }).strict(),
+  z.object({ type: z.literal("confirm_pickup_happened") }).strict(),
+  z.object({ type: z.literal("release_stale_pickup") }).strict(),
   z.object({ type: z.literal("offer_again"), releasedConversationId: z.string().uuid() }).strict(),
 ]);
 export type PickupAction = z.infer<typeof pickupActionSchema>;
@@ -171,6 +176,25 @@ export type PickupEvent = {
   minutes?: LateMinutes;
 };
 export type PickupStatusChange = "active" | "sold";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Follow-up opens 24 hours after pickup and closes 24 hours later. */
+export function pickupCheck(deal: Deal | null | undefined, now: Date) {
+  const terms = deal?.agreed?.terms;
+  if (deal?.status !== "agreed" || terms?.fulfillment !== "pickup" || !terms.pickupAt)
+    return null;
+  const opens = Date.parse(terms.pickupAt) + DAY_MS;
+  const expires = opens + DAY_MS;
+  if (now.getTime() < opens) return null;
+  return { opensAt: new Date(opens).toISOString(), expiresAt: new Date(expires).toISOString(),
+    expired: now.getTime() >= expires };
+}
+
+export const expirePickup = (deal: Deal, at: string): Deal => ({
+  ...deal, status: "cancelled", proposal: null, version: deal.version + 1,
+  outcome: { kind: "pickup_expired", by: null, at }, updatedAt: at,
+});
 
 export type PickupPhase = "booked" | "pickup_soon" | "pickup_now" | "overdue";
 export function pickupDay(deal: Deal | null | undefined, role: DealRole, now: Date) {
@@ -193,13 +217,14 @@ export function pickupDay(deal: Deal | null | undefined, role: DealRole, now: Da
     canReportNoShow: overdue,
     canMarkSold: minutesUntil <= 0 || buyerReportedPickup,
     buyerReportedPickup,
+    pickupCheck: pickupCheck(deal, now),
   };
 }
 
 export function isPickupReleased(deal: Deal | null | undefined): boolean {
   return deal?.status === "cancelled" &&
     deal.agreed?.terms.fulfillment === "pickup" &&
-    (deal.outcome?.kind === "no_show" || deal.outcome?.kind === "cancelled");
+    (deal.outcome?.kind === "no_show" || deal.outcome?.kind === "cancelled" || deal.outcome?.kind === "pickup_expired");
 }
 
 export function nextPickupBuyer<T extends { id: string; listingId: string; deal?: Deal | null }>(
@@ -239,6 +264,18 @@ export function applyPickupAction(input: Omit<Parameters<typeof applyDealAction>
   const day = pickupDay(current, actor, now);
   if (!day) throw new DealError("pickup_unavailable");
   if (listingStatus !== "reserved") throw new DealError("listing_unavailable");
+  if (day.pickupCheck?.expired) throw new DealError("pickup_unavailable");
+  if (action.type === "confirm_pickup_happened" || action.type === "release_stale_pickup") {
+    if (!day.pickupCheck) throw new DealError("pickup_check_not_due");
+    if (action.type === "confirm_pickup_happened") return {
+      deal: { ...deal, proposal: null, status: "completed", outcome: { kind: "picked_up", by: actor, at } },
+      event: { kind: "picked_up", terms: null }, statusChange: "sold",
+    };
+    return {
+      deal: { ...deal, proposal: null, status: "cancelled", outcome: { kind: "cancelled", by: actor, at } },
+      event: { kind: "pickup_cancelled", terms: null }, statusChange: "active",
+    };
+  }
   if (action.type === "suggest_time" || action.type === "accept_time") {
     const { terms } = action;
     if (!termsComplete(terms)) throw new DealError("terms_incomplete");
@@ -324,7 +361,7 @@ export function applyDealAction(input: {
   conversationId: string;
   listingId: string;
   messageId?: string;
-}): { deal: Deal; event: DealEvent; statusChange?: "active" | "reserved" } {
+}): { deal: Deal; event: DealEvent; statusChange?: "active" | "reserved" | "sold" } {
   const { action, actor, body, conversationId, listingId } = input;
   if (!body.trim() || body.trim().length > 4000)
     throw new DealError("message_invalid");
@@ -340,8 +377,23 @@ export function applyDealAction(input: {
     version: (input.deal?.version ?? 0) + 1,
     updatedAt: at,
   };
+  if (deal.status === "cancelled" && action.type === "propose") {
+    if (input.listingStatus !== "active") throw new DealError("listing_unavailable");
+    Object.assign(deal, {
+      status: "open", proposal: null, agreed: null, outcome: null, pickup: emptyPickupSignals(),
+    });
+  }
   if (deal.status === "completed" || deal.status === "cancelled")
     throw new DealError("deal_closed");
+  if (action.type === "complete_shipping") {
+    if (actor !== "seller" || deal.status !== "agreed" || deal.agreed?.terms.fulfillment !== "shipping")
+      throw new DealError("shipping_unavailable");
+    if (input.listingStatus !== "reserved") throw new DealError("listing_unavailable");
+    return {
+      deal: { ...deal, status: "completed", proposal: null, outcome: { kind: "shipped", by: actor, at } },
+      event: { kind: "completed", terms: null }, statusChange: "sold",
+    };
+  }
   const proposal = deal.proposal;
   if (action.type === "cancel") {
     if (deal.status !== "agreed") throw new DealError("deal_not_agreed");
@@ -375,7 +427,7 @@ export function applyDealAction(input: {
     throw new DealError("terms_not_stated");
   const matches =
     proposal && proposal.by !== actor && sameTerms(proposal.terms, terms);
-  if (action.type === "accept" || (matches && termsComplete(terms))) {
+  if (action.type === "accept") {
     if (!matches) throw new DealError("deal_changed");
     if (!termsComplete(terms)) throw new DealError("terms_incomplete");
     if (

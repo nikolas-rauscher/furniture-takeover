@@ -9,6 +9,8 @@ import {
   applyDealAction,
   applyPickupAction,
   dealActionSchema,
+  expirePickup,
+  pickupCheck,
   DealError,
   isoInstantSchema,
   pickupActionSchema,
@@ -49,7 +51,7 @@ const inputSchema = z
   })
   .strict();
 /** Local prototype workspace only. Seller mode is a preview, not authentication. */
-export function createMessagesStore(path: string) {
+export function createMessagesStore(path: string, clock = () => new Date()) {
   const db = new DatabaseSync(path);
   initializeDemoModeration(db);
   db.exec(
@@ -74,7 +76,7 @@ export function createMessagesStore(path: string) {
     if (conversation.deal) conversation.deal = reopenUnagreedDeal(conversation.deal);
     return conversation;
   };
-  const list = (workspace: string): SellerConversation[] =>
+  const readWorkspace = (workspace: string): SellerConversation[] =>
     db
       .prepare(
         "SELECT payload FROM conversations WHERE workspace = ? ORDER BY rowid DESC",
@@ -82,6 +84,39 @@ export function createMessagesStore(path: string) {
       .all(workspace)
       .map((row) => readConversation(row.payload))
       .filter((item) => !item.deletedAt);
+  function checkWorkspacePickups(workspace: string, now: Date): SellerConversation[] {
+    const conversations = readWorkspace(workspace);
+    for (const conversation of conversations) {
+      const deal = conversation.deal;
+      const check = pickupCheck(deal, now);
+      if (!deal || !check) continue;
+      const events = conversation.systemEvents ??= [];
+      const needsPrompt = !events.some((event) =>
+        event.kind === "pickup_check_due" && event.at === check.opensAt,
+      );
+      if (needsPrompt) events.push({ kind: "pickup_check_due", at: check.opensAt });
+      if (check.expired) {
+        conversation.deal = expirePickup(deal, check.expiresAt);
+        events.push({ kind: "pickup_expired", at: check.expiresAt });
+      }
+      if (needsPrompt || check.expired)
+        db.prepare("update conversations set payload=? where id=?").run(
+          JSON.stringify(conversation), conversation.id,
+        );
+    }
+    return conversations;
+  }
+  function list(workspace: string): SellerConversation[] {
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      const conversations = checkWorkspacePickups(workspace, clock());
+      db.exec("COMMIT");
+      return conversations;
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
+  }
   const dealInput = inputSchema.extend({
     action: dealActionSchema,
     expectedVersion: z.number().int().nonnegative(),
@@ -103,6 +138,8 @@ export function createMessagesStore(path: string) {
     db.exec("BEGIN IMMEDIATE");
     try {
       if (command) checkDemoStudent(db, workspace);
+      const now = clock();
+      const peers = checkWorkspacePickups(workspace, now);
       const row = db
         .prepare(
           "select payload from conversations where workspace=? and listing_id=? and buyer_key=?",
@@ -133,12 +170,11 @@ export function createMessagesStore(path: string) {
         delete conversation.deletedAt;
         delete conversation.systemEvents;
       }
-      const peers = list(workspace);
       const duplicate = peers.find((c) =>
         c.messages.some((m) => m.id === value.messageId),
       );
       if (!duplicate) checkDemoContact(db, workspace, value.listingId);
-      let statusChange: "active" | "reserved" | undefined;
+      let statusChange: "active" | "reserved" | "sold" | undefined;
       let pickupStatusChange: PickupStatusChange | undefined;
       if (duplicate) {
         const previous = duplicate.messages.find(
@@ -153,6 +189,8 @@ export function createMessagesStore(path: string) {
         )
           throw new DealError("message_conflict");
         if (command && conversation.messages.at(-1)?.id === previous.id) {
+          if (previous.deal?.kind === "completed" && conversation.deal?.status === "completed")
+            statusChange = "sold";
           if (
             previous.deal?.kind === "accepted" &&
             conversation.deal?.status === "agreed"
@@ -175,7 +213,6 @@ export function createMessagesStore(path: string) {
               (c.deal?.status === "agreed" || c.deal?.status === "completed")))
           pickupStatusChange = "active";
       } else {
-        const now = new Date();
         const message: ChatMessage = {
           id: value.messageId,
           text: value.text,
@@ -188,12 +225,13 @@ export function createMessagesStore(path: string) {
           const others = peers.filter(
             (c) => c.listingId === value.listingId && c.id !== conversation.id,
           );
-          const hasCompletedPickup = others.some((c) =>
-            c.deal?.status === "completed" && c.messages.some((m) => m.pickupStatusChange === "sold"));
-          const listingStatus = hasCompletedPickup ? "sold"
+          const completed = peers.some((c) => c.listingId === value.listingId && c.deal?.status === "completed");
+          const expired = command.listingStatus === "reserved" &&
+            peers.some((c) => c.listingId === value.listingId && c.deal?.outcome?.kind === "pickup_expired");
+          const listingStatus = completed ? "sold"
             : peers.some((c) => c.listingId === value.listingId && c.deal?.status === "agreed")
               ? "reserved"
-              : command.listingStatus;
+              : expired ? "active" : command.listingStatus;
           const input = {
             deal: conversation.deal ?? null,
             actor: value.sender,

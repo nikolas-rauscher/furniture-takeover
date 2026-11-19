@@ -48,6 +48,7 @@ type Listing = Pick<
   "title" | "image" | "price" | "status" | "available"
 > & {
   pickupPoint?: Product["pickupPoint"];
+  pickupBy?: string;
 };
 type Seat = { name: string; done: boolean };
 

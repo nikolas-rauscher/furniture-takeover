@@ -131,7 +131,7 @@ export async function getAgentHealth({
   accessToken,
 }: RequestOptions = {}): Promise<HealthResponse> {
   // Browsing works as a guest; a signed-in health check also sees the user's keys.
-  accessToken ??= await accountAccessToken().catch(() => undefined);
+  accessToken ??= await accountAccessToken(true);
   const data = await requestJson("/api/health", {
     signal,
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},

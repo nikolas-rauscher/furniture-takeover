@@ -106,7 +106,11 @@ export function AgentQuestion({
           measuredHeight.current = element.getBoundingClientRect().height;
         }
       })
-      .catch(() => {});
+      .catch((error: unknown) => {
+        // Resizing again or unmounting cancels the animation's finished promise.
+        if (!(error instanceof DOMException) || error.name !== "AbortError")
+          console.error("The question resize animation failed.", error);
+      });
   }, [response, externalComposer]);
   const skip = () => {
     if (disabled || readOnly || response || !onSkip) return;

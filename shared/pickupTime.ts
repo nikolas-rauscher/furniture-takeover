@@ -362,47 +362,68 @@ export function formatPickup(iso: string, locale = "en-GB"): string {
   return day + ", " + zurichClockTime(iso);
 }
 
-export function pickupSlots(available: string, now: Date) {
+function slotWindow(text: string, day: number, offset: number): number[] {
+  if (/^(?:flexible(?: pickup)?|pickup by .*)?$/.test(text))
+    return [
+      ...(offset === 1 || offset === 2 ? [1080] : []),
+      ...(day === 6 && offset < 7 ? [660] : []),
+      ...(text.startsWith("pickup by ") && offset === 0 ? [1080] : []),
+    ];
+  if (/^weekends?(?: pickup)?$/.test(text))
+    return day === 0 || day === 6 ? [660, 900] : [];
+  if (/^(?:lunchtime,? )?(?:mon-fri|weekdays?)$/.test(text))
+    return day >= 1 && day <= 5 ? [720, 750] : [];
+  const window = text.match(/^([a-z]+)(?: evenings?)?(?: after (\d{1,2}):(\d{2})| (\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2}))?$/);
+  if (!window) return [];
+  const [, days, afterHour, afterMinute, startHour, startMinute, endHour, endMinute] = window;
+  const named = weekday(days);
+  if (days === "weekday" || days === "weekdays") {
+    if (day < 1 || day > 5) return [];
+  } else if (named !== day) return [];
+  if (startHour) {
+    const start = Number(startHour) * 60 + Number(startMinute);
+    const end = Number(endHour) * 60 + Number(endMinute);
+    if (start > end) return [];
+    const times: number[] = [];
+    for (let time = start; time < end; time += 60) times.push(time);
+    return [...times, end];
+  }
+  const after = afterHour ? Number(afterHour) * 60 + Number(afterMinute) + 30 : 1080;
+  return [after, after + 60];
+}
+
+function availabilityDeadline(words: string, today: LocalDate): number | null {
+  const { date } = writtenDate(words);
+  if (!date) return null;
+  const day = { ...date, year: date.year ?? today.year };
+  // A December listing can specify January without writing the year.
+  if (!date.year && today.month === 12 && date.month === 1) day.year++;
+  return isCalendarDate(day) ? zurichInstant(day, { hour: 23, minute: 59 }) : null;
+}
+
+export function pickupSlots(available: string, now: Date, pickupBy?: string) {
   const today = wallClock(now.getTime());
-  const text = plain(available);
-  const weekend = /weekend/.test(text),
-    evenings = /weekday/.test(text);
-  const named = weekday(text);
-  const after = text.match(/after\s+(\d{1,2}):(\d{2})/);
-  const afterStart = after ? Number(after[1]) * 60 + Number(after[2]) + 30 : null;
+  const text = plain(available).trim();
+  const statedDeadline = /\bby\b/.test(text) ? availabilityDeadline(text, today) : null;
+  const listingDeadline = pickupBy ? availabilityDeadline(pickupBy, today) : null;
+  if (/\bby\b/.test(text) && statedDeadline === null) return [];
+  const windows = statedDeadline === null || text.startsWith("pickup by ")
+    ? text
+    : text.replace(/[,;]?\s+(?:pickup )?by\b.*$/, "").trim();
+  const deadline = Math.min(statedDeadline ?? Infinity, listingDeadline ?? Infinity);
   const instants = new Set<number>();
   for (let offset = 0; offset <= 8 && instants.size < 4; offset++) {
-    const date = addDays(today, offset),
-      day = weekdayOf(date);
-    const times = weekend
-      ? day === 6 || day === 0
-        ? [660, 900]
-        : []
-      : evenings
-        ? day > 0 && day < 6
-          ? [1080, 1140]
-          : []
-        : named !== undefined
-          ? day === named
-            ? [1080, 1140]
-            : []
-          : [
-              ...(offset === 1 || offset === 2 ? [1080] : []),
-              ...(day === 6 && offset < 7 ? [660] : []),
-            ];
-    if (!times.length) continue;
-    const shift = afterStart === null ? 0 : afterStart - times[0];
-    for (const time of times) {
-      const minutes = time + shift;
+    const date = addDays(today, offset);
+    for (const minutes of slotWindow(windows, weekdayOf(date), offset)) {
       if (minutes >= 1440) continue;
       const instant = zurichInstant(date, {
         hour: Math.floor(minutes / 60),
         minute: minutes % 60,
       });
-      if (instant !== null && instant - now.getTime() >= EARLIEST_AHEAD_MS)
+      if (instant !== null && instant <= deadline && instant - now.getTime() >= EARLIEST_AHEAD_MS)
         instants.add(instant);
     }
-    if (named !== undefined && instants.size) break;
+    if (weekday(windows) !== undefined && !windows.includes("mon-fri") && instants.size) break;
   }
   return [...instants]
     .sort((a, b) => a - b)

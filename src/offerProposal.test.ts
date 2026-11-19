@@ -181,3 +181,8 @@ test("only a price the student wrote in the search chat counts as named", () => 
     null,
   );
 });
+
+test("an empty set of slots explains that no suggestion fits", () => {
+  const { line } = propose({ available: "Pickup by 12 Nov" });
+  assert.match(line(), /couldn't find a time that fits/);
+});

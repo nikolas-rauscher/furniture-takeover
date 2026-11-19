@@ -97,6 +97,7 @@ const server = createAgentServer(service, {
   listings,
   messages,
   allowedOrigins: config.allowedOrigins,
+  maxConcurrent: config.maxConcurrent,
   staticDirectory,
 });
 server.once("close", () => messages?.close());

@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { demoListings } from "./demoListings.ts";
 import { pickupSlots, resolvePickupAt, zurichClockTime } from "./pickupTime.ts";
 
 // Wednesday 18 November 2026, 12:00 in Zurich (UTC+1 in November).
@@ -129,4 +130,37 @@ test("clock changes: a skipped spring time has no instant, a repeated autumn tim
 test("Zurich clock times follow summer and winter time", () => {
   assert.equal(zurichClockTime("2026-11-20T17:00:00.000Z"), "18:00");
   assert.equal(zurichClockTime("2026-07-01T16:05:00.000Z"), "18:05");
+});
+
+test("all demo pickup wordings stay within the advertised windows", () => {
+  const weekdays = /^(Mon|Tue|Wed|Thu|Fri)/;
+  const weekend = /^(Sat|Sun)/;
+  const minute = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
+  type Check = (label: string, clock: string, instant: string) => boolean;
+  const checks: Record<string, Check> = {
+    "Flexible pickup": () => true,
+    "Weekend pickup": (label) => weekend.test(label),
+    "Weekday evenings after 18:00": (label, clock) => weekdays.test(label) && clock > "18:00",
+    "Weekday evenings after 17:00": (label, clock) => weekdays.test(label) && clock > "17:00",
+    "Lunchtime, Mon-Fri": (label, clock) => weekdays.test(label) && minute(clock) >= 720 && minute(clock) <= 780,
+    "Saturday 10:00-14:00": (label, clock) => label.startsWith("Sat") && clock >= "10:00" && clock <= "14:00",
+    "Saturday 10:00-16:00": (label, clock) => label.startsWith("Sat") && clock >= "10:00" && clock <= "16:00",
+    "Pickup by 30 Nov": (_, __, instant) => instant < "2026-11-30T23:00:00.000Z",
+    "Pickup by 6 Dec": (_, __, instant) => instant < "2026-12-06T23:00:00.000Z",
+  };
+  const byWording = new Map(demoListings.map((listing) => [listing.available, listing]));
+  assert.deepEqual([...byWording.keys()].sort(), Object.keys(checks).sort());
+  for (const [wording, listing] of byWording) {
+    const now = new Date(listing.pickupBy
+      ? Date.parse(listing.pickupBy) - 24 * 60 * 60 * 1000
+      : "2026-11-20T13:00:00.000Z");
+    for (const slots of [pickupSlots(wording, now), pickupSlots(wording, now, listing.pickupBy)]) {
+      assert.ok(slots.length, wording);
+      for (const { pickupTime, pickupAt } of slots)
+        assert.ok(checks[wording](pickupTime, zurichClockTime(pickupAt), pickupAt), `${wording} → ${pickupTime}`);
+    }
+  }
+  assert.deepEqual(pickupSlots("Weekend pickup", wednesdayNoon, "2026-11-20"), []);
+  assert.deepEqual(pickupSlots("Pickup by 16 Nov", wednesdayNoon), []);
+  assert.deepEqual(pickupSlots("Call first; hours vary", wednesdayNoon), []);
 });

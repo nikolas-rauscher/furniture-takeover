@@ -18,7 +18,7 @@ type Step = {
   body: string;
   kind?: DealEventKind;
   error?: string;
-  statusChange?: "active" | "reserved";
+  statusChange?: "active" | "reserved" | "sold";
 };
 const offer: Step = {
   actor: "buyer",
@@ -54,14 +54,17 @@ export const dealScenarios: { name: string; steps: Step[] }[] = [
         kind: "cancelled",
         statusChange: "active",
       },
-      { ...offer, error: "deal_closed" },
+      offer,
     ],
   },
   {
-    name: "Matching proposals confirm once",
+    name: "A matching counter waits for the other side to confirm",
     steps: [
       offer,
-      { ...offer, actor: "seller", kind: "accepted", statusChange: "reserved" },
+      { ...offer, actor: "seller" },
+      { ...offer, action: { type: "accept", terms }, kind: "accepted", statusChange: "reserved" },
+      { actor: "buyer", action: { type: "complete_shipping" }, body: "It shipped.", error: "shipping_unavailable" },
+      { actor: "seller", action: { type: "complete_shipping" }, body: "It shipped.", kind: "completed", statusChange: "sold" },
     ],
   },
   {

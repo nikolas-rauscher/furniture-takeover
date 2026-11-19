@@ -157,7 +157,7 @@ function dealMoment(
     return {
       phase: "deal_cancelled",
       by:
-        deal.outcome.kind === "listing_reopened"
+        (deal.outcome.kind === "listing_reopened" || deal.outcome.kind === "pickup_expired")
           ? "listing"
           : deal.outcome.by === role
             ? "me"
@@ -339,7 +339,7 @@ export function useThreadDeal({
   async function reportPickup(result: DealResult, action: PickupAction) {
     if (result.statusChange)
       await onStatusChange(result.deal.listingId, result.statusChange);
-    if (action.type === "picked_up" && listing)
+    if ((action.type === "picked_up" || action.type === "confirm_pickup_happened") && listing)
       celebrate({ kind: "handed_over", role, title: listing.title });
   }
   /** A failure stays on the card, where the same tap tries again. */

@@ -491,6 +491,40 @@ test(
   },
 );
 
+test("HTTP gives a queued agent request the next available slot", async (t) => {
+  let finished!: () => void;
+  let entered!: () => void;
+  const firstStarted = new Promise<void>((resolve) => { entered = resolve; });
+  const firstGate = new Promise<void>((resolve) => { finished = resolve; });
+  let starts = 0;
+  const service = createAgentService({
+    ...fakeConfig,
+    fetchImpl: fakeFetch(async () => {
+      if (++starts === 1) {
+        entered();
+        await firstGate;
+      }
+      return completion(output);
+    }),
+  });
+  t.after(finished);
+  const { url } = await startServer(t, service, { maxConcurrent: 1 });
+  const assist = () => fetch(url + "/api/agent/assist", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ intent: "search", text: "desk" }),
+  });
+  const first = assist();
+  await firstStarted;
+  const second = assist();
+  await new Promise((resolve) => setTimeout(resolve, 40));
+  assert.equal(starts, 1);
+  finished();
+  assert.equal((await first).status, 200);
+  assert.equal((await second).status, 200);
+  assert.equal(starts, 2);
+});
+
 test(
   "disconnecting an HTTP caller cancels the provider request",
   { timeout: 5000 },

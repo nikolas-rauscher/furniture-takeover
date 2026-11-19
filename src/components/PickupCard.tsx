@@ -37,6 +37,7 @@ export type PickupLink = {
 };
 
 type Listing = Pick<Product, "title" | "price" | "available"> & {
+  pickupBy?: string;
   pickupPoint?: Product["pickupPoint"];
 };
 
@@ -313,10 +314,10 @@ function ChangeStep({
   const booked = day.terms.pickupAt!;
   const slots = useMemo(
     () =>
-      pickupSlots(listing.available, now).filter(
+      pickupSlots(listing.available, now, listing.pickupBy).filter(
         (slot) => Date.parse(slot.pickupAt) !== Date.parse(booked),
       ),
-    [listing.available, now, booked],
+    [listing.available, listing.pickupBy, now, booked],
   );
   const [slot, setSlot] = useState<Slot | null>(null);
   const send = slot && changeSend(movedTerms(day.terms, slot.pickupAt));
@@ -489,7 +490,9 @@ export default function PickupCard({
           }
         />
       )}
-      <PakoLine {...pickupGuide(context)} />
+      {day.pickupCheck && !day.pickupCheck.expired
+        ? <p role="status">Pako · Did the pickup happen?</p>
+        : <PakoLine {...pickupGuide(context)} />}
       <div ref={actions} className="pickup-steps">
         <AnimatePresence mode="wait" initial={false}>
           {step?.kind === "late" ? (

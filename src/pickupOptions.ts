@@ -38,6 +38,8 @@ export type PickupChoice = {
     | "change_time"
     | "cant_make_it"
     | "picked_up"
+    | "confirm_pickup_happened"
+    | "release_stale_pickup"
     | "no_show"
     | "release"
     | "accept_time"
@@ -265,6 +267,23 @@ export function listingPickupChoices(context: Omit<Context, "role">): {
  */
 export function pickupChoices(context: Context): PickupChoices {
   const { day, deal, role } = context;
+  if (day.pickupCheck) {
+    if (day.pickupCheck.expired) return { secondary: [] };
+    return {
+      primary: {
+        id: "confirm_pickup_happened", label: "Yes, it happened",
+        send: { action: { type: "confirm_pickup_happened" }, message: "Yes, the pickup happened." },
+        confirm: "Confirming completes the deal and marks the item sold.",
+        confirmLabel: "Confirm pickup",
+      },
+      secondary: [{
+        id: "release_stale_pickup", label: "No, release the item",
+        send: { action: { type: "release_stale_pickup" }, message: "The pickup didn't happen. The item can go back on sale." },
+        confirm: "This ends the reservation and makes the listing available again.",
+        confirmLabel: "Release reservation",
+      }],
+    };
+  }
   if (day.change && deal.proposal)
     return changeChoices(context, deal.proposal.terms);
   if (role === "seller" && day.buyerReportedPickup)

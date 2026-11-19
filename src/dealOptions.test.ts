@@ -258,7 +258,7 @@ test("an agreed deal can be cancelled after a question that names what changes",
   });
 });
 
-test("a buyer without an offer is offered one; sellers, gone listings and closed deals are not", () => {
+test("a buyer can start an offer and either side can reopen a cancelled deal while available", () => {
   assert.equal(options({ phase: "talking" }).primary?.label, "Make an offer");
   assert.equal(
     options({ phase: "your_turn", listing: { ...listing, price: 0 } }).primary
@@ -272,8 +272,12 @@ test("a buyer without an offer is offered one; sellers, gone listings and closed
     options({ phase: "gone", listing: { ...listing, status: "reserved" } }),
     { secondary: [] },
   );
+  assert.equal(
+    options({ phase: "cancelled", deal: deal({ status: "cancelled" }) }).primary?.label,
+    "Make a new offer",
+  );
   assert.deepEqual(
-    options({ phase: "cancelled", deal: deal({ status: "cancelled" }) }),
+    options({ phase: "cancelled", listing: { ...listing, status: "sold" }, deal: deal({ status: "cancelled" }) }),
     { secondary: [] },
   );
 });

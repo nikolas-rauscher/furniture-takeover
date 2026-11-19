@@ -2,6 +2,8 @@ import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import { isIP } from "node:net";
 
+export const DEFAULT_AGENT_CONCURRENCY = 16;
+
 type Environment = Record<string, string | undefined>;
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 
@@ -81,6 +83,7 @@ export function readServerConfig(env: Environment = process.env) {
   return {
     port,
     host,
+    maxConcurrent: readPort(env.API_AGENT_CONCURRENCY, DEFAULT_AGENT_CONCURRENCY, "API_AGENT_CONCURRENCY"),
     baseUrl,
     apiKey: env.DEEPSEEK_API_KEY?.trim() ?? "",
     model: env.DEEPSEEK_MODEL?.trim() || "deepseek-flash",

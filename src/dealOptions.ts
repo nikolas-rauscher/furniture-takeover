@@ -230,9 +230,24 @@ export function dealOptions({
           };
     }
     case "agreed":
-      return { secondary: [cancelDeal(role, otherName, listing.title)] };
-    // Pako's tray offers Find similar for these, as for any gone listing.
+      return {
+        ...(role === "seller" && deal?.agreed?.terms.fulfillment === "shipping" ? {
+          primary: {
+            kind: "act", id: "complete-shipping", label: "Mark shipped",
+            action: { type: "complete_shipping" },
+            message: "I've shipped the item.",
+            confirm: "This completes the deal and marks the listing sold.",
+          },
+        } : {}),
+        secondary: [cancelDeal(role, otherName, listing.title)],
+      };
     case "cancelled":
+      if (listing.status === "active")
+        return {
+          primary: edit("offer-again", "Make a new offer", "offer", NO_TERMS),
+          secondary: [],
+        };
+      return NONE;
     case "gone":
     case "completed":
       return NONE;

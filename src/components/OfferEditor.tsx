@@ -462,7 +462,7 @@ export default function OfferEditor({
   /** False closes the card with its animation, such as once the offer went out. */
   open: boolean;
   entry: OfferEntry;
-  listing: Pick<Product, "title" | "price" | "available" | "pickupPoint">;
+  listing: Pick<Product, "title" | "price" | "available" | "pickupPoint"> & { pickupBy?: string };
   role: DealRole;
   otherName: string;
   /** The campus meeting point near where the student searches from. */
@@ -485,11 +485,11 @@ export default function OfferEditor({
   const prices = priceChoices({ asking: listing.price, counter });
   const slots = useMemo(() => {
     const named = futureSlot(entry.terms, now);
-    const offered = pickupSlots(listing.available, now);
+    const offered = pickupSlots(listing.available, now, listing.pickupBy);
     return named
       ? [named, ...offered.filter((slot) => slot.pickupAt !== named.pickupAt)]
       : offered;
-  }, [entry.terms, listing.available, now]);
+  }, [entry.terms, listing.available, listing.pickupBy, now]);
   const [proposal] = useState(() =>
     proposeOffer({
       mode,

@@ -133,7 +133,7 @@ test("a researched proposal preserves citations, plain step labels and two immed
           {
             question: "What asking price would you like?",
             listingField: "price",
-            input: { ...missingValue, value: 40 },
+            input: { ...missingValue, value: 39 },
             followUps: questions,
           },
           "pick",

@@ -10,6 +10,7 @@ import { createAgentService } from "./service.ts";
 test("fresh setup works without credentials and uses a project-relative database", () => {
   const config = readServerConfig({});
   assert.equal(config.port, 8787);
+  assert.equal(config.maxConcurrent, 16);
   assert.equal(config.apiKey, "");
   assert.equal(config.model, "deepseek-flash");
   assert.ok(isAbsolute(config.databasePath));
@@ -20,9 +21,11 @@ test("fresh setup works without credentials and uses a project-relative database
 test("custom dev/preview ports and explicit origins stay narrow", () => {
   const config = readServerConfig({
     APP_PORT: "5180",
+    API_AGENT_CONCURRENCY: "21",
     PREVIEW_PORT: "4180",
     API_ALLOWED_ORIGINS: " https://team.example,https://team.example/ ",
   });
+  assert.equal(config.maxConcurrent, 21);
   assert.ok(config.allowedOrigins.includes("http://localhost:5180"));
   assert.ok(config.allowedOrigins.includes("http://127.0.0.1:4180"));
   assert.equal(
