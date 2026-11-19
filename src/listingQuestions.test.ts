@@ -6,6 +6,7 @@ import {
   appendToDescription,
   DescriptionFullError,
   nextQuestion,
+  pendingPrice,
   resolvedByDraft,
   tapAction,
   tapOutcome,
@@ -149,4 +150,32 @@ test("an edit in the details answers a question about that field, never one abou
   assert.equal(resolvedByDraft({ listingField: "description" }, draft), false);
   assert.equal(resolvedByDraft({ listingField: "other" }, draft), false);
   assert.equal(resolvedByDraft({}, draft), false);
+});
+
+test("Pako's suggested price shows until the listing has a price of its own", () => {
+  const suggestion = (id: string, price: number) => ({
+    type: "listing_patch" as const,
+    id,
+    patch: { price },
+    reason: `Suggested CHF ${price}.`,
+    evidence: [{ kind: "source" as const, sourceId: "web-1", quote: "CHF 40" }],
+    requiresAcceptance: true,
+  });
+  const fact = {
+    ...suggestion("fact", 0),
+    patch: { condition: "Used" },
+    requiresAcceptance: false,
+  };
+  const turns = [
+    { actions: [suggestion("old", 35)] },
+    { actions: [suggestion("new", 40), fact] },
+  ];
+  assert.equal(pendingPrice(turns, { price: "" }), 40);
+  assert.equal(
+    pendingPrice(turns, { price: "40" }),
+    undefined,
+    "an accepted or chosen price replaces the suggestion",
+  );
+  assert.equal(pendingPrice(turns, { price: "0" }), undefined);
+  assert.equal(pendingPrice([{ actions: [fact] }], { price: "" }), undefined);
 });

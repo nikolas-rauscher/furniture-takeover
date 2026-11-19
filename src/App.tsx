@@ -129,6 +129,7 @@ import {
 } from "./searchRequest";
 import { requestAgentAssist } from "./api/agent";
 import { listingPickupMinimum } from "./listingValidation";
+import { pendingPrice } from "./listingQuestions";
 import {
   applyPreferenceAction,
   undoPreferenceAction,
@@ -1628,6 +1629,20 @@ export default function App({
   );
   /** Pako still reads the photos in step 2, before his first run of the listing starts. */
   const listingStarting = busy && sellStep === 2 && !listing.state.id;
+  const suggestedPrice = pendingPrice(
+    [...listing.state.history, listing.state],
+    draft,
+  );
+  const priceDecision = listing.state.questions.some(
+    (question) =>
+      question.input?.type === "price" && !listing.state.answers[question.id],
+  );
+  /** Takes the student to Pako's price question, where the price is decided. */
+  function reviewPrice() {
+    document
+      .querySelector<HTMLElement>(".listing-conversation [data-price-decision]")
+      ?.focus();
+  }
   const listingTurn = listingStarting ? startingListingTurn : listing.state;
   const listingConversation = (
     <section className="listing-conversation" aria-label="Listing agent">
@@ -2510,6 +2525,8 @@ export default function App({
                   }
                   onDraftChange={listing.editDraft}
                   agentWorking={listingStarting || listing.running}
+                  suggestedPrice={suggestedPrice}
+                  onReviewPrice={priceDecision ? reviewPrice : undefined}
                   insight={
                     <SellerInsight
                       similar={similarListings(

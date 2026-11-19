@@ -166,6 +166,7 @@ export function AgentQuestion({
               </label>
               <Input
                 id={`${inputId}-price`}
+                data-price-decision
                 type="range"
                 min={question.input.min}
                 max={question.input.max}

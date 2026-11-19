@@ -5,6 +5,7 @@ import type {
 } from "../shared/actions.ts";
 import { listingFieldNames, type ListingField } from "./agentActions.ts";
 import type { ListingDraft } from "./components/SellFlow.tsx";
+import type { AgentRunAction } from "./hooks/useAgentRun.ts";
 
 const MAX_DESCRIPTION = 4000;
 
@@ -106,4 +107,23 @@ export function resolvedByDraft(
     isDraftField(field) &&
     draft[field].trim(),
   );
+}
+
+type PriceSuggestion = AgentListingPatchEvent & { patch: { price: number } };
+
+const isPriceSuggestion = (action: AgentRunAction): action is PriceSuggestion =>
+  action.type === "listing_patch" &&
+  action.requiresAcceptance &&
+  typeof action.patch.price === "number";
+
+/** Pako's newest suggested price, while the listing has no price of its own. */
+export function pendingPrice(
+  turns: readonly { actions: readonly AgentRunAction[] }[],
+  draft: Pick<ListingDraft, "price">,
+): number | undefined {
+  if (draft.price.trim()) return undefined;
+  return turns
+    .flatMap((turn) => turn.actions)
+    .filter(isPriceSuggestion)
+    .at(-1)?.patch.price;
 }

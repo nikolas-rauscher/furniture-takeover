@@ -38,7 +38,10 @@ import type { AgentQuota } from "../../shared/agent";
 import Modal from "./Modal";
 import PhotoGallery from "./PhotoGallery";
 import SnapTarget from "./SnapTarget";
-import ListingChecklist, { detailsToComplete } from "./ListingChecklist";
+import ListingChecklist, {
+  detailsToComplete,
+  type ListingCheck,
+} from "./ListingChecklist";
 import WorkspaceHeader from "./WorkspaceHeader";
 import Guide, { type GuideBubble } from "./onboarding/Guide";
 import type { PakoMood } from "./onboarding/storyTypes";
@@ -226,6 +229,10 @@ type SellFlowProps = {
   agentWorking?: boolean;
   /** Prices of similar listings for the one being written, beside its price. */
   insight?: ReactNode;
+  /** Pako's suggested price while the listing has none of its own. */
+  suggestedPrice?: number;
+  /** Takes the student to Pako's price question, where the price is decided. */
+  onReviewPrice?: () => void;
   quota?: AgentQuota;
   onAccount: () => void;
   onBack: () => void;
@@ -247,6 +254,8 @@ export default function SellFlow({
   editing,
   pickupMin = TODAY,
   insight,
+  suggestedPrice,
+  onReviewPrice,
   busy,
   photoReading = false,
   uploadError,
@@ -270,38 +279,49 @@ export default function SellFlow({
   const saveWords = listingSaveWords(cloud);
   const photos = listingPhotos(draft);
   const isPhotoStep = step === 1;
-  const checks = [
+  const openFields = () => setFieldsOpen(true);
+  const required = (ready: boolean) => (ready ? "ready" : "missing");
+  const priceSet =
+    draft.price.trim() !== "" &&
+    Number.isFinite(Number(draft.price)) &&
+    Number(draft.price) >= 0 &&
+    Number(draft.price) <= 10000;
+  const checks: ListingCheck[] = [
     {
       label: "Photos",
-      ready: photos.length > 0,
+      state: required(photos.length > 0),
       open: () => setPhotosOpen(true),
     },
     {
       label: "Title",
-      ready: Boolean(draft.title.trim()),
-      open: () => setFieldsOpen(true),
+      state: required(Boolean(draft.title.trim())),
+      open: openFields,
     },
     {
       label: "Description",
-      ready: Boolean(draft.description.trim()),
-      open: () => setFieldsOpen(true),
+      state: required(Boolean(draft.description.trim())),
+      open: openFields,
     },
     {
       label: "Price",
-      ready:
-        draft.price.trim() !== "" &&
-        Number.isFinite(Number(draft.price)) &&
-        Number(draft.price) >= 0 &&
-        Number(draft.price) <= 10000,
-      open: () => setFieldsOpen(true),
+      state: priceSet
+        ? "ready"
+        : suggestedPrice === undefined
+          ? "missing"
+          : "suggested",
+      open: !priceSet && onReviewPrice ? onReviewPrice : openFields,
     },
     {
       label: "Pickup area",
-      ready: Boolean(draft.location.trim()),
-      open: () => setFieldsOpen(true),
+      state: required(Boolean(draft.location.trim())),
+      open: openFields,
     },
   ];
-  const missing = checks.filter((check) => !check.ready);
+  const missing = checks.filter((check) => check.state !== "ready");
+  const onlyPriceToConfirm =
+    missing.length === 1 && missing[0].state === "suggested";
+  /** The price on the card: the student's own, else Pako's suggestion until it is accepted. */
+  const shownPrice = priceSet ? Number(draft.price) : suggestedPrice;
   // Always editable; the label adapts to the item type when it is known.
   const measurementField = listingMeasurementField(draft) ?? {
     label: "Measurements",
@@ -553,9 +573,9 @@ export default function SellFlow({
               >
                 <span>Required details</span>
                 <small>
-                  {missing.length
-                    ? detailsToComplete(missing.length)
-                    : "Complete"}
+                  {onlyPriceToConfirm && suggestedPrice !== undefined
+                    ? `Price: confirm ${money(suggestedPrice)}`
+                    : detailsToComplete(missing.length)}
                 </small>
               </Button>
             )}
@@ -792,9 +812,35 @@ export default function SellFlow({
               <motion.h2 key={draft.title} {...previewSwap}>
                 {draft.title || "Your item"}
               </motion.h2>
-              <motion.strong key={draft.price} {...previewSwap}>
-                {draft.price ? money(Number(draft.price)) : "Price not set"}
-              </motion.strong>
+              <div className="listing-preview-price">
+                <motion.strong
+                  key={shownPrice ?? "not-set"}
+                  data-suggested={!priceSet || undefined}
+                  {...previewSwap}
+                >
+                  {shownPrice === undefined
+                    ? "Price not set"
+                    : money(shownPrice)}
+                </motion.strong>
+                <AnimatePresence initial={false}>
+                  {!priceSet && suggestedPrice !== undefined && (
+                    <motion.button
+                      key="suggested"
+                      type="button"
+                      className="chip listing-price-suggested"
+                      aria-label={`Suggested by Pako: ${money(suggestedPrice)}. Decide the price`}
+                      disabled={!onReviewPrice}
+                      onClick={onReviewPrice}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      Suggested
+                    </motion.button>
+                  )}
+                </AnimatePresence>
+              </div>
               {insight}
               {draft.description && (
                 <p className="listing-preview-description">
