@@ -19,6 +19,10 @@ import "./agent-listings.css";
 export const canOffer = (item: Product) =>
   !isMine(item) && item.status === "active";
 
+/** What Pako prepares for a listing: a pickup plan for a free one, otherwise an offer. */
+export const offerLabel = (item: Pick<Product, "price">) =>
+  item.price === 0 ? "Plan pickup with Pako" : "Draft an offer with Pako";
+
 type AgentProductCardProps = {
   item: Product;
   /** Place among the results; later cards rise a little later. */
@@ -89,11 +93,7 @@ function AgentProductCard({
             size="sm"
             onClick={() => (offerable ? onOffer(item) : onOpen(item))}
           >
-            {!offerable
-              ? "View listing"
-              : item.price === 0
-                ? "Plan pickup with Pako"
-                : "Draft an offer with Pako"}
+            {offerable ? offerLabel(item) : "View listing"}
           </Button>
         </div>
       </div>

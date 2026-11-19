@@ -2615,6 +2615,17 @@ export default function App({
                     transitionPage("nav-back", () => navigate(detailOrigin))
                   }
                   onMessage={() => selected && openMessages(selected.id)}
+                  onOffer={() =>
+                    selected &&
+                    transitionPage(
+                      "nav-forward",
+                      () => continueOffer(selected),
+                      "fade",
+                    )
+                  }
+                  onFindSimilar={() =>
+                    selected && startSearchFromHome(selected.title)
+                  }
                   onEdit={() => selected && editListing(selected)}
                   onAskAgent={() => {
                     if (!selected) return;

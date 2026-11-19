@@ -7,6 +7,8 @@ import {
   MapPin,
   MessageCircle,
   Pencil,
+  Search,
+  Sparkles,
   Truck,
 } from "@/components/icons";
 import { listingPhotos } from "../../shared/listingPhotos";
@@ -16,6 +18,7 @@ import { relatedListings } from "../../shared/relatedListings";
 import PhotoGallery from "./PhotoGallery";
 import SaveToggle from "./SaveToggle";
 import PakoReaction from "./PakoReaction";
+import { canOffer, offerLabel } from "./AgentListings";
 import "./listing-detail.css";
 
 type ListingDetailPageProps = {
@@ -34,6 +37,10 @@ type ListingDetailPageProps = {
   backLabel: string;
   onBack(): void;
   onMessage(): void;
+  /** Pako drafts an offer, or plans the pickup of a free item. */
+  onOffer(): void;
+  /** Pako searches for real listings like a sample, whose seller cannot reply. */
+  onFindSimilar(): void;
   onEdit(): void;
   onAskAgent(): void;
   /** Feature-flagged availability prototype; replaces "Message seller". */
@@ -61,6 +68,8 @@ export default function ListingDetailPage({
   backLabel,
   onBack,
   onMessage,
+  onOffer,
+  onFindSimilar,
   onEdit,
   onAskAgent,
   availabilityPanel,
@@ -87,6 +96,8 @@ export default function ListingDetailPage({
     selected.description.match(/Photo (?:illustrates|shows) [^\n]+/)?.[0] ?? "";
   const transport = transportGuidance(selected.title, selected.dimensions);
   const mine = isMine(selected);
+  // A marketplace sample has no seller to reply, so it leads to real listings instead.
+  const sample = cloud && Boolean(selected.demo) && !mine;
   /** Leads the main action's label where it docks at the bottom of a phone screen. */
   const dockPrice = (
     <span className="listing-detail-dock-price">
@@ -227,27 +238,57 @@ export default function ListingDetailPage({
                     Ask Pako to improve this listing
                   </Button>
                 </div>
+              ) : sample ? (
+                <div className="listing-detail-dock">
+                  <Button
+                    animateIcon
+                    className="button primary full"
+                    type="button"
+                    onClick={onFindSimilar}
+                  >
+                    <Search size={17} />
+                    <span>
+                      <span className="listing-detail-dock-price">
+                        Sample ·{" "}
+                      </span>
+                      Find real ones with Pako
+                    </span>
+                  </Button>
+                </div>
               ) : (
-                <div
-                  className={
-                    selected.status === "active" && !availabilityPanel
-                      ? "listing-detail-dock"
-                      : undefined
-                  }
-                >
-                  {availabilityPanel ?? (
+                <>
+                  <div
+                    className={
+                      selected.status === "active" && !availabilityPanel
+                        ? "listing-detail-dock"
+                        : undefined
+                    }
+                  >
+                    {availabilityPanel ?? (
+                      <Button
+                        animateIcon
+                        className="button primary full"
+                        type="button"
+                        disabled={selected.status !== "active"}
+                        onClick={onMessage}
+                      >
+                        <MessageCircle size={17} />
+                        <span>{dockPrice}Message seller</span>
+                      </Button>
+                    )}
+                  </div>
+                  {canOffer(selected) && (
                     <Button
                       animateIcon
-                      className="button primary full"
+                      className="button secondary"
                       type="button"
-                      disabled={selected.status !== "active"}
-                      onClick={onMessage}
+                      onClick={onOffer}
                     >
-                      <MessageCircle size={17} />
-                      <span>{dockPrice}Message seller</span>
+                      <Sparkles size={16} />
+                      {offerLabel(selected)}
                     </Button>
                   )}
-                </div>
+                </>
               )}
               {(onToggleFavorite || onToggleCompare) && (
                 <div className="listing-detail-tools">
