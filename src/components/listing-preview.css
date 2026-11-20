@@ -1,0 +1,260 @@
+/* The listing being written, laid out like the intro's draft card: the photo beside
+   the title and price, then the details as they fill in. */
+.listing-card {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  grid-template-areas:
+    "photo head"
+    "details details";
+  gap: 12px 14px;
+  padding: 14px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-stage);
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--lip);
+}
+.listing-card-photo {
+  position: relative;
+  grid-area: photo;
+  display: grid;
+  place-items: center;
+  align-self: start;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 12px;
+  background: var(--canvas);
+  color: var(--muted);
+}
+.listing-card-photo > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.listing-card-photo-count {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--type-caption);
+  font-weight: 700;
+}
+.listing-card-head {
+  grid-area: head;
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+}
+.listing-card-writing {
+  justify-self: start;
+  margin-bottom: 4px;
+}
+.listing-card-writing > svg {
+  animation: listing-card-sparkle 1.4s ease-in-out infinite;
+}
+@keyframes listing-card-sparkle {
+  50% {
+    opacity: 0.45;
+    transform: rotate(18deg) scale(0.9);
+  }
+}
+.listing-card-head > h2 {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+}
+.listing-card-head > h2 > span {
+  display: block;
+}
+/* The price keeps its place from Pako's suggestion to the student's choice: only its
+   colour settles, and the "Suggested" chip goes. */
+.listing-card-price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+.listing-card-price > strong {
+  color: var(--blue);
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  transition: color 200ms ease;
+}
+.listing-card-price > strong[data-tentative] {
+  color: var(--muted);
+}
+.listing-card-suggested {
+  position: relative;
+  min-height: 28px;
+  padding: 3px 10px;
+  border: 0;
+  background: var(--sky);
+  color: var(--blue-dark);
+  font-size: var(--type-caption);
+  font-weight: 700;
+  cursor: pointer;
+}
+/* The chip looks slim; a finger still gets a 44 px target. */
+.listing-card-suggested::after {
+  content: "";
+  position: absolute;
+  inset: -8px -2px;
+}
+.listing-card-suggested:disabled {
+  cursor: default;
+}
+.listing-card-details {
+  grid-area: details;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.listing-card-facts {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+.listing-card-facts > div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  min-height: 24px;
+}
+.listing-card-facts dt {
+  color: var(--muted);
+  font-size: var(--type-support);
+}
+.listing-card-facts dd {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--type-label);
+  font-weight: 600;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.listing-card-facts dd > svg {
+  flex: none;
+  margin-top: 0.2em;
+  color: var(--blue);
+}
+.listing-card-description {
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--card-line);
+  color: var(--muted);
+  font-size: var(--type-support);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* A sentence a tap just added to the description glows butter, then settles. */
+.listing-card-added {
+  border-radius: 4px;
+  animation: listing-card-added 1200ms ease-out both;
+}
+@keyframes listing-card-added {
+  from {
+    background-color: var(--butter);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+/* A detail Pako is still writing: grey bars where its words will be. */
+.listing-card-pending {
+  display: grid;
+  grid-auto-rows: 1.4em;
+  align-items: center;
+}
+.listing-card-pending > i {
+  height: 0.62em;
+  border-radius: 6px;
+  background: var(--canvas);
+  animation: listing-card-pending 1.2s ease-in-out infinite alternate;
+}
+.listing-card-pending > i:nth-child(2) {
+  width: 92%;
+}
+.listing-card-pending > i:nth-child(3) {
+  width: 58%;
+}
+@keyframes listing-card-pending {
+  to {
+    opacity: 0.5;
+  }
+}
+.listing-card-insight:empty {
+  display: none;
+}
+
+/* On phones the card stays compact: the description keeps to two lines and similar
+   prices step aside, so Pako's question follows the card closely. */
+@media (max-width: 760px) {
+  .listing-card {
+    gap: 10px 12px;
+    padding: 12px;
+  }
+  /* Each detail names itself above its value, two to a row. */
+  .listing-card-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 12px;
+  }
+  .listing-card-facts > div {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+  .listing-card-facts dt {
+    font-size: var(--type-caption);
+  }
+  .listing-card-description {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  .listing-card-insight {
+    display: none;
+  }
+}
+@media (min-width: 761px) {
+  .listing-card {
+    grid-template-columns: 200px minmax(0, 1fr);
+    grid-template-areas:
+      "photo head"
+      "photo details";
+    gap: 10px 20px;
+    padding: 16px;
+  }
+  .listing-card-head > h2 {
+    font-size: 1.25rem;
+  }
+  .listing-card-price > strong {
+    font-size: 1.375rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .listing-card-writing > svg,
+  .listing-card-pending > i {
+    animation: none;
+  }
+  .listing-card-added {
+    animation-timing-function: steps(1, end);
+  }
+}

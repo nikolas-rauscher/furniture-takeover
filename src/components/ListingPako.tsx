@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useEffectEvent,
   useId,
@@ -7,8 +8,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { AutoHeight } from "@animate-ui/react/primitives/effects/auto-height";
+import { motion, useReducedMotion } from "motion/react";
 import type { AgentQuestionEvent } from "../../shared/actions";
 import { Check, LoaderCircle, Sparkles } from "@/components/icons";
 import { TODAY } from "../../shared/marketplace";
@@ -18,30 +18,38 @@ import {
   asksPrice,
   splitQuestion,
   type PriceSuggestion,
-  type TrayPhase,
+  type ListingPhase,
 } from "../listingQuestions";
-import { REACTION_MS, trayMood, workingLine } from "../pakoMoods";
+import { REACTION_MS, listingMood, workingLine } from "../pakoMoods";
 import { answerParts } from "./AgentAnswerContent";
 import { POLISH_DESCRIPTION } from "./AskPakoMenu";
+import { usePakoPlace } from "./ListingChat";
 import PakoReaction from "./PakoReaction";
 import PriceCard from "./PriceCard";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import "./listing-tray.css";
+import "./listing-pako.css";
 
-/**
- * The tray's content settles in place of the last one, like the listing card's
- * details. The last one fades out over it at once, so the tray never stands empty.
- */
-const SWAP = {
+/** Pako's bubble pops in from its tail, like his bubbles in the intro. */
+const POP = {
+  initial: { opacity: 0, scale: 0.9 },
+  animate: { opacity: 1, scale: 1 },
+  transition: { type: "spring", stiffness: 480, damping: 28 },
+} as const;
+/** Each new line settles in place of the last one, like the listing card's details. */
+const SETTLE = {
   initial: { opacity: 0, y: 6 },
   animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -4, transition: { duration: 0.12 } },
-  transition: { type: "spring", stiffness: 420, damping: 34 },
+  transition: { type: "spring", stiffness: 300, damping: 30 },
 } as const;
+/** What Pako says before the listing has a conversation, or after one was stopped. */
+const IDLE_LINES = {
+  empty: "Tell Pako what you’d like to change.",
+  stopped: "Stopped. You can run this request again when you are ready.",
+};
 /** A tapped answer fills and shows its check this long before the next question comes. */
 const CHOSEN_MS = 140;
-/** The tray always offers its own Skip, so Pako's skip answers are not repeated. */
+/** The bubble always offers its own Skip, so Pako's skip answers are not repeated. */
 const SKIP_ANSWER = /^skip(?: for now)?\.?$/i;
 /**
  * When the student asks to decide the price, the bubble lights up and Pako hops, so
@@ -68,7 +76,7 @@ const NUDGE_TIMING: KeyframeAnimationOptions = {
 };
 
 type Props = {
-  phase: TrayPhase;
+  phase: ListingPhase;
   turn: AgentRunState;
   question?: AgentQuestionEvent;
   /** The questions of this turn in order, answered ones included. */
@@ -77,6 +85,8 @@ type Props = {
   answeredBefore: number;
   suggestion?: PriceSuggestion;
   closing: { title: string; text: string };
+  /** What Pako answered, said before his first question or with his closing line. */
+  reply: string;
   /** Why the last tap could not apply. */
   tapError?: string;
   /** Grows when the student asks to decide the price, which then takes focus. */
@@ -115,7 +125,7 @@ function Progress({
   const position =
     answeredBefore + queue.findIndex((item) => item.id === current) + 1;
   return (
-    <span className="listing-tray-progress">
+    <span className="listing-pako-progress">
       <span className="sr-only">Question </span>
       {position} of {total}
     </span>
@@ -142,7 +152,7 @@ function PickupDate({
   if (!open)
     return (
       <Button
-        className="listing-tray-choice"
+        className="listing-pako-choice"
         disabled={disabled}
         onClick={() => setOpen(true)}
       >
@@ -150,7 +160,7 @@ function PickupDate({
       </Button>
     );
   return (
-    <span className="listing-tray-date">
+    <span className="listing-pako-date">
       <label htmlFor={fieldId} className="sr-only">
         Pickup deadline
       </label>
@@ -173,7 +183,7 @@ function PickupDate({
   );
 }
 
-/** While Pako asks his own question, the tray still says what his run is doing. */
+/** While Pako asks his own question, his bubble still says what his run is doing. */
 function Meanwhile({
   turn,
   onRetry,
@@ -183,14 +193,14 @@ function Meanwhile({
 }) {
   if (turn.status === "running")
     return (
-      <p className="listing-tray-meanwhile">
+      <p className="listing-pako-meanwhile">
         <LoaderCircle size={14} animate aria-hidden="true" />
         {workingLine(turn, undefined, "listing")}
       </p>
     );
   if (turn.status !== "error") return null;
   return (
-    <p className="listing-tray-meanwhile" role="alert">
+    <p className="listing-pako-meanwhile" role="alert">
       I couldn't check asking prices. {turn.error}
       <Button className="button quiet small" onClick={onRetry}>
         Try again
@@ -212,8 +222,8 @@ function WorkingLine({
     .filter((step) => step.state === "running" && step.detail)
     .at(-1)?.detail;
   return (
-    <p className="listing-tray-line" {...titleProps}>
-      <span key={line} className="listing-tray-line-text">
+    <p className="listing-pako-line" {...titleProps}>
+      <span key={line} className="listing-pako-line-text">
         {line}
       </span>
       {detail && <small>{detail}</small>}
@@ -222,11 +232,11 @@ function WorkingLine({
 }
 
 /**
- * Pako above the composer: while he works he says what he does, then asks one
- * question at a time with tap answers, and closes with what is left to do. The
- * conversation above keeps the record.
+ * Pako in the listing column, once: beside his bubble he says what he does while
+ * he works, then asks one question at a time with tap answers, and closes with
+ * what is left to do. Each new line brings him into view.
  */
-export default function ListingTray({
+export default function ListingPako({
   phase,
   turn,
   question,
@@ -234,6 +244,7 @@ export default function ListingTray({
   answeredBefore,
   suggestion,
   closing,
+  reply,
   tapError,
   focusRequest,
   waiting,
@@ -248,10 +259,18 @@ export default function ListingTray({
 }: Props) {
   const reduced = useReducedMotion() === true;
   const headingId = useId();
-  const tray = useRef<HTMLElement>(null);
+  const place = usePakoPlace();
+  const pako = useRef<HTMLElement>(null);
+  const markPako = useCallback(
+    (node: HTMLElement | null) => {
+      pako.current = node;
+      place.mark(node);
+    },
+    [place],
+  );
   const titleNode = useRef<HTMLElement | null>(null);
   const focusNext = useRef(false);
-  /** The element in the tray that had focus last. */
+  /** The element in the bubble that had focus last. */
   const lastFocused = useRef<Element | null>(null);
   /** The choice tapped on the content that shows now; a new question or step starts unchosen. */
   const [choice, setChoice] = useState<{ content: string; label: string }>();
@@ -261,24 +280,29 @@ export default function ListingTray({
       answered ? { id: `answered-${answered}`, ms: REACTION_MS.happy } : null,
     ) && answered > 0;
   const mood =
-    phase === "asking" && cheering ? "happy" : trayMood(phase, turn.steps);
+    phase === "asking" && cheering ? "happy" : listingMood(phase, turn.steps);
   const contentKey =
     phase === "asking" && question
       ? `question-${question.id}`
       : phase === "starting"
         ? "working"
         : phase;
+  useEffect(() => {
+    const frame = requestAnimationFrame(place.reveal);
+    return () => cancelAnimationFrame(frame);
+  }, [contentKey, place]);
 
   const chosen = choice?.content === contentKey ? choice.label : undefined;
   const nudge = useEffectEvent(() => {
-    const node = tray.current;
+    const node = pako.current;
     node
-      ?.querySelector(".listing-tray-bubble")
+      ?.querySelector(".listing-pako-bubble")
       ?.animate(NUDGE_BUBBLE, NUDGE_TIMING);
     if (!reduced)
       node
-        ?.querySelector(".listing-tray-pako")
+        ?.querySelector(".listing-pako-avatar")
         ?.animate(PAKO_HOP, NUDGE_TIMING);
+    place.reveal();
     if (titleNode.current?.dataset.content === contentKey)
       titleNode.current.focus({ preventScroll: true });
     else focusNext.current = true;
@@ -288,13 +312,12 @@ export default function ListingTray({
     if (focusRequest) nudge();
   }, [focusRequest]);
 
-  if (phase === "hidden") return null;
-  /** Focus was in the tray, on something that went away with the content before. */
+  /** Focus was in the bubble, on something that went away with the content before. */
   const focusLost = () =>
     document.activeElement === document.body &&
     lastFocused.current !== null &&
     !lastFocused.current.isConnected;
-  /** Each content's title takes focus as it arrives, when focus was in the tray before. */
+  /** Each content's title takes focus as it arrives, when focus was in the bubble before. */
   const title = (node: HTMLElement | null) => {
     if (!node) return;
     titleNode.current = node;
@@ -303,9 +326,12 @@ export default function ListingTray({
     node.focus({ preventScroll: true });
   };
   const titleProps = { ref: title, tabIndex: -1, "data-content": contentKey };
-  /** Keeps keyboard focus in the tray when the control that had it goes away. */
+  const replyLine = reply && (
+    <p className="listing-pako-reply">{answerParts(reply, turn.sources)}</p>
+  );
+  /** Keeps keyboard focus in the bubble when the control that had it goes away. */
   const answering = (act: () => boolean | void) => {
-    focusNext.current = Boolean(tray.current?.contains(document.activeElement));
+    focusNext.current = Boolean(pako.current?.contains(document.activeElement));
     if (act() === false) focusNext.current = false;
   };
   const choose = (id: string, label: string) => {
@@ -331,7 +357,8 @@ export default function ListingTray({
       .join(" ");
     content = (
       <>
-        <div className="listing-tray-heading">
+        {replyLine}
+        <div className="listing-pako-heading">
           <h3 id={headingId} {...titleProps}>
             {answerParts(ask, turn.sources)}
           </h3>
@@ -342,7 +369,7 @@ export default function ListingTray({
           />
         </div>
         {context && (
-          <p className="listing-tray-aside">
+          <p className="listing-pako-aside">
             {answerParts(context, turn.sources)}
           </p>
         )}
@@ -358,9 +385,9 @@ export default function ListingTray({
             onLater={() => answering(() => onLater(question.id))}
           />
         ) : (
-          <div className="listing-tray-answers">
+          <div className="listing-pako-answers">
             <div
-              className="listing-tray-choices"
+              className="listing-pako-choices"
               role="group"
               aria-labelledby={headingId}
             >
@@ -369,7 +396,7 @@ export default function ListingTray({
                 .map((choice, index) => (
                   <Button
                     key={choice}
-                    className="listing-tray-choice"
+                    className="listing-pako-choice"
                     data-chosen={chosen === choice || undefined}
                     style={{ "--stagger": Math.min(index, 3) } as CSSProperties}
                     disabled={
@@ -393,7 +420,7 @@ export default function ListingTray({
               )}
             </div>
             <Button
-              className="button quiet small listing-tray-skip"
+              className="button quiet small listing-pako-skip"
               disabled={waiting || chosen !== undefined}
               onClick={() => answering(() => onSkip(question.id))}
             >
@@ -402,7 +429,7 @@ export default function ListingTray({
           </div>
         )}
         {tapError && (
-          <p className="listing-tray-error" role="alert">
+          <p className="listing-pako-error" role="alert">
             {tapError}
           </p>
         )}
@@ -412,11 +439,11 @@ export default function ListingTray({
   } else if (phase === "error") {
     content = (
       <>
-        <p className="listing-tray-title" role="alert" {...titleProps}>
+        <p className="listing-pako-title" role="alert" {...titleProps}>
           I couldn't finish that
           <span>{turn.error}</span>
         </p>
-        <div className="listing-tray-actions">
+        <div className="listing-pako-actions">
           <Button className="button secondary small" onClick={onRetry}>
             Try again
           </Button>
@@ -429,11 +456,11 @@ export default function ListingTray({
   } else if (phase === "asleep") {
     content = (
       <>
-        <p className="listing-tray-title" {...titleProps}>
+        <p className="listing-pako-title" {...titleProps}>
           {closing.title}
           <span>{closing.text}</span>
         </p>
-        <div className="listing-tray-actions">
+        <div className="listing-pako-actions">
           <Button className="button secondary small" onClick={onManual}>
             Fill in details
           </Button>
@@ -443,13 +470,14 @@ export default function ListingTray({
   } else if (phase === "done") {
     content = (
       <>
-        <p className="listing-tray-title" {...titleProps}>
+        {replyLine}
+        <p className="listing-pako-title" {...titleProps}>
           {closing.title}
           <span>{closing.text}</span>
         </p>
         {onPolish && (
-          <div className="listing-tray-choices">
-            <Button className="listing-tray-choice" onClick={onPolish}>
+          <div className="listing-pako-choices">
+            <Button className="listing-pako-choice" onClick={onPolish}>
               <Sparkles size={15} aria-hidden="true" />
               {POLISH_DESCRIPTION.label}
             </Button>
@@ -457,12 +485,18 @@ export default function ListingTray({
         )}
       </>
     );
+  } else if (phase === "hidden") {
+    content = (
+      <p className="listing-pako-line" {...titleProps}>
+        {turn.id ? IDLE_LINES.stopped : IDLE_LINES.empty}
+      </p>
+    );
   } else content = <WorkingLine turn={turn} titleProps={titleProps} />;
 
   return (
     <section
-      ref={tray}
-      className="listing-tray"
+      ref={markPako}
+      className="listing-pako"
       data-phase={phase}
       onFocus={(event) => {
         lastFocused.current = event.target;
@@ -470,20 +504,22 @@ export default function ListingTray({
       aria-labelledby={phase === "asking" ? headingId : undefined}
       aria-label={phase === "asking" ? undefined : "Pako"}
     >
-      <span className="listing-tray-pako" aria-hidden="true">
+      <span className="listing-pako-avatar" aria-hidden="true">
         <PakoReaction size={44} mood={mood} />
       </span>
-      <AutoHeight className="listing-tray-bubble">
-        <AnimatePresence mode="popLayout" initial={false}>
-          <motion.div
-            key={contentKey}
-            className="listing-tray-content"
-            {...SWAP}
-          >
-            {content}
-          </motion.div>
-        </AnimatePresence>
-      </AutoHeight>
+      <motion.div
+        className="listing-pako-bubble"
+        style={{ originX: 0, originY: 0 }}
+        {...POP}
+      >
+        <motion.div
+          key={contentKey}
+          className="listing-pako-content"
+          {...SETTLE}
+        >
+          {content}
+        </motion.div>
+      </motion.div>
     </section>
   );
 }

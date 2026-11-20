@@ -1,20 +1,6 @@
+import { useId } from "react";
 import { Button } from "./ui/button";
-import { Check, Pencil } from "./icons";
-import {
-  Trace,
-  TraceCollapsible,
-  TraceCollapsibleContent,
-  TraceCollapsibleTrigger,
-  TraceDescription,
-  TraceIcon,
-  TraceLine,
-  TraceTitle,
-} from "./ui/trace";
-
-/** The number of required details still missing, in words. */
-export function detailsToComplete(count: number) {
-  return `${count} detail${count === 1 ? "" : "s"} to complete`;
-}
+import { ChevronRight } from "./icons";
 
 /** A required detail: filled in, missing, or only suggested by Pako so far. */
 export type ListingCheck = {
@@ -23,60 +9,46 @@ export type ListingCheck = {
   open: () => void;
 };
 
-const STEP_WORDS = { ready: "Ready", missing: "Add", suggested: "Suggested" };
+type OpenCheck = ListingCheck & { state: "missing" | "suggested" };
 
-/** What is left: a single suggestion is named, otherwise the details are counted. */
-function remainingWords(unfinished: readonly ListingCheck[]) {
-  if (!unfinished.length) return "Required details complete";
-  if (unfinished.length === 1 && unfinished[0].state === "suggested")
-    return `${unfinished[0].label} suggested`;
-  return detailsToComplete(unfinished.length);
-}
+const STEP_WORDS: Record<OpenCheck["state"], string> = {
+  missing: "Add",
+  suggested: "Suggested",
+};
 
+/** The required details still open, each a tap away; nothing once all are in. */
 export default function ListingChecklist({
   checks,
+  hint,
 }: {
   checks: readonly ListingCheck[];
+  /** An optional detail that would help buyers. */
+  hint?: string;
 }) {
-  const unfinished = checks.filter((check) => check.state !== "ready");
+  const headingId = useId();
+  const unfinished = checks.filter(
+    (check): check is OpenCheck => check.state !== "ready",
+  );
+  if (!unfinished.length && !hint) return null;
   return (
-    <Trace className="listing-checklist">
-      <TraceCollapsible>
-        <TraceCollapsibleTrigger>
-          <TraceLine>
-            <TraceTitle>{remainingWords(unfinished)}</TraceTitle>
-            <TraceDescription>
-              {checks.length - unfinished.length}/{checks.length}
-            </TraceDescription>
-          </TraceLine>
-        </TraceCollapsibleTrigger>
-        <TraceCollapsibleContent>
-          <Trace>
-            {checks.map((check) => (
-              <Button
-                key={check.label}
-                className="listing-checklist-step"
-                onClick={check.open}
-                aria-label={`Edit ${check.label}`}
-              >
-                <TraceLine>
-                  <TraceIcon>
-                    {check.state === "ready" ? (
-                      <Check />
-                    ) : check.state === "suggested" ? (
-                      <span className="listing-checklist-dot" />
-                    ) : (
-                      <Pencil />
-                    )}
-                  </TraceIcon>
-                  <TraceTitle>{check.label}</TraceTitle>
-                  <TraceDescription>{STEP_WORDS[check.state]}</TraceDescription>
-                </TraceLine>
+    <section className="listing-needs" aria-labelledby={headingId}>
+      <h2 id={headingId}>
+        {unfinished.length ? "Still needed" : "Good to add"}
+      </h2>
+      {unfinished.length > 0 && (
+        <ul>
+          {unfinished.map((check) => (
+            <li key={check.label}>
+              <Button className="listing-needs-item" onClick={check.open}>
+                {check.label}
+                <small>{STEP_WORDS[check.state]}</small>
+                <ChevronRight size={16} aria-hidden="true" />
               </Button>
-            ))}
-          </Trace>
-        </TraceCollapsibleContent>
-      </TraceCollapsible>
-    </Trace>
+            </li>
+          ))}
+        </ul>
+      )}
+      {hint && <p>{hint}</p>}
+    </section>
   );
 }

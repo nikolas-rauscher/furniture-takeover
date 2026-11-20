@@ -621,99 +621,10 @@ label > textarea {
 .quiet-caption {
   font-size: var(--type-caption);
 }
-
-.review-layout.agent-review-layout {
-  grid-template-columns: minmax(0, 1.45fr) minmax(260px, 0.75fr);
-  gap: 32px;
-  align-items: start;
-}
-.listing-workspace,
-.listing-conversation {
-  min-width: 0;
-}
-.listing-conversation .search-conversation {
-  margin: 12px 0;
-}
-.listing-conversation .agent-run-panel.conversation-agent {
-  margin: 12px 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
-.listing-conversation .agent-run-changes {
-  margin: 12px 0;
-}
-.listing-conversation .agent-run-changes h3 {
-  font-size: 15px;
-}
-.listing-conversation .agent-run-changes p {
-  font-size: 14px;
-  line-height: 1.5;
-}
-.listing-save-form {
-  border-top: 2px solid var(--card-line);
-}
-.listing-save-form > .button {
-  margin-top: 24px;
-}
-.listing-save-form > .quiet-caption {
-  margin-top: 14px;
-}
-.listing-preview .listing-preview-description {
-  display: block;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  line-height: 1.7;
-}
 @media (max-width: 760px) {
-  .review-layout.agent-review-layout {
-    display: flex;
-    flex-direction: column;
-  }
-  .agent-review-layout .listing-workspace {
-    width: 100%;
-  }
-  .agent-review-layout .listing-preview {
-    position: static;
-    width: 100%;
-    order: -1;
-    display: grid;
-    grid-template-columns: 80px minmax(0, 1fr);
-    gap: 12px;
-    padding: 12px;
-    border-radius: 12px;
-    background: #fff;
-  }
-  .agent-review-layout .listing-preview > div {
-    padding: 0;
-    min-width: 0;
-  }
-  .agent-review-layout .listing-preview h2 {
-    font-size: 15px;
-    line-height: 1.35;
-    margin: 4px 0;
-  }
-  .agent-review-layout .listing-preview strong {
-    font-size: 16px;
-    margin-bottom: 4px;
-  }
-  .agent-review-layout .listing-preview p {
-    font-size: 11px;
-    margin-top: 4px;
-  }
-  .agent-review-layout .listing-preview .listing-preview-description {
-    display: none;
-  }
-  .review-layout.agent-review-layout {
-    gap: 12px;
-  }
   .view-sell .page-title + .steps {
     margin-bottom: 12px;
   }
-}
-.review-layout {
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-  gap: 72px;
 }
 .form-section-title {
   font-size: 22px;
@@ -727,29 +638,6 @@ label > textarea {
 }
 .review-form > .quiet-caption {
   margin-top: 16px;
-}
-.listing-preview {
-  border: 2px solid var(--card-line);
-  border-radius: var(--radius-stage);
-  background: var(--surface);
-  box-shadow: 0 4px 0 var(--lip);
-  top: 120px;
-}
-.listing-preview > div {
-  padding: 28px;
-}
-.listing-preview h2 {
-  font-size: 1.375rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-.listing-preview strong {
-  color: var(--blue);
-  font-weight: 700;
-  margin-bottom: 4px;
-}
-.listing-preview p {
-  font-size: 13px;
 }
 .account-tabs button {
   font-size: 14px;
@@ -858,9 +746,6 @@ label > textarea {
   .sell-layout {
     gap: 40px;
   }
-  .review-layout {
-    gap: 48px;
-  }
 }
 @media (max-width: 1020px) {
   .app-layout {
@@ -896,8 +781,7 @@ label > textarea {
   .agent-footnote > span {
     font-size: 11px;
   }
-  .sell-layout,
-  .review-layout {
+  .sell-layout {
     grid-template-columns: 1fr;
     gap: 40px;
   }
@@ -909,11 +793,6 @@ label > textarea {
   }
   .review-form {
     order: 1;
-  }
-  .listing-preview {
-    order: 2;
-    position: static;
-    max-width: none;
   }
 }
 @media (max-width: 560px) {
@@ -1068,10 +947,6 @@ label > textarea {
     font-size: 12px;
     gap: 12px;
   }
-  .listing-save-form {
-    margin-top: 24px;
-    padding-top: 20px;
-  }
 }
 
 /* Keep related copy together while preserving generous control targets. */
@@ -1086,11 +961,6 @@ label > textarea {
 }
 .page-title > .button {
   margin: 0;
-}
-
-.listing-save-form {
-  margin-top: 24px;
-  padding-top: 20px;
 }
 .sell-inputs {
   gap: 20px;
@@ -1120,16 +990,7 @@ label > textarea {
   padding: 20px;
   gap: 20px;
 }
-.listing-preview h2 {
-  margin: 12px 0;
-}
-.listing-preview p {
-  margin-top: 10px;
-}
 @media (max-width: 560px) {
-  .review-layout.agent-review-layout {
-    gap: 12px;
-  }
   .form-grid,
   .modal .form-grid {
     gap: 16px;
@@ -1160,22 +1021,6 @@ html {
   .agent-run-change {
     interpolate-size: allow-keywords;
   }
-}
-@media (max-width: 760px) {
-  .agent-review-layout .listing-preview {
-    height: 142px;
-    box-sizing: border-box;
-    overflow: hidden;
-  }
-  .agent-review-layout .listing-preview h2 {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    overflow: hidden;
-  }
-}
-.listing-conversation .agent-run-change {
-  max-width: none;
 }
 .agent-run-change-content > p {
   font-size: 14px;
@@ -1380,127 +1225,13 @@ body:has(
 .selling-chat-layout .steps {
   display: none;
 }
-.selling-chat-layout .agent-review-layout {
-  flex: 1 1 0;
-  min-height: 0;
-  margin: 0;
-  align-items: stretch;
-  gap: 20px;
-}
-.selling-chat-layout .listing-workspace,
-.selling-chat-layout .listing-conversation {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 0;
-  min-height: 0;
-}
-.selling-chat-layout .chat-workspace {
-  flex: 1 1 0;
-  min-height: 0;
-  height: auto;
-  max-width: none;
-  margin: 6px 0;
-}
-.selling-chat-layout .chat-composer-dock {
-  min-height: 0;
-  padding-top: 8px;
-}
-.selling-chat-layout .chat-composer-dock textarea {
-  max-height: 100px;
-  overflow-y: auto;
-}
-.selling-chat-layout .listing-save-form {
-  flex-shrink: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px 12px;
-  margin: 0;
-  padding: 8px 0 0;
-  container-type: inline-size;
-}
-.selling-chat-layout .listing-save-form > .button {
-  width: auto;
-  margin: 0;
-}
-/* Who will see the listing: under the save button, or between the buttons where the row has room.
-   Phones leave it to the button's words. */
-.selling-chat-layout .listing-save-form > .quiet-caption {
-  order: 1;
-  flex: 1 0 100%;
-  margin: 0;
-  text-align: right;
-}
-@container (min-width: 44rem) {
-  .selling-chat-layout .listing-save-form > .quiet-caption {
-    order: 0;
-    flex: 1 1 0;
-  }
-}
-.selling-chat-layout .listing-preview {
-  position: static;
-  align-self: start;
-  max-height: 100%;
-  overflow: hidden;
-}
-.selling-chat-layout .listing-preview > div {
-  padding: 16px;
-}
-.selling-chat-layout .listing-preview h2 {
-  font-size: 20px;
-  margin: 0 0 8px;
-}
-.selling-chat-layout .listing-preview-description {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
-  overflow: hidden;
-}
+
 @media (max-width: 760px) {
   .selling-chat-layout .view-sell {
     padding: 8px var(--space-page);
   }
   .selling-chat-layout .page-title h1 {
     font-size: 18px;
-  }
-  .selling-chat-layout .agent-review-layout {
-    gap: 6px;
-  }
-  .selling-chat-layout .listing-preview {
-    height: 58px;
-    min-height: 58px;
-    flex-shrink: 0;
-    grid-template-columns: 44px minmax(0, 1fr);
-    padding: 6px 10px;
-    gap: 10px;
-    border-radius: var(--radius-card);
-  }
-  .selling-chat-layout .listing-preview > div {
-    padding: 0;
-  }
-  .selling-chat-layout .listing-preview h2 {
-    font-size: 13px;
-    white-space: nowrap;
-    display: block;
-    text-overflow: ellipsis;
-    overflow: hidden;
-    margin: 0;
-  }
-  .selling-chat-layout .listing-preview strong {
-    font-size: 13px;
-    margin: 0;
-  }
-  .selling-chat-layout .listing-preview p,
-  .selling-chat-layout .listing-preview .source-label {
-    display: none;
-  }
-  .selling-chat-layout .listing-save-form > .button {
-    padding: 8px 12px;
-    font-size: 12px;
-  }
-  .selling-chat-layout .listing-save-form > .quiet-caption {
-    display: none;
   }
 }
 @media (max-height: 600px) {

@@ -305,35 +305,10 @@
     transition: none;
   }
 }
-.listing-checklist [data-slot="trace-collapsible-trigger"] {
-  border: 0;
-  padding: 0;
-  min-height: 40px;
-  background: transparent;
-  font: inherit;
-}
-.listing-checklist .listing-checklist-step {
-  min-height: 40px;
-  width: 100%;
-  padding: 4px 0;
-  text-align: left;
-}
-.listing-checklist-step [data-slot="trace-line"] {
-  width: 100%;
-}
-.listing-checklist-step [data-slot="trace-description"] {
-  margin-left: auto;
-}
-.listing-checklist [data-slot="trace-title"] {
-  white-space: normal;
-}
 
 .agent-run-panel.conversation-agent
   .agent-search-result-messages:has(> :only-child) {
   grid-template-columns: minmax(0, 1fr);
-}
-.selling-chat-layout .listing-save-form > .listing-edit-button {
-  min-height: 44px;
 }
 @media (max-width: 760px) {
   .selling-chat-layout .view-sell > .page-title {

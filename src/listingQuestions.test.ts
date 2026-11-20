@@ -12,7 +12,7 @@ import {
   questionQueue,
   niceStep,
   priceSliderRange,
-  trayPhase,
+  listingPhase,
   DescriptionFullError,
   nextQuestion,
   pendingPrice,
@@ -200,8 +200,8 @@ test("price steps suit the amount", () => {
 });
 
 test("the tray reads Pako first, asks while a question waits, then closes or says what failed", () => {
-  const phase = (overrides: Partial<Parameters<typeof trayPhase>[0]>) =>
-    trayPhase({
+  const phase = (overrides: Partial<Parameters<typeof listingPhase>[0]>) =>
+    listingPhase({
       starting: false,
       status: "complete",
       asking: false,

@@ -10,7 +10,6 @@ import {
   agentDraft,
   applyListingAction,
   applyPreferenceAction,
-  undoListingAction,
   undoPreferenceAction,
 } from "./agentActions.ts";
 import { tapAction } from "./listingQuestions.ts";
@@ -88,12 +87,9 @@ test("accepting a researched price updates its labelled description amount witho
     applied.next.description,
     "Bought for CHF 40. Original price: CHF 40. Price: CHF 65. Delivery CHF 40. Small scratches. Chair not included.",
   );
-  const undone = undoListingAction(applied.next, applied.changes, {});
-  assert.equal(undone.next.description, current.description);
-  assert.equal(undone.next.price, "40");
 });
 
-test("price acceptance and undo preserve a manually revised description", () => {
+test("price acceptance preserves a manually revised description", () => {
   const current = {
     ...draft,
     price: "40",
@@ -111,16 +107,6 @@ test("price acceptance and undo preserve a manually revised description", () => 
   assert.equal(protectedResult.next.price, "65");
   assert.equal(protectedResult.next.description, current.description);
   assert.deepEqual(protectedResult.skipped, ["description"]);
-  const applied = applyListingAction(current, proposal, {}, {}, true, today);
-  const manuallyEdited = {
-    ...applied.next,
-    description: "My final description.",
-  };
-  const undone = undoListingAction(manuallyEdited, applied.changes, {
-    description: 1,
-  });
-  assert.equal(undone.next.price, "40");
-  assert.equal(undone.next.description, "My final description.");
 });
 
 test("late tool patches preserve manual field edits, including edits changed back to the old value", () => {
@@ -154,26 +140,6 @@ test("accepting an old price proposal cannot overwrite a newer manual asking pri
   );
   assert.equal(result.next.price, "65");
   assert.deepEqual(result.skipped, ["price"]);
-});
-
-test("undo restores the agent's changes while preserving later manual corrections", () => {
-  const applied = applyListingAction(
-    draft,
-    action({ title: "New title", dimensions: "120 × 60 cm" }),
-    {},
-    {},
-    false,
-    today,
-  );
-  const undone = undoListingAction(
-    { ...applied.next, title: "My later title" },
-    applied.changes,
-    { title: 1 },
-  );
-  assert.equal(undone.next.title, "My later title");
-  assert.equal(undone.next.dimensions, "");
-  assert.deepEqual(undone.preserved, ["title"]);
-  assert.deepEqual(undone.restored, ["dimensions"]);
 });
 
 test("invalid dates, oversized text and out-of-range prices do not enter the editable draft", () => {
@@ -258,7 +224,7 @@ test("structured search answers update actual preferences and keep the original 
   assert.equal(undone.location, "Lausanne");
 });
 
-test("a tapped answer applies over the student's earlier edits and undoes cleanly", () => {
+test("a tapped answer applies over the student's earlier edits", () => {
   const revisions = { description: 2 };
   const tap = tapAction(
     { label: "Weekends", appendDescription: "Pickup on weekends." },
@@ -274,12 +240,9 @@ test("a tapped answer applies over the student's earlier edits and undoes cleanl
     today,
   );
   assert.equal(applied.next.description, "White desk.\nPickup on weekends.");
-  const undone = undoListingAction(applied.next, applied.changes, revisions);
-  assert.equal(undone.next.description, "White desk.");
-  assert.deepEqual(undone.restored, ["description"]);
 });
 
-test("Pako's change from an earlier start still loses to a newer edit, while his accepted price undoes to empty", () => {
+test("Pako's change from an earlier start still loses to a newer edit, while his accepted price records its change", () => {
   const stale = applyListingAction(
     draft,
     action({ condition: "Good" }),
@@ -303,8 +266,4 @@ test("Pako's change from an earlier start still loses to a newer edit, while his
     after: "40",
     revision: 0,
   });
-  assert.equal(
-    undoListingAction(accepted.next, accepted.changes, {}).next.price,
-    "",
-  );
 });

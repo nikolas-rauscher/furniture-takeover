@@ -7,6 +7,7 @@ import type { Product, SavedListing } from "../../../shared/marketplace";
 import type { AgentRunEvent } from "../../../shared/runs";
 import AccountPage from "../../components/AccountPage";
 import AskPakoMenu, { LISTING_REQUESTS } from "../../components/AskPakoMenu";
+import ListingComposer from "../../components/ListingComposer";
 import ListingConversation from "../../components/ListingConversation";
 import SellFlow from "../../components/SellFlow";
 import {
@@ -50,8 +51,6 @@ type SellState = {
   draft: ListingDraft;
   insight: PhotoInsight;
   run: AgentRunState;
-  /** Pako's changes that went into the draft. */
-  applied: string[];
 };
 
 const PAGES: Record<Page, ScenePage> = {
@@ -66,7 +65,6 @@ const initial = (): SellState => ({
   draft: EMPTY_DRAFT,
   insight: { status: "reading", noteOnly: false },
   run: emptyAgentRunState(),
-  applied: [],
 });
 
 /** Pako's changes that need no decision go straight into the draft, as in the app. */
@@ -78,7 +76,6 @@ function applyEvent(state: SellState, event: AgentRunEvent): SellState {
     ...state,
     run,
     draft: { ...state.draft, ...describe(event) },
-    applied: [...state.applied, event.id],
   };
 }
 
@@ -184,12 +181,6 @@ function sceneListing(
     askingOwnQuestion: activeQuestion?.id === PICKUP_QUESTION.id,
     tapError: null,
     priceReviews: 0,
-    appliedIds: state.applied,
-    undoneIds: [],
-    notices: {},
-    accept: INERT,
-    undo: INERT,
-    undoAnswer: INERT,
     send: async () => undefined,
     retry: INERT,
     cancel: INERT,
@@ -333,13 +324,13 @@ export default function SellScene(round: SceneProps) {
                   listing={listing}
                   draft={state.draft}
                   starting={false}
-                  editing={false}
                   saveAction={saveActionLabel({ cloud: false, editing: false })}
                   configured
                   asleep={false}
                   onManual={INERT}
                 />
               ),
+              composer: <ListingComposer listing={listing} configured />,
               tools: (
                 <AskPakoMenu
                   requests={LISTING_REQUESTS}

@@ -114,9 +114,7 @@ export type PriceSuggestion = AgentListingPatchEvent & {
   patch: { price: number };
 };
 
-export const isPriceSuggestion = (
-  action: AgentRunAction,
-): action is PriceSuggestion =>
+const isPriceSuggestion = (action: AgentRunAction): action is PriceSuggestion =>
   action.type === "listing_patch" &&
   action.requiresAcceptance &&
   typeof action.patch.price === "number";
@@ -165,11 +163,11 @@ export function priceSliderRange(price: number, rangeMax = 0) {
   return { min: 0, max, step: 1 };
 }
 
-/** What Pako's tray above the composer shows. */
-export type TrayPhase =
+/** What Pako's bubble in the listing column shows. */
+export type ListingPhase =
   "hidden" | "starting" | "working" | "asking" | "done" | "error" | "asleep";
 
-export function trayPhase({
+export function listingPhase({
   starting,
   status,
   asking,
@@ -182,7 +180,7 @@ export function trayPhase({
   asking: boolean;
   /** The day's allowance is used up, so a failed run will not work again today. */
   asleep: boolean;
-}): TrayPhase {
+}): ListingPhase {
   if (starting) return "starting";
   if (asking) return "asking";
   if (status === "running") return "working";
@@ -213,7 +211,7 @@ export function closingLine(missing: readonly string[], action: string) {
 const SENTENCE_BREAK = /(?<=[.!])\s+(?=["“A-Z])/;
 
 /**
- * A question as asked, and what Pako wrote around it: the tray shows the asked
+ * A question as asked, and what Pako wrote around it: his bubble shows the asked
  * sentence as the heading, the sentences leading up to it as its context, and
  * keeps what follows, such as his reasoning, apart.
  */

@@ -17,7 +17,7 @@ import {
 import type { PickupDay } from "./pickupOptions.ts";
 import type { PakoMood } from "./components/onboarding/storyTypes";
 import type { AgentRunState, AgentRunStep } from "./hooks/useAgentRun";
-import type { TrayPhase } from "./listingQuestions";
+import type { ListingPhase } from "./listingQuestions";
 import type { PhotoSearchNotice } from "./photoSearchFeedback.ts";
 
 /** How long each reaction to a moment plays before Pako rests; every other mood lasts as long as its cause. */
@@ -393,7 +393,7 @@ export function turnAnnouncement(
   return spoken ? `Pako: ${spoken}` : "";
 }
 
-const TRAY_MOODS: Record<Exclude<TrayPhase, "working">, PakoMood> = {
+const LISTING_MOODS: Record<Exclude<ListingPhase, "working">, PakoMood> = {
   hidden: "idle",
   starting: "think",
   asking: "listen",
@@ -402,23 +402,23 @@ const TRAY_MOODS: Record<Exclude<TrayPhase, "working">, PakoMood> = {
   asleep: "sleep",
 };
 
-/** Pako in the tray: he works like in the thread, listens while he asks and reacts at the end. */
-export function trayMood(
-  phase: TrayPhase,
+/** Pako in the listing column: he works like in the thread, listens while he asks and reacts at the end. */
+export function listingMood(
+  phase: ListingPhase,
   steps: readonly AgentRunStep[],
 ): PakoMood {
-  return phase === "working" ? workingMood(steps) : TRAY_MOODS[phase];
+  return phase === "working" ? workingMood(steps) : LISTING_MOODS[phase];
 }
 
 /**
  * The listing conversation's one voice: what Pako does while he works, then his
- * answer with the first question in the tray, each later question on its own and
+ * answer with the first question in his bubble, each later question on its own and
  * his closing line. A failure is announced by its own alert.
  */
 export function listingAnnouncement(
   turn: Pick<AgentRunState, "steps" | "text" | "sources" | "questions">,
-  tray: {
-    phase: TrayPhase;
+  shown: {
+    phase: ListingPhase;
     question?: { text: string; first: boolean };
     closing: string;
   },
@@ -426,18 +426,18 @@ export function listingAnnouncement(
   const answer = plainAnswer(turn.text);
   const spoken = (...parts: string[]) =>
     `Pako: ${parts.filter(Boolean).join(" ")}`;
-  switch (tray.phase) {
+  switch (shown.phase) {
     case "starting":
     case "working":
       return workingLine(turn, undefined, "listing");
     case "asking":
-      return tray.question
-        ? spoken(tray.question.first ? answer : "", tray.question.text)
+      return shown.question
+        ? spoken(shown.question.first ? answer : "", shown.question.text)
         : "";
     case "done":
-      return spoken(turn.questions.length ? "" : answer, tray.closing);
+      return spoken(turn.questions.length ? "" : answer, shown.closing);
     case "asleep":
-      return spoken(tray.closing);
+      return spoken(shown.closing);
     default:
       return "";
   }

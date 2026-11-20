@@ -12,35 +12,28 @@ import {
   type ReactNode,
   type SyntheticEvent,
 } from "react";
-import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import { MotionConfig } from "motion/react";
 import { useScrollFade } from "@animate-ui/react/primitives/effects/scroll-fade";
 import {
-  Armchair,
-  Image as ImageIcon,
-  CalendarDays,
   Check,
   Images,
   LoaderCircle,
-  MapPin,
   Pencil,
   Sparkles,
 } from "@/components/icons";
-import { money, shortDate } from "../../shared/marketplace";
 import { useFocused } from "../hooks/useFocused";
 import type { PakoStatus } from "../hooks/usePakoStatus";
 import Modal from "./Modal";
 import PhotoGallery from "./PhotoGallery";
 import SnapTarget from "./SnapTarget";
-import ListingChecklist, {
-  detailsToComplete,
-  type ListingCheck,
-} from "./ListingChecklist";
+import ListingChat from "./ListingChat";
+import ListingChecklist, { type ListingCheck } from "./ListingChecklist";
+import ListingPreview from "./ListingPreview";
 import WorkspaceHeader from "./WorkspaceHeader";
 import Guide from "./onboarding/Guide";
 import type { PhotoInsight } from "../hooks/useListingAnalysis";
 import { useMomentPassed } from "../hooks/useMomentPassed";
 import { isReaction, REACTION_MS } from "../pakoMoods";
-import { undatedPickup } from "../listingQuestions";
 import {
   absenceGuide,
   FILL_IN_ACTION,
@@ -57,14 +50,6 @@ import { motionBehavior } from "../uiMotion";
 import { listingSaveWords, saveActionLabel } from "../listingSaveWords";
 import type { BatchProgress, ListingDraft } from "../listingDraft";
 import "./sell-flow.css";
-
-/** A detail Pako just filled in settles into place instead of jumping. */
-const previewSwap = {
-  initial: { opacity: 0, y: 6 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -4 },
-  transition: { type: "spring", stiffness: 420, damping: 34 },
-} as const;
 
 /**
  * The field being filled in on the phone's scrolling photo step stays fully in view,
@@ -181,30 +166,6 @@ function BatchTray({
   );
 }
 
-/** The card's description; a sentence just added to its end glows for a moment. */
-function DescriptionPreview({ text }: { text: string }) {
-  const [shown, setShown] = useState({ text, added: "" });
-  if (shown.text !== text)
-    setShown({
-      text,
-      added:
-        shown.text && text.startsWith(shown.text)
-          ? text.slice(shown.text.length)
-          : "",
-    });
-  const kept = text.slice(0, text.length - shown.added.length);
-  return (
-    <p className="listing-preview-description">
-      {kept}
-      {shown.added && (
-        <span key={text} className="listing-preview-added">
-          {shown.added}
-        </span>
-      )}
-    </p>
-  );
-}
-
 /** Pako's reading of the photos, and the student's answers to how he sorted them. */
 type PhotoAnalysis = {
   /** The chosen photos are still being read in. */
@@ -231,9 +192,10 @@ type PriceHelp = {
   onReview?: () => void;
 };
 
-/** Pako's side of writing the listing: his conversation, his tools, and whether he is at work. */
+/** Pako's side of writing the listing: his conversation, the composer, his tools, and whether he is at work. */
 type AgentPanel = {
   conversation: ReactNode;
+  composer: ReactNode;
   tools: ReactNode;
   working: boolean;
 };
@@ -367,8 +329,6 @@ export default function SellFlow({
     },
   ];
   const missing = checks.filter((check) => check.state !== "ready");
-  const onlyPriceToConfirm =
-    missing.length === 1 && missing[0].state === "suggested";
   /** The price on the card: the student's own, else Pako's suggestion until it is accepted. */
   const shownPrice = priceSet ? Number(draft.price) : price.suggested;
   // Always editable; the label adapts to the item type when it is known.
@@ -658,221 +618,118 @@ export default function SellFlow({
           </div>
         </div>
       ) : (
-        <div className="review-layout agent-review-layout">
-          <div className="listing-workspace">
-            {missing.length > 0 && (
-              <Button
-                type="button"
-                className="listing-readiness-mobile"
-                onClick={() => missing[0].open()}
-              >
-                <span>Required details</span>
-                <small>
-                  {onlyPriceToConfirm
-                    ? "Choose price"
-                    : detailsToComplete(missing.length)}
-                </small>
-              </Button>
-            )}
-            {manual ? (
-              <section className="listing-manual" aria-labelledby={manualId}>
-                <div className="listing-manual-note">
-                  <Pako size={44} mood={manualNote.mood} />
-                  <p id={manualId}>
-                    <strong>{manualNote.bubble.title}</strong>
-                    {manualNote.bubble.text}
-                  </p>
-                </div>
-                {fields(saveFormId)}
-              </section>
-            ) : (
-              agent.conversation
-            )}
-            <form
-              id={saveFormId}
-              onSubmit={(event) => {
-                if (missing.length) {
+        <ListingChat
+          card={
+            <ListingPreview
+              draft={draft}
+              photos={photos}
+              price={shownPrice}
+              suggested={!priceSet && price.suggested !== undefined}
+              onReviewPrice={price.onReview}
+              insight={price.insight}
+              writing={agent.working}
+              measurementLabel={measurementField.label}
+              onEditPhotos={() => setPhotosOpen(true)}
+            />
+          }
+          needed={
+            <ListingChecklist
+              checks={checks}
+              hint={
+                draft.condition
+                  ? undefined
+                  : "Adding the condition helps buyers decide."
+              }
+            />
+          }
+          dock={
+            <>
+              {!manual && agent.composer}
+              <form
+                id={saveFormId}
+                onSubmit={(event) => {
+                  if (missing.length) {
+                    event.preventDefault();
+                    missing[0].open();
+                    return;
+                  }
+                  onPublish(event);
+                }}
+                className="listing-chat-actions"
+                onInvalidCapture={(event) => {
                   event.preventDefault();
-                  missing[0].open();
-                  return;
-                }
-                onPublish(event);
-              }}
-              className="listing-save-form"
-              onInvalidCapture={(event) => {
-                event.preventDefault();
-                if (!manual) openFields();
-                const form = event.currentTarget;
-                window.requestAnimationFrame(() =>
-                  form.querySelector<HTMLElement>(":invalid")?.focus(),
-                );
-              }}
-            >
-              {!manual && (
-                <Button
-                  type="button"
-                  className="button secondary listing-edit-button"
-                  aria-label="Edit listing details"
-                  onClick={() => openFields()}
-                >
-                  <Pencil size={15} />
-                  Edit details
-                </Button>
-              )}
-              {fieldsOpen && (
-                <Modal
-                  title="Listing details"
-                  initialFocus={fieldsFocus}
-                  onClose={() => setFieldsOpen(false)}
-                >
-                  {fields()}
-                  <Button
-                    animateIcon
-                    type="button"
-                    className="button primary full"
-                    onClick={() => setFieldsOpen(false)}
-                  >
-                    Done
-                  </Button>
-                </Modal>
-              )}
-              {!editing && (
-                <span className="quiet-caption">{saveWords.audience}</span>
-              )}
-              <Button
-                animateIcon
-                className="button primary large"
-                type="submit"
-                disabled={agent.working || busy || photoReading}
+                  if (!manual) openFields();
+                  const form = event.currentTarget;
+                  window.requestAnimationFrame(() =>
+                    form.querySelector<HTMLElement>(":invalid")?.focus(),
+                  );
+                }}
               >
-                <Check size={18} />
-                {busy ? "Saving…" : saveActionLabel({ cloud, editing, batch })}
-              </Button>
-            </form>
-          </div>
-          <aside className="listing-preview">
-            <div className="listing-readiness">
-              <ListingChecklist checks={checks} />
-              <small>
-                {draft.condition
-                  ? ""
-                  : "Adding the condition helps buyers decide."}
-              </small>
-            </div>
-            <Button
-              type="button"
-              className="listing-preview-photos"
-              onClick={() => setPhotosOpen(true)}
-              aria-label={`Edit listing photos (${photos.length})`}
-            >
-              {draft.image ? (
-                <img src={draft.image} alt="Listing preview" />
-              ) : (
-                <span className="listing-no-photo">
-                  <ImageIcon size={28} />
-                </span>
-              )}
-              <span>
-                <ImageIcon size={12} aria-hidden="true" />
-                {photos.length}
-                <span className="listing-preview-photo-caption">
-                  photo{photos.length === 1 ? "" : "s"} · Edit
-                </span>
-              </span>
-            </Button>
-            <div aria-busy={agent.working}>
-              <AnimatePresence initial={false} mode="wait">
-                {agent.working ? (
-                  <motion.span
-                    key="writing"
-                    className="listing-preview-status"
-                    {...previewSwap}
+                {!manual && (
+                  <Button
+                    type="button"
+                    className="button secondary"
+                    aria-label="Edit listing details"
+                    onClick={() => openFields()}
                   >
-                    <span className="chip">
-                      <Sparkles size={14} aria-hidden="true" />
-                      Pako is writing…
-                    </span>
-                  </motion.span>
-                ) : (
-                  <motion.span
-                    key="source"
-                    className="source-label"
-                    {...previewSwap}
-                  >
-                    <Armchair size={13} />
-                    takeover
-                  </motion.span>
+                    <Pencil size={15} />
+                    Edit details
+                  </Button>
                 )}
-              </AnimatePresence>
-              <motion.h2 key={draft.title} {...previewSwap}>
-                {draft.title || "Your item"}
-              </motion.h2>
-              <div className="listing-preview-price">
-                <motion.strong
-                  key={shownPrice ?? "not-set"}
-                  data-suggested={!priceSet || undefined}
-                  {...previewSwap}
-                >
-                  {shownPrice === undefined
-                    ? "Price not set"
-                    : money(shownPrice)}
-                </motion.strong>
-                <AnimatePresence initial={false}>
-                  {!priceSet && price.suggested !== undefined && (
-                    <motion.button
-                      key="suggested"
+                {fieldsOpen && (
+                  <Modal
+                    title="Listing details"
+                    initialFocus={fieldsFocus}
+                    onClose={() => setFieldsOpen(false)}
+                  >
+                    {fields()}
+                    <Button
+                      animateIcon
                       type="button"
-                      className="chip listing-price-suggested"
-                      aria-label={`Suggested price ${money(price.suggested)}. Choose your asking price.`}
-                      disabled={!price.onReview}
-                      onClick={price.onReview}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2 }}
+                      className="button primary full"
+                      onClick={() => setFieldsOpen(false)}
                     >
-                      Suggested
-                    </motion.button>
+                      Done
+                    </Button>
+                  </Modal>
+                )}
+                {!editing && (
+                  <span className="quiet-caption">{saveWords.audience}</span>
+                )}
+                <Button
+                  animateIcon
+                  className="button primary large"
+                  type="submit"
+                  disabled={agent.working || busy || photoReading}
+                >
+                  {busy ? (
+                    <LoaderCircle animate size={18} aria-hidden="true" />
+                  ) : (
+                    <Check size={18} />
                   )}
-                </AnimatePresence>
+                  {busy
+                    ? "Saving…"
+                    : saveActionLabel({ cloud, editing, batch })}
+                </Button>
+              </form>
+            </>
+          }
+        >
+          {manual ? (
+            <section className="listing-manual" aria-labelledby={manualId}>
+              <div className="listing-manual-note">
+                <Pako size={44} mood={manualNote.mood} />
+                <p id={manualId}>
+                  <strong>{manualNote.bubble.title}</strong>
+                  {manualNote.bubble.text}
+                </p>
               </div>
-              {price.insight}
-              {draft.description && (
-                <DescriptionPreview text={draft.description} />
-              )}
-              {(draft.condition || draft.dimensions) && (
-                <dl className="listing-preview-facts">
-                  {draft.condition && (
-                    <div>
-                      <dt>Condition</dt>
-                      <motion.dd key={draft.condition} {...previewSwap}>
-                        {draft.condition}
-                      </motion.dd>
-                    </div>
-                  )}
-                  {draft.dimensions && measurementField && (
-                    <div>
-                      <dt>{measurementField.label}</dt>
-                      <motion.dd key={draft.dimensions} {...previewSwap}>
-                        {draft.dimensions}
-                      </motion.dd>
-                    </div>
-                  )}
-                </dl>
-              )}
-              <p>
-                <MapPin size={14} />
-                {draft.location}
-              </p>
-              <p>
-                <CalendarDays size={14} />
-                {draft.pickup
-                  ? `Pickup by ${shortDate(draft.pickup)}`
-                  : undatedPickup(draft.description)}
-              </p>
-            </div>
-          </aside>
-        </div>
+              {fields(saveFormId)}
+            </section>
+          ) : (
+            agent.conversation
+          )}
+        </ListingChat>
       )}
     </MotionConfig>
   );
