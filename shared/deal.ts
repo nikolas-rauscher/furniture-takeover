@@ -227,8 +227,18 @@ export type PickupStatusChange = "active" | "sold";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Follow-up opens 24 hours after pickup and closes 24 hours later. */
-export function pickupCheck(deal: Deal | null | undefined, now: Date) {
+export type PickupCheck =
+  | { opensAt: string; expiresAt: string; expired: boolean }
+  | { opensAt: string; expiresAt: null; expired: false };
+
+/**
+ * Follow-up opens 24 hours after pickup and closes 24 hours later. A pickup
+ * the buyer reported collected never expires, so the item stays off sale.
+ */
+export function pickupCheck(
+  deal: Deal | null | undefined,
+  now: Date,
+): PickupCheck | null {
   const terms = deal?.agreed?.terms;
   if (
     deal?.status !== "agreed" ||
@@ -237,10 +247,13 @@ export function pickupCheck(deal: Deal | null | undefined, now: Date) {
   )
     return null;
   const opens = Date.parse(terms.pickupAt) + DAY_MS;
-  const expires = opens + DAY_MS;
   if (now.getTime() < opens) return null;
+  const opensAt = new Date(opens).toISOString();
+  if (deal.pickup?.buyerPickedUpAt)
+    return { opensAt, expiresAt: null, expired: false };
+  const expires = opens + DAY_MS;
   return {
-    opensAt: new Date(opens).toISOString(),
+    opensAt,
     expiresAt: new Date(expires).toISOString(),
     expired: now.getTime() >= expires,
   };
@@ -610,6 +623,7 @@ export function applyDealAction(input: {
   const proposal = deal.proposal;
   if (action.type === "cancel") {
     if (deal.status !== "agreed") throw new DealError("deal_not_agreed");
+    if (deal.pickup?.buyerPickedUpAt) throw new DealError("pickup_collected");
     return {
       deal: {
         ...deal,

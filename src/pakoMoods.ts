@@ -677,7 +677,9 @@ function pickupCheckGuide(
       }
     : {
         mood: "think",
-        line: `Did the pickup with ${other} happen? If no one answers by ${formatPickup(check.expiresAt)}, I'll release the ${title}.`,
+        line: check.expiresAt
+          ? `Did the pickup with ${other} happen? If no one answers by ${formatPickup(check.expiresAt)}, I'll release the ${title}.`
+          : `Did the pickup with ${other} happen?`,
       };
 }
 

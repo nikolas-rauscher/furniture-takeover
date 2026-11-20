@@ -162,3 +162,56 @@ test("demo pickup checks notify once and release or complete a reservation", () 
     store.close();
   }
 });
+
+test("a demo pickup the buyer reported collected stays reserved until the seller closes it", () => {
+  let now = new Date("2026-11-20T12:00:00Z");
+  const store = createMessagesStore(":memory:", () => now);
+  const pickupAt = "2026-11-20T15:00:00.000Z";
+  const terms = {
+    amount: 30,
+    fulfillment: "pickup",
+    pickupAt,
+    pickupTime: formatPickup(pickupAt),
+    pickupPoint: "Atrium",
+  };
+  const workspace = randomUUID();
+  const send = {
+    listingId: "desk",
+    title: "Desk",
+    seller: "Seller",
+    text: "CHF 30, Atrium, 16:00.",
+  };
+  const act = (type: string, version: number, sender: string) =>
+    store.act(workspace, {
+      ...send,
+      listingStatus: type === "cancel" ? "reserved" : "active",
+      expectedVersion: version,
+      action:
+        type === "cancel" ? { type, reason: "changed_mind" } : { type, terms },
+      sender,
+      messageId: randomUUID(),
+    });
+  const pickedUp = (version: number, sender: string) =>
+    store.actPickup(workspace, {
+      ...send,
+      listingStatus: "reserved",
+      expectedVersion: version,
+      action: { type: "picked_up" },
+      sender,
+      messageId: randomUUID(),
+    });
+  try {
+    act("propose", 0, "buyer");
+    act("accept", 1, "seller");
+    now = new Date("2026-11-20T15:05:00Z");
+    pickedUp(2, "buyer");
+    assert.throws(() => act("cancel", 3, "seller"), {
+      code: "pickup_collected",
+    });
+    now = new Date("2026-11-23T15:00:00Z");
+    assert.equal(store.list(workspace)[0].deal?.status, "agreed");
+    assert.equal(pickedUp(3, "seller").statusChange, "sold");
+  } finally {
+    store.close();
+  }
+});

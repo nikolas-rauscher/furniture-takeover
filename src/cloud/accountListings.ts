@@ -115,6 +115,33 @@ async function storedPhotoPaths(storage: PhotoStorage, photos: string[]) {
   return paths;
 }
 
+async function listingColumns(storage: PhotoStorage, item: Product) {
+  return {
+    title: item.title,
+    description: item.description,
+    price: item.price,
+    location: item.location,
+    condition: item.condition,
+    dimensions: item.dimensions,
+    pickup: item.available,
+    pickup_by: item.pickupBy || null,
+    tags: item.tags ?? [],
+    images: await storedPhotoPaths(storage, listingPhotos(item)),
+    card_images: await storedPhotoPaths(storage, item.cardImages ?? []),
+    status: item.status,
+  };
+}
+
+/** Only the columns this edit changed, so a stale copy cannot restore other fields. */
+function changedColumns<T extends object>(values: T, before: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(values).filter(
+      ([key, value]) =>
+        JSON.stringify(value) !== JSON.stringify(before[key as keyof T]),
+    ),
+  ) as Partial<T>;
+}
+
 export function createAccountListings(
   client: SupabaseClient,
   userId?: string,
@@ -126,49 +153,43 @@ export function createAccountListings(
       if (!userId) throw new Error("Sign in to save a listing.");
       if (!item.own || (old && !old.own))
         throw Error("You can only change your own listings.");
-      const prepared = await withCardImages(item, old);
       const storage = { client, owner: userId, uploaded };
-      const images = await storedPhotoPaths(storage, listingPhotos(prepared));
-      const cardImages = await storedPhotoPaths(
+      const values = await listingColumns(
         storage,
-        prepared.cardImages ?? [],
+        await withCardImages(item, old),
       );
-      const values = {
-        title: item.title,
-        description: item.description,
-        price: item.price,
-        location: item.location,
-        condition: item.condition,
-        dimensions: item.dimensions,
-        pickup: item.available,
-        pickup_by: item.pickupBy || null,
-        tags: item.tags ?? [],
-        images,
-        card_images: cardImages,
-        status: item.status,
-      };
-      let result = old
-        ? await client
-            .from("listings")
-            .update(values)
-            .eq("id", item.id)
-            .eq("owner_id", userId)
-            .select("id")
-            .single()
-        : await client
-            .from("listings")
-            .insert({ ...values, id: item.id, owner_id: userId })
-            .select("id")
-            .single();
-      if (!old && result.error?.code === "23505")
-        result = await client
+      const replaceOwnListing = () =>
+        client
           .from("listings")
           .update(values)
           .eq("id", item.id)
-          .eq("owner_id", userId)
+          .eq("owner_id", userId);
+      if (!old) {
+        let result = await client
+          .from("listings")
+          .insert({ ...values, id: item.id, owner_id: userId })
           .select("id")
           .single();
+        if (result.error?.code === "23505")
+          result = await replaceOwnListing().select("id").single();
+        fail(result.error);
+        return;
+      }
+      const patch = changedColumns(values, await listingColumns(storage, old));
+      if (!Object.keys(patch).length) return;
+      let update = client
+        .from("listings")
+        .update(patch)
+        .eq("id", item.id)
+        .eq("owner_id", userId);
+      // A status change applies only to the status this tab last saw.
+      if (patch.status) update = update.eq("status", old.status);
+      const result = await update.select("id");
       fail(result.error);
+      if (!result.data?.length)
+        throw new Error(
+          "This listing changed on another device. Reload and try again.",
+        );
     },
   };
 }

@@ -249,7 +249,9 @@ function pickupStrip(
       ? RELEASED_STRIP
       : {
           lead: "Did the pickup happen?",
-          detail: `Answer by ${formatPickup(day.pickupCheck.expiresAt)}`,
+          detail: day.pickupCheck.expiresAt
+            ? `Answer by ${formatPickup(day.pickupCheck.expiresAt)}`
+            : `Booked for ${formatPickup(day.terms.pickupAt!)}`,
           tone: "needs",
         };
   if (day.change === "received" && deal.proposal?.terms.pickupAt)

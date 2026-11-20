@@ -71,12 +71,10 @@ function mockAccount(): ListingsApi {
                 assert.equal(column, "owner_id");
                 assert.equal(owner, "owner");
                 return {
-                  select: () => ({
-                    async single() {
-                      row = { ...row, ...values };
-                      return { error: null };
-                    },
-                  }),
+                  async select() {
+                    row = { ...row, ...values };
+                    return { data: [{ id: row.id }], error: null };
+                  },
                 };
               },
             };

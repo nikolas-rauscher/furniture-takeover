@@ -24,11 +24,7 @@ export async function loadInbox(client: SupabaseClient): Promise<InboxRows> {
       .order("created_at", { ascending: false }),
     client.from("conversation_archives").select("conversation_id"),
     client.from("blocked_users").select("blocked_id"),
-    client
-      .from("messages")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(200),
+    client.rpc("inbox_latest_messages"),
     client.from("conversation_reads").select("conversation_id, last_read_at"),
     client.from("deals").select("*"),
     client
@@ -44,9 +40,9 @@ export async function loadInbox(client: SupabaseClient): Promise<InboxRows> {
   fail(bs.error);
   fail(ms.error);
   if (!missingFromSchema(rs.error)) fail(rs.error);
-  const latest: Record<string, Message> = {};
-  for (const message of (ms.data ?? []) as Message[])
-    latest[message.conversation_id] ??= message;
+  const latest: Record<string, Message> = Object.fromEntries(
+    (ms.data as Message[]).map((message) => [message.conversation_id, message]),
+  );
   const rows = cs.data as Conversation[],
     ids = [...new Set(rows.flatMap((c) => [c.buyer_id, c.seller_id]))];
   const profiles = ids.length

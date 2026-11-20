@@ -46,6 +46,10 @@ const throughPickupCollected = [
   ...throughBugs,
   "202611200005_pickup_collected.sql",
 ];
+const throughReviewFixes = [
+  ...throughPickupCollected,
+  "202611200006_review_fixes.sql",
+];
 
 const storeTerms = (terms: DealTerms) => ({
   amount: terms.amount,
@@ -872,6 +876,137 @@ for (const ending of [
     }
   });
 }
+
+for (const ending of ["seller completion", "buyer deletion"] as const)
+  test(`a pickup the buyer reported collected stays reserved until ${ending}`, async () => {
+    const { db, act, as, conversation, listing } = await setup();
+    const pickupAt = new Date(Date.now() + 60 * 60_000).toISOString();
+    const terms: DealTerms = {
+      amount: 30,
+      fulfillment: "pickup",
+      pickupAt,
+      pickupTime: formatPickup(pickupAt),
+      pickupPoint: "Atrium",
+    };
+    const offer = offerMessage("desk", terms);
+    const pickedUp = (version: number) =>
+      db.query<{ status: string }>(
+        "select status from public.pickup_action($1,$2,'Picked up',$3,$4)",
+        [conversation, randomUUID(), "picked_up", version],
+      );
+    const listingStatus = async () =>
+      (
+        await db.query<{ status: string }>(
+          "select status from public.listings where id=$1",
+          [listing],
+        )
+      ).rows[0].status;
+    try {
+      await db.exec("reset role");
+      await applyMigrations(db, throughReviewFixes);
+      await as(buyer);
+      await act({ type: "propose", terms }, offer, 0);
+      await as(seller);
+      await act({ type: "accept", terms }, offer, 1);
+      await as(buyer);
+      await pickedUp(2);
+      if (ending === "buyer deletion") {
+        await db.query("select public.delete_account()");
+        await as(seller);
+        assert.equal(await listingStatus(), "reserved");
+        return;
+      }
+      await as(seller);
+      await assert.rejects(
+        act({ type: "cancel", reason: "changed_mind" }, "Sorry", 3),
+        /pickup_collected/,
+      );
+      await db.exec("reset role");
+      await db.query(
+        "update public.deals set pickup_at=now() - interval '49 hours' where conversation_id=$1",
+        [conversation],
+      );
+      await as(stranger);
+      await db.query("select public.refresh_pickup_checks(true)");
+      await as(seller);
+      await db.query("select public.refresh_pickup_checks()");
+      assert.deepEqual(
+        (await db.query("select status,outcome from public.deals")).rows,
+        [{ status: "agreed", outcome: null }],
+      );
+      assert.equal(await listingStatus(), "reserved");
+      assert.deepEqual((await pickedUp(3)).rows, [{ status: "completed" }]);
+      assert.equal(await listingStatus(), "sold");
+    } finally {
+      await db.close();
+    }
+  });
+
+test("the account deletion check refuses a blocked student before photos are removed", async () => {
+  const { db, as } = await setup();
+  try {
+    await db.exec("reset role");
+    await applyMigrations(db, throughReviewFixes);
+    await as(seller);
+    await db.query("select public.check_account_deletion()");
+    await db.exec("reset role");
+    await db.query(
+      "insert into takeover_admin.student_blocks(student_id,reason) values($1,'Blocked')",
+      [seller],
+    );
+    await as(seller);
+    await assert.rejects(
+      db.query("select public.check_account_deletion()"),
+      /admin_student_blocked/,
+    );
+    await as(null);
+    await assert.rejects(
+      db.query("select public.check_account_deletion()"),
+      /permission denied/,
+    );
+  } finally {
+    await db.close();
+  }
+});
+
+test("the inbox reads each conversation's newest message however busy another thread is", async () => {
+  const { db, as, conversation, listing } = await setup();
+  try {
+    await db.exec("reset role");
+    await applyMigrations(db, throughReviewFixes);
+    await as(stranger);
+    const {
+      rows: [{ id: busy }],
+    } = await db.query<{ id: string }>(
+      "select public.start_conversation($1) as id",
+      [listing],
+    );
+    await db.exec("reset role");
+    await db.query(
+      `insert into public.messages(conversation_id,sender_id,body,created_at)
+       select $1,$2,'Still there?',now() + n * interval '1 second' from generate_series(1,201) n`,
+      [busy, stranger],
+    );
+    const latest = () =>
+      db.query<{ conversation_id: string; body: string }>(
+        "select conversation_id,body from public.inbox_latest_messages() order by conversation_id",
+      );
+    await as(seller);
+    assert.deepEqual(
+      (await latest()).rows,
+      [
+        { conversation_id: conversation, body: "Could I get it for 20?" },
+        { conversation_id: busy, body: "Still there?" },
+      ].sort((a, b) => a.conversation_id.localeCompare(b.conversation_id)),
+    );
+    await as(buyer);
+    assert.deepEqual((await latest()).rows, [
+      { conversation_id: conversation, body: "Could I get it for 20?" },
+    ]);
+  } finally {
+    await db.close();
+  }
+});
 
 test("saved listing price snapshots and sold visibility are scoped to the saver", async () => {
   const { db, as, listing } = await setup();

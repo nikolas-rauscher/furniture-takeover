@@ -188,6 +188,7 @@ export default function Account({
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   async function deleteAccount() {
+    fail((await client.rpc("check_account_deletion")).error);
     // Paginate by always removing the first batch. Listing paths are flat owner/UUID filenames.
     for (;;) {
       const files = await client.storage
