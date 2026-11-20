@@ -144,7 +144,10 @@ export function useDemoMessages(app: DemoMessagesProps): MessagesModel {
     )
       return;
     requestedSelection.current = { listingId, initialMessage };
-    if (!listingId) return;
+    if (!listingId) {
+      setShowConversation(false);
+      return;
+    }
     setSelected(listingId);
     setShowConversation(true);
     if (initialMessage)
@@ -312,7 +315,10 @@ export function useDemoMessages(app: DemoMessagesProps): MessagesModel {
     preview: item.messages.at(-1)?.text,
     note: threadNote(item),
     unread: isUnread(demoInboxThread(item), reads.reads),
-    onSelect: () => openThread(threadKeyOf(item)),
+    onSelect: () => {
+      openThread(threadKeyOf(item));
+      app.onThreadOpened?.(threadKeyOf(item));
+    },
   }));
   const listingShown = listing !== undefined && dismissedListing !== listing.id;
   const newRow: ThreadRow | undefined =

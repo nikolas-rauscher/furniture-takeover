@@ -69,6 +69,7 @@ import { useScreenPrefetch } from "./hooks/useScreenPrefetch";
 import { useDestinations } from "./hooks/useDestinations";
 import { workspaceClearer } from "./shell/workspaceClearer";
 import { useIntro } from "./hooks/useIntro";
+import { readLastSearch } from "./lastSearch";
 import IntroLayer from "./shell/IntroLayer";
 import "./cloud/account.css";
 
@@ -88,7 +89,8 @@ export default function App({
   const pageScrolled = useWindowScrolled();
   const signedIn = !account || !!account.session;
   const [pickupRegion, setPickupRegion] = usePickupRegion(account);
-  const agentRun = useAgentRun();
+  const [lastSearch] = useState(readLastSearch);
+  const agentRun = useAgentRun(lastSearch?.run);
   const negotiations = useNegotiations();
   const pako = usePakoStatus(signedIn);
   const nav = useAppNavigation({
@@ -111,6 +113,7 @@ export default function App({
     signedIn,
     initialRoute: nav.initialRoute,
     navigate,
+    pushRoute,
     replaceRoute,
   });
   const messages = useMessagesInbox({
@@ -179,6 +182,7 @@ export default function App({
   const { listing } = sell;
   const search = useSearchSession({
     agentRun,
+    restored: lastSearch,
     negotiations,
     location,
     radius: searchArea.radius,
@@ -485,6 +489,7 @@ export default function App({
                   },
                   onFindSimilar: (title) => void search.runSearch(title),
                   onDeleted: () => replaceRoute("#messages"),
+                  onThreadOpened: threads.showThread,
                 }}
               />
             </WorkspacePage>

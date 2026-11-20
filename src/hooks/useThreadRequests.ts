@@ -17,11 +17,13 @@ export function useThreadRequests({
   signedIn,
   initialRoute,
   navigate,
+  pushRoute,
   replaceRoute,
 }: {
   signedIn: boolean;
   initialRoute: Route;
   navigate: (view: View) => void;
+  pushRoute: (url: string) => void;
   replaceRoute: (url: string) => void;
 }) {
   const [listingId, setListingId] = useState<string | undefined>(
@@ -82,6 +84,13 @@ export function useThreadRequests({
       setListingId((current) =>
         current === discardedListingId ? undefined : current,
       );
+    },
+    /** A thread tapped in the Messages list gets its own address, so Back returns to the list. */
+    showThread(key: string) {
+      setDraft(undefined);
+      setListingId(key);
+      const hash = `#messages/${encodeURIComponent(key)}`;
+      if (window.location.hash !== hash) pushRoute(hash);
     },
     proposalSent: () => setProposal(undefined),
     /** Back or Forward led to Messages, or away from it. */

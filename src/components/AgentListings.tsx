@@ -1,5 +1,10 @@
 import { cardImageFor } from "../../shared/listingPhotos";
-import { isMine, money, type Product } from "../../shared/marketplace";
+import {
+  isMine,
+  money,
+  placeLine,
+  type Product,
+} from "../../shared/marketplace";
 import { Clock, Image as ImageIcon } from "./icons";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -9,6 +14,7 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
+  useCarousel,
 } from "./ui/carousel";
 import { useReducedMotion } from "motion/react";
 import type { CSSProperties } from "react";
@@ -30,11 +36,16 @@ export const offerLabel = (item: Pick<Product, "price">) =>
  */
 export type ResultOrder = "pending" | "ranked" | "unranked";
 
-/** The listing's place, with the seller's distance when they gave one. */
-function placeLine(item: Product) {
-  return item.distance === undefined
-    ? item.location
-    : `${item.location} · ${item.distance} km`;
+/** Arrows only when the cards don't all fit, as on a phone. */
+function CarouselControls() {
+  const { canScrollPrev, canScrollNext } = useCarousel();
+  if (!canScrollPrev && !canScrollNext) return null;
+  return (
+    <div className="agent-carousel-controls">
+      <CarouselPrevious aria-label="Previous listings" />
+      <CarouselNext aria-label="Next listings" />
+    </div>
+  );
 }
 
 type AgentProductCardProps = {
@@ -191,10 +202,7 @@ export default function AgentListings({
           <div className="agent-listings-heading">
             <h3>On takeover</h3>
             <Badge variant="secondary">{listings.length}</Badge>
-            <div className="agent-carousel-controls">
-              <CarouselPrevious aria-label="Previous listings" />
-              <CarouselNext aria-label="Next listings" />
-            </div>
+            <CarouselControls />
           </div>
           <CarouselContent className="agent-product-track">
             {listings.map((item, index) => (

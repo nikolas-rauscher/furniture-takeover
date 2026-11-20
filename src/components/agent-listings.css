@@ -2,11 +2,13 @@
   container: agent-listings / inline-size;
   min-width: 0;
 }
+/* Keeps the arrows' height, so the cards don't move when the arrows appear. */
 .agent-listings-heading {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+  min-height: 47px;
   margin-bottom: 12px;
 }
 .agent-listings-heading h3 {
@@ -186,11 +188,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* While Pako ranks, one card-sized place holds the lane so nothing below moves:
-   the heading keeps the carousel arrows' height and the place a result card's. */
-.is-pending .agent-listings-heading {
-  min-height: 43px;
-}
+/* While Pako ranks, one card-sized place holds the lane so nothing below moves. */
 .agent-product-placeholder {
   box-sizing: border-box;
   min-height: 183px;

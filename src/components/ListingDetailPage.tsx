@@ -51,7 +51,13 @@ type ListingDetailPageProps = {
 };
 
 /** Where the buyer's deal on this listing stands, in the words of its thread. */
-function ListingDeal({ view }: { view: StripView }) {
+function ListingDeal({
+  view,
+  reservedForYou,
+}: {
+  view: StripView;
+  reservedForYou: boolean;
+}) {
   const booked = view.tone === "booked";
   return (
     <p className="listing-detail-deal" data-tone={view.tone}>
@@ -59,7 +65,7 @@ function ListingDeal({ view }: { view: StripView }) {
         {booked ? <CalendarCheck size={17} /> : <Handshake size={17} />}
       </span>
       <span>
-        <strong>{booked ? "Reserved for you" : view.lead}</strong>
+        <strong>{reservedForYou ? "Reserved for you" : view.lead}</strong>
         {[view.detail, view.status].filter(Boolean).map((part) => (
           <span key={part}> · {part}</span>
         ))}
@@ -137,6 +143,8 @@ export default function ListingDetailPage({
   const similar = renderProduct ? relatedListings(selected, catalog) : [];
   const transport = transportGuidance(selected.title, selected.dimensions);
   const mine = isMine(selected);
+  const reservedForYou =
+    deal?.tone === "booked" && selected.status === "reserved";
   /** Leads the main action's label where it docks at the bottom of a phone screen. */
   const dockPrice = (
     <span className="listing-detail-dock-price">
@@ -177,12 +185,12 @@ export default function ListingDetailPage({
                 {selected.status !== "active" && (
                   <span
                     className="listing-detail-status"
-                    data-mine={deal?.tone === "booked" || undefined}
+                    data-mine={reservedForYou || undefined}
                   >
                     {selected.status === "sold"
                       ? "Sold"
                       : selected.status === "reserved"
-                        ? deal?.tone === "booked"
+                        ? reservedForYou
                           ? "Reserved for you"
                           : "Reserved"
                         : "Archived"}
@@ -266,7 +274,9 @@ export default function ListingDetailPage({
                 </div>
               ) : (
                 <>
-                  {deal && <ListingDeal view={deal} />}
+                  {deal && (
+                    <ListingDeal view={deal} reservedForYou={reservedForYou} />
+                  )}
                   {availabilityPanel ? (
                     <>
                       {availabilityPanel}
@@ -287,7 +297,7 @@ export default function ListingDetailPage({
                         onClick={onOpenChat}
                       >
                         <MessageCircle size={17} />
-                        <span>{dockPrice}Open conversation</span>
+                        <span>Open conversation</span>
                       </Button>
                     </div>
                   ) : canOffer(selected) ? (

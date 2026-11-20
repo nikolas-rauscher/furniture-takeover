@@ -42,7 +42,7 @@ export function isSearchArea(value: unknown): value is SearchArea {
   );
 }
 
-function isSnapshot(value: unknown): value is SearchSnapshot {
+export function isSnapshot(value: unknown): value is SearchSnapshot {
   if (typeof value !== "object" || value === null) return false;
   const search = value as SearchSnapshot;
   return (

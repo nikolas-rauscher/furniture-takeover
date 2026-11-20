@@ -18,6 +18,8 @@ export type MessagesProps = {
     onConversation: (conversation: SellerConversation) => void;
   }) => ReactNode;
   listingId?: string;
+  /** A thread tapped in the list gets its own address, so Back returns to the list. */
+  onThreadOpened?: (key: string) => void;
   listing?: Product;
   listings: Product[];
   onOpenListing: (id: string) => void;

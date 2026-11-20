@@ -316,6 +316,10 @@ export function listingTitle(notes: string): string {
 export const isMine = (item: Pick<Product, "own" | "demo">) =>
   Boolean(item.own) && !item.demo;
 
+/** The listing's place, with the seller's distance when one was recorded (zero means none). */
+export const placeLine = (item: Pick<Product, "location" | "distance">) =>
+  item.distance > 0 ? `${item.location} · ${item.distance} km` : item.location;
+
 export function withinSearchRadius(
   distance: number | undefined,
   radius?: number,

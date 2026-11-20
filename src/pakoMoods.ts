@@ -681,6 +681,19 @@ function pickupCheckGuide(
       };
 }
 
+/** While the student picks a new time or how late they are, Pako speaks to that step instead of naming another button. */
+export function pickupStepGuide(step: "late" | "change"): {
+  mood: PakoMood;
+  line: string;
+} {
+  return step === "change"
+    ? { mood: "listen", line: "Pick a time. I'll show you the message first." }
+    : {
+        mood: "listen",
+        line: "Pick how late. I'll show you the message first.",
+      };
+}
+
 /**
  * Pako's line on the pickup card, by how close the pickup is and what the
  * other student last said: a new time to answer first, then their signals,

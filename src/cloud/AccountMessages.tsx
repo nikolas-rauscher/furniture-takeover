@@ -64,6 +64,7 @@ function useAccountMessages({
   onOpenListing,
   initialMessage,
   onDeleted,
+  onThreadOpened,
   threadRequest,
 }: AccountMessagesProps): MessagesModel {
   const { userId } = source;
@@ -112,9 +113,12 @@ function useAccountMessages({
     if (!rows || selectionDone.current) return;
     selectionDone.current = true;
     const { listingId, initialMessage } = requestedSelection.current;
+    // The address names a thread opened from the list, or a listing the student asked about.
     const target = listingId
       ? rows.threads.find(
-          (c) => c.listing_id === listingId && c.buyer_id === userId,
+          (c) =>
+            c.id === listingId ||
+            (c.listing_id === listingId && c.buyer_id === userId),
         )
       : rows.threads.find((c) => !rows.archived.includes(c.id));
     setSelected(
@@ -122,7 +126,7 @@ function useAccountMessages({
         ? ""
         : (target?.id ?? (listingId ? `new:${listingId}` : "")),
     );
-    if (initialMessage)
+    if (listingId && initialMessage)
       setDrafts((current) => ({
         ...current,
         [target?.id ?? `new:${listingId}`]: initialMessage,
@@ -392,7 +396,10 @@ function useAccountMessages({
           accountInboxThread(c.id, newest, userId, rows.systemLatest[c.id]),
           rows.reads,
         ),
-      onSelect: () => select(c.id),
+      onSelect: () => {
+        select(c.id);
+        onThreadOpened?.(c.id);
+      },
     };
   });
   const filtering = query !== "" || filter !== "all";

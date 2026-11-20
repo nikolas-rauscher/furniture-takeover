@@ -304,7 +304,7 @@ export function dealStrip({
       return {
         lead: `${completedWords(role, deal?.agreed?.terms ?? null)} ✓`,
         detail:
-          role === "seller" && deal?.agreed?.terms.amount != null
+          deal?.agreed?.terms.amount != null
             ? termPrice(deal.agreed.terms.amount)
             : "",
         tone: "booked",

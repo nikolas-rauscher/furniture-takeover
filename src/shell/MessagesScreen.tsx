@@ -31,6 +31,7 @@ type Actions = {
   onReadingSettings: () => void;
   onFindSimilar: (title: string) => void;
   onDeleted: () => void;
+  onThreadOpened: (key: string) => void;
 };
 
 /** Messages in the mode the app runs in, opening the thread and offer the app asked for. */
@@ -62,6 +63,9 @@ export default function MessagesScreen({
 }) {
   const { proposal } = threads;
   const listing = listings.own.find((item) => item.id === threads.listingId);
+  /** The offer prepared with Pako waits only in its own listing's thread. */
+  const threadProposal =
+    proposal?.listingId === threads.listingId ? proposal : undefined;
   /** The offer prepared with Pako is the one being sent from this buyer's thread. */
   const sendsProposal = (listingId: string, role: "buyer" | "seller") =>
     proposal !== undefined &&
@@ -77,13 +81,14 @@ export default function MessagesScreen({
           listingId={threads.listingId}
           onBrowse={actions.onBrowse}
           initialMessage={
-            proposal
-              ? (proposal.draft?.message ??
-                draftMessage(listing?.title ?? "Listing", proposal.terms))
+            threadProposal
+              ? (threadProposal.draft?.message ??
+                draftMessage(listing?.title ?? "Listing", threadProposal.terms))
               : threads.draft
           }
           initialTerms={
-            proposal && dealTermsFromNegotiation(proposal.terms, new Date())
+            threadProposal &&
+            dealTermsFromNegotiation(threadProposal.terms, new Date())
           }
           offerRequest={threads.offerRequest}
           homePoint={nearbyMeetingPoint(location)}
@@ -116,6 +121,7 @@ export default function MessagesScreen({
             threads.proposalSent();
           }}
           onDeleted={actions.onDeleted}
+          onThreadOpened={actions.onThreadOpened}
           threadBanner={threadBanner}
           listings={listings.own.map(listings.shown)}
           {...messages.screen}

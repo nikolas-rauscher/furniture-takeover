@@ -242,7 +242,6 @@
   line-clamp: 2;
   overflow-wrap: anywhere;
 }
-.product-card .product-distance,
 .product-card .product-pickup-address,
 .product-card .pickup {
   color: var(--muted);
@@ -291,7 +290,6 @@
   }
   .product-card .product-tags > span:nth-child(n + 2),
   .product-card .product-photo-count,
-  .product-card .product-distance,
   .product-card .product-pickup-address,
   .product-card .pickup {
     display: none;

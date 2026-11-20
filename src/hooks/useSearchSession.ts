@@ -26,6 +26,7 @@ import {
   sameCriteria,
   type SearchSnapshot,
 } from "../searchRequest";
+import { keepLastSearch, type LastSearch } from "../lastSearch";
 import type { useAgentRun } from "./useAgentRun";
 import { useFocused } from "./useFocused";
 import type { useNegotiations } from "./useNegotiations";
@@ -39,6 +40,7 @@ export type SearchSession = ReturnType<typeof useSearchSession>;
  */
 export function useSearchSession({
   agentRun,
+  restored,
   negotiations,
   location,
   radius,
@@ -53,6 +55,8 @@ export function useSearchSession({
   onDraftDiscarded,
 }: {
   agentRun: ReturnType<typeof useAgentRun>;
+  /** The tab's last finished search, back on screen after a reload. */
+  restored: LastSearch | null;
   negotiations: ReturnType<typeof useNegotiations>;
   /** The saved search area. */
   location: string;
@@ -69,8 +73,8 @@ export function useSearchSession({
   /** Pako discarded an offer draft; Messages forgets its unsent message. */
   onDraftDiscarded: (listingId: string) => void;
 }) {
-  const [searching, setSearching] = useState(false);
-  const [query, setQuery] = useState("");
+  const [searching, setSearching] = useState(Boolean(restored));
+  const [query, setQuery] = useState(restored?.search.originalRequest ?? "");
   const [followUp, setFollowUp] = useState("");
   const field = useRef<HTMLTextAreaElement>(null);
   const fieldFocused = useFocused(field);
@@ -79,10 +83,14 @@ export function useSearchSession({
   /** A search asked for in the step that also moved the search area; it runs once the area is in state. */
   const [pendingSearch, setPendingSearch] = useState<string | null>(null);
   const [committedSearch, setCommittedSearch] = useState<SearchSnapshot | null>(
-    null,
+    restored?.search ?? null,
   );
-  const committedSearchRef = useRef<SearchSnapshot | null>(null);
-  const [criteria, setCriteria] = useState<Criteria>({ ...defaults, radius });
+  const committedSearchRef = useRef<SearchSnapshot | null>(
+    restored?.search ?? null,
+  );
+  const [criteria, setCriteria] = useState<Criteria>(
+    restored?.search.criteria ?? { ...defaults, radius },
+  );
   const [filterDraft, setFilterDraft] = useState<Criteria>({ ...defaults });
   /** Preferences applied to the takeover catalog without asking Pako again. */
   const [localPreferences, setLocalPreferences] = useState("");
@@ -318,6 +326,7 @@ export function useSearchSession({
     if (!isFollowUp) {
       negotiations.activate(null);
       agentRun.reset();
+      keepLastSearch(null);
       clearChanges();
     }
     await performSearch(
@@ -416,6 +425,12 @@ export function useSearchSession({
     return true;
   }
 
+  const finished = searching && agentRun.state.status === "complete";
+  useEffect(() => {
+    if (finished && committedSearch)
+      keepLastSearch({ search: committedSearch, run: agentRun.state });
+  }, [finished, committedSearch, agentRun.state]);
+
   const runPendingSearch = useEffectEvent(
     (text: string) => void runSearch(text),
   );
@@ -495,6 +510,7 @@ export function useSearchSession({
     /** Back to an empty home search. */
     reset() {
       agentRun.reset();
+      keepLastSearch(null);
       setPhotoSearch(null);
       setPhotoNotice(null);
       setSearching(false);

@@ -10,7 +10,12 @@ import {
 import SaveToggle from "./SaveToggle";
 import { useEntrance } from "../hooks/useEntrance";
 import { cn } from "@/lib/utils";
-import { TODAY, money, type Product } from "../../shared/marketplace";
+import {
+  TODAY,
+  money,
+  placeLine,
+  type Product,
+} from "../../shared/marketplace";
 import type { CardAvailability } from "../availability/useAvailability";
 import "./product-card.css";
 
@@ -144,7 +149,7 @@ export default function ProductCard({
         </div>
         <p className="product-location">
           <MapPin size={14} aria-hidden="true" />
-          <span>{product.location}</span>
+          <span>{placeLine(product)}</span>
         </p>
         {availability?.note && (
           <p className="product-availability">
@@ -152,7 +157,6 @@ export default function ProductCard({
             <span>{availability.note}</span>
           </p>
         )}
-        <p className="product-distance">Distance unverified</p>
         {product.pickupPoint && (
           <p className="product-pickup-address">
             {product.pickupPoint.address}

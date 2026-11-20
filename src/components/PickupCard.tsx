@@ -17,8 +17,7 @@ import {
 } from "../../shared/pickupTime";
 import { pickupCountdown, termPrice } from "../dealWords";
 import type { Slot } from "../offerProposal";
-import { pickupGuide } from "../pakoMoods";
-import { motionBehavior } from "../uiMotion";
+import { pickupGuide, pickupStepGuide } from "../pakoMoods";
 import {
   LATE_MINUTES,
   changeSend,
@@ -249,12 +248,36 @@ const MessagePreview = ({
   </p>
 );
 
+/** Frames a reveal follows the card for: its height spring settles within half a second. */
+const REVEAL_FRAMES = 36;
+
+/**
+ * The actions a tall card ends with can sit under the composer on a phone:
+ * once they are on screen, and whenever `key` changes, they scroll into view,
+ * following the card while its height still grows.
+ */
+function useRevealed<T extends HTMLElement>(key: unknown) {
+  const ref = useRef<T>(null);
+  useEffect(() => {
+    let frame = 0;
+    let request = 0;
+    const follow = () => {
+      ref.current?.scrollIntoView({ block: "nearest", behavior: "instant" });
+      if (++frame < REVEAL_FRAMES) request = requestAnimationFrame(follow);
+    };
+    request = requestAnimationFrame(follow);
+    return () => cancelAnimationFrame(request);
+  }, [key]);
+  return ref;
+}
+
 function StepActions({
   label,
   danger,
   back,
   disabled,
   busy,
+  revealKey,
   onSend,
   onBack,
 }: {
@@ -263,11 +286,14 @@ function StepActions({
   back: string;
   disabled: boolean;
   busy: boolean;
+  /** What grew the step above these actions, such as the chosen time. */
+  revealKey?: string;
   onSend: () => void;
   onBack: () => void;
 }) {
+  const revealed = useRevealed<HTMLDivElement>(revealKey);
   return (
-    <div className="deal-card-actions">
+    <div ref={revealed} className="deal-card-actions">
       <Button
         type="button"
         className={`button ${danger ? "danger" : "primary"} small`}
@@ -382,6 +408,7 @@ function ChangeStep({
         back="Not now"
         disabled={locked || !send}
         busy={busy}
+        revealKey={slot?.pickupAt}
         onSend={() => send && onSend(send)}
         onBack={onBack}
       />
@@ -441,8 +468,9 @@ function CheckAnswers({
   onSend: (send: PickupSend) => void;
 }) {
   const [tapped, setTapped] = useState<CheckAnswer["id"]>();
+  const revealed = useRevealed<HTMLDivElement>(answers.length);
   return (
-    <motion.div className="pickup-answers" {...CARD_SWAP}>
+    <motion.div ref={revealed} className="pickup-answers" {...CARD_SWAP}>
       {answers.map((answer, index) => (
         <div
           key={answer.id}
@@ -541,18 +569,12 @@ export default function PickupCard({
   pickup: PickupLink;
 }) {
   const [step, setStep] = useState<Step>();
-  const actions = useRef<HTMLDivElement>(null);
-  // An opened step can sit below a tall card on a phone: it comes into view.
-  useEffect(() => {
-    if (step)
-      actions.current?.scrollIntoView({
-        block: "nearest",
-        behavior: motionBehavior(),
-      });
-  }, [step]);
   const context = { day, deal, role, other: otherName, title: listing.title };
   const choices = pickupChoices(context);
   const { primary, secondary } = choices;
+  const choicesRevealed = useRevealed<HTMLDivElement>(
+    `${role}:${day.phase}:${day.change}`,
+  );
   const check = day.pickupCheck;
   const locked = busy || !pickup.available;
   const send = async (chosen: PickupSend) => {
@@ -589,8 +611,12 @@ export default function PickupCard({
           }
         />
       )}
-      <PakoLine {...pickupGuide(context)} />
-      <div ref={actions} className="pickup-steps">
+      <PakoLine
+        {...(step?.kind === "late" || step?.kind === "change"
+          ? pickupStepGuide(step.kind)
+          : pickupGuide(context))}
+      />
+      <div className="pickup-steps">
         <AnimatePresence mode="wait" initial={false}>
           {check ? (
             !check.expired && (
@@ -622,6 +648,7 @@ export default function PickupCard({
           ) : (
             <motion.div
               key="choices"
+              ref={choicesRevealed}
               className="deal-card-choices"
               {...CARD_SWAP}
             >

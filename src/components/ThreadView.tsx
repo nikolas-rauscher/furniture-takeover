@@ -161,13 +161,15 @@ export function ThreadLog({
       });
   }, [threadKey, messages.length, newestMine]);
   // Pako's tray, the deal card and the composer change what fits; the newest message stays in view.
+  // A view already past it, such as on a pickup step opened lower in a tall card, keeps its place.
   useEffect(() => {
     const element = pane.current;
     const inner = content.current;
     if (!element || !inner) return;
     const observer = new ResizeObserver(() => {
-      if (follow.current)
-        element.scrollTop = latestTop(element, following.current);
+      const latest = latestTop(element, following.current);
+      if (follow.current && element.scrollTop < latest)
+        element.scrollTop = latest;
     });
     observer.observe(element);
     observer.observe(inner);

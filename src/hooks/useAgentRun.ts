@@ -283,8 +283,11 @@ export function answerLocalQuestion(
   return answerAgentQuestion(asked, question.id, answer);
 }
 
-export function useAgentRun() {
-  const [state, setState] = useState<AgentRunState>(emptyAgentRunState);
+/** A restored conversation, such as the tab's last search, starts where it ended. */
+export function useAgentRun(restored?: AgentRunState) {
+  const [state, setState] = useState<AgentRunState>(
+    () => restored ?? emptyAgentRunState(),
+  );
   const active = useRef<AbortController | null>(null);
   const lastRequest = useRef<{
     input: AgentRunRequest;
