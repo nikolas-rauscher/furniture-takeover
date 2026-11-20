@@ -405,9 +405,6 @@
 .agent-run-panel.is-running {
   min-height: 0;
 }
-.listing-conversation .agent-run-history {
-  margin-bottom: 0;
-}
 @media (max-width: 760px) {
   .agent-run-question > h3 {
     font-size: var(--type-section);
@@ -563,7 +560,7 @@
   gap: 8px;
   margin-top: 16px;
 }
-.search-conversation .agent-change-line {
+.agent-change-line {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -572,23 +569,23 @@
   border-radius: var(--radius-card);
   background: var(--canvas);
 }
-.search-conversation .agent-change-line > p {
+.agent-change-line > p {
   flex: 1 1 18ch;
   margin: 0;
   padding: 8px 0;
   font-size: var(--type-label);
   line-height: 1.45;
 }
-.search-conversation .agent-change-line[data-undone] > p {
+.agent-change-line[data-undone] > p {
   color: var(--muted);
 }
-.search-conversation .agent-change-line-actions {
+.agent-change-line-actions {
   display: flex;
 }
-.search-conversation .agent-change-line-actions .button {
+.agent-change-line-actions .button {
   min-height: 44px;
 }
-.search-conversation .agent-change-line-reason {
+.agent-change-line-reason {
   display: grid;
   flex-basis: 100%;
   gap: 6px;
@@ -597,10 +594,10 @@
   font-size: var(--type-support);
   line-height: 1.5;
 }
-.search-conversation .agent-change-line-reason > p {
+.agent-change-line-reason > p {
   margin: 0;
 }
-.search-conversation .agent-change-line > .agent-change-line-notice {
+.agent-change-line > .agent-change-line-notice {
   flex-basis: 100%;
   padding: 0 10px 8px 0;
   color: var(--muted);

@@ -13,9 +13,7 @@ import type {
 import {
   applyListingAction,
   listingFieldNames,
-  undoListingAction,
   type FieldRevisions,
-  type ListingChanges,
 } from "../agentActions";
 import type { ListingDraft } from "../listingDraft";
 import { money, shortDate } from "../../shared/marketplace";
@@ -38,7 +36,7 @@ import {
 import { emptyAgentRunState, useAgentRun } from "./useAgentRun";
 
 /** What the student asks Pako when he starts writing a new listing. */
-const LISTING_START = "Write my listing from my photos.";
+export const LISTING_START = "Write my listing from my photos.";
 
 type TapChange = Pick<AgentTapAnswer, "label" | "patch" | "appendDescription">;
 /** A tap made while Pako still works; it applies once his run has ended. */
@@ -76,23 +74,15 @@ export function useListingConversation({
   } | null>(null);
   const photoAnalysis = useRef<PhotoAnalysis | undefined>(undefined);
   const [input, setInput] = useState("");
-  const [changes, setChanges] = useState<Record<string, ListingChanges>>({});
-  const changesRef = useRef<Record<string, ListingChanges>>({});
-  const [notices, setNotices] = useState<Record<string, string>>({});
-  const [undone, setUndone] = useState<string[]>([]);
   /** Questions put off with "Decide later"; they come back after the others. */
   const [deferred, setDeferred] = useState<string[]>([]);
-  /** The change each tapped answer made, so its Undo takes both back. */
-  const [answerActions, setAnswerActions] = useState<Record<string, string>>(
-    {},
-  );
   /** A tap that could not apply, shown with its question. */
   const [tapError, setTapError] = useState<{
     questionId: string;
     message: string;
   } | null>(null);
   const tapCount = useRef(0);
-  /** Counts the times the student asked to decide the price, so the tray can bring it into focus. */
+  /** Counts the times the student asked to decide the price, so Pako's bubble can bring it into focus. */
   const [priceReviews, setPriceReviews] = useState(0);
   const [heldTaps, setHeldTaps] = useState<HeldTap[]>([]);
   const running = run.state.status === "running";
@@ -125,12 +115,7 @@ export function useListingConversation({
     run.reset();
     baselines.current.clear();
     actions.current.clear();
-    changesRef.current = {};
-    setChanges({});
-    setNotices({});
-    setUndone([]);
     setDeferred([]);
-    setAnswerActions({});
     setHeldTaps([]);
     setTapError(null);
     setInput("");
@@ -183,48 +168,13 @@ export function useListingConversation({
       revisions.current,
       accepted,
     );
-    if (result.pending) return;
-    if (Object.keys(result.changes).length) {
+    if (!result.pending && Object.keys(result.changes).length)
       setDraft(result.next);
-      changesRef.current = {
-        ...changesRef.current,
-        [action.id]: result.changes,
-      };
-      setChanges(changesRef.current);
-      setUndone((value) => value.filter((id) => id !== action.id));
-    }
-    setNotices((value) => ({
-      ...value,
-      [action.id]: result.skipped.length
-        ? "I kept your latest edits and left any details I couldn't check as they were."
-        : Object.keys(result.changes).length
-          ? "I updated your draft."
-          : "Your draft already has these details.",
-    }));
   }
   function accept(id: string) {
     const action = actions.current.get(id);
     const baseline = baselines.current.get(id);
     if (action && baseline) applyPatch(action, baseline, true);
-  }
-  function undo(id: string) {
-    const applied = changesRef.current[id];
-    if (!applied) return;
-    const result = undoListingAction(
-      draftRef.current,
-      applied,
-      revisions.current,
-    );
-    for (const field of result.restored)
-      revisions.current[field] = (revisions.current[field] ?? 0) + 1;
-    setDraft(result.next);
-    setUndone((value) => [...value, id]);
-    setNotices((value) => ({
-      ...value,
-      [id]: result.preserved.length
-        ? "I undid my changes and kept your edits."
-        : "I undid my changes.",
-    }));
   }
   /**
    * Sends the student's words to Pako. Unless the request stands on its own, it
@@ -283,16 +233,10 @@ export function useListingConversation({
   const waitingQuestion = (id: string) =>
     queue.find((question) => question.id === id && !run.state.answers[id]);
   /** Pako's own questions join the turn with their first answer. */
-  function recordAnswer(
-    question: AgentQuestionEvent,
-    reply: string,
-    actionId?: string,
-  ) {
+  function recordAnswer(question: AgentQuestionEvent, reply: string) {
     if (run.state.questions.some((item) => item.id === question.id))
       run.markQuestionAnswered(question.id, reply);
     else run.answerOwnQuestion(question, reply);
-    if (actionId)
-      setAnswerActions((value) => ({ ...value, [question.id]: actionId }));
     setTapError(null);
   }
   function applyTap(question: AgentQuestionEvent, change: TapChange) {
@@ -304,18 +248,15 @@ export function useListingConversation({
     );
     // The tap is the student's newest intent, so it applies over every earlier edit.
     applyPatch(action, { ...revisions.current }, true);
-    return action.id;
   }
   /** Applies a tap now, or holds it until Pako's run has ended. */
   function tap(question: AgentQuestionEvent, change: TapChange) {
-    if (!running) return applyTap(question, change);
-    setHeldTaps((value) => [...value, { question, change }]);
-    return undefined;
+    if (running) setHeldTaps((value) => [...value, { question, change }]);
+    else applyTap(question, change);
   }
   function releaseTap({ question, change }: HeldTap) {
     try {
-      const actionId = applyTap(question, change);
-      setAnswerActions((value) => ({ ...value, [question.id]: actionId }));
+      applyTap(question, change);
     } catch (error) {
       if (!(error instanceof DescriptionFullError)) throw error;
       run.unanswerQuestion(question.id);
@@ -332,12 +273,9 @@ export function useListingConversation({
         action.requiresAcceptance &&
         action.patch.price === answer.patch?.price,
     );
-    if (proposal) {
-      accept(proposal.id);
-      return proposal.id;
-    }
     // No suggestion carries this price, yet the tap itself is the student's decision.
-    return applyTap(question, answer);
+    if (proposal) accept(proposal.id);
+    else applyTap(question, answer);
   }
   /** Applies a tapped answer here; only an answer Pako has to read goes back to him. */
   function choose(questionId: string, label: string): boolean {
@@ -346,13 +284,10 @@ export function useListingConversation({
     const outcome = tapOutcome(question, label);
     if (outcome.kind === "ask-agent") return answer(questionId, label);
     try {
-      const actionId =
-        outcome.kind === "accept-proposal"
-          ? acceptProposal(question, outcome.answer)
-          : outcome.kind === "patch"
-            ? tap(question, outcome.answer)
-            : undefined;
-      recordAnswer(question, label, actionId);
+      if (outcome.kind === "accept-proposal")
+        acceptProposal(question, outcome.answer);
+      else if (outcome.kind === "patch") tap(question, outcome.answer);
+      recordAnswer(question, label);
       return true;
     } catch (error) {
       if (!(error instanceof DescriptionFullError)) throw error;
@@ -368,13 +303,9 @@ export function useListingConversation({
     const suggested = question.choiceActions?.find(
       (item) => item.acceptsProposal && item.patch?.price === price,
     );
-    recordAnswer(
-      question,
-      label,
-      suggested
-        ? acceptProposal(question, suggested)
-        : tap(question, { label, patch: { price } }),
-    );
+    if (suggested) acceptProposal(question, suggested);
+    else tap(question, { label, patch: { price } });
+    recordAnswer(question, label);
     return true;
   }
   /** The last day buyers can collect the item, set from Pako's pickup question. */
@@ -382,11 +313,8 @@ export function useListingConversation({
     const question = waitingQuestion(questionId);
     if (!question) return false;
     const label = `Pickup by ${shortDate(date)}`;
-    recordAnswer(
-      question,
-      label,
-      tap(question, { label, patch: { pickup: date } }),
-    );
+    tap(question, { label, patch: { pickup: date } });
+    recordAnswer(question, label);
     return true;
   }
   function skip(questionId: string): boolean {
@@ -400,30 +328,16 @@ export function useListingConversation({
       value.includes(questionId) ? value : [...value, questionId],
     );
   }
-  /** The price question the tray still asks, put off or not. */
+  /** The price question Pako still asks, put off or not. */
   const waitingPriceQuestion = queue.find(
     (question) => asksPrice(question) && !run.state.answers[question.id],
   );
-  /** Brings a price question that was put off back to the front of the tray. */
+  /** Brings a price question that was put off back to the front of Pako's questions. */
   function reviewPrice() {
     if (!waitingPriceQuestion) return;
     const id = waitingPriceQuestion.id;
     setDeferred((value) => value.filter((deferredId) => deferredId !== id));
     setPriceReviews((count) => count + 1);
-  }
-  /** Takes a tapped answer back: its change is undone and the question waits again. */
-  function undoAnswer(questionId: string) {
-    const actionId = answerActions[questionId];
-    if (actionId) undo(actionId);
-    setHeldTaps((value) =>
-      value.filter((held) => held.question.id !== questionId),
-    );
-    run.unanswerQuestion(questionId);
-    setAnswerActions((value) =>
-      Object.fromEntries(
-        Object.entries(value).filter(([answered]) => answered !== questionId),
-      ),
-    );
   }
 
   return {
@@ -431,12 +345,9 @@ export function useListingConversation({
     running,
     input,
     setInput,
-    appliedIds: Object.keys(changes),
-    undoneIds: undone,
-    notices,
     queue,
     activeQuestion,
-    /** Questions answered or skipped in earlier turns, which the tray's count goes on from. */
+    /** Questions answered or skipped in earlier turns, which Pako's count goes on from. */
     answeredBefore,
     /** The question now is Pako's own, which he asks while he still works. */
     askingOwnQuestion: activeQuestion?.id === PICKUP_QUESTION.id,
@@ -447,8 +358,6 @@ export function useListingConversation({
     resetForNewDraft,
     cancel,
     editDraft,
-    accept,
-    undo,
     send,
     start,
     retry,
@@ -458,6 +367,5 @@ export function useListingConversation({
     skip,
     decideLater,
     reviewPrice,
-    undoAnswer,
   };
 }

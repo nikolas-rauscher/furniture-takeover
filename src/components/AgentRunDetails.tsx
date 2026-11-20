@@ -25,6 +25,8 @@ export default function AgentRunDetails({
   heading,
   actions,
   status,
+  summaryTitle = false,
+  children,
 }: {
   reasoning?: readonly AgentReasoningPart[];
   steps?: readonly AgentRunStep[];
@@ -38,6 +40,10 @@ export default function AgentRunDetails({
   heading?: ReactNode;
   actions?: ReactNode;
   status?: string;
+  /** Names the activity by its summary, as a header does, also without one. */
+  summaryTitle?: boolean;
+  /** What the activity brought back, such as the sources it read, shown with its steps. */
+  children?: ReactNode;
 }) {
   const [open, setOpen] = useState<boolean>();
   const running = workingLine !== undefined;
@@ -48,6 +54,7 @@ export default function AgentRunDetails({
     (part) => part.text || (running && part.status === "streaming"),
   );
   const hasHeader = Boolean(heading || actions);
+  const titledBySummary = hasHeader || summaryTitle;
   const hasDetails = hasReasoning || steps.length > 0 || running;
   const header = (trigger?: ReactNode) => (
     <div className="agent-run-details-header">
@@ -70,7 +77,7 @@ export default function AgentRunDetails({
   const trigger = (
     <TraceCollapsibleTrigger
       aria-label={
-        hasHeader
+        titledBySummary
           ? `Agent activity${steps.length ? `, ${summary}` : ""}`
           : undefined
       }
@@ -95,7 +102,7 @@ export default function AgentRunDetails({
               {workingLine}
             </span>
           ) : steps.length ? (
-            hasHeader ? (
+            titledBySummary ? (
               summary
             ) : (
               "Activity"
@@ -106,7 +113,7 @@ export default function AgentRunDetails({
             (status ?? "Activity")
           )}
         </TraceTitle>
-        {!hasHeader && steps.length > 0 && (
+        {!titledBySummary && steps.length > 0 && (
           <TraceDescription>{summary}</TraceDescription>
         )}
       </TraceLine>
@@ -131,6 +138,7 @@ export default function AgentRunDetails({
             voice={voice}
           />
           <AgentReasoning parts={reasoning} running={running} />
+          {children}
         </TraceCollapsibleContent>
       </TraceCollapsible>
     </Trace>

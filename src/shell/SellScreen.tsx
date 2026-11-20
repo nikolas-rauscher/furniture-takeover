@@ -3,6 +3,7 @@ import { listingPhotos } from "../../shared/listingPhotos";
 import type { Product } from "../../shared/marketplace";
 import AskPakoMenu, { LISTING_REQUESTS } from "../components/AskPakoMenu";
 import LazyBoundary from "../components/LazyBoundary";
+import ListingComposer from "../components/ListingComposer";
 import { saveActionLabel } from "../listingSaveWords";
 import { listingPickupMinimum } from "../listingValidation";
 import { pendingPrice } from "../listingQuestions";
@@ -104,7 +105,6 @@ export function SellPage({
                 listing={listing}
                 draft={draft}
                 starting={sell.starting}
-                editing={Boolean(sell.editingListing)}
                 saveAction={saveActionLabel({
                   cloud,
                   editing: Boolean(sell.editingListing),
@@ -114,6 +114,9 @@ export function SellPage({
                 asleep={pako.quotaExhausted}
                 onManual={sell.fillInDetails}
               />
+            ),
+            composer: (
+              <ListingComposer listing={listing} configured={pako.configured} />
             ),
             tools: (
               <AskPakoMenu

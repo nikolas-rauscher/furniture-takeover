@@ -70,7 +70,6 @@
   .agent-quick-reply-list > .agent-quick-reply[data-slot="button"],
   .agent-run-question .agent-run-choices > .ai-suggestion[data-slot="button"],
   .agent-sources [data-slot="trace-collapsible-trigger"],
-  .listing-checklist [data-slot="trace-collapsible-trigger"],
   .agent-change-toggle,
   .agent-suggestions-error > button {
     min-height: 44px;
@@ -226,8 +225,7 @@
     max-height: none;
     resize: none;
   }
-  .chat-layout .chat-composer-dock textarea,
-  .selling-chat-layout .chat-composer-dock textarea {
+  .chat-layout .chat-composer-dock textarea {
     resize: none;
     max-height: min(100px, 20dvh);
   }
@@ -246,10 +244,6 @@
     > .main-content {
     padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
   }
-  .selling-chat-layout .listing-save-form {
-    flex-wrap: wrap;
-    gap: 4px 12px;
-  }
 
   /* Preserve room for history in landscape and above the phone keyboard. */
   :root[data-compact-viewport]
@@ -264,7 +258,6 @@
   :root[data-compact-viewport]
     .messages-page.has-conversation
     > :is(.page-title, .quiet-caption),
-  :root[data-compact-viewport] .selling-chat-layout .listing-preview,
   :root[data-compact-viewport] .selling-chat-layout .page-title {
     display: none;
   }

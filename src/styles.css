@@ -656,7 +656,7 @@ textarea {
 }
 .optional {
   font-weight: 400;
-  color: #a2a8b5;
+  color: var(--muted);
   position: absolute;
   right: 0;
   top: 1px;
@@ -671,37 +671,9 @@ textarea {
   font-size: 12px;
   margin-top: 10px;
 }
-.review-layout {
-  display: grid;
-}
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-}
-.listing-preview {
-  align-self: start;
-  overflow: hidden;
-  position: sticky;
-}
-.source-label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--blue);
-  font-size: 11px;
-}
-.listing-preview h2 {
-  line-height: 1.5;
-}
-.listing-preview strong {
-  font-size: 23px;
-  display: block;
-}
-.listing-preview p {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--muted);
 }
 .account-tabs {
   display: flex;
@@ -918,9 +890,6 @@ textarea {
   .sell-layout {
     gap: 28px;
   }
-  .review-layout {
-    gap: 28px;
-  }
 }
 @media (max-width: 760px) {
   .brand {
@@ -931,10 +900,6 @@ textarea {
   }
   .title-with-action > .button {
     margin-top: 18px;
-  }
-  .listing-preview {
-    justify-self: center;
-    width: 100%;
   }
   .review-form {
     padding-top: 10px;

@@ -10,11 +10,10 @@ import { AutoHeight } from "@animate-ui/react/primitives/effects/auto-height";
 import { useStreamingText } from "../hooks/useStreamingText";
 import { useId, type ReactNode } from "react";
 import AgentRunDetails from "./AgentRunDetails";
-import { useDeveloperMode } from "../availability/useDeveloperMode";
+import AgentRunDebug from "./AgentRunDebug";
 import AgentSources from "./AgentSources";
 import AgentWebResults from "./AgentWebResults";
 import { Ellipsis } from "./icons";
-import ListingAnswers from "./ListingAnswers";
 import PakoReaction from "./PakoReaction";
 import {
   DropdownMenu,
@@ -25,13 +24,11 @@ import {
 import type { AgentRunState } from "../hooks/useAgentRun";
 import { safeSourceUrl } from "../api/runs";
 import { shownAnswerText, splitSearchAnswer } from "./agentAnswer";
-import { isPriceSuggestion } from "../listingQuestions";
 import {
   agentTurnPako,
   busyGuide,
   settledSteps,
   workingLine,
-  type StepVoice,
 } from "../pakoMoods";
 import "./agent-run-panel.css";
 
@@ -47,11 +44,8 @@ type AgentRunPanelProps = AgentActionHandlers & {
   quickReplies?: ReactNode;
   /** The search area as Pako names it while he searches. */
   place?: string;
-  /** Whose words Pako's steps are told in. */
-  voice?: StepVoice;
   showHistory?: boolean;
   splitSearchResults?: boolean;
-  conversational?: boolean;
   externalComposer?: boolean;
   readOnly?: boolean;
   /** The composer has text, so Pako listens once the turn has ended. */
@@ -59,10 +53,6 @@ type AgentRunPanelProps = AgentActionHandlers & {
   appliedActionIds?: readonly string[];
   undoneActionIds?: readonly string[];
   actionNotices?: Readonly<Record<string, string>>;
-  /** Pako asks in the tray above the composer; the turn keeps the answers and his changes. */
-  questionsInTray?: boolean;
-  /** Takes an answer of this turn back from its row. */
-  onUndoAnswer?: (questionId: string) => void;
 };
 
 export default function AgentRunPanel({
@@ -75,10 +65,8 @@ export default function AgentRunPanel({
   outcome,
   quickReplies,
   place,
-  voice = "search",
   showHistory = true,
   splitSearchResults = false,
-  conversational = false,
   externalComposer = false,
   readOnly = false,
   typing = false,
@@ -90,10 +78,8 @@ export default function AgentRunPanel({
   appliedActionIds = [],
   undoneActionIds = [],
   actionNotices = {},
-  questionsInTray = false,
-  onUndoAnswer,
 }: AgentRunPanelProps) {
-  const compact = conversational || splitSearchResults;
+  const compact = splitSearchResults;
   const headingId = useId();
   const answerText = shownAnswerText(state.text, state.questions);
   const displayText = useStreamingText(
@@ -102,8 +88,6 @@ export default function AgentRunPanel({
     state.status === "running" || state.status === "complete",
   );
   const textArriving = state.status === "running" || displayText !== answerText;
-  // Run IDs and provider codes help a developer, not a student.
-  const { developerMode } = useDeveloperMode();
   if (!state.id && state.status === "idle") return null;
   const running = state.status === "running";
   const stopped = state.status === "idle";
@@ -112,13 +96,11 @@ export default function AgentRunPanel({
   );
   const webSearches = state.steps.filter((step) => step.task === "web");
   const webRetry = !readOnly && state.status !== "error" ? onRetry : undefined;
-  // The tray carries Pako's suggested price with its evidence until it is decided.
   // Search changes apply as they arrive, so one that changed nothing has nothing to report.
-  const shownActions = state.actions.filter((action) =>
-    questionsInTray
-      ? !isPriceSuggestion(action)
-      : action.type !== "preferences_patch" ||
-        appliedActionIds.includes(action.id),
+  const shownActions = state.actions.filter(
+    (action) =>
+      action.type !== "preferences_patch" ||
+      appliedActionIds.includes(action.id),
   );
   const steps = settledSteps(state.steps);
   // Pako ran out of activities mid-comparison: the student taps to let him go on.
@@ -159,13 +141,10 @@ export default function AgentRunPanel({
     { ...state, text: answerText },
     { textShown: displayText, typing },
   );
-  // The tray says what Pako does and carries his mood, so the turn itself rests.
   const pakoLine = running
     ? state.congested === "retrying"
       ? busyGuide(true, "search").line
-      : questionsInTray
-        ? "Working…"
-        : workingLine(state, place, voice)
+      : workingLine(state, place)
     : undefined;
   const avatar = (
     <span className="agent-pako" aria-hidden="true">
@@ -173,7 +152,7 @@ export default function AgentRunPanel({
         size={42}
         mood={pako.mood}
         talking={pako.talking}
-        still={readOnly || questionsInTray}
+        still={readOnly}
       />
     </span>
   );
@@ -205,7 +184,6 @@ export default function AgentRunPanel({
         <span
           className={
             detailsShowStatus ||
-            (questionsInTray && waitingForAnswer) ||
             ["Finished", "Working", "Starting your request"].includes(
               statusLabel,
             )
@@ -248,7 +226,7 @@ export default function AgentRunPanel({
   const changes = shownActions.length > 0 && (
     <div className="agent-run-changes">
       {shownActions.map((action) =>
-        questionsInTray || action.type === "preferences_patch" ? (
+        action.type === "preferences_patch" ? (
           <AgentChangeLine
             key={action.id}
             action={action}
@@ -300,7 +278,6 @@ export default function AgentRunPanel({
           reasoning={state.reasoning}
           steps={state.steps}
           place={place}
-          voice={voice}
           sourceCount={safeSources.length}
           workingLine={pakoLine}
           heading={heading}
@@ -330,7 +307,6 @@ export default function AgentRunPanel({
               <AgentRunDetails
                 reasoning={turn.reasoning}
                 steps={turn.steps}
-                voice={voice}
                 sourceCount={turn.sources.length}
               />
               {turn.text && (
@@ -371,7 +347,6 @@ export default function AgentRunPanel({
           reasoning={state.reasoning}
           steps={state.steps}
           place={place}
-          voice={voice}
           sourceCount={safeSources.length}
           workingLine={pakoLine}
         />
@@ -429,8 +404,7 @@ export default function AgentRunPanel({
           </div>
         </>
       )}
-      {/* While Pako researches for a listing, the tray says so; the turn keeps what he found. */}
-      {!splitSearchResults && !(questionsInTray && running) && (
+      {!splitSearchResults && (
         <AgentWebResults
           sources={safeSources}
           searches={webSearches}
@@ -440,30 +414,22 @@ export default function AgentRunPanel({
         />
       )}
       {!splitSearchResults && changes}
-      {questionsInTray ? (
-        <ListingAnswers
-          questions={state.questions}
-          answers={state.answers}
-          onUndo={readOnly ? undefined : onUndoAnswer}
+      {shownQuestions.map((question) => (
+        <AgentQuestion
+          key={question.id}
+          question={question}
+          answer={state.answers[question.id]}
+          onAnswer={onAnswer}
+          onSkip={onSkipQuestion}
+          compact={compact}
+          externalComposer={externalComposer}
+          disabled={running}
+          readOnly={readOnly}
         />
-      ) : (
-        shownQuestions.map((question) => (
-          <AgentQuestion
-            key={question.id}
-            question={question}
-            answer={state.answers[question.id]}
-            onAnswer={onAnswer}
-            onSkip={onSkipQuestion}
-            compact={compact}
-            externalComposer={externalComposer}
-            disabled={running}
-            readOnly={readOnly}
-          />
-        ))
-      )}
+      ))}
       {outcome}
       {!textArriving && quickReplies}
-      {state.error && !questionsInTray && (
+      {state.error && (
         <div className="agent-run-recovery">
           <p
             className="agent-run-error"
@@ -486,35 +452,9 @@ export default function AgentRunPanel({
           )}
         </div>
       )}
-      {developerMode &&
-        !running &&
-        state.status !== "idle" &&
-        state.diagnostic && (
-          <details className="agent-run-debug">
-            <summary>Error details</summary>
-            <p>{state.diagnostic.hint}</p>
-            <dl>
-              <dt>Run ID</dt>
-              <dd>{state.diagnostic.runId}</dd>
-              <dt>Error</dt>
-              <dd>
-                {state.diagnostic.code} · {state.diagnostic.errorType}
-              </dd>
-              <dt>Model</dt>
-              <dd>{state.diagnostic.model}</dd>
-              <dt>Stage</dt>
-              <dd>{state.diagnostic.stage}</dd>
-              <dt>Duration</dt>
-              <dd>{(state.diagnostic.elapsedMs / 1000).toFixed(1)} s</dd>
-              {state.diagnostic.providerStatus && (
-                <>
-                  <dt>Provider HTTP</dt>
-                  <dd>{state.diagnostic.providerStatus}</dd>
-                </>
-              )}
-            </dl>
-          </details>
-        )}
+      {!running && state.status !== "idle" && (
+        <AgentRunDebug diagnostic={state.diagnostic} />
+      )}
       {stopped && !state.text && (
         <p className="agent-run-empty">
           Stopped. You can run this request again when you are ready.

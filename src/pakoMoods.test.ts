@@ -15,7 +15,7 @@ import {
   stepWords,
   threadGuide,
   threadReactionMs,
-  trayMood,
+  listingMood,
   turnAnnouncement,
   workingLine,
   type ThreadMoment,
@@ -607,14 +607,14 @@ test("Pako in the tray thinks while he reads, works like in the thread, listens 
     "web",
     "Checking comparable prices online",
   );
-  assert.equal(trayMood("starting", []), "think");
+  assert.equal(listingMood("starting", []), "think");
   assert.equal(
-    trayMood("working", [step("step-0", "running"), research]),
+    listingMood("working", [step("step-0", "running"), research]),
     "search",
   );
-  assert.equal(trayMood("asking", []), "listen");
-  assert.equal(trayMood("done", []), "happy");
-  assert.equal(trayMood("error", []), "dizzy");
+  assert.equal(listingMood("asking", []), "listen");
+  assert.equal(listingMood("done", []), "happy");
+  assert.equal(listingMood("error", []), "dizzy");
 });
 
 test("the listing conversation speaks once per moment: working line, answer with the first question, later questions, closing line", () => {
