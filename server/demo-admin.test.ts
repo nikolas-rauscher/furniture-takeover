@@ -67,9 +67,14 @@ async function setup(t: TestContext) {
     rmSync(directory, { recursive: true, force: true });
   });
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-  function request(path: string, input?: unknown, headers?: HeadersInit) {
+  function request(
+    path: string,
+    input?: unknown,
+    headers?: HeadersInit,
+    method = input === undefined ? "GET" : "POST",
+  ) {
     return fetch(base + path, {
-      method: input === undefined ? "GET" : "POST",
+      method,
       headers: { "Content-Type": "application/json", ...headers },
       body: input === undefined ? undefined : JSON.stringify(input),
     });
@@ -497,4 +502,63 @@ test("demo hide and reset protect agreed deals and preserve them while a workspa
   assert.equal(after.messages.at(-1).pickupEvent.kind, "pickup_cancelled");
   assert.equal(after.deal.outcome.kind, "cancelled");
   assert.equal((await update({ status: "withdrawn" })).status, 200);
+});
+
+test("clearing a demo workspace ends its deals so the sample listing can be restored", async (t) => {
+  const { error, listings, request } = await setup(t);
+  const listing = listings.listDemo()[0];
+  const workspace = { "X-Message-Workspace": randomUUID() };
+  const pickupAt = new Date(Date.now() + 90 * 60_000).toISOString();
+  const terms: DealTerms = {
+    amount: 30,
+    fulfillment: "pickup",
+    pickupAt,
+    pickupTime: formatPickup(pickupAt),
+    pickupPoint: "Atrium",
+  };
+  for (const [version, step] of [
+    {
+      sender: "buyer",
+      type: "propose",
+      text: offerMessage(listing.title, terms),
+    },
+    { sender: "seller", type: "accept", text: acceptMessage("seller", terms) },
+  ].entries()) {
+    const response = await request(
+      "/api/messages/deal",
+      {
+        listingId: listing.id,
+        title: listing.title,
+        seller: listing.seller,
+        text: step.text,
+        sender: step.sender,
+        messageId: randomUUID(),
+        action: { type: step.type, terms },
+        expectedVersion: version,
+        listingStatus: "active",
+      },
+      workspace,
+    );
+    assert.equal(response.status, 200, await response.text());
+  }
+  const restore = () =>
+    request(
+      "/api/listings/demo/update",
+      { listings: [{ ...listing, status: "active" }] },
+      workspace,
+    );
+  await error(restore(), 409, "listing_deal_agreed");
+  await error(
+    request("/api/messages/workspace", {}, workspace),
+    405,
+    "METHOD_NOT_ALLOWED",
+  );
+  const cleared = await request(
+    "/api/messages/workspace",
+    undefined,
+    workspace,
+    "DELETE",
+  );
+  assert.equal(cleared.status, 200, await cleared.text());
+  assert.equal((await restore()).status, 200);
 });

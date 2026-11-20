@@ -13,6 +13,7 @@ import { LogOut } from "@/components/icons";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { fail } from "./client";
 import AccountApiKeys from "./AccountApiKeys";
+import { accountExport } from "./accountExport";
 
 export type AccountSection =
   "profile" | "keys" | "payments" | "security" | "privacy";
@@ -149,35 +150,7 @@ export default function Account({
     }
   }
   async function exportData() {
-    const tables = [
-      "profiles",
-      "account_preferences",
-      "saved_listings",
-      "blocked_users",
-      "reports",
-      "conversations",
-      "messages",
-    ];
-    const data: Record<string, unknown> = {
-      account: {
-        id: session.user.id,
-        email: session.user.email,
-        created_at: session.user.created_at,
-      },
-    };
-    for (const table of tables) {
-      let request = client.from(table).select("*");
-      if (table === "profiles") request = request.eq("id", session.user.id);
-      const result = await request;
-      fail(result.error);
-      data[table] = result.data;
-    }
-    const listings = await client
-      .from("listings")
-      .select("*")
-      .eq("owner_id", session.user.id);
-    fail(listings.error);
-    data.listings = listings.data;
+    const data = await accountExport(client, session.user);
     const url = URL.createObjectURL(
       new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
     );

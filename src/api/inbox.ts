@@ -32,6 +32,7 @@ export type DemoInboxApi = DraftsApi & {
     messageId: string,
   ) => Promise<SellerConversation>;
   archive: (id: string, remove: boolean) => Promise<SellerConversation>;
+  clear: () => Promise<void>;
 };
 
 export type AutoReadPreference =

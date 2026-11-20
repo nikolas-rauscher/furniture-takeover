@@ -405,6 +405,12 @@ export function createMessagesStore(path: string, clock = () => new Date()) {
       );
       return { conversation, statusChange: pickupStatusChange };
     },
+    /** Discards a workspace the browser cleared, deals included, so none of its reservations outlive it. */
+    clearWorkspace(workspace: string) {
+      db.prepare("DELETE FROM conversations WHERE workspace = ?").run(
+        workspace,
+      );
+    },
     setDeleted(
       workspace: string,
       input: unknown,

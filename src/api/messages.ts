@@ -14,6 +14,12 @@ export function resetMessageWorkspace(): void {
   localStorage.removeItem(workspaceKey);
 }
 
+/** Ends this browser's demo conversations and deals on the server, then starts a new workspace. */
+export async function clearMessageWorkspace(): Promise<void> {
+  await request({ method: "DELETE" }, "/api/messages/workspace");
+  resetMessageWorkspace();
+}
+
 export function getMessageWorkspace() {
   let id = localStorage.getItem(workspaceKey);
   if (!id) {

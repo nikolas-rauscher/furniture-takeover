@@ -137,13 +137,13 @@ export function useMyListings({
       if (!(await applyStatus(id, status))) toast.say(statusFailure(status));
     },
     /** Clears the student's listings, giving the sample listings back the statuses deals changed. */
-    clear() {
+    async clear() {
       const restored = own.flatMap((item) =>
         item.demo && Object.hasOwn(statusBefore, item.id)
           ? [{ ...item, status: statusBefore[item.id] }]
           : [],
       );
-      setOwn(restored);
+      if (!(await setOwn(restored))) return false;
       // A sample listing that has not loaded yet keeps its record for the next clear.
       setStatusBefore((current) =>
         Object.fromEntries(
@@ -152,6 +152,7 @@ export function useMyListings({
           ),
         ),
       );
+      return true;
     },
   };
 }

@@ -49,6 +49,7 @@ export function useDemoInbox(api: DemoInboxApi, open: boolean): DemoInbox {
     loaded,
     error,
     async reset() {
+      await api.clear();
       revision.current++;
       setConversations([]);
       setError("");

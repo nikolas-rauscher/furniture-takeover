@@ -7,7 +7,10 @@ export function createMessageRoutes(messages?: MessagesStore): RouteTable {
   const handleMessages: RouteHandler = async ({ request, response, url }) => {
     const pathname = url.pathname;
     const actionRoute = pathname !== "/api/messages";
-    if (actionRoute && request.method !== "POST")
+    const workspaceRoute = pathname === "/api/messages/workspace";
+    if (workspaceRoute && request.method !== "DELETE")
+      throw new AgentError(405, "METHOD_NOT_ALLOWED", "Use DELETE.");
+    if (actionRoute && !workspaceRoute && request.method !== "POST")
       throw new AgentError(405, "METHOD_NOT_ALLOWED", "Use POST.");
     if (!messages)
       throw new AgentError(
@@ -22,7 +25,10 @@ export function createMessageRoutes(messages?: MessagesStore): RouteTable {
         "INVALID_WORKSPACE",
         "Open messages from your local workspace.",
       );
-    if (request.method === "GET")
+    if (workspaceRoute) {
+      messages.clearWorkspace(workspace);
+      send(response, 200, { cleared: true });
+    } else if (request.method === "GET")
       send(response, 200, {
         conversations: messages.list(workspace),
       });
@@ -52,5 +58,6 @@ export function createMessageRoutes(messages?: MessagesStore): RouteTable {
     "/api/messages": handleMessages,
     "/api/messages/deal": handleMessages,
     "/api/messages/pickup": handleMessages,
+    "/api/messages/workspace": handleMessages,
   };
 }

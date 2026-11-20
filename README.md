@@ -45,7 +45,7 @@ Browsing the demo listings needs no keys. To let Pako search, draft and read rep
 1. Create a Supabase project, hosted or self-hosted.
 2. Apply every file in `supabase/migrations/` once, in filename order. The list is in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 3. Set `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` and `ACCOUNT_KEYS_ENCRYPTION_KEY` in `.env`.
-4. In Supabase Auth, turn off public signups and invite testers.
+4. In Supabase Auth, keep signups on with email confirmation and configure SMTP. Students register in the app; the database accepts only `@epfl.ch` and `@unil.ch` addresses.
 5. Optional: run `supabase/seed-demo.sql` for the 40 demo listings.
 6. To make yourself an admin, add your user to `public.admins`. The SQL is in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 

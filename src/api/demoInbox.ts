@@ -1,4 +1,5 @@
 import {
+  clearMessageWorkspace,
   listMessages,
   sendMessage,
   setConversationDeleted,
@@ -10,5 +11,6 @@ export const demoInboxApi: DemoInboxApi = {
   load: listMessages,
   send: sendMessage,
   archive: setConversationDeleted,
+  clear: clearMessageWorkspace,
   draftCache: demoTurnCache,
 };

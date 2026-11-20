@@ -85,13 +85,6 @@ function useAccountListings(client: SupabaseClient, userId?: string) {
         if (JSON.stringify(item) === JSON.stringify(old)) continue;
         await api.save(item, old);
       }
-      const values = await api.read();
-      if (mounted.current) {
-        current.current = values;
-        setListingsState(values);
-        setReady(true);
-      }
-      return true;
     } catch (err) {
       if (mounted.current)
         setError(
@@ -102,6 +95,9 @@ function useAccountListings(client: SupabaseClient, userId?: string) {
       writing.current = false;
       if (mounted.current) setPending(0);
     }
+    // The save is committed; a failed reload shows its own error.
+    await load();
+    return true;
   }
   return {
     listings,
