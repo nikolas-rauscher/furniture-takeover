@@ -194,7 +194,6 @@ label > textarea {
   font-size: var(--type-title);
   font-weight: 700;
   letter-spacing: -0.025em;
-  margin-bottom: 18px;
 }
 .page-title p {
   font-size: var(--type-label);
@@ -601,9 +600,6 @@ label > textarea {
   font-size: 12px;
   margin-top: 24px;
 }
-.sell-inputs {
-  gap: 28px;
-}
 .sell-inputs textarea {
   min-height: 180px;
 }
@@ -655,8 +651,6 @@ label > textarea {
   line-height: 1.5;
 }
 .listing-save-form {
-  margin-top: 40px;
-  padding-top: 28px;
   border-top: 2px solid var(--card-line);
 }
 .listing-save-form > .button {
@@ -675,7 +669,6 @@ label > textarea {
   .review-layout.agent-review-layout {
     display: flex;
     flex-direction: column;
-    gap: 40px;
   }
   .agent-review-layout .listing-workspace {
     width: 100%;
@@ -722,22 +715,12 @@ label > textarea {
   grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
   gap: 72px;
 }
-.review-form > label {
-  margin-bottom: 28px;
-}
 .form-section-title {
   font-size: 22px;
   font-weight: 500;
-  margin-bottom: 28px;
 }
 .collection-title {
-  margin-top: 48px;
-  padding-top: 32px;
   border-top: 1px solid var(--line);
-}
-.form-grid {
-  gap: 28px 24px;
-  margin: 28px 0;
 }
 .review-form > .button {
   margin-top: 24px;
@@ -767,19 +750,11 @@ label > textarea {
 }
 .listing-preview p {
   font-size: 13px;
-  margin-top: 14px;
-}
-.account-tabs {
-  margin: 40px 0;
-  gap: 36px;
 }
 .account-tabs button {
   font-size: 14px;
-  padding-bottom: 20px;
 }
 .own-listing {
-  padding: 28px;
-  gap: 32px;
   border-radius: 4px;
 }
 .empty-state {
@@ -871,10 +846,6 @@ label > textarea {
   font-size: 14px;
   margin-bottom: 28px;
 }
-.modal .form-grid {
-  gap: 28px 24px;
-  margin: 28px 0;
-}
 .modal-actions {
   margin-top: 32px;
   padding-top: 28px;
@@ -901,8 +872,6 @@ label > textarea {
 }
 @media (max-width: 760px) {
   .app-header {
-    height: 76px;
-    padding: 0 var(--space-page);
     gap: var(--space-group);
   }
   .brand {
@@ -1013,7 +982,6 @@ label > textarea {
   }
   .form-grid {
     grid-template-columns: 1fr;
-    gap: 24px;
   }
   .form-grid label {
     font-size: 14px;
@@ -1027,16 +995,8 @@ label > textarea {
     font-size: 22px;
     margin-bottom: 24px;
   }
-  .account-tabs {
-    gap: 24px;
-    margin: 32px 0;
-  }
   .account-tabs button {
     font-size: 13px;
-  }
-  .own-listing {
-    padding: 20px;
-    gap: 20px;
   }
   .modal {
     padding: 28px 24px;
@@ -1047,9 +1007,6 @@ label > textarea {
   }
   .modal-intro {
     font-size: 14px;
-  }
-  .modal .form-grid {
-    gap: 24px;
   }
   .modal label {
     font-size: 14px;

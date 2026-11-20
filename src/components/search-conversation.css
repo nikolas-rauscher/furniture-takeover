@@ -1,5 +1,4 @@
 .search-conversation {
-  max-width: 920px;
   min-width: 0;
   margin: 22px 0 14px;
   color: var(--ink, #292929);
@@ -81,9 +80,6 @@
 }
 
 /* Previous turns retain the same response tree and dimensions. */
-.search-conversation {
-  max-width: none;
-}
 .search-conversation-turn {
   min-width: 0;
 }
@@ -253,7 +249,7 @@
   background: transparent;
 }
 .chat-workspace .agent-search-result-message > h3 {
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-label);
 }
 .chat-workspace .agent-run-answer {
   font-size: var(--type-body);

@@ -26,18 +26,13 @@
 /* Shaped like the suggested answers to Pako's questions, raised on a lip that sinks under
    the finger. The entrance moves `translate` and `scale`, the press `transform`. */
 .agent-quick-reply-list > .agent-quick-reply[data-slot="button"] {
-  flex: 0 1 auto;
-  max-width: 100%;
   min-height: 40px;
   padding: 7px 15px;
   border: 2px solid var(--card-line);
   border-radius: 999px;
   background: var(--surface);
-  color: var(--blue-dark);
   font-weight: 650;
-  white-space: normal;
   overflow-wrap: anywhere;
-  box-shadow: 0 2px 0 var(--lip);
   animation: quick-reply-rise 440ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
   animation-delay: calc(140ms + var(--stagger, 0) * 70ms);
   transition:
@@ -45,6 +40,14 @@
     box-shadow 90ms var(--ease-out),
     border-color 160ms ease,
     background-color 160ms ease;
+}
+/* What differs from the suggestion pill each reply is built on (ui/suggestion.css). */
+.agent-quick-reply-list > .agent-quick-reply.ai-suggestion[data-slot="button"] {
+  flex: 0 1 auto;
+  max-width: 100%;
+  color: var(--blue-dark);
+  white-space: normal;
+  box-shadow: 0 2px 0 var(--lip);
 }
 .agent-quick-reply-list
   > .agent-quick-reply[data-slot="button"]:hover:not([data-disabled]) {

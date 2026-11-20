@@ -102,7 +102,6 @@
   font-size: 12px;
 }
 .photo-gallery-actions > span {
-  margin-left: auto;
   color: var(--muted);
 }
 .photo-gallery-actions button {
