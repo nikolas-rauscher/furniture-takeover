@@ -116,7 +116,7 @@ Apply every file in `supabase/migrations/`, in this order:
 | `202611200004_bugs_and_features.sql` | Shipping completion, the pickup follow-up a day after the pickup and its release after two (`refresh_pickup_checks`), the price at save on saved listings, and the `@epfl.ch`/`@unil.ch` signup rule |
 | `202611200005_pickup_collected.sql` | After the buyer's "Picked up", `pickup_action` allows only Mark sold, the follow-up and a time proposal's answer |
 | `202611200006_review_fixes.sql` | A pickup the buyer reported collected never expires, is cancelled or released by the follow-up, and stays reserved when the buyer deletes their account, `check_account_deletion` before photos are removed, and `inbox_latest_messages`, each conversation's newest message for the inbox |
-| `202611210001_study.sql` | Tables for the user study on the tour page in `takeover_admin`, and `study_start`, `study_save_answer` and `study_save_contact`, which only the server's secret key may call. Students cannot read the tables. The study is open only when `STUDY_CONTACT` and `STUDY_DELETE_BY` are set; see `docs/STUDY.md` |
+| `202611210001_study.sql` | Tables for the user study on the tour page in `takeover_admin` (sessions, answers, events, the v1 contacts and the v3 pilot form), and the `study_*` functions that save them, remove a session and count the shared results. Only the server's secret key may call them. Students cannot read the tables. The study is open only when `STUDY_CONTACT` and `STUDY_DELETE_BY` are set; see `docs/STUDY.md` |
 
 `202611200001_review_fixes.sql` makes the app server depend on `SUPABASE_SECRET_KEY`: without it, AI quota checks fail. Apply it only when the new build, started with that key, is ready to restart right after.
 
