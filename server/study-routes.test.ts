@@ -3,13 +3,18 @@ import assert from "node:assert/strict";
 import { once } from "node:events";
 import { randomUUID } from "node:crypto";
 import type { AddressInfo } from "node:net";
-import { STUDY_ROUTES } from "../shared/study.ts";
+import { STUDY_EVENTS_PER_BATCH, STUDY_ROUTES } from "../shared/study.ts";
 import { AgentError } from "./errors.ts";
 import { createAgentServer } from "./http.ts";
-import { STUDY_BODY_LIMIT, STUDY_WRITES_PER_MINUTE } from "./routes/study.ts";
+import {
+  STUDY_BODY_LIMIT,
+  STUDY_RESULTS_MAX_AGE_MS,
+  STUDY_WRITES_PER_MINUTE,
+} from "./routes/study.ts";
 import type { StudyAccess } from "./routes/types.ts";
 import { createAgentService } from "./service.ts";
-import { createSqliteStudyStore } from "./study-store.ts";
+import { createSqliteStudyStore } from "./study-sqlite.ts";
+import type { StudyStore } from "./study-store.ts";
 import { fakeConfig } from "./testing/provider.ts";
 
 const config = {
@@ -69,6 +74,46 @@ const answerBody = (session: string, step = "student", chosen = ["epfl"]) => ({
   text: "",
   elapsedMs: 900,
 });
+const v3StartBody = (session: string) => ({
+  ...startBody(session),
+  survey: "v3",
+  version: "v3-1",
+  language: "en",
+});
+const v3AnswerBody = (session: string, step: string, chosen: string[]) => ({
+  ...answerBody(session, step, chosen),
+  firstChosen: chosen,
+});
+const pilotBody = {
+  email: "ada@epfl.ch",
+  role: "both",
+  house: "triaudes",
+  weeks: ["2026-12-21", "2027-02-08"],
+  items: ["household"],
+  joinPilot: true,
+  laterEmail: true,
+};
+const eventBody = (seq: number) => ({
+  seq,
+  kind: "answered",
+  step: "who",
+  detail: null,
+  at: "2026-11-30T10:00:00.000Z",
+});
+const unusedStore = (): StudyStore => {
+  const unused = () => {
+    throw new Error("This store method should not be called.");
+  };
+  return {
+    start: unused,
+    saveAnswer: unused,
+    saveEvents: unused,
+    saveContact: unused,
+    savePilot: unused,
+    withdraw: unused,
+    results: unused,
+  };
+};
 const errorCode = async (response: Response) =>
   (await response.json()).error.code;
 
@@ -80,12 +125,18 @@ test("a deployment without contact and deletion date reports the study as closed
   for (const route of [
     STUDY_ROUTES.sessions,
     STUDY_ROUTES.answers,
+    STUDY_ROUTES.events,
     STUDY_ROUTES.contacts,
+    STUDY_ROUTES.pilot,
+    STUDY_ROUTES.withdrawals,
   ]) {
     const refused = await post(url, route, {});
     assert.equal(refused.status, 403);
     assert.equal(await errorCode(refused), "STUDY_CLOSED");
   }
+  const results = await fetch(url + STUDY_ROUTES.results);
+  assert.equal(results.status, 403);
+  assert.equal(await errorCode(results), "STUDY_CLOSED");
 });
 
 test("an open study reports its contact and deletion date", async (t) => {
@@ -154,9 +205,8 @@ test("an answer for a session that was never started is refused", async (t) => {
 test("answering a step again replaces the earlier answer", async (t) => {
   const saved: unknown[] = [];
   const store = {
-    start: () => undefined,
+    ...unusedStore(),
     saveAnswer: (answer: unknown) => void saved.push(answer),
-    saveContact: () => undefined,
   };
   const url = await startServer(t, { study: openStudy(t, { store }) });
   const session = randomUUID();
@@ -175,6 +225,133 @@ test("answering a step again replaces the earlier answer", async (t) => {
     answerBody(session, "student", ["epfl"]),
     answerBody(session, "student", ["unil"]),
   ]);
+});
+
+test("a v3 session needs its language, and a v1 request in its original shape still starts a session", async (t) => {
+  const url = await startServer(t, { study: openStudy(t) });
+  const { language, ...withoutLanguage } = v3StartBody(randomUUID());
+  assert.equal(language, "en");
+  const refused = await post(url, STUDY_ROUTES.sessions, withoutLanguage);
+  assert.equal(refused.status, 400);
+  assert.equal(await errorCode(refused), "INVALID_STUDY_REQUEST");
+  for (const body of [
+    startBody(randomUUID()),
+    { ...startBody(randomUUID()), survey: "v1", language: "de" },
+    v3StartBody(randomUUID()),
+  ])
+    assert.equal((await post(url, STUDY_ROUTES.sessions, body)).status, 200);
+});
+
+test("a v3 answer without its first answer is refused", async (t) => {
+  const url = await startServer(t, { study: openStudy(t) });
+  const session = randomUUID();
+  await post(url, STUDY_ROUTES.sessions, v3StartBody(session));
+  const refused = await post(
+    url,
+    STUDY_ROUTES.answers,
+    answerBody(session, "who"),
+  );
+  assert.equal(refused.status, 400);
+  assert.equal(await errorCode(refused), "STUDY_SURVEY_MISMATCH");
+  assert.equal(
+    (
+      await post(
+        url,
+        STUDY_ROUTES.answers,
+        v3AnswerBody(session, "who", ["epfl"]),
+      )
+    ).status,
+    200,
+  );
+});
+
+test("events arrive in batches of up to 40 and are checked one by one", async (t) => {
+  const url = await startServer(t, { study: openStudy(t) });
+  const session = randomUUID();
+  await post(url, STUDY_ROUTES.sessions, v3StartBody(session));
+  const batch = (events: unknown[]) =>
+    post(url, STUDY_ROUTES.events, { session, events });
+  const saved = await batch(
+    Array.from({ length: STUDY_EVENTS_PER_BATCH }, (_, seq) => eventBody(seq)),
+  );
+  assert.equal(saved.status, 200);
+  assert.deepEqual(await saved.json(), { saved: true });
+  for (const events of [
+    [],
+    Array.from({ length: STUDY_EVENTS_PER_BATCH + 1 }, (_, seq) =>
+      eventBody(seq),
+    ),
+    [{ ...eventBody(0), kind: "scrolled" }],
+    [{ ...eventBody(0), at: "yesterday" }],
+    [{ ...eventBody(0), touch: [1, 2] }],
+  ]) {
+    const refused = await batch(events);
+    assert.equal(refused.status, 400);
+    assert.equal(await errorCode(refused), "INVALID_STUDY_REQUEST");
+  }
+  const unknown = await post(url, STUDY_ROUTES.events, {
+    session: randomUUID(),
+    events: [eventBody(0)],
+  });
+  assert.equal(unknown.status, 404);
+});
+
+test("the pilot form needs one ticked box and known houses, weeks and items", async (t) => {
+  const url = await startServer(t, { study: openStudy(t) });
+  const saved = await post(url, STUDY_ROUTES.pilot, pilotBody);
+  assert.equal(saved.status, 200);
+  for (const change of [
+    { joinPilot: false, laterEmail: false },
+    { house: "unknown-house" },
+    { weeks: ["2027-03-01"] },
+    { weeks: ["2026-12-21", "2026-12-21"] },
+    { items: ["car"] },
+    { role: "sell" },
+    { session: randomUUID() },
+  ]) {
+    const refused = await post(url, STUDY_ROUTES.pilot, {
+      ...pilotBody,
+      ...change,
+    });
+    assert.equal(refused.status, 400);
+    assert.equal(await errorCode(refused), "INVALID_STUDY_REQUEST");
+  }
+});
+
+test("withdrawing removes a session and answers the same when repeated", async (t) => {
+  const url = await startServer(t, { study: openStudy(t) });
+  const session = randomUUID();
+  await post(url, STUDY_ROUTES.sessions, v3StartBody(session));
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const removed = await post(url, STUDY_ROUTES.withdrawals, { session });
+    assert.equal(removed.status, 200);
+    assert.deepEqual(await removed.json(), { removed: true });
+  }
+  const answer = await post(
+    url,
+    STUDY_ROUTES.answers,
+    v3AnswerBody(session, "who", ["epfl"]),
+  );
+  assert.equal(answer.status, 404);
+});
+
+test("shared results are read at most once a minute", async (t) => {
+  let time = Date.parse("2026-11-30T10:00:00Z");
+  let reads = 0;
+  const store = {
+    ...unusedStore(),
+    results: () => ({ ready: false as const, read: ++reads }),
+  };
+  const url = await startServer(t, {
+    study: openStudy(t, { store, now: () => new Date(time) }),
+  });
+  const read = async () =>
+    (await (await fetch(url + STUDY_ROUTES.results)).json()).read;
+  assert.equal(await read(), 1);
+  time += STUDY_RESULTS_MAX_AGE_MS - 1;
+  assert.equal(await read(), 1);
+  time += 1;
+  assert.equal(await read(), 2);
 });
 
 test("a contact is accepted with and without a session, and an unknown session is refused", async (t) => {

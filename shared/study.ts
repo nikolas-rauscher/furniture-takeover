@@ -43,8 +43,8 @@ const uniqueList = <T extends string>(values: readonly [T, ...T[]]) =>
     .max(values.length)
     .refine((list) => new Set(list).size === list.length, "Listed twice.");
 
-export const studySurveySchema = z.enum(STUDY_SURVEYS);
-export const studyLanguageSchema = z.enum(STUDY_LANGUAGES);
+const studySurveySchema = z.enum(STUDY_SURVEYS);
+const studyLanguageSchema = z.enum(STUDY_LANGUAGES);
 
 /** The study is open once the deployment names a contact and a deletion date. */
 export const studyConfigSchema = z.discriminatedUnion("open", [

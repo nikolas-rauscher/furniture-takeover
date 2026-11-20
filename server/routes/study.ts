@@ -4,8 +4,12 @@ import {
   STUDY_ROUTES,
   studyAnswerSchema,
   studyContactSchema,
+  studyEventsSchema,
+  studyPilotSchema,
   studyStartSchema,
+  studyWithdrawalSchema,
   type StudyConfig,
+  type StudyResults,
 } from "../../shared/study.ts";
 import { AgentError } from "../errors.ts";
 import { readBody, requireJson, send } from "../http-io.ts";
@@ -14,6 +18,8 @@ import type { RouteHandler, RouteTable, StudyAccess } from "./types.ts";
 
 export const STUDY_BODY_LIMIT = 8 * 1024;
 export const STUDY_WRITES_PER_MINUTE = 300;
+/** The shared counts change slowly, so one database read serves a minute of participants. */
+export const STUDY_RESULTS_MAX_AGE_MS = 60_000;
 
 const studyClosed = () =>
   new AgentError(
@@ -75,18 +81,37 @@ function parseStudyBody<T>(schema: z.ZodType<T>, body: unknown): T {
       );
 }
 
+/** Keeps the shared counts for a minute; a failed read is not kept. */
+function createResultsCache(now: () => Date) {
+  let cached: { results: StudyResults; until: number } | undefined;
+  return async (store: StudyStore) => {
+    const time = now().getTime();
+    if (cached && time < cached.until) return cached.results;
+    const results = await store.results();
+    cached = { results, until: time + STUDY_RESULTS_MAX_AGE_MS };
+    return results;
+  };
+}
+
 export function createStudyRoutes(study?: StudyAccess): RouteTable {
   const now = study?.now ?? (() => new Date());
   const capWrites = createWriteCap(now);
+  const cachedResults = createResultsCache(now);
   const config: RouteHandler = ({ response }) => {
     const open = openStudy(study, now);
     const body: StudyConfig = open ? open.config : { open: false };
     send(response, 200, body);
   };
+  const results: RouteHandler = async ({ response }) => {
+    const open = openStudy(study, now);
+    if (!open) throw studyClosed();
+    send(response, 200, await cachedResults(open.store));
+  };
   const write =
     <T>(
       schema: z.ZodType<T>,
       save: (store: StudyStore, input: T) => void | Promise<void>,
+      reply: { saved: true } | { removed: true } = { saved: true },
     ): RouteHandler =>
     async ({ request, response }) => {
       const open = openStudy(study, now);
@@ -98,19 +123,31 @@ export function createStudyRoutes(study?: StudyAccess): RouteTable {
         await readBody(request, STUDY_BODY_LIMIT),
       );
       await save(open.store, input);
-      send(response, 200, { saved: true });
+      send(response, 200, reply);
     };
   return {
     [`GET ${STUDY_ROUTES.config}`]: config,
+    [`GET ${STUDY_ROUTES.results}`]: results,
     [`POST ${STUDY_ROUTES.sessions}`]: write(studyStartSchema, (store, input) =>
       store.start(input),
     ),
     [`POST ${STUDY_ROUTES.answers}`]: write(studyAnswerSchema, (store, input) =>
       store.saveAnswer(input),
     ),
+    [`POST ${STUDY_ROUTES.events}`]: write(studyEventsSchema, (store, input) =>
+      store.saveEvents(input),
+    ),
     [`POST ${STUDY_ROUTES.contacts}`]: write(
       studyContactSchema,
       (store, input) => store.saveContact(input),
+    ),
+    [`POST ${STUDY_ROUTES.pilot}`]: write(studyPilotSchema, (store, input) =>
+      store.savePilot(input),
+    ),
+    [`POST ${STUDY_ROUTES.withdrawals}`]: write(
+      studyWithdrawalSchema,
+      (store, input) => store.withdraw(input),
+      { removed: true },
     ),
   };
 }

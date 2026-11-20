@@ -7,10 +7,8 @@ import { createThreadAgent } from "./thread-agent.ts";
 import { isLoopbackHost, readServerConfig } from "./config.ts";
 import { createListingsStore } from "./database.ts";
 import { createAccountKeyStore } from "./account-keys.ts";
-import {
-  createSqliteStudyStore,
-  createSupabaseStudyStore,
-} from "./study-store.ts";
+import { createSqliteStudyStore } from "./study-sqlite.ts";
+import { createSupabaseStudyStore } from "./study-supabase.ts";
 import { access } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 

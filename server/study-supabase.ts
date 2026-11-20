@@ -1,0 +1,115 @@
+import {
+  studyResultsSchema,
+  surveyOf,
+  type StudyAnswer,
+  type StudyContact,
+  type StudyEvents,
+  type StudyPilot,
+  type StudyStart,
+  type StudyWithdrawal,
+} from "../shared/study.ts";
+import { AgentError } from "./errors.ts";
+import {
+  namedStudyErrors,
+  unknownSession,
+  type StudyStore,
+} from "./study-store.ts";
+
+const studyUnavailable = (options?: ErrorOptions) =>
+  new AgentError(
+    503,
+    "STUDY_UNAVAILABLE",
+    "The study cannot be reached at the moment. Please try again.",
+    options,
+  );
+
+type ErrorName = keyof typeof namedStudyErrors;
+const isErrorName = (name: unknown): name is ErrorName =>
+  typeof name === "string" && name in namedStudyErrors;
+
+/** Account transport: the service key calls the study functions of the Supabase project. */
+export function createSupabaseStudyStore(
+  url: string,
+  secretKey: string,
+): StudyStore {
+  async function call(name: string, args: Record<string, unknown>) {
+    const response = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: "POST",
+      headers: { apikey: secretKey, "Content-Type": "application/json" },
+      body: JSON.stringify(args),
+      redirect: "error",
+      signal: AbortSignal.timeout(10_000),
+    }).catch((cause: unknown) => {
+      throw studyUnavailable({ cause });
+    });
+    if (response.ok) return response;
+    const failure = await response.json().catch((cause: unknown) => {
+      throw studyUnavailable({ cause });
+    });
+    const reason: unknown = failure?.message;
+    if (reason === "study_session_unknown") throw unknownSession();
+    if (isErrorName(reason)) throw namedStudyErrors[reason];
+    // The status and database error code identify the failure; the message may quote stored values.
+    throw studyUnavailable({
+      cause: new Error(
+        `Study function ${name} failed with status ${response.status}, code ${failure?.code}.`,
+      ),
+    });
+  }
+  const write = async (name: string, args: Record<string, unknown>) => {
+    await call(name, args);
+  };
+  return {
+    start: (input: StudyStart) =>
+      write("study_start", {
+        p_session: input.session,
+        p_survey: surveyOf(input),
+        p_version: input.version,
+        p_language: input.language ?? null,
+        p_source: input.source,
+        p_device: input.device,
+      }),
+    saveAnswer: (input: StudyAnswer) =>
+      write("study_save_answer", {
+        p_session: input.session,
+        p_step: input.step,
+        p_chosen: input.chosen,
+        p_first_chosen: input.firstChosen ?? null,
+        p_shown: input.shown,
+        p_text: input.text,
+        p_elapsed_ms: input.elapsedMs,
+      }),
+    saveEvents: (input: StudyEvents) =>
+      write("study_save_events", {
+        p_session: input.session,
+        p_events: input.events,
+      }),
+    saveContact: (input: StudyContact) =>
+      write("study_save_contact", {
+        p_email: input.email,
+        p_pilot: input.pilot,
+        p_session: input.session,
+      }),
+    savePilot: (input: StudyPilot) =>
+      write("study_save_pilot", {
+        p_email: input.email,
+        p_role: input.role,
+        p_house: input.house,
+        p_weeks: input.weeks,
+        p_items: input.items,
+        p_join_pilot: input.joinPilot,
+        p_later_email: input.laterEmail,
+      }),
+    withdraw: (input: StudyWithdrawal) =>
+      write("study_withdraw", { p_session: input.session }),
+    async results() {
+      const response = await call("study_results", {});
+      const body = await response.json().catch((cause: unknown) => {
+        throw studyUnavailable({ cause });
+      });
+      const results = studyResultsSchema.safeParse(body);
+      if (results.success) return results.data;
+      throw studyUnavailable({ cause: results.error });
+    },
+  };
+}

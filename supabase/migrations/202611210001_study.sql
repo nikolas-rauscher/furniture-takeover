@@ -1,23 +1,40 @@
 begin;
 
 -- Answers of the user study on the tour page. Students cannot read or write these tables;
--- the server calls the three functions below with its service key.
+-- the server calls the functions below with its service key.
 create table takeover_admin.study_sessions (
  id uuid primary key,
+ survey text not null check(survey in('v1','v3')),
  version text not null check(version ~ '^[a-z0-9][a-z0-9.-]{0,19}$'),
+ -- Empty only for v1 sessions from the client that predates the language switch.
+ language text check(language in('en','fr','de')),
  source text not null check(source ~ '^[a-z0-9][a-z0-9-]{0,23}$'),
  device text not null check(device in('phone','desktop')),
- started_at timestamptz not null default now()
+ started_at timestamptz not null default now(),
+ check(survey='v1' or language is not null)
 );
 create table takeover_admin.study_answers (
  session uuid not null references takeover_admin.study_sessions(id) on delete cascade,
  step text not null check(step ~ '^[a-z][a-z0-9-]{1,39}$'),
  chosen text[] not null check(cardinality(chosen)<=12),
+ -- v3 only: the first answer to the step, kept when the participant changes it later.
+ first_chosen text[] check(cardinality(first_chosen)<=12),
  shown text[] not null check(cardinality(shown)<=12),
  text text not null check(length(text)<=280),
  elapsed_ms integer not null check(elapsed_ms between 0 and 3600000),
  saved_at timestamptz not null default now(),
  primary key(session,step)
+);
+create table takeover_admin.study_events (
+ session uuid not null references takeover_admin.study_sessions(id) on delete cascade,
+ seq integer not null check(seq between 0 and 9999),
+ kind text not null check(kind in('shown','answered','skipped','changed','back','scene-played',
+  'scene-skipped','moment-tapped','moment-auto','core-complete','end','share','language')),
+ step text check(step ~ '^[a-z][a-z0-9-]{1,39}$'),
+ detail text check(detail ~ '^[a-z0-9][a-z0-9-]{0,39}$'),
+ at timestamptz not null,
+ received_at timestamptz not null default now(),
+ primary key(session,seq)
 );
 create table takeover_admin.study_contacts (
  email text primary key check(length(email)<=254 and email=lower(email)),
@@ -25,36 +42,71 @@ create table takeover_admin.study_contacts (
  session uuid references takeover_admin.study_sessions(id) on delete set null,
  created_at timestamptz not null default now()
 );
+-- The v3 pilot form has no session column, so it cannot be linked to answers.
+create table takeover_admin.study_pilot (
+ email text primary key check(length(email)<=254 and email=lower(email)),
+ role text not null check(role in('seller','buyer','both')),
+ house text not null check(house in('vortex','atrium','triaudes','fmel-other','not-fmel')),
+ weeks text[] not null check(weeks <@ array['2026-12-14','2026-12-21','2027-02-01','2027-02-08']),
+ items text[] not null check(items <@ array['furniture','household','electronics','bike','books','clothes','other']),
+ join_pilot boolean not null,
+ later_email boolean not null,
+ created_at timestamptz not null default now(),
+ check(join_pilot or later_email)
+);
 alter table takeover_admin.study_sessions enable row level security;
 alter table takeover_admin.study_answers enable row level security;
+alter table takeover_admin.study_events enable row level security;
 alter table takeover_admin.study_contacts enable row level security;
-revoke all on takeover_admin.study_sessions,takeover_admin.study_answers,takeover_admin.study_contacts
- from public,anon,authenticated;
+alter table takeover_admin.study_pilot enable row level security;
+revoke all on takeover_admin.study_sessions,takeover_admin.study_answers,takeover_admin.study_events,
+ takeover_admin.study_contacts,takeover_admin.study_pilot from public,anon,authenticated;
 
 -- Starting a session twice changes nothing.
-create function public.study_start(p_session uuid,p_version text,p_source text,p_device text) returns void
-language plpgsql security definer set search_path='' as $$
+create function public.study_start(p_session uuid,p_survey text,p_version text,p_language text,p_source text,p_device text)
+returns void language plpgsql security definer set search_path='' as $$
 begin
  perform pg_advisory_xact_lock(hashtext('takeover_admin.study_sessions'));
  if exists(select 1 from takeover_admin.study_sessions where id=p_session) then return; end if;
  if (select count(*) from takeover_admin.study_sessions)>=5000 then raise exception 'study_session_limit'; end if;
- insert into takeover_admin.study_sessions(id,version,source,device) values(p_session,p_version,p_source,p_device);
+ insert into takeover_admin.study_sessions(id,survey,version,language,source,device)
+ values(p_session,p_survey,p_version,p_language,p_source,p_device);
 end $$;
 
 -- An answer replaces the earlier answer for the same step, so the participant can go back.
-create function public.study_save_answer(p_session uuid,p_step text,p_chosen text[],p_shown text[],p_text text,p_elapsed_ms integer)
+-- The first answer of a v3 step stays as it was first saved.
+create function public.study_save_answer(p_session uuid,p_step text,p_chosen text[],p_first_chosen text[],
+ p_shown text[],p_text text,p_elapsed_ms integer)
 returns void language plpgsql security definer set search_path='' as $$
+declare session_survey text;
 begin
  -- The session row serializes the answers of one participant, so the limit below holds.
- perform 1 from takeover_admin.study_sessions where id=p_session for update;
+ select survey into session_survey from takeover_admin.study_sessions where id=p_session for update;
  if not found then raise exception 'study_session_unknown'; end if;
+ if (session_survey='v3')<>(p_first_chosen is not null) then raise exception 'study_survey_mismatch'; end if;
  if not exists(select 1 from takeover_admin.study_answers where session=p_session and step=p_step)
   and (select count(*) from takeover_admin.study_answers where session=p_session)>=60
  then raise exception 'study_answer_limit'; end if;
- insert into takeover_admin.study_answers(session,step,chosen,shown,text,elapsed_ms)
- values(p_session,p_step,p_chosen,p_shown,p_text,p_elapsed_ms)
+ insert into takeover_admin.study_answers(session,step,chosen,first_chosen,shown,text,elapsed_ms)
+ values(p_session,p_step,p_chosen,p_first_chosen,p_shown,p_text,p_elapsed_ms)
  on conflict(session,step) do update set chosen=excluded.chosen,shown=excluded.shown,text=excluded.text,
   elapsed_ms=excluded.elapsed_ms,saved_at=now();
+end $$;
+
+-- A batch of events: [{seq,kind,step,detail,at}]. An event sent again keeps its first record.
+create function public.study_save_events(p_session uuid,p_events jsonb) returns void
+language plpgsql security definer set search_path='' as $$
+begin
+ perform 1 from takeover_admin.study_sessions where id=p_session for update;
+ if not found then raise exception 'study_session_unknown'; end if;
+ if jsonb_typeof(p_events)<>'array' or jsonb_array_length(p_events) not between 1 and 40
+ then raise exception 'study_event_batch'; end if;
+ insert into takeover_admin.study_events(session,seq,kind,step,detail,at)
+ select p_session,e.seq,e.kind,e.step,e.detail,e.at
+ from jsonb_to_recordset(p_events) as e(seq integer,kind text,step text,detail text,at timestamptz)
+ on conflict(session,seq) do nothing;
+ if (select count(*) from takeover_admin.study_events where session=p_session)>600
+ then raise exception 'study_event_limit'; end if;
 end $$;
 
 -- One row per address; a second submission updates the pilot flag and the link to a session.
@@ -72,11 +124,63 @@ begin
  on conflict(email) do update set pilot=excluded.pilot,session=excluded.session;
 end $$;
 
-revoke all on function public.study_start(uuid,text,text,text),
- public.study_save_answer(uuid,text,text[],text[],text,integer),
- public.study_save_contact(text,boolean,uuid) from public,anon,authenticated;
-grant execute on function public.study_start(uuid,text,text,text),
- public.study_save_answer(uuid,text,text[],text[],text,integer),
- public.study_save_contact(text,boolean,uuid) to service_role;
+-- One row per address; a second form replaces the first.
+create function public.study_save_pilot(p_email text,p_role text,p_house text,p_weeks text[],p_items text[],
+ p_join_pilot boolean,p_later_email boolean)
+returns void language plpgsql security definer set search_path='' as $$
+declare address text:=lower(btrim(p_email));
+begin
+ perform pg_advisory_xact_lock(hashtext('takeover_admin.study_pilot'));
+ if not exists(select 1 from takeover_admin.study_pilot where email=address)
+  and (select count(*) from takeover_admin.study_pilot)>=2000
+ then raise exception 'study_pilot_limit'; end if;
+ insert into takeover_admin.study_pilot(email,role,house,weeks,items,join_pilot,later_email)
+ values(address,p_role,p_house,p_weeks,p_items,p_join_pilot,p_later_email)
+ on conflict(email) do update set role=excluded.role,house=excluded.house,weeks=excluded.weeks,
+  items=excluded.items,join_pilot=excluded.join_pilot,later_email=excluded.later_email;
+end $$;
+
+-- "Remove my answers": the session goes with its answers and events. A second call changes nothing.
+create function public.study_withdraw(p_session uuid) returns void
+language sql security definer set search_path='' as $$
+ delete from takeover_admin.study_sessions where id=p_session;
+$$;
+
+-- Counts shown at the end of the v3 survey, once 20 participants answered the desk task.
+create function public.study_results() returns jsonb
+language sql stable security definer set search_path='' as $$
+ with answers as (
+  select a.step,a.chosen from takeover_admin.study_answers a
+  join takeover_admin.study_sessions s on s.id=a.session
+  where s.survey='v3' and a.step in('desk','last-trouble')
+ ), tallies as (
+  select t.step,jsonb_build_object(
+   'answered',(select count(*) from answers a where a.step=t.step),
+   'options',coalesce((select jsonb_agg(jsonb_build_object('option',o.option,'count',o.n) order by o.n desc,o.option)
+    from (select option,count(*)::int as n from answers a,unnest(a.chosen) as option
+     where a.step=t.step group by option) o),'[]'::jsonb)) as tally
+  from (values('desk'),('last-trouble')) as t(step)
+ )
+ select case when (select count(*) from answers where step='desk')>=20
+  then jsonb_build_object('ready',true,
+   'desk',(select tally from tallies where step='desk'),
+   'trouble',(select tally from tallies where step='last-trouble'))
+  else jsonb_build_object('ready',false) end;
+$$;
+
+revoke all on function public.study_start(uuid,text,text,text,text,text),
+ public.study_save_answer(uuid,text,text[],text[],text[],text,integer),
+ public.study_save_events(uuid,jsonb),
+ public.study_save_contact(text,boolean,uuid),
+ public.study_save_pilot(text,text,text,text[],text[],boolean,boolean),
+ public.study_withdraw(uuid),
+ public.study_results() from public,anon,authenticated;
+grant execute on function public.study_start(uuid,text,text,text,text,text),
+ public.study_save_answer(uuid,text,text[],text[],text[],text,integer),
+ public.study_save_events(uuid,jsonb),
+ public.study_save_contact(text,boolean,uuid),
+ public.study_save_pilot(text,text,text,text[],text[],boolean,boolean),
+ public.study_withdraw(uuid),
+ public.study_results() to service_role;
 
 commit;
