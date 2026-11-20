@@ -212,7 +212,7 @@ export function useAvailability(options: Options) {
       try {
         repository.clear();
       } catch {
-        /* nothing stored to clear */
+        window.dispatchEvent(new CustomEvent("storage-failure"));
       }
     if (!forget)
       optionsRef.current.setToast(
@@ -249,7 +249,7 @@ export function useAvailability(options: Options) {
       const restored = repository.load();
       if (restored.source === "stored") void reset(restored.state, true);
     } catch {
-      /* storage unavailable: nothing to restore */
+      window.dispatchEvent(new CustomEvent("storage-failure"));
     }
   });
   useEffect(() => {

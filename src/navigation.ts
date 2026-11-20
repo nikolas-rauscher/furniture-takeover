@@ -198,18 +198,22 @@ export function pageTitle(page: {
   }
 }
 
+/** A malformed link keeps its raw segment, so the listing page says the listing is unavailable. */
+function decodeRouteSegment(encoded: string): string {
+  try {
+    return decodeURIComponent(encoded);
+  } catch {
+    return encoded;
+  }
+}
+
 export function readRoute(hash: string): {
   view: View;
   listingId?: string;
   accountTab: AccountTab;
 } {
   const [path, encoded] = hash.replace(/^#/, "").split("/");
-  let listingId: string | undefined;
-  try {
-    listingId = encoded ? decodeURIComponent(encoded) : undefined;
-  } catch {
-    /* Ignore malformed external links. */
-  }
+  const listingId = encoded ? decodeRouteSegment(encoded) : undefined;
   const routes: Record<string, View> = {
     messages: "messages",
     settings: "settings",

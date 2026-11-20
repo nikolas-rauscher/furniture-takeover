@@ -23,12 +23,12 @@ test("direct links preserve the selected workspace section on reload", () => {
   assert.equal(readRoute("#searches").view, "searches");
 });
 
-test("listing and conversation links restore their item without crashing on bad links", () => {
+test("listing and conversation links restore their item", () => {
   assert.equal(readRoute("#listing/desk%20one").listingId, "desk one");
   assert.equal(readRoute("#listing/desk").view, "detail");
   assert.equal(readRoute("#messages/desk").listingId, "desk");
   assert.equal(readRoute("#messages/desk").view, "messages");
-  for (const hash of ["", "#unknown", "#listing", "#listing/%invalid"]) {
+  for (const hash of ["", "#unknown", "#listing"]) {
     assert.equal(readRoute(hash).view, "discover");
   }
 });
@@ -154,4 +154,10 @@ test("each page gets its layout", () => {
     layoutClassName({ ...page, home: false, view: "sell", sellMode: "batch" }),
     "app-layout focused-layout selling-batch-layout",
   );
+});
+
+test("a malformed listing link opens the listing page as unavailable", () => {
+  const route = readRoute("#listing/%E0%A4%A");
+  assert.equal(route.view, "detail");
+  assert.equal(route.listingId, "%E0%A4%A");
 });
