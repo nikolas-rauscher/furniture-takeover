@@ -8,6 +8,7 @@ import { useCallback, useRef, type KeyboardEvent, type ReactNode } from "react";
 import Guide, { type GuideBubble } from "@/components/onboarding/Guide";
 import { stepFade, stepMotion } from "@/components/onboarding/stepMotion";
 import type { PakoMood } from "@/components/onboarding/storyTypes";
+import { useVisibleArea } from "./useVisibleArea";
 
 export type StudyShellProps = {
   /** Changes with every step, so the step slides in and takes focus. */
@@ -50,6 +51,7 @@ export default function StudyShell({
   children,
 }: StudyShellProps) {
   const reduced = useReducedMotion() === true;
+  const visibleArea = useVisibleArea();
   const body = useRef<HTMLDivElement>(null);
   const firstStep = useRef(stepKey);
 
@@ -69,6 +71,7 @@ export default function StudyShell({
         className="ob tour-study"
         data-layout={layout}
         data-arrangement={arrangement}
+        style={visibleArea}
         onKeyDown={onKeyDown}
       >
         <h1 className="sr-only">takeover study</h1>
