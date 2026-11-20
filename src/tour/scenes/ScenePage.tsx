@@ -41,21 +41,38 @@ setStorageScope("tour-scene");
 // Nothing in a scene can be focused, sheets and menus outside its root included; key moments read the pointer by position.
 document.body.inert = true;
 
+/** How long the page may be off screen before its round stops; a page transition hides it for less. */
+const AWAY_MS = 2000;
+
 /**
  * Whether the page is on the visitor's screen now, and whether it was shown
- * since the last round ended. A page transition hides the page from the
- * observer for a moment, so a round that started plays on to its end.
+ * since the last round ended. Off screen for longer than a page transition,
+ * the round stops, so a scene only plays while it can be seen.
  */
-function useShown() {
+function useShown(onAway: () => void) {
   const onScreen = useRef(false);
   const [shown, setShown] = useState(false);
+  const away = useRef(onAway);
   useEffect(() => {
+    away.current = onAway;
+  }, [onAway]);
+  useEffect(() => {
+    let timer: number | undefined;
     const observer = new IntersectionObserver(([entry]) => {
       onScreen.current = entry.isIntersecting;
+      window.clearTimeout(timer);
       if (entry.isIntersecting) setShown(true);
+      else
+        timer = window.setTimeout(() => {
+          setShown(false);
+          away.current();
+        }, AWAY_MS);
     });
     observer.observe(document.body);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(timer);
+    };
   }, []);
   return { onScreen, shown, setShown };
 }
@@ -89,12 +106,11 @@ function useImagesLoaded(scene: TourScene) {
 /**
  * One app scene inside the tour's phone: it starts once on screen, holds its
  * end, fades out and starts over, or waits off screen until it is seen again.
+ * Leaving the screen stops a round; the scene starts over on its return.
  * Its images load first, so none appears late.
  * Only its key moments answer the visitor's taps; nothing in it can be focused.
  */
 export default function ScenePage({ scene }: { scene: TourScene }) {
-  const { onScreen, shown, setShown } = useShown();
-  const imagesLoaded = useImagesLoaded(scene);
   const [round, setRound] = useState(0);
   const ending = useRef<number>(undefined);
   const Scene = SCENES[scene];
@@ -105,6 +121,8 @@ export default function ScenePage({ scene }: { scene: TourScene }) {
     window.scrollTo({ top: 0 });
     setRound((current) => (current === finished ? current + 1 : current));
   }
+  const { onScreen, shown, setShown } = useShown(() => startAfter(round));
+  const imagesLoaded = useImagesLoaded(scene);
   useReplays(() => startAfter(round));
   useEffect(() => () => window.clearTimeout(ending.current), []);
   useEffect(() => {
