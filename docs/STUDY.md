@@ -141,3 +141,112 @@ With a sample of this size the results justify the next test. They are not adopt
 4. The pilot is done, wording is fixed and the script version is raised.
 5. The server's logs are checked for request addresses before the consent text is used.
 6. QR codes are generated per channel.
+
+## Results queries
+
+Run these in the Supabase SQL editor, which connects with the owner role and can read the study tables. Students and the app's public keys cannot. Replace `v1` with the script version of the real run; pilot versions are then left out. Option ids are the ones in `src/tour/tourScript.ts`.
+
+The tables are `takeover_admin.study_sessions` (one row per participant), `takeover_admin.study_answers` (one row per participant and step) and `takeover_admin.study_contacts` (one row per address). A step the participant went back to keeps only its latest answer.
+
+Eligible participants are students at EPFL or UNIL (`student`) with at least one attempt in the last 12 months (`last-role`). Each query that needs them starts with the same `eligible` block.
+
+### Participants by channel and eligibility
+
+```sql
+with eligible as (
+  select s.id from takeover_admin.study_sessions s
+  where s.version = 'v1'
+    and exists (select 1 from takeover_admin.study_answers a
+      where a.session = s.id and a.step = 'student' and a.chosen && array['yes-epfl', 'yes-unil'])
+    and exists (select 1 from takeover_admin.study_answers a
+      where a.session = s.id and a.step = 'last-role' and a.chosen && array['buying', 'selling', 'giving-away'])
+)
+select s.source,
+  count(*) as participants,
+  count(*) filter (where s.id in (select id from eligible)) as eligible
+from takeover_admin.study_sessions s
+where s.version = 'v1'
+group by s.source
+order by participants desc;
+```
+
+### Last step reached
+
+The step of each participant's most recent save. A participant who went back and changed an earlier step is counted at that step.
+
+```sql
+select last_step.step, count(*) as participants
+from (
+  select distinct on (session) session, step
+  from takeover_admin.study_answers
+  where session in (select id from takeover_admin.study_sessions where version = 'v1')
+  order by session, saved_at desc
+) last_step
+group by last_step.step
+order by participants desc;
+```
+
+### Counts per option for one step
+
+Change the step id. `answered` is the denominator: participants who saved this step. Free text is not part of this query.
+
+```sql
+select option, count(*) as chosen,
+  (select count(*) from takeover_admin.study_answers
+    where step = 'last-hard'
+      and session in (select id from takeover_admin.study_sessions where version = 'v1')) as answered
+from takeover_admin.study_answers a, unnest(a.chosen) as option
+where a.step = 'last-hard'
+  and a.session in (select id from takeover_admin.study_sessions where version = 'v1')
+group by option
+order by chosen desc;
+```
+
+### C1 and C2 for eligible participants
+
+`nearer-or-cheaper` stores `nearer`, `cheaper` or `neither`. `draft-check` stores the action together with `friday-kept`, `friday-fixed` or `not-sent`.
+
+```sql
+with eligible as (
+  select s.id from takeover_admin.study_sessions s
+  where s.version = 'v1'
+    and exists (select 1 from takeover_admin.study_answers a
+      where a.session = s.id and a.step = 'student' and a.chosen && array['yes-epfl', 'yes-unil'])
+    and exists (select 1 from takeover_admin.study_answers a
+      where a.session = s.id and a.step = 'last-role' and a.chosen && array['buying', 'selling', 'giving-away'])
+)
+select 'C1' as task, option as result, count(*) as participants,
+  (select count(*) from eligible) as eligible
+from takeover_admin.study_answers a, unnest(a.chosen) as option
+where a.step = 'nearer-or-cheaper' and a.session in (select id from eligible)
+group by option
+union all
+select 'C2', option, count(*), (select count(*) from eligible)
+from takeover_admin.study_answers a, unnest(a.chosen) as option
+where a.step = 'draft-check' and a.session in (select id from eligible)
+  and option in ('friday-kept', 'friday-fixed', 'not-sent')
+group by option
+order by 1, 3 desc;
+```
+
+### Contacts with their pilot flag
+
+`session` is set only when the participant agreed to link the address to their answers. The channel and the `need-soon` answer are shown for those rows only.
+
+```sql
+select c.email, c.pilot, c.created_at, s.source,
+  (select a.chosen from takeover_admin.study_answers a
+    where a.session = c.session and a.step = 'need-soon') as need_soon
+from takeover_admin.study_contacts c
+left join takeover_admin.study_sessions s on s.id = c.session
+order by c.created_at;
+```
+
+### Deleting the data
+
+Run this by the deletion date. It removes sessions and, with them, their answers, and then the contacts. Delete any exports as well.
+
+```sql
+delete from takeover_admin.study_contacts;
+delete from takeover_admin.study_sessions;
+```
