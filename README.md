@@ -158,6 +158,8 @@ Each component imports its own sheet, and those sheets load in whatever order sc
 
 ## Documentation
 
+- [docs/FEATURES.md](docs/FEATURES.md): what each feature does, with screenshots.
+- [docs/WORKFLOWS.md](docs/WORKFLOWS.md): the main paths through the app as step sequences, and the deal states.
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): run account mode on your own server with Supabase and nginx, including the migration list.
 - [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md): request paths, adding features, tests, phone testing and UI components.
 
