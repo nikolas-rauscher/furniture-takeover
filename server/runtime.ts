@@ -276,6 +276,7 @@ function initialToolState(
     inventoryCurated: false,
     webSearched: false,
     displayedInventoryIds: [],
+    offerSourceIds: new Set(),
   };
 }
 

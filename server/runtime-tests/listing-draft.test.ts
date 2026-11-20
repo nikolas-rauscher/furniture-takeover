@@ -189,14 +189,14 @@ test("a researched proposal preserves citations, plain step labels and two immed
 });
 
 test("a proposal rejects invalid amounts, non-asking prices and insufficient distinct sources", async () => {
-  for (const [price, ids, description] of [
-    [0, ["web-1", "web-2"], "CHF 50"],
-    [40, ["web-1"], "CHF 50"],
-    [40, ["web-1", "web-1"], "CHF 50"],
-    [40, ["web-1", "web-2"], "Sold for CHF 50"],
-    [40, ["web-1", "web-2"], "Retail CHF 50"],
-    [40, ["web-1", "web-2"], "Shipping CHF 50"],
-    [40, ["web-1", "web-2"], "Starting bid CHF 50"],
+  for (const [price, ids, description, researched] of [
+    [0, ["web-1", "web-2"], "CHF 50", 35],
+    [40, ["web-1"], "CHF 50", 35],
+    [40, ["web-1", "web-1"], "CHF 50", 35],
+    [40, ["web-1", "web-2"], "Sold for CHF 50", undefined],
+    [40, ["web-1", "web-2"], "Retail CHF 50", undefined],
+    [40, ["web-1", "web-2"], "Shipping CHF 50", undefined],
+    [40, ["web-1", "web-2"], "Starting bid CHF 50", undefined],
   ] as const) {
     const model = new MockLanguageModelV4({
       doStream: [
@@ -206,12 +206,63 @@ test("a proposal rejects invalid amounts, non-asking prices and insufficient dis
       ],
     });
     const events = await runDraft(model, ["Asking CHF 35.", description]);
-    assert.ok(!events.some((event) => event.type === "listing_patch"));
-    assert.equal(
-      events.find((event) => event.type === "question")?.listingField,
-      "price",
+    const patches = events.filter((event) => event.type === "listing_patch");
+    assert.ok(patches.every((patch) => patch.id !== "bad"));
+    assert.deepEqual(
+      patches.map((patch) => patch.patch.price),
+      researched === undefined ? [] : [researched],
     );
+    const question = events.find((event) => event.type === "question");
+    assert.equal(question?.listingField, "price");
+    assert.equal(question.input?.value, researched);
   }
+});
+
+test("search results show the model each offer's usable asking price, skipping Ricardo's pickup cost", async () => {
+  const model = new MockLanguageModelV4({
+    doStream: [search(), answer("Here is what I found.")],
+  });
+  const events = await runDraft(model, [
+    "Retrait par l'acheteur à 1012 Lausanne, CHF 0.00 · Hauteur · 65 cm",
+    "Startpreis: CHF 75",
+    "Asking CHF 180.",
+  ]);
+  const toolResult = JSON.stringify(model.doStreamCalls[1].prompt);
+  assert.match(toolResult, /askingPrice\\?":null/);
+  assert.match(toolResult, /askingPrice\\?":180/);
+  const proposal = events.find((event) => event.type === "listing_patch");
+  assert.equal(proposal, undefined);
+});
+
+test("a first draft whose search found asking prices gets a cited price slider even when the model skips propose_price", async () => {
+  const model = new MockLanguageModelV4({
+    doStream: [
+      search(),
+      toolCall(
+        "ask_user",
+        {
+          question: "What asking price would you like?",
+          listingField: "price",
+        },
+        "ask-price",
+      ),
+    ],
+  });
+  const events = await runDraft(model, [
+    "Prix : CHF 60 · Etat : D'occasion",
+    "Retrait par l'acheteur à 1012 Lausanne, CHF 0.00 · Prix CHF 40",
+    "Asking CHF 90.",
+  ]);
+  const proposal = events.find((event) => event.type === "listing_patch");
+  assert.deepEqual(proposal?.patch, { price: 60 });
+  assert.equal(proposal.requiresAcceptance, true);
+  assert.match(
+    proposal.reason,
+    /3 offers asking CHF 40–90\. \[web-1\] \[web-2\] \[web-3\]/,
+  );
+  const question = events.find((event) => event.type === "question");
+  assert.equal(question?.input?.value, 60);
+  assert.equal(question.choiceActions?.[0].acceptsProposal, true);
 });
 
 test("laptop model years and Swiss thousands separators stay distinct from asking prices", async () => {

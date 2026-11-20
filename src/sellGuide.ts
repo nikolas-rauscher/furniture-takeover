@@ -159,7 +159,7 @@ function insightGuide(
         bubble: {
           id: "failed",
           title: "I couldn't read your photos",
-          text: "Try again, or fill in the details yourself.",
+          text: `${insight.error} Try again, or fill in the details yourself.`,
         },
       };
     case "unavailable":

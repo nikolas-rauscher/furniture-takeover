@@ -99,7 +99,11 @@ export function createAgentServer(
         throw new AgentError(404, "NOT_FOUND", "This endpoint does not exist.");
       await route(context);
     } catch (error) {
-      sendRequestError(response, error);
+      sendRequestError(
+        response,
+        error,
+        new URL(request.url ?? "/", "http://127.0.0.1").pathname,
+      );
     }
   });
   server.requestTimeout = 25_000;

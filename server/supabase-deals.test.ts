@@ -42,6 +42,10 @@ const throughBugs = [
   "202611200003_card_photos.sql",
   bugsMigration,
 ];
+const throughPickupCollected = [
+  ...throughBugs,
+  "202611200005_pickup_collected.sql",
+];
 
 const storeTerms = (terms: DealTerms) => ({
   amount: terms.amount,
@@ -461,12 +465,7 @@ for (const ending of ["pickup", "no-show", "cancel"] as const) {
         await as(seller);
         await act({ type: "accept", terms }, acceptMessage("seller", terms), 1);
         await db.exec("reset role");
-        await applyMigrations(db, [
-          pickupMigration,
-          adminMigration,
-          reviewMigration,
-          dealRulesMigration,
-        ]);
+        await applyMigrations(db, throughPickupCollected);
         await as(buyer);
         assert.deepEqual(
           (

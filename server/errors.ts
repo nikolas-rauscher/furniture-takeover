@@ -15,11 +15,12 @@ export class AgentError extends Error {
   }
 }
 
-export const invalidOutput = () =>
+export const invalidOutput = (cause?: unknown) =>
   new AgentError(
     502,
     "INVALID_AGENT_RESPONSE",
     "The agent returned an incomplete response. Please try again.",
+    { cause },
   );
 
 export class RunError extends Error {

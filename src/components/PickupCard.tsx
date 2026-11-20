@@ -132,7 +132,7 @@ function Facts({ terms, listing }: { terms: DealTerms; listing: Listing }) {
   );
 }
 
-/** Who is on the way or late: the other student's news stands out, the student's own stays quiet. */
+/** Who is on the way or late until the buyer has the item: the other student's news stands out, the student's own stays quiet. */
 function Signals({
   deal,
   role,
@@ -143,7 +143,7 @@ function Signals({
   other: string;
 }) {
   const signals = deal.pickup;
-  if (!signals) return null;
+  if (!signals || signals.buyerPickedUpAt) return null;
   const theirs: DealRole = role === "buyer" ? "seller" : "buyer";
   const rows: { key: string; text: string; mine: boolean }[] = [];
   const onWay = (who: DealRole) => signals.onWay[who];

@@ -1,6 +1,6 @@
 import { parseSearch } from "../shared/marketplace.ts";
 import type { AgentRunRequest, AgentRunSource } from "../shared/runs.ts";
-import type { AgentToolState } from "./agent-tools.ts";
+import { takeResearchedProposal, type AgentToolState } from "./agent-tools.ts";
 import { RunError } from "./errors.ts";
 import { askingPriceQuestion } from "./listing-questions.ts";
 import type { createRunActivity } from "./run-activity.ts";
@@ -32,6 +32,12 @@ export async function finishRun({
   const { listingMode, negotiationMode, refinement } = mode;
   const { send } = stream;
   if (!state.pendingQuestion && needsPriceDecision(request, state)) {
+    const researched = takeResearchedProposal(
+      state,
+      sources,
+      `${runId}-proposal`,
+    );
+    if (researched) await send(researched);
     state.pendingQuestion = askingPriceQuestion(
       `${runId}-price`,
       state.proposedPrice,

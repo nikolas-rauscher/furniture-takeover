@@ -305,15 +305,15 @@ export function listingPickupChoices(context: Omit<Context, "role">): {
  * primary action.
  */
 export function pickupChoices(context: Context): PickupChoices {
-  const { day, deal, role } = context;
+  const { day, deal } = context;
   if (day.pickupCheck)
     return day.pickupCheck.expired
       ? { secondary: [] }
       : pickupCheckChoices(context);
+  if (day.buyerReportedPickup)
+    return { primary: pickedUp(context), secondary: [] };
   if (day.change && deal.proposal)
     return changeChoices(context, deal.proposal.terms);
-  if (role === "seller" && day.buyerReportedPickup)
-    return { primary: pickedUp(context), secondary: [] };
   switch (day.phase) {
     case "booked":
       return {

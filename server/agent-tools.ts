@@ -8,7 +8,10 @@ import { inventoryWords } from "../shared/inventoryTerms.ts";
 import { searchWeb } from "./web-search.ts";
 import type { ListingText } from "./listing-language.ts";
 import type { createNegotiationTools } from "./negotiation-tools.ts";
-import type { AgentQuestionEvent } from "../shared/actions.ts";
+import type {
+  AgentListingPatchEvent,
+  AgentQuestionEvent,
+} from "../shared/actions.ts";
 import type {
   AgentRunEvent,
   AgentRunInventoryItem,
@@ -16,14 +19,39 @@ import type {
   AgentRunSource,
 } from "../shared/runs.ts";
 import {
+  askingPriceOf,
   questionSchema,
   priceProposalSchema,
   proposePrice,
+  researchedProposal,
   listingUpdateSchema,
   preferencesUpdateSchema,
   prepareListingAction,
   preferencesAction,
 } from "./actions.ts";
+
+/** An offer as the model reads it: askingPrice is the one CHF price propose_price can quote, or null. */
+function withAskingPrice(source: AgentRunSource) {
+  const asking = askingPriceOf(source);
+  return { ...source, askingPrice: "price" in asking ? asking.price : null };
+}
+
+function recordProposal(state: AgentToolState, action: AgentListingPatchEvent) {
+  state.proposedPrice = action.patch.price ?? undefined;
+  state.priceReason = action.reason;
+  return action;
+}
+
+/** Before asking a first draft's price: the cited proposal the model skipped, when the search found asking prices. */
+export function takeResearchedProposal(
+  state: AgentToolState,
+  sources: AgentRunSource[],
+  id: string,
+) {
+  if (state.proposedPrice !== undefined) return undefined;
+  const action = researchedProposal(sources, state.offerSourceIds, id);
+  return action && recordProposal(state, action);
+}
 
 // Shared by this run's tools and the runtime's tool-selection policy.
 export type AgentToolState = {
@@ -31,6 +59,8 @@ export type AgentToolState = {
   firstDraft: boolean;
   proposedPrice?: number;
   priceReason?: string;
+  /** Sources from offer searches, the only ones that can back a price. */
+  offerSourceIds: Set<string>;
   listingNeedsInput: boolean;
   ownInventoryOnly: boolean;
   allowWebSearch: boolean;
@@ -127,7 +157,6 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
   const listingReview = request.context?.intent === "listing_review";
   const listingAssist = request.context?.intent === "listing_assist";
   const listingMode = listingReview || listingAssist;
-  const offerSourceIds = new Set<string>();
   const webSearches = new Map<string, ReturnType<typeof searchWeb>>();
   let sourceSequence = 0;
   return {
@@ -173,6 +202,11 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
               "Leave skipped details unspecified. Do not ask this question again. Update the draft if needed, then finish or ask only a different missing fact.",
           };
         }
+        const needsPrice = state.firstDraft && savedPrice == null;
+        const researched =
+          listingAssist && needsPrice
+            ? takeResearchedProposal(state, sources, `${toolCallId}-price`)
+            : undefined;
         // Model tools may attach an irrelevant control. Only an asking-price
         // question gets a price slider; preserve the useful choices/reply otherwise.
         const asksPrice =
@@ -198,7 +232,6 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
         )
           delete parsedQuestion.input;
         const { followUps = [], ...main } = parsedQuestion;
-        const needsPrice = state.firstDraft && savedPrice == null;
         const title = listingAssist
           ? request.context?.currentDraft?.title
           : undefined;
@@ -245,6 +278,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
           );
         state.pendingQuestion = question;
         questionController.abort();
+        if (researched) await send(researched);
         await send(state.pendingQuestion);
         return { awaitingUser: true };
       },
@@ -253,7 +287,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
       ? {
           propose_price: tool({
             description:
-              "Suggest a positive CHF price for acceptance. Select two to four comparable fixed-price offers from this search. The server quotes them.",
+              "Suggest a positive CHF price for acceptance. Select two to four comparable offers from this search whose askingPrice is not null, and choose a price between their lowest and highest askingPrice. The server quotes them.",
             inputSchema: priceProposalSchema,
             execute: async (input, { toolCallId }) => {
               claimTool();
@@ -264,12 +298,10 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
               const action = proposePrice(
                 input,
                 sources,
-                offerSourceIds,
+                state.offerSourceIds,
                 toolCallId,
               );
-              state.proposedPrice = input.price;
-              state.priceReason = action.reason;
-              await send(action);
+              await send(recordProposal(state, action));
               return { price: input.price, reason: action.reason };
             },
           }),
@@ -287,7 +319,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                 input,
                 request,
                 sources,
-                offerSourceIds,
+                state.offerSourceIds,
                 toolCallId,
               );
               const action = prepared.action;
@@ -376,7 +408,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                     !negotiations.getCurrent();
                   // Evidence from a previous scope must not masquerade as a result of the new scope.
                   sources.length = 0;
-                  offerSourceIds.clear();
+                  state.offerSourceIds.clear();
                   await send({ type: "sources", sources: [] });
                 }
                 await send(action);
@@ -593,7 +625,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                       purpose !== "product_info" &&
                       purpose !== "similar_items"
                     )
-                      offerSourceIds.add(previous.id);
+                      state.offerSourceIds.add(previous.id);
                     return previous;
                   }
                   if (sources.length >= 30) return undefined;
@@ -603,13 +635,18 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                   };
                   sources.push(source);
                   if (purpose !== "product_info" && purpose !== "similar_items")
-                    offerSourceIds.add(source.id);
+                    state.offerSourceIds.add(source.id);
                   return source;
                 })
                 .filter((source): source is AgentRunSource => Boolean(source));
               await send({ type: "sources", sources: [...sources] });
+              const offers =
+                purpose !== "product_info" && purpose !== "similar_items";
               return {
-                sources: current,
+                sources:
+                  offers && listingAssist
+                    ? current.map(withAskingPrice)
+                    : current,
                 responseLanguage: state.responseLanguage,
                 displayedTakeoverListings: state.displayedInventoryIds.map(
                   (id) => state.observedInventory.get(id),

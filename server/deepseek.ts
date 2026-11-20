@@ -58,7 +58,7 @@ async function readResponse(response: Response): Promise<unknown> {
     return JSON.parse(Buffer.concat(chunks).toString("utf8"));
   } catch (error) {
     if (error instanceof AgentError) throw error;
-    throw invalidOutput();
+    throw invalidOutput(error);
   } finally {
     reader.releaseLock();
   }
@@ -108,22 +108,26 @@ async function requestCompletion(
   );
   if (!response.ok) {
     await response.body?.cancel();
+    const providerStatus = { cause: { providerStatus: response.status } };
     if (response.status === 401 || response.status === 403)
       throw new AgentError(
         502,
         "PROVIDER_AUTH_ERROR",
         "The agent could not authenticate. Check the server API key.",
+        providerStatus,
       );
     if (response.status === 429)
       throw new AgentError(
         503,
         "PROVIDER_BUSY",
         "The agent is busy. Please try again shortly.",
+        providerStatus,
       );
     throw new AgentError(
       502,
       "PROVIDER_ERROR",
       "The agent is unavailable. Your text has been kept; please try again.",
+      providerStatus,
     );
   }
   const body = (await readResponse(response)) as {
@@ -135,7 +139,7 @@ async function requestCompletion(
     choice.finish_reason !== "stop" ||
     typeof choice.message?.content !== "string"
   )
-    throw invalidOutput();
+    throw invalidOutput({ finishReason: choice?.finish_reason ?? null });
   return choice.message.content;
 }
 
@@ -161,6 +165,7 @@ function providerError(
     502,
     "PROVIDER_ERROR",
     "The agent is unavailable. Your text has been kept; please try again.",
+    { cause: error },
   );
 }
 
@@ -217,7 +222,7 @@ export async function assistWithDeepSeek(
         // Transport/auth/timeout/truncation failures remain explicit, and cancellation wins.
         if (invalid && attempt + 1 < attempts) continue;
         if (!invalid) throw error;
-        throw invalidOutput();
+        throw invalidOutput(error);
       }
     }
     throw invalidOutput();

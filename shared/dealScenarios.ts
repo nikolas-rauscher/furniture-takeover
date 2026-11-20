@@ -3,6 +3,7 @@ import type { PickupAction, PickupEvent, PickupStatusChange } from "./deal.ts";
 import {
   acceptNewTimeMessage,
   availableAgainMessage,
+  cantMakeItMessage,
   changeTimeMessage,
   keepTimeMessage,
   lateMessage,
@@ -178,6 +179,37 @@ export type PickupStep = {
   statusChange?: PickupStatusChange;
 };
 
+/** Steps the pickup rejects once the buyer reported the item collected. */
+function afterCollection(terms: DealTerms): PickupStep[] {
+  const error = "pickup_collected";
+  return [
+    {
+      actor: "buyer",
+      action: { type: "on_my_way" },
+      body: onMyWayMessage(terms),
+      error,
+    },
+    {
+      actor: "buyer",
+      action: { type: "cancel_pickup", reason: "cant_make_it" },
+      body: cantMakeItMessage(),
+      error,
+    },
+    {
+      actor: "seller",
+      action: { type: "cancel_pickup", reason: "cant_make_it" },
+      body: cantMakeItMessage(),
+      error,
+    },
+    {
+      actor: "buyer",
+      action: { type: "picked_up" },
+      body: pickedUpMessage("buyer", "desk"),
+      error,
+    },
+  ];
+}
+
 export function pickupScenarios(
   terms: DealTerms,
   later: string,
@@ -227,6 +259,7 @@ export function pickupScenarios(
         body: pickedUpMessage("buyer", "desk"),
         kind: "picked_up",
       },
+      ...afterCollection(terms),
       {
         actor: "seller",
         action: { type: "picked_up" },

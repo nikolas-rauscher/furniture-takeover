@@ -5,6 +5,7 @@ import {
   analysisKey,
   analysisPlan,
   photoFingerprint,
+  photoReadProblem,
 } from "../listingAnalysis";
 import { usePhotoSorting } from "./usePhotoSorting";
 import { useSettledText } from "./useSettledText";
@@ -120,10 +121,7 @@ export function useListingAnalysis({
         if (!controller.signal.aborted)
           setFailed({
             key: requestKey,
-            error:
-              error instanceof Error
-                ? error.message
-                : "I couldn't read the photos. Try again or fill in the details.",
+            error: photoReadProblem(error),
           });
         return { ok: false, error };
       },

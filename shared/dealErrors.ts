@@ -22,6 +22,8 @@ const messages: Record<string, string> = {
     "Choose a new time and keep the price and meeting point.",
   too_early: "This action is not available yet. Check the pickup time.",
   pickup_window_ended: "The window for pickup updates has passed.",
+  pickup_collected:
+    "The buyer already picked it up. Only the seller can mark it sold now.",
   minutes_invalid: "Choose 10, 20 or 30 minutes.",
   next_buyer_unavailable: "Choose another interested buyer for this item.",
 };

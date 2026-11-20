@@ -427,6 +427,34 @@ test(
   },
 );
 
+test("a failed photo reading answers 502 and leaves one log line with the provider's status", async (t) => {
+  const logged: unknown[][] = [];
+  t.mock.method(console, "error", (...line: unknown[]) => logged.push(line));
+  const service = createAgentService({
+    ...fakeConfig,
+    fetchImpl: fakeFetch(async () => new Response("down", { status: 500 })),
+  });
+  const instance = await startServer(t, service);
+  const response = await fetch(`${instance.url}/api/agent/assist`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ intent: "listing", text: "desk" }),
+  });
+  assert.equal(response.status, 502);
+  assert.equal((await response.json()).error.code, "PROVIDER_ERROR");
+  assert.deepEqual(logged, [
+    [
+      "[request]",
+      JSON.stringify({
+        path: "/api/agent/assist",
+        status: 502,
+        code: "PROVIDER_ERROR",
+        cause: { providerStatus: 500 },
+      }),
+    ],
+  ]);
+});
+
 test(
   "HTTP rejects malformed and oversized bodies before provider work",
   { timeout: 5000 },

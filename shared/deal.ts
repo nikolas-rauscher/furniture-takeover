@@ -256,6 +256,22 @@ export const expirePickup = (deal: Deal, at: string): Deal => ({
 });
 
 export type PickupPhase = "booked" | "pickup_soon" | "pickup_now" | "overdue";
+
+/** After the buyer's "Picked up", only Mark sold, the next-day check and an open time proposal's withdrawal remain. */
+function allowedAfterCollection(action: PickupAction, actor: DealRole) {
+  switch (action.type) {
+    case "picked_up":
+      return actor === "seller";
+    case "confirm_pickup_happened":
+    case "release_stale_pickup":
+    case "keep_time":
+    case "withdraw_time":
+      return true;
+    default:
+      return false;
+  }
+}
+
 export function pickupDay(
   deal: Deal | null | undefined,
   role: DealRole,
@@ -362,6 +378,8 @@ export function applyPickupAction(
   if (!day) throw new DealError("pickup_unavailable");
   if (listingStatus !== "reserved") throw new DealError("listing_unavailable");
   if (day.pickupCheck?.expired) throw new DealError("pickup_unavailable");
+  if (day.buyerReportedPickup && !allowedAfterCollection(action, actor))
+    throw new DealError("pickup_collected");
   if (
     action.type === "confirm_pickup_happened" ||
     action.type === "release_stale_pickup"

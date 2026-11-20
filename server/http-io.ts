@@ -85,7 +85,36 @@ export function isJson(request: IncomingMessage): boolean {
   );
 }
 
-export function sendRequestError(response: ServerResponse, error: unknown) {
+/** What the server log keeps of a failure: its code and cause, never the request body. */
+function describeCause(cause: unknown) {
+  if (cause instanceof Error) return `${cause.name}: ${cause.message}`;
+  return cause;
+}
+
+/** Server-side failures get one log line, so a 502 the student sees can be traced. */
+function logRequestError(path: string, error: unknown) {
+  if (error instanceof AgentError && error.status < 500) return;
+  console.error(
+    "[request]",
+    JSON.stringify(
+      error instanceof AgentError
+        ? {
+            path,
+            status: error.status,
+            code: error.code,
+            cause: describeCause(error.cause),
+          }
+        : { path, status: 500, cause: describeCause(error) },
+    ),
+  );
+}
+
+export function sendRequestError(
+  response: ServerResponse,
+  error: unknown,
+  path: string,
+) {
+  logRequestError(path, error);
   const safe =
     error instanceof AgentError
       ? error

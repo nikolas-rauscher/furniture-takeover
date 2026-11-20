@@ -329,38 +329,50 @@ export const priceProposalSchema = z
   })
   .strict();
 
-function comparableQuote(source: AgentRunSource) {
-  const text = source.title + " " + source.snippet;
-  if (
-    /\b(?:sold|retail|original price|originally|new price|previous price|starting (?:bid|price)|start(?:ing)? at|auction start|startpreis|startgebot|neupreis|verkauft|vendu|prix neuf|mise à prix)\b/i.test(
-      text,
-    )
-  )
-    fail(
-      "Use fixed asking prices, excluding auction starts, retail and sold prices.",
-    );
+const NOT_AN_ASKING_PRICE =
+  /\b(?:sold|retail|original price|originally|new price|previous price|starting (?:bid|price)|start(?:ing)? at|auction start|startpreis|startgebot|neupreis|verkauft|vendu|prix neuf|mise à prix)\b/i;
+/** A cost beside the item's price: "Shipping: CHF 9", or Ricardo's "Retrait par l'acheteur à 1012 Lausanne, CHF 0.00". */
+const INCIDENTAL_COST =
+  /(?:\b(?:shipping|postage|deposit|delivery|versand(?:kosten)?|port|livraison)\s*[:=]?\s*|\b(?:retrait par l['’]acheteur|abholung durch (?:den )?käufer|pickup by (?:the )?buyer)\b[^·|]*,\s*)$/i;
 
+type AskingPrice = { price: number; quote: string } | { rejection: string };
+
+/** A source's one fixed CHF asking price with its surrounding quote, or why it can't anchor a price. */
+export function askingPriceOf(source: AgentRunSource): AskingPrice {
+  if (NOT_AN_ASKING_PRICE.test(source.title + " " + source.snippet))
+    return {
+      rejection:
+        "Use fixed asking prices, excluding auction starts, retail and sold prices.",
+    };
   const amounts = [source.title, source.snippet].flatMap((part) =>
     chfAmounts(part).map((amount) => ({ ...amount, part })),
   );
-  const first = amounts[0];
+  const itemAmounts = amounts.filter(
+    ({ part, index }) => !INCIDENTAL_COST.test(part.slice(0, index)),
+  );
+  if (amounts.length && !itemAmounts.length)
+    return { rejection: "Use the asking price of the item itself." };
+  const first = itemAmounts[0];
   if (
     !first ||
     first.price <= 0 ||
     first.price > 10_000 ||
-    amounts.some(({ price }) => price !== first.price)
+    itemAmounts.some(({ price }) => price !== first.price)
   )
-    fail("Choose an offer with one unambiguous positive CHF asking price.");
-  const incidentalCost =
-    /\b(?:shipping|postage|deposit|delivery|versand(?:kosten)?|port|livraison)\s*[:=]?\s*$/i;
-  if (
-    amounts.some(({ part, index }) => incidentalCost.test(part.slice(0, index)))
-  )
-    fail("Use the asking price of the item itself.");
+    return {
+      rejection:
+        "Choose an offer with one unambiguous positive CHF asking price.",
+    };
   const quote = first.part
     .slice(Math.max(0, first.index - 100), first.index + first.length + 100)
     .trim();
   return { price: first.price, quote };
+}
+
+function comparableQuote(source: AgentRunSource) {
+  const asking = askingPriceOf(source);
+  if ("rejection" in asking) fail(asking.rejection);
+  return asking;
 }
 
 export function proposePrice(
@@ -395,6 +407,35 @@ export function proposePrice(
     evidence,
     reason: `Suggested CHF ${price} based on ${prices.length} offers asking CHF ${low}–${high}. ${citations}`,
   };
+}
+
+/**
+ * A proposal from this search's offers when the model asked for a price without one:
+ * the lower middle of up to four fixed asking prices, so the price is one a student actually asks.
+ */
+export function researchedProposal(
+  sources: AgentRunSource[],
+  offerSourceIds: Set<string>,
+  id: string,
+): AgentListingPatchEvent | undefined {
+  const comparable = sources
+    .filter((source) => offerSourceIds.has(source.id))
+    .flatMap((source) => {
+      const asking = askingPriceOf(source);
+      return "price" in asking ? [{ id: source.id, price: asking.price }] : [];
+    })
+    .slice(0, 4);
+  if (comparable.length < 2) return undefined;
+  const prices = comparable.map(({ price }) => price).sort((a, b) => a - b);
+  return proposePrice(
+    {
+      price: prices[Math.floor((prices.length - 1) / 2)],
+      sourceIds: comparable.map((offer) => offer.id),
+    },
+    sources,
+    offerSourceIds,
+    id,
+  );
 }
 
 function latestSellerPrice(request: AgentRunRequest): number | null {
