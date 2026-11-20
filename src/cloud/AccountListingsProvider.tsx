@@ -39,9 +39,9 @@ function useAccountListings(client: SupabaseClient, userId?: string) {
         setReady(true);
         setError("");
       }
-      return true;
+      return mounted.current && generation.current === token;
     } catch (err) {
-      if (mounted.current)
+      if (mounted.current && generation.current === token)
         setError(
           err instanceof Error ? err.message : "Could not load listings.",
         );
@@ -52,12 +52,17 @@ function useAccountListings(client: SupabaseClient, userId?: string) {
     mounted.current = true;
     void load();
     const refresh = () => void load();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
     window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
     window.addEventListener(adminCatalogChanged, refresh);
     return () => {
       mounted.current = false;
       generation.current++;
       window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
       window.removeEventListener(adminCatalogChanged, refresh);
     };
   }, [load]);
@@ -103,7 +108,8 @@ function useAccountListings(client: SupabaseClient, userId?: string) {
     ready,
     error,
     pending,
-    retry: load,
+    retry: () => void load(),
+    refresh: load,
     addDemo: async () => false,
     canShow: () => true,
     dealStatusOwner: "server" as const,

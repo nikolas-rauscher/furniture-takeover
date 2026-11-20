@@ -530,7 +530,7 @@ test("a listing turn says what Pako does in the server's plain words, with the o
     { ...research, state: "complete" as const },
     step("step-1", "running", undefined, "Writing your listing"),
   ];
-  assert.equal(line(researched, { offers: 3 }), "Comparing 3 offers…");
+  assert.equal(line(researched, { offers: 3 }), "Reviewing 3 sources…");
   assert.equal(
     line(researched),
     "Writing your listing…",
@@ -593,8 +593,8 @@ test("a step the agent corrected itself disappears once the same step completed"
 });
 
 test("a finished listing turn sums up the offers it compared, other turns their activities", () => {
-  assert.equal(stepsSummary(4, 3, "listing"), "Compared 3 offers");
-  assert.equal(stepsSummary(4, 1, "listing"), "Compared 1 offer");
+  assert.equal(stepsSummary(4, 3, "listing"), "Found 3 sources");
+  assert.equal(stepsSummary(4, 1, "listing"), "Found 1 source");
   assert.equal(stepsSummary(2, 0, "listing"), "2 activities");
   assert.equal(stepsSummary(4, 3, "search"), "4 activities");
   assert.equal(stepsSummary(1, 0, "search"), "1 activity");

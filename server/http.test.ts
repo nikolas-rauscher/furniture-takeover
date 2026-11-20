@@ -801,6 +801,7 @@ const signedIn = {
 };
 
 test("each reply reading spends one reading of its own allowance, only after its request is valid", async (t) => {
+  const log = t.mock.method(console, "error", () => {});
   let remaining = 2,
     readings = 0;
   const spent: string[] = [];
@@ -843,7 +844,15 @@ test("each reply reading spends one reading of its own allowance, only after its
   );
   const invalid = await read({ ...readingRequest, messages: [] });
   assert.equal(invalid.status, 400);
-  assert.equal((await invalid.json()).error.code, "INVALID_THREAD_REQUEST");
+  const { error } = await invalid.json();
+  assert.equal(error.code, "INVALID_THREAD_REQUEST");
+  assert.match(error.message, /needs the other student's message last/);
+  assert.deepEqual(JSON.parse(log.mock.calls[1].arguments[1]), {
+    path: "/api/agent/thread",
+    status: 400,
+    code: error.code,
+    reason: error.message,
+  });
   assert.deepEqual(spent, []);
   const first = await read(readingRequest);
   assert.equal(first.status, 200);

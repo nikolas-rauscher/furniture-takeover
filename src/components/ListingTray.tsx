@@ -322,10 +322,9 @@ export default function ListingTray({
   if (phase === "asking" && question) {
     const { lead, ask, aside } = splitQuestion(question.question);
     const priceCard = asksPrice(question);
-    // Pako's reasoning after a price question belongs with why he suggests that price.
-    const reasoning = priceCard && suggestion ? aside : "";
-    // What leads up to the question, and what follows it unless that is his reasoning.
-    const context = [lead, reasoning ? "" : aside].filter(Boolean).join(" ");
+    const context = [lead, priceCard && suggestion ? "" : aside]
+      .filter(Boolean)
+      .join(" ");
     content = (
       <>
         <div className="listing-tray-heading">
@@ -349,7 +348,6 @@ export default function ListingTray({
             start={suggestion?.patch.price ?? question.input?.value}
             rangeMax={question.input?.max}
             suggestion={suggestion}
-            reasoning={reasoning}
             sources={turn.sources}
             disabled={waiting}
             onPrice={(price) => answering(() => onPrice(question.id, price))}

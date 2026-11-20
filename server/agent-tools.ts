@@ -21,8 +21,6 @@ import type {
 import {
   askingPriceOf,
   questionSchema,
-  priceProposalSchema,
-  proposePrice,
   researchedProposal,
   listingUpdateSchema,
   preferencesUpdateSchema,
@@ -287,22 +285,22 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
       ? {
           propose_price: tool({
             description:
-              "Suggest a positive CHF price for acceptance. Select two to four comparable offers from this search whose askingPrice is not null, and choose a price between their lowest and highest askingPrice. The server quotes them.",
-            inputSchema: priceProposalSchema,
-            execute: async (input, { toolCallId }) => {
+              "Calculate an asking price from this run's comparable second-hand offers. The server chooses and quotes the evidence. If no price is available, ask the seller for their own price.",
+            inputSchema: z.object({}).strict(),
+            execute: async (_input, { toolCallId }) => {
               claimTool();
               if (state.proposedPrice !== undefined)
                 throw new Error(
                   "A price has already been proposed. Ask for the seller’s decision.",
                 );
-              const action = proposePrice(
-                input,
-                sources,
-                state.offerSourceIds,
-                toolCallId,
-              );
-              await send(recordProposal(state, action));
-              return { price: input.price, reason: action.reason };
+              const action = takeResearchedProposal(state, sources, toolCallId);
+              if (!action)
+                return {
+                  price: null,
+                  reason: "No clear comparable asking price.",
+                };
+              await send(action);
+              return { price: action.patch.price, reason: action.reason };
             },
           }),
           update_listing: tool({
@@ -312,9 +310,7 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
             execute: async (input, { toolCallId }) => {
               claimTool();
               if (input.evidence.some((item) => item.kind === "source"))
-                throw new Error(
-                  "Use propose_price with comparable offer IDs for a researched price.",
-                );
+                throw new Error("Use propose_price for a researched price.");
               const prepared = prepareListingAction(
                 input,
                 request,

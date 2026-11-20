@@ -91,9 +91,8 @@ function describeCause(cause: unknown) {
   return cause;
 }
 
-/** Server-side failures get one log line, so a 502 the student sees can be traced. */
+/** Log each rejection with its public reason and any server-side cause. */
 function logRequestError(path: string, error: unknown) {
-  if (error instanceof AgentError && error.status < 500) return;
   console.error(
     "[request]",
     JSON.stringify(
@@ -102,7 +101,8 @@ function logRequestError(path: string, error: unknown) {
             path,
             status: error.status,
             code: error.code,
-            cause: describeCause(error.cause),
+            reason: error.status < 500 ? error.message : undefined,
+            cause: error.status >= 500 ? describeCause(error.cause) : undefined,
           }
         : { path, status: 500, cause: describeCause(error) },
     ),

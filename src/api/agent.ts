@@ -113,7 +113,7 @@ export async function requestJson(
   reportAgentQuota(response);
   if (!response.ok) {
     const error = isRecord(body) && isRecord(body.error) ? body.error : null;
-    throw new AgentApiError(
+    const failure = new AgentApiError(
       typeof error?.message === "string"
         ? error.message
         : response.status >= 500
@@ -122,6 +122,11 @@ export async function requestJson(
       typeof error?.code === "string" ? error.code : "REQUEST_FAILED",
       response.status,
     );
+    if (response.status >= 400 && response.status < 500)
+      console.warn(
+        `[agent] ${path} ${failure.status} ${failure.code}: ${failure.message}`,
+      );
+    throw failure;
   }
   return body;
 }

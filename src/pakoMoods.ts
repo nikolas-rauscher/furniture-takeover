@@ -280,8 +280,8 @@ const CATALOG_STEP_ID = "takeover-catalog";
 /** Whose words a turn's steps are told in: a buyer's search or a seller's listing. */
 export type StepVoice = "search" | "listing";
 
-const offerCount = (count: number) =>
-  count === 1 ? "1 offer" : `${count} offers`;
+const sourceCountLabel = (count: number) =>
+  count === 1 ? "1 source" : `${count} sources`;
 
 /**
  * A step in the intro's words, for the live line and the activity list alike: the
@@ -319,7 +319,7 @@ function listingWorkingLine(turn: WorkingFacts): string {
   const running = tools.filter((step) => step.state === "running").at(-1);
   if (running) return `${running.label}…`;
   if (tools.at(-1)?.task === "web" && turn.sources.length)
-    return `Comparing ${offerCount(turn.sources.length)}…`;
+    return `Reviewing ${sourceCountLabel(turn.sources.length)}…`;
   const latest = turn.steps.at(-1);
   return latest ? `${latest.label}…` : "Reading your photos and notes…";
 }
@@ -357,14 +357,14 @@ export function settledSteps(steps: readonly AgentRunStep[]): AgentRunStep[] {
   );
 }
 
-/** The collapsed activity line: the offers a listing turn compared, otherwise how many things Pako did. */
+/** The collapsed activity line: the sources a listing turn found, otherwise how many things Pako did. */
 export function stepsSummary(
   stepCount: number,
   sourceCount: number,
   voice: StepVoice,
 ): string {
   if (voice === "listing" && sourceCount > 0)
-    return `Compared ${offerCount(sourceCount)}`;
+    return `Found ${sourceCountLabel(sourceCount)}`;
   return stepCount === 1 ? "1 activity" : `${stepCount} activities`;
 }
 

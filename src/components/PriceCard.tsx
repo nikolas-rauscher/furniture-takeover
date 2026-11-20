@@ -45,13 +45,11 @@ function sliderRange(start: number, rangeMax?: number, typed?: number) {
 }
 
 /**
- * Pako's reasons for his price in a sheet, so the tray keeps its size: what he wrote
- * about the price, why he suggests it and the offers he quotes, with a way to take it.
+ * The price calculation and the offers it used, with a way to take it.
  */
 function PriceReasons({
   suggestion,
   suggested,
-  reasoning,
   sources,
   disabled,
   onUse,
@@ -59,7 +57,6 @@ function PriceReasons({
 }: {
   suggestion: PriceSuggestion;
   suggested: number;
-  reasoning: string;
   sources: AgentRunSource[];
   disabled: boolean;
   onUse: () => void;
@@ -69,11 +66,10 @@ function PriceReasons({
     <Modal
       sheet
       title={`Why ${money(suggested)}?`}
-      description={suggestionFacts(suggested, sources.length)}
+      description={suggestionFacts(suggested, suggestion.evidence.length)}
       onClose={onClose}
     >
       <div className="price-reasons">
-        {reasoning && <p>{answerParts(reasoning, sources)}</p>}
         <p className="price-reasons-summary">
           {plainAnswer(suggestion.reason)}
         </p>
@@ -111,7 +107,6 @@ export default function PriceCard({
   start,
   rangeMax,
   suggestion,
-  reasoning,
   sources,
   disabled,
   onPrice,
@@ -122,8 +117,6 @@ export default function PriceCard({
   /** The top of the slider range Pako offered with his question, if any. */
   rangeMax?: number;
   suggestion?: PriceSuggestion;
-  /** What Pako wrote about the price beside his question, shown with why he suggests it. */
-  reasoning: string;
   sources: AgentRunSource[];
   disabled: boolean;
   onPrice: (price: number) => void;
@@ -220,7 +213,6 @@ export default function PriceCard({
         <PriceReasons
           suggestion={suggestion}
           suggested={suggested}
-          reasoning={reasoning}
           sources={sources}
           disabled={disabled}
           onUse={() => {

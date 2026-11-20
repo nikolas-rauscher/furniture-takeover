@@ -112,13 +112,22 @@ type Proposal = z.infer<typeof proposalSchema>;
 type ProposedOption = Proposal["options"][number];
 type QuotedFact = { quote: string; from: "me" | "them" | "listing" };
 
+/** Why a request was rejected: a rule's own sentence, or the field that broke the schema. */
+function rejectionReason(issue: z.core.$ZodIssue) {
+  if (issue.code === "custom") return issue.message;
+  const field = issue.path.join(".") || "request";
+  if (issue.code === "unrecognized_keys")
+    return `${field} has unexpected fields: ${issue.keys.join(", ")}.`;
+  return `${field} is invalid.`;
+}
+
 export function validateThreadTurnRequest(input: unknown): ThreadTurnRequest {
   const parsed = threadTurnRequestSchema.safeParse(input);
   if (!parsed.success)
     throw new AgentError(
       400,
       "INVALID_THREAD_REQUEST",
-      "Pako couldn't read this conversation. Reload it and try again.",
+      `Pako couldn't read this conversation. ${[...new Set(parsed.error.issues.map(rejectionReason))].join(" ")}`,
     );
   return parsed.data;
 }

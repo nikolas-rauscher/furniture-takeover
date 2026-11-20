@@ -47,9 +47,13 @@ export function useAppNavigation({
   const historyPlace = useRef(historyPosition(window.history.state));
 
   /** Adds a history entry one step after the current one. */
-  function pushRoute(url: string) {
+  function pushRoute(url: string, fromMessages = false) {
     historyPlace.current += 1;
-    window.history.pushState({ position: historyPlace.current }, "", url);
+    window.history.pushState(
+      { position: historyPlace.current, fromMessages },
+      "",
+      url,
+    );
   }
   /** Changes the current history entry's address; its place stays. */
   function replaceRoute(url: string) {

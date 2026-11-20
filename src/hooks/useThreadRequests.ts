@@ -23,7 +23,7 @@ export function useThreadRequests({
   signedIn: boolean;
   initialRoute: Route;
   navigate: (view: View) => void;
-  pushRoute: (url: string) => void;
+  pushRoute: (url: string, fromMessages?: boolean) => void;
   replaceRoute: (url: string) => void;
 }) {
   const [listingId, setListingId] = useState<string | undefined>(
@@ -90,7 +90,16 @@ export function useThreadRequests({
       setDraft(undefined);
       setListingId(key);
       const hash = `#messages/${encodeURIComponent(key)}`;
-      if (window.location.hash !== hash) pushRoute(hash);
+      if (window.location.hash !== hash)
+        pushRoute(hash, window.location.hash === "#messages");
+    },
+    closeThread() {
+      setListingId(undefined);
+      setThreadRequest(undefined);
+      setDraft(undefined);
+      if (!window.location.hash.startsWith("#messages/")) return;
+      if (window.history.state?.fromMessages === true) window.history.back();
+      else replaceRoute("#messages");
     },
     proposalSent: () => setProposal(undefined),
     /** Back or Forward led to Messages, or away from it. */

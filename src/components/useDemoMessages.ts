@@ -366,7 +366,10 @@ export function useDemoMessages(app: DemoMessagesProps): MessagesModel {
       image: imageFor(current),
       title: current.title,
       onOpenListing: () => app.onOpenListing(current.listingId),
-      onBack: () => setShowConversation(false),
+      onBack: () => {
+        setShowConversation(false);
+        app.onThreadClosed?.();
+      },
       loaded: loaded || !saved,
       disclosure: Boolean(product),
       actions: {

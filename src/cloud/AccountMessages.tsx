@@ -65,6 +65,7 @@ function useAccountMessages({
   initialMessage,
   onDeleted,
   onThreadOpened,
+  onThreadClosed,
   threadRequest,
 }: AccountMessagesProps): MessagesModel {
   const { userId } = source;
@@ -462,7 +463,10 @@ function useAccountMessages({
             product &&
             `${money(product.price)} · ${STATUS_WORDS[product.status]}`,
           onOpenListing: () => onOpenListing(itemId),
-          onBack: () => select(""),
+          onBack: () => {
+            select("");
+            onThreadClosed?.();
+          },
           loaded: thread.loaded,
           error: thread.error,
           disclosure: Boolean(current && product),

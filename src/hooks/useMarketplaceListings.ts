@@ -8,6 +8,8 @@ type Listings = {
   error: string;
   pending: number;
   retry: () => void;
+  /** Reads a server-owned catalog again; the demo catalog lives in the browser. */
+  refresh?: () => Promise<boolean>;
   addDemo: () => Promise<boolean>;
   canShow: (listing: Product) => boolean;
   dealStatusOwner: "browser" | "server";

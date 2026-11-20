@@ -19,8 +19,7 @@ const search = () =>
     { query: "bureau occasion Lausanne", purpose: "offers" },
     "lookup",
   );
-const propose = (price: number, id: string, sourceIds = ["web-1", "web-2"]) =>
-  toolCall("propose_price", { price, sourceIds }, id);
+const propose = (id: string) => toolCall("propose_price", {}, id);
 const firstDraft = (title: string) => ({
   text: "Create draft",
   context: {
@@ -109,8 +108,7 @@ test("a researched proposal preserves citations, plain step labels and two immed
   const model = new MockLanguageModelV4({
     doStream: [
       search(),
-      propose(100, "outside-range"),
-      propose(40, "proposal"),
+      propose("proposal"),
       toolCall(
         "ask_user",
         {
@@ -152,7 +150,7 @@ test("a researched proposal preserves citations, plain step labels and two immed
   );
   const patches = events.filter((event) => event.type === "listing_patch");
   assert.equal(patches.length, 1);
-  assert.deepEqual(patches[0].patch, { price: 40 });
+  assert.deepEqual(patches[0].patch, { price: 43 });
   assert.equal(patches[0].requiresAcceptance, true);
   assert.deepEqual(
     patches[0].evidence.map((e) => e.quote),
@@ -176,7 +174,7 @@ test("a researched proposal preserves citations, plain step labels and two immed
   assert.ok(!steps.some((step) => step.state === "error"));
   const question = events.find((event) => event.type === "question");
   assert.equal(question?.question, "What asking price would you like?");
-  assert.equal(question.input?.value, 40);
+  assert.equal(question.input?.value, 43);
   assert.equal(question.choiceActions?.[0].acceptsProposal, true);
   assert.deepEqual(
     question.followUps?.map((q) => q.choiceActions),
@@ -188,34 +186,56 @@ test("a researched proposal preserves citations, plain step labels and two immed
   assert.match(complete!.text, /CHF 35–51.*\[web-2\]/);
 });
 
-test("a proposal rejects invalid amounts, non-asking prices and insufficient distinct sources", async () => {
-  for (const [price, ids, description, researched] of [
-    [0, ["web-1", "web-2"], "CHF 50", 35],
-    [40, ["web-1"], "CHF 50", 35],
-    [40, ["web-1", "web-1"], "CHF 50", 35],
-    [40, ["web-1", "web-2"], "Sold for CHF 50", undefined],
-    [40, ["web-1", "web-2"], "Retail CHF 50", undefined],
-    [40, ["web-1", "web-2"], "Shipping CHF 50", undefined],
-    [40, ["web-1", "web-2"], "Starting bid CHF 50", undefined],
-  ] as const) {
-    const model = new MockLanguageModelV4({
-      doStream: [
-        search(),
-        propose(price, "bad", [...ids]),
-        answer("Please choose your asking price."),
-      ],
-    });
-    const events = await runDraft(model, ["Asking CHF 35.", description]);
-    const patches = events.filter((event) => event.type === "listing_patch");
-    assert.ok(patches.every((patch) => patch.id !== "bad"));
-    assert.deepEqual(
-      patches.map((patch) => patch.patch.price),
-      researched === undefined ? [] : [researched],
-    );
-    const question = events.find((event) => event.type === "question");
-    assert.equal(question?.listingField, "price");
-    assert.equal(question.input?.value, researched);
-  }
+test("a price request excludes retail, sold prices, pickup costs and auction starts", async () => {
+  const model = new MockLanguageModelV4({
+    doStream: [
+      search(),
+      propose("no-usable-price"),
+      answer("Please choose your asking price."),
+    ],
+  });
+  const events = await runDraft(model, [
+    "Asking CHF 35.",
+    "Sold for CHF 50",
+    "Retail CHF 50",
+    "Shipping CHF 50",
+    "Starting bid CHF 50",
+  ]);
+  assert.equal(
+    events.some((event) => event.type === "listing_patch"),
+    false,
+  );
+  assert.equal(
+    events.find((event) => event.type === "question")?.input,
+    undefined,
+  );
+});
+
+test("a study desk proposal uses the CHF 35 used offer instead of duplicate new stock", async () => {
+  const model = new MockLanguageModelV4({
+    doStream: [
+      search(),
+      propose("desk-price"),
+      answer("Review the suggested price."),
+    ],
+  });
+  const events = await runDraft(model, [
+    "Fabriqué artisanalement. Article neuf, valeur 4680.– Objet en stock LIQUIDE à Fr. 2590.–",
+    "Fabriqué artisanalement. Article neuf, valeur 4680.– Objet en stock LIQUIDE à Fr. 2590.– Plusieurs dimensions.",
+    "Bureau IKEA 120x60 (D’occasion), CHF 35 – retrait uniquement",
+    "Desk asking CHF 95",
+  ]);
+  const proposal = events.find((event) => event.type === "listing_patch");
+  assert.deepEqual(proposal?.patch, { price: 35 });
+  assert.match(proposal.reason, /one used offer.*starting point.*\[web-3\]/);
+  assert.deepEqual(
+    proposal.evidence.map((item) => item.kind === "source" && item.sourceId),
+    ["web-3"],
+  );
+  assert.equal(
+    events.find((event) => event.type === "question")?.input?.value,
+    35,
+  );
 });
 
 test("search results show the model each offer's usable asking price, skipping Ricardo's pickup cost", async () => {
@@ -250,15 +270,15 @@ test("a first draft whose search found asking prices gets a cited price slider e
   });
   const events = await runDraft(model, [
     "Prix : CHF 60 · Etat : D'occasion",
-    "Retrait par l'acheteur à 1012 Lausanne, CHF 0.00 · Prix CHF 40",
-    "Asking CHF 90.",
+    "Retrait par l'acheteur à 1012 Lausanne, CHF 0.00 · Prix CHF 40 · D’occasion",
+    "Used desk. Asking CHF 90.",
   ]);
   const proposal = events.find((event) => event.type === "listing_patch");
   assert.deepEqual(proposal?.patch, { price: 60 });
   assert.equal(proposal.requiresAcceptance, true);
   assert.match(
     proposal.reason,
-    /3 offers asking CHF 40–90\. \[web-1\] \[web-2\] \[web-3\]/,
+    /3 used offers asking CHF 40–90\. \[web-1\] \[web-2\] \[web-3\]/,
   );
   const question = events.find((event) => event.type === "question");
   assert.equal(question?.input?.value, 60);
@@ -269,7 +289,7 @@ test("laptop model years and Swiss thousands separators stay distinct from askin
   const model = new MockLanguageModelV4({
     doStream: [
       search(),
-      propose(1250, "macbook-price"),
+      propose("macbook-price"),
       toolCall(
         "ask_user",
         {

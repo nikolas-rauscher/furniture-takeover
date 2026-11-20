@@ -405,6 +405,20 @@ test("requests are checked before Pako reads, and he needs a key to read", async
     () => validateThreadTurnRequest({ ...request, trigger: "unknown" }),
     { code: "INVALID_THREAD_REQUEST" },
   );
+  assert.throws(
+    () =>
+      validateThreadTurnRequest({
+        ...request,
+        messages: request.messages.map((message) => ({
+          ...message,
+          at: "2026-11-20T10:04:00.123456+00:00",
+        })),
+      }),
+    {
+      message:
+        "Pako couldn't read this conversation. messages.0.at is invalid. messages.1.at is invalid.",
+    },
+  );
   await assert.rejects(createThreadAgent({ apiKey: "", now }).turn(request), {
     code: "AGENT_NOT_CONFIGURED",
   });

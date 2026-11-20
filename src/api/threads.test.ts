@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { requestThreadTurn, threadTurnRequest } from "./threads.ts";
 import { products } from "../testing/fixtures.ts";
 import type { ThreadMessage } from "../pakoThread.ts";
+import { threadTurnRequestSchema } from "../../shared/threadTurn.ts";
 
 const desk = {
   ...products[1],
@@ -108,6 +109,39 @@ test("asking Pako sends the instruction and the draft being written", () => {
   assert.equal("draft" in empty, false);
 });
 
+test("account reply readings serialize PostgREST timestamps after pickup changes", () => {
+  const request = threadTurnRequest({
+    role: "buyer",
+    listing: { ...desk, status: "reserved" },
+    deal: {
+      status: "agreed",
+      agreed: {
+        amount: 12,
+        fulfillment: "pickup",
+        pickupAt: "2026-11-20T11:02:00.000Z",
+        pickupTime: "Fri 20 Nov, 12:02",
+        pickupPoint: "Rolex Learning Center",
+      },
+      proposal: null,
+    },
+    messages: [
+      ["them", "Counter-offer: CHF 12"],
+      ["me", "Agreed"],
+      ["them", "Rescheduled to 12:02"],
+      ["me", "Running 10 minutes late"],
+      ["them", "Can you meet at the entrance?"],
+    ].map(([from, body], index) => ({
+      id: `m${index}`,
+      from: from as "me" | "them",
+      text: body,
+      at: `2026-11-20T10:0${index}:00.123456+00:00`,
+      structured: index < 4,
+    })),
+  });
+  assert.equal(request.messages.at(-1)?.at, "2026-11-20T10:04:00.123Z");
+  assert.equal(threadTurnRequestSchema.safeParse(request).success, true);
+});
+
 const reading = {
   forMessageId: "m1",
   summary: "{other} offers CHF 40.",
@@ -163,4 +197,24 @@ test("a reading is checked before it is shown, and errors keep their code", asyn
     code: "THREAD_QUOTA_EXCEEDED",
     status: 429,
   });
+});
+
+test("a rejected reply reading shows and logs the server's reason", async (t) => {
+  const message = "A reply reading needs the other student's message last.";
+  const warn = t.mock.method(console, "warn", () => {});
+  answering(t, 400, { error: { code: "INVALID_THREAD_REQUEST", message } });
+  await assert.rejects(
+    requestThreadTurn(
+      threadTurnRequest({
+        role: "buyer",
+        listing: desk,
+        messages: [],
+        deal: null,
+      }),
+    ),
+    { code: "INVALID_THREAD_REQUEST", message, status: 400 },
+  );
+  assert.deepEqual(warn.mock.calls[0].arguments, [
+    `[agent] /api/agent/thread 400 INVALID_THREAD_REQUEST: ${message}`,
+  ]);
 });

@@ -291,11 +291,7 @@ test("researching an asking price emits real source evidence and an acceptance-o
         { query: "bureau blanc occasion Lausanne", purpose: "offers" },
         "price-research",
       ),
-      toolCall(
-        "propose_price",
-        { price: 80, sourceIds: ["web-1", "web-2"] },
-        "price-proposal",
-      ),
+      toolCall("propose_price", {}, "price-proposal"),
       answer(
         "One of the two desks asks CHF 80 [web-1]. You can accept or keep your price.",
       ),
@@ -335,7 +331,7 @@ test("researching an asking price emits real source evidence and an acceptance-o
   const change = events.find((event) => event.type === "listing_patch");
   assert.ok(change?.type === "listing_patch");
   assert.equal(change.requiresAcceptance, true);
-  assert.deepEqual(change.patch, { price: 80 });
+  assert.deepEqual(change.patch, { price: 83 });
   assert.ok(
     events.findIndex((event) => event.type === "sources") <
       events.findIndex((event) => event.type === "listing_patch"),

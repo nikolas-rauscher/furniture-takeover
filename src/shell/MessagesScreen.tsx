@@ -122,6 +122,7 @@ export default function MessagesScreen({
           }}
           onDeleted={actions.onDeleted}
           onThreadOpened={actions.onThreadOpened}
+          onThreadClosed={threads.closeThread}
           threadBanner={threadBanner}
           listings={listings.own.map(listings.shown)}
           {...messages.screen}

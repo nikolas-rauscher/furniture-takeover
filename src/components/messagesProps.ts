@@ -20,6 +20,7 @@ export type MessagesProps = {
   listingId?: string;
   /** A thread tapped in the list gets its own address, so Back returns to the list. */
   onThreadOpened?: (key: string) => void;
+  onThreadClosed?: () => void;
   listing?: Product;
   listings: Product[];
   onOpenListing: (id: string) => void;

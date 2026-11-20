@@ -322,13 +322,6 @@ function chfPrices(text: string): number[] {
     .filter((price) => Number.isFinite(price) && price >= 0 && price <= 10_000);
 }
 
-export const priceProposalSchema = z
-  .object({
-    price: z.number().finite().positive().max(10_000).multipleOf(0.01),
-    sourceIds: z.array(z.string().min(1).max(160)).min(2).max(4),
-  })
-  .strict();
-
 const NOT_AN_ASKING_PRICE =
   /\b(?:sold|retail|original price|originally|new price|previous price|starting (?:bid|price)|start(?:ing)? at|auction start|startpreis|startgebot|neupreis|verkauft|vendu|prix neuf|mise à prix)\b/i;
 /** A cost beside the item's price: "Shipping: CHF 9", or Ricardo's "Retrait par l'acheteur à 1012 Lausanne, CHF 0.00". */
@@ -369,73 +362,103 @@ export function askingPriceOf(source: AgentRunSource): AskingPrice {
   return { price: first.price, quote };
 }
 
-function comparableQuote(source: AgentRunSource) {
+const NEW_OFFER =
+  /\b(?:brand new|factory sealed|new (?:item|stock)|condition[: ]+new|(?:article|produit|[ée]tat)\s*:?\s*neu[fv]e?|(?:zustand\s*:?\s*neu|fabrikneu|neuware|originalverpackt))\b/i;
+const USED_OFFER =
+  /\b(?:used|second[ -]?hand|pre[ -]?owned|d['’]occasion|gebraucht(?:e[rmns]?)?|seconda mano|usat[oa])\b/i;
+
+type ComparableOffer = {
+  source: AgentRunSource;
+  price: number;
+  quote: string;
+  used: boolean;
+  url: string;
+  words: Set<string>;
+};
+
+function comparableOffer(source: AgentRunSource): ComparableOffer | undefined {
+  const text = `${source.title} ${source.snippet}`;
+  if (NEW_OFFER.test(text)) return;
   const asking = askingPriceOf(source);
-  if ("rejection" in asking) fail(asking.rejection);
-  return asking;
-}
-
-export function proposePrice(
-  input: z.infer<typeof priceProposalSchema>,
-  sources: AgentRunSource[],
-  offerSourceIds: Set<string>,
-  id: string,
-): AgentListingPatchEvent {
-  const { price, sourceIds } = priceProposalSchema.parse(input);
-  if (new Set(sourceIds).size !== sourceIds.length)
-    fail("Choose distinct comparable offers.");
-
-  const prices: number[] = [];
-  const evidence = sourceIds.map((sourceId) => {
-    const source = sources.find((item) => item.id === sourceId);
-    if (!source || !offerSourceIds.has(sourceId))
-      fail("Choose individual offers returned by this search.");
-    const comparable = comparableQuote(source);
-    prices.push(comparable.price);
-    return { kind: "source" as const, sourceId, quote: comparable.quote };
-  });
-  const low = Math.min(...prices);
-  const high = Math.max(...prices);
-  if (price < low || price > high)
-    fail("Suggest a price within the observed asking-price range.");
-  const citations = sourceIds.map((sourceId) => `[${sourceId}]`).join(" ");
+  if ("rejection" in asking) return;
+  const url = new URL(source.url);
   return {
-    type: "listing_patch",
-    id,
-    patch: { price },
-    requiresAcceptance: true,
-    evidence,
-    reason: `Suggested CHF ${price} based on ${prices.length} offers asking CHF ${low}–${high}. ${citations}`,
+    source,
+    ...asking,
+    used: USED_OFFER.test(text),
+    url: url.hostname + url.pathname.replace(/\/$/, ""),
+    words: new Set(
+      text
+        .toLowerCase()
+        .normalize("NFKD")
+        .replace(/\p{M}/gu, "")
+        .match(/[\p{L}\p{N}]+/gu),
+    ),
   };
 }
 
-/**
- * A proposal from this search's offers when the model asked for a price without one:
- * the lower middle of up to four fixed asking prices, so the price is one a student actually asks.
- */
+function sameOffer(a: ComparableOffer, b: ComparableOffer) {
+  if (a.url === b.url) return true;
+  if (a.price !== b.price || Math.min(a.words.size, b.words.size) < 6)
+    return false;
+  const shared = [...a.words].filter((word) => b.words.has(word)).length;
+  return shared / (a.words.size + b.words.size - shared) >= 0.8;
+}
+
+/** A gap above 3× separates price groups. Only a majority can anchor a price. */
+function typicalOffers(offers: ComparableOffer[]) {
+  const groups: ComparableOffer[][] = [];
+  for (const offer of [...offers].sort((a, b) => a.price - b.price)) {
+    const group = groups.at(-1);
+    if (group && offer.price <= group.at(-1)!.price * 3) group.push(offer);
+    else groups.push([offer]);
+  }
+  const typical = groups.find((group) => group.length > offers.length / 2);
+  return offers.filter((offer) => typical?.includes(offer)).slice(0, 4);
+}
+
+/** The median asking price of distinct comparable second-hand offers, in whole francs. */
 export function researchedProposal(
   sources: AgentRunSource[],
   offerSourceIds: Set<string>,
   id: string,
 ): AgentListingPatchEvent | undefined {
-  const comparable = sources
+  const candidates = sources
     .filter((source) => offerSourceIds.has(source.id))
-    .flatMap((source) => {
-      const asking = askingPriceOf(source);
-      return "price" in asking ? [{ id: source.id, price: asking.price }] : [];
-    })
-    .slice(0, 4);
-  if (comparable.length < 2) return undefined;
+    .map(comparableOffer)
+    .filter((offer) => offer !== undefined);
+  const used = candidates.filter((offer) => offer.used);
+  const unique: ComparableOffer[] = [];
+  for (const offer of used.length ? used : candidates) {
+    if (!unique.some((previous) => sameOffer(offer, previous)))
+      unique.push(offer);
+  }
+  const comparable = typicalOffers(unique);
+  if (comparable.length < (used.length ? 1 : 2)) return;
+
   const prices = comparable.map(({ price }) => price).sort((a, b) => a - b);
-  return proposePrice(
-    {
-      price: prices[Math.floor((prices.length - 1) / 2)],
-      sourceIds: comparable.map((offer) => offer.id),
-    },
-    sources,
-    offerSourceIds,
-    id,
+  const price = Math.round(
+    (prices[Math.floor((prices.length - 1) / 2)] +
+      prices[Math.floor(prices.length / 2)]) /
+      2,
   );
+  const citations = comparable.map(({ source }) => `[${source.id}]`).join(" ");
+  const basis =
+    prices.length === 1
+      ? "one used offer. Treat it as a starting point."
+      : `the median of ${prices.length} ${used.length ? "used " : ""}offers asking CHF ${prices[0]}–${prices.at(-1)}.`;
+  return {
+    type: "listing_patch",
+    id,
+    patch: { price },
+    requiresAcceptance: true,
+    evidence: comparable.map(({ source, quote }) => ({
+      kind: "source",
+      sourceId: source.id,
+      quote,
+    })),
+    reason: `Suggested CHF ${price} based on ${basis} ${citations}`,
+  };
 }
 
 function latestSellerPrice(request: AgentRunRequest): number | null {

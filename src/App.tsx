@@ -29,6 +29,7 @@ import { useThreadRequests } from "./hooks/useThreadRequests";
 import { useInboxDeals } from "./hooks/useInboxDeals";
 import { useSavedSearches } from "./hooks/useSavedSearches";
 import { useMyListings } from "./hooks/useMyListings";
+import { useCatalogRefresh } from "./hooks/useCatalogRefresh";
 import { usePakoStatus } from "./hooks/usePakoStatus";
 import { connectionNotice } from "./shell/connectionNotice";
 import AppHeader from "./shell/AppHeader";
@@ -215,6 +216,12 @@ export default function App({
     openSaved: () => openDestination("favorites"),
   });
   const selected = catalog.listings.find((item) => item.id === selectedId);
+  const listingPageSettled = useCatalogRefresh({
+    refresh: database.refresh,
+    view,
+    savedOpen: view === "account" && accountTab === "favorites",
+    missingListingId: view === "detail" && !selected ? selectedId : null,
+  });
   const deals = useInboxDeals({
     messages,
     own,
@@ -645,7 +652,7 @@ export default function App({
                   cards={cards}
                   catalog={{
                     listings: catalog.listings,
-                    settled: listingsSettled,
+                    settled: listingsSettled && listingPageSettled,
                     render: productCard,
                   }}
                   availabilityPanel={

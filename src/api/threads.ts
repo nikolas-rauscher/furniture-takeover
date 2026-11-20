@@ -57,7 +57,7 @@ function newestMessages(messages: readonly ThreadMessage[]) {
     if (kept.length === THREAD_TURN_MESSAGES) break;
     if (characters + message.text.length > THREAD_TURN_CHARS) break;
     characters += message.text.length;
-    kept.unshift(message);
+    kept.unshift({ ...message, at: new Date(message.at).toISOString() });
   }
   return kept;
 }
