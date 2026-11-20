@@ -1,0 +1,94 @@
+import { useId, useState } from "react";
+import { ChevronDown } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+import { useTourText } from "../i18n/TourLanguage";
+import { formatDay } from "../i18n/tourText";
+import StudyShell from "../study/StudyShell";
+import { V3_MINUTES } from "./v3Script";
+
+/** What is saved, in short, with the rest behind "More". */
+function SaveCard({
+  contact,
+  deleteBy,
+}: {
+  contact: string;
+  deleteBy: string;
+}) {
+  const text = useTourText();
+  const { start } = text.v3;
+  const [open, setOpen] = useState(false);
+  const moreId = useId();
+  return (
+    <section
+      className="tour-card tour-consent"
+      aria-labelledby={`${moreId}-title`}
+    >
+      <h2 id={`${moreId}-title`} className="tour-card-title">
+        {start.saveTitle}
+      </h2>
+      <p>{start.save(formatDay(deleteBy, text))}</p>
+      <button
+        type="button"
+        className="tour-more"
+        aria-expanded={open}
+        aria-controls={moreId}
+        onClick={() => setOpen(!open)}
+      >
+        {start.more}
+        <ChevronDown
+          size={16}
+          aria-hidden="true"
+          data-open={open || undefined}
+        />
+      </button>
+      <div id={moreId} hidden={!open}>
+        <p>{start.moreText}</p>
+        <p>
+          {start.questions}{" "}
+          <a className="tour-link" href={`mailto:${contact}`}>
+            {contact}
+          </a>
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/** One screen: Pako's invitation with the honest duration, and the consent card. */
+export default function V3Start({
+  contact,
+  deleteBy,
+  onAgree,
+  onShowPitch,
+}: {
+  contact: string;
+  deleteBy: string;
+  onAgree: () => void;
+  onShowPitch: () => void;
+}) {
+  const { start } = useTourText().v3;
+  const bubble = start.bubble(V3_MINUTES);
+  return (
+    <StudyShell
+      stepKey="start"
+      label={bubble}
+      layout="guide"
+      mood="wave"
+      bubble={{ id: "start", text: bubble }}
+      direction={0}
+      languageSwitch
+      footer={
+        <>
+          <Button className="button primary large" onClick={onAgree}>
+            {start.go}
+          </Button>
+          <Button className="button quiet large" onClick={onShowPitch}>
+            {start.demo}
+          </Button>
+        </>
+      }
+    >
+      <SaveCard contact={contact} deleteBy={deleteBy} />
+    </StudyShell>
+  );
+}

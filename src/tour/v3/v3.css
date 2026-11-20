@@ -1,0 +1,368 @@
+/* Survey version 3: section strip, in-app tasks, forms and the end. */
+
+.tour-study .ob-footer:empty {
+  display: none;
+}
+.tour-footer-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+.tour-footer-row .button {
+  flex: 1 1 160px;
+  justify-content: center;
+}
+
+.tour-card-title {
+  margin-bottom: 6px;
+  font-size: var(--type-item);
+  font-weight: 700;
+}
+.tour-more {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--blue);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+.tour-more svg {
+  transition: rotate 200ms var(--ease-out);
+}
+.tour-more svg[data-open] {
+  rotate: 180deg;
+}
+.tour-more:focus-visible,
+.tour-link-button:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.tour-consent [hidden] {
+  display: none;
+}
+
+/* The section strip: open parts are bars, finished parts close into boxes. */
+.tour-strip {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.tour-strip-parts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tour-strip-part {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  height: 12px;
+  border-radius: 999px;
+  background: #e7e7e1;
+}
+.tour-strip-part[data-state="current"] {
+  background: linear-gradient(90deg, var(--blue) 40%, #e7e7e1 40%);
+}
+.tour-strip-part[data-state="done"] {
+  flex: 0 0 24px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--kraft);
+  box-shadow: inset 0 -3px 0 var(--kraft-shade);
+}
+.tour-strip-box {
+  display: grid;
+  place-items: center;
+  color: var(--kraft-deep);
+}
+.tour-strip-name {
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 650;
+  line-height: 1;
+}
+
+.tour-disclosure {
+  min-height: 1.5em;
+  color: var(--blue-dark);
+  font-weight: 650;
+}
+.tour-disclosure:empty {
+  min-height: 0;
+}
+
+.tour-quote {
+  background: var(--sky);
+  border-color: #cdd7f6;
+  box-shadow: 0 4px 0 #b9c6f0;
+}
+.tour-quote blockquote {
+  margin: 0;
+  font-size: var(--type-item);
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+/* Inside the app: the desk listings and the practice chat. */
+.tour-inworld {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-stage);
+  background: var(--canvas);
+}
+.tour-inworld-bar {
+  font-size: var(--type-label);
+  font-weight: 700;
+}
+
+.tour-chat-listing {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.tour-chat-thumb {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background:
+    linear-gradient(var(--surface), var(--surface)) center 40% / 70% 10%
+      no-repeat,
+    var(--sand);
+}
+.tour-chat-listing-title {
+  font-weight: 700;
+}
+.tour-chat-listing-detail {
+  color: var(--muted);
+  font-size: var(--type-support);
+}
+.tour-chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tour-chat-log:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+.tour-chat-row {
+  display: flex;
+}
+.tour-chat-row[data-from="you"] {
+  justify-content: flex-end;
+}
+.tour-chat-bubble {
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: 18px 18px 18px 6px;
+  background: var(--surface);
+  border: 2px solid var(--card-line);
+  line-height: 1.45;
+}
+.tour-chat-row[data-from="you"] .tour-chat-bubble {
+  border-radius: 18px 18px 6px 18px;
+  border-color: var(--blue);
+  background: var(--blue);
+  color: var(--on-primary);
+}
+.tour-chat-row[data-from="pako"] .tour-chat-bubble {
+  border-color: var(--kraft-light);
+  background: var(--butter);
+}
+.tour-chat-typing,
+.tour-chat-note {
+  color: var(--muted);
+  font-size: var(--type-support);
+  font-style: italic;
+}
+.tour-chat-chips {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.tour-chat-chips .button {
+  justify-content: center;
+  min-height: 48px;
+}
+.tour-draft-actions-equal {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.tour-draft-actions-equal .button {
+  grid-column: auto;
+  padding-inline: 8px;
+}
+@media (max-width: 340px) {
+  .tour-draft-actions-equal {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tour-link-button {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+.tour-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tour-confirm .tour-card-title:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.tour-about {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.tour-about-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tour-row-title {
+  font-size: var(--type-label);
+  font-weight: 700;
+}
+
+/* The pilot form: native fields, chips for choices, errors under their field. */
+.tour-pilot {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.tour-fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.tour-chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+.tour-chips .tour-tick {
+  padding: 8px 12px;
+}
+.tour-error {
+  color: var(--danger);
+  font-size: var(--type-support);
+  font-weight: 650;
+}
+.tour-form-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tour-form-actions .button.primary {
+  justify-content: center;
+  width: 100%;
+}
+.tour-form-actions .button.quiet {
+  align-self: center;
+}
+
+/* The end: results as bars with counts, and the share block. */
+.tour-v3-end {
+  align-items: stretch;
+  text-align: left;
+}
+.tour-v3-end > .ob-title {
+  text-align: center;
+}
+.tour-v3-end > .button.quiet {
+  align-self: center;
+}
+.tour-results,
+.tour-share {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tour-bars ul {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.tour-bar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 10px;
+  font-size: var(--type-support);
+}
+.tour-bar-track {
+  grid-column: 1 / -1;
+  height: 10px;
+  border-radius: 999px;
+  background: #e7e7e1;
+  overflow: hidden;
+}
+.tour-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--muted);
+}
+.tour-bar-count {
+  grid-row: 1;
+  grid-column: 2;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.tour-share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tour-share-actions .button {
+  flex: 1 1 140px;
+  justify-content: center;
+  min-height: 48px;
+}
+.tour-qr {
+  align-self: center;
+  width: min(220px, 70vw);
+  height: auto;
+  border-radius: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-more svg {
+    transition: none;
+  }
+}

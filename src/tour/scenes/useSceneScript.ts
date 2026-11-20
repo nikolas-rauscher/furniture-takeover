@@ -172,6 +172,7 @@ export function useSceneScript<State>(
           ? (x) => setSlider(slider, sliderValueAt(slider, x))
           : undefined,
       }).finally(() => setCue(null));
+      report({ kind: "moment", moment: key, by: turn.by });
       if (turn.by === "scene") return touchItself(beat, key);
       setTouch({ x: turn.x, y: turn.y, key });
       if (beat.tap) control.click();

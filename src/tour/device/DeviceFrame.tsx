@@ -49,11 +49,12 @@ function useFit() {
 }
 
 /** Passes the scene's mood, clock, camera and end to the page, and the page's replays to the scene. */
+type SceneListeners = Pick<DeviceFrameProps, "onMood" | "onDone" | "onMoment">;
+
 function useSceneLink(
   frame: RefObject<HTMLIFrameElement | null>,
   replay: number,
-  onMood: ((mood: PakoMood) => void) | undefined,
-  onDone: (() => void) | undefined,
+  { onMood, onDone, onMoment }: SceneListeners,
 ) {
   const [sceneTime, setSceneTime] = useState<Date>();
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -63,11 +64,12 @@ function useSceneLink(
       if (message?.kind === "mood") onMood?.(message.mood);
       if (message?.kind === "clock") setSceneTime(new Date(message.time));
       if (message?.kind === "camera") setCameraOpen(message.open);
+      if (message?.kind === "moment") onMoment?.(message.moment, message.by);
       if (message?.kind === "done") onDone?.();
     };
     window.addEventListener("message", listen);
     return () => window.removeEventListener("message", listen);
-  }, [frame, onMood, onDone]);
+  }, [frame, onMood, onDone, onMoment]);
   const played = useRef(replay);
   useEffect(() => {
     if (played.current === replay) return;
@@ -87,6 +89,8 @@ export type DeviceFrameProps = {
   replay?: number;
   onMood?: (mood: PakoMood) => void;
   onDone?: () => void;
+  /** Each key moment, with whether the visitor tapped it. */
+  onMoment?: (moment: number, by: "visitor" | "scene") => void;
 };
 
 /** A phone playing one of the app's scenes, scaled as a whole to fit its slot. */
@@ -96,10 +100,15 @@ export default function DeviceFrame({
   replay = 0,
   onMood,
   onDone,
+  onMoment,
 }: DeviceFrameProps) {
   const { slot, fit } = useFit();
   const frame = useRef<HTMLIFrameElement>(null);
-  const { sceneTime, cameraOpen } = useSceneLink(frame, replay, onMood, onDone);
+  const { sceneTime, cameraOpen } = useSceneLink(frame, replay, {
+    onMood,
+    onDone,
+    onMoment,
+  });
   return (
     <div
       ref={slot}

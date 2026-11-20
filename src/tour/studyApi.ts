@@ -3,10 +3,17 @@ import {
   studyAnswerSchema,
   studyConfigSchema,
   studyContactSchema,
+  studyEventsSchema,
+  studyPilotSchema,
+  studyResultsSchema,
   studyStartSchema,
+  studyWithdrawalSchema,
   type StudyAnswer,
   type StudyConfig,
   type StudyContact,
+  type StudyEvents,
+  type StudyPilot,
+  type StudyResults,
   type StudyStart,
 } from "../../shared/study.ts";
 
@@ -52,4 +59,34 @@ export function sendContact(contact: StudyContact) {
     studyContactSchema.parse(contact),
     "send the email address",
   );
+}
+
+export function saveEvents(events: StudyEvents) {
+  return post(
+    STUDY_ROUTES.events,
+    studyEventsSchema.parse(events),
+    `save events ${events.events[0].seq} to ${events.events.at(-1)?.seq}`,
+  );
+}
+
+export function sendPilot(pilot: StudyPilot) {
+  return post(
+    STUDY_ROUTES.pilot,
+    studyPilotSchema.parse(pilot),
+    "send the pilot sign-up",
+  );
+}
+
+export function withdrawSession(session: string) {
+  return post(
+    STUDY_ROUTES.withdrawals,
+    studyWithdrawalSchema.parse({ session }),
+    "remove the answers",
+  );
+}
+
+export async function readResults(): Promise<StudyResults> {
+  const response = await fetch(STUDY_ROUTES.results);
+  if (!response.ok) throw await failure(response, "read the results");
+  return studyResultsSchema.parse(await response.json());
 }

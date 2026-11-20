@@ -5,9 +5,12 @@ import { lookInAddress } from "./tourLook";
 import Study from "./study/Study";
 import StudyNotice from "./study/StudyNotice";
 import { readStudyConfig } from "./studyApi";
+import { finishedBefore, loadV3 } from "./v3/v3Progress";
+import V3Study from "./v3/V3Study";
 import "../components/onboarding/onboarding.css";
 import "../components/onboarding/onboarding-shell.css";
 import "./tour.css";
+import "./v3/v3.css";
 
 type ConfigState =
   | { status: "loading" }
@@ -16,8 +19,12 @@ type ConfigState =
 
 const SOURCE = studyStartSchema.shape.source;
 
-function readTag() {
-  return new URLSearchParams(window.location.search).get("s");
+function readAddress() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    tag: params.get("s"),
+    survey: params.get("v") === "1" ? "v1" : "v3",
+  };
 }
 
 function useStudyConfig() {
@@ -42,9 +49,12 @@ function useStudyConfig() {
   return { state, retry };
 }
 
-/** Without a tag the page is the pitch; with one it is the study, if the study is open. */
+/**
+ * Without a tag the page is the pitch; with one it is the survey, if the survey is open:
+ * version 3 by default, version 1 with `&v=1`.
+ */
 export default function TourPage() {
-  const [tag] = useState(readTag);
+  const [{ tag, survey }] = useState(readAddress);
   const [look] = useState(() => lookInAddress(window.location.search));
   const [pitch, setPitch] = useState(tag === null);
   const { state, retry } = useStudyConfig();
@@ -71,6 +81,18 @@ export default function TourPage() {
     );
   if (!state.config.open)
     return <StudyNotice kind="closed" onShowPitch={showPitch} />;
+  if (survey === "v3") {
+    if (finishedBefore() && !loadV3(source.data))
+      return <StudyNotice kind="done-before" onShowPitch={showPitch} />;
+    return (
+      <V3Study
+        source={source.data}
+        contact={state.config.contact}
+        deleteBy={state.config.deleteBy}
+        onShowPitch={showPitch}
+      />
+    );
+  }
   return (
     <Study
       source={source.data}

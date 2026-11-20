@@ -1,0 +1,174 @@
+import type { StudyEventKind } from "../../../shared/study.ts";
+import type { TourScene } from "../device/sceneMessages.ts";
+import { shuffleOptions, type RandomSource } from "../optionOrder.ts";
+import { isShown, neighbourStep } from "../stepConditions.ts";
+import type { V3Answer, V3Progress } from "./v3Progress.ts";
+import {
+  DRAFT_DAY_STEP,
+  DRAFT_DAYS,
+  sceneStepId,
+  TOUR_SCENES_ORDER,
+  V3_SECTIONS,
+  V3_STEPS,
+  type V3Section,
+  type V3Step,
+} from "./v3Script.ts";
+
+/** The contract's limit for the time on one step. */
+const MAX_STEP_MS = 60 * 60 * 1000;
+
+type AnswerSheet = V3Progress["answers"];
+
+/** The scenes in the order the participant picked: their first choice, then the rest. */
+function sceneOrder(answers: AnswerSheet): readonly TourScene[] {
+  const picked = answers["scene-pick"]?.chosen[0];
+  const first = TOUR_SCENES_ORDER.find((scene) => scene === picked);
+  if (!first) return TOUR_SCENES_ORDER;
+  return [first, ...TOUR_SCENES_ORDER.filter((scene) => scene !== first)];
+}
+
+/** The steps this participant sees, given their answers so far. */
+export function visibleV3Steps(answers: AnswerSheet): V3Step[] {
+  const shown = V3_STEPS.filter((step) => isShown(step, answers));
+  const scenes = sceneOrder(answers).map(sceneStepId);
+  const firstScene = shown.findIndex((step) => step.kind === "scene");
+  if (firstScene === -1) return shown;
+  const byId = (id: string) => shown.find((step) => step.id === id);
+  const ordered = scenes.map((id) => {
+    const step = byId(id);
+    if (!step) throw new Error(`The tour has no step ${id}.`);
+    return step;
+  });
+  const rest = shown.filter((step) => step.kind !== "scene");
+  return [...rest.slice(0, firstScene), ...ordered, ...rest.slice(firstScene)];
+}
+
+export function v3StepById(id: string): V3Step {
+  const step = V3_STEPS.find((candidate) => candidate.id === id);
+  if (!step) throw new Error(`Survey v3 has no step ${id}.`);
+  return step;
+}
+
+export const nextV3 = (answers: AnswerSheet, id: string) =>
+  neighbourStep(visibleV3Steps(answers), id, 1);
+export const previousV3 = (answers: AnswerSheet, id: string) =>
+  neighbourStep(visibleV3Steps(answers), id, -1);
+
+/**
+ * Back is offered except where it would undo what the participant has seen: before
+ * the first question, once the draft is revealed, and once the core is saved.
+ */
+export function canGoBack(steps: readonly V3Step[], step: V3Step): boolean {
+  const index = steps.findIndex((candidate) => candidate.id === step.id);
+  const firstAfterCore = steps.findIndex(
+    (candidate) => candidate.kind === "about",
+  );
+  const blocked =
+    step.kind === "reveal" || step.kind === "saved" || step.kind === "end";
+  return index > 0 && !blocked && index !== firstAfterCore;
+}
+
+/** Option ids with the ones that stay below marked, as the shuffle needs them. */
+function shuffledIds(
+  ids: readonly string[],
+  fixedLast: number,
+  random: RandomSource,
+) {
+  const marked = ids.map((id, index) => ({
+    id,
+    last: index >= ids.length - fixedLast,
+  }));
+  return shuffleOptions(marked, random).map((option) => option.id);
+}
+
+/** Which options a step shuffles, and the answer id their order is stored under. */
+type Shuffle = { key: string; ids: readonly string[]; fixedLast: number };
+
+function shuffleOf(step: V3Step): Shuffle | null {
+  if (step.kind === "choice" && step.shuffle)
+    return { key: step.id, ids: step.options, fixedLast: step.fixedLast };
+  if (step.kind === "desk")
+    return { key: step.id, ids: step.options, fixedLast: 1 };
+  if (step.kind === "draft")
+    return { key: DRAFT_DAY_STEP, ids: DRAFT_DAYS, fixedLast: 0 };
+  return null;
+}
+
+/** A shuffled step draws its order the first time it is shown and keeps it. */
+export function withV3Order(
+  progress: V3Progress,
+  step: V3Step,
+  random: RandomSource = Math.random,
+): V3Progress {
+  const shuffle = shuffleOf(step);
+  if (!shuffle || progress.orders[shuffle.key]) return progress;
+  const order = shuffledIds(shuffle.ids, shuffle.fixedLast, random);
+  return { ...progress, orders: { ...progress.orders, [shuffle.key]: order } };
+}
+
+/**
+ * The answer as stored. The first answer's options stay; time adds up over every visit,
+ * and a tab left open longer than the contract allows counts as its limit.
+ */
+export function recordV3Answer(
+  given: { chosen: string[]; text: string; firstChosen?: string[] },
+  shown: string[],
+  earlier: V3Answer | undefined,
+  visitMs: number,
+): V3Answer {
+  const elapsed = (earlier?.elapsedMs ?? 0) + Math.round(visitMs);
+  return {
+    chosen: given.chosen,
+    firstChosen: earlier?.firstChosen ?? given.firstChosen ?? given.chosen,
+    shown,
+    text: given.text.trim(),
+    elapsedMs: Math.min(elapsed, MAX_STEP_MS),
+  };
+}
+
+/** How a stored answer was reached: first given, given again differently, or left out. */
+export function answerEvent(
+  answer: V3Answer,
+  earlier: V3Answer | undefined,
+): StudyEventKind {
+  if (answer.chosen.length === 0 && answer.text === "") return "skipped";
+  if (!earlier) return "answered";
+  const same =
+    earlier.text === answer.text &&
+    earlier.chosen.join() === answer.chosen.join();
+  return same ? "answered" : "changed";
+}
+
+/** Adds an event at the end of the record, unless the participant withdrew. */
+export function withEvent(
+  progress: V3Progress,
+  kind: StudyEventKind,
+  step: string | null = null,
+  detail: string | null = null,
+  at: Date = new Date(),
+): V3Progress {
+  if (progress.withdrawn) return progress;
+  const event = {
+    seq: progress.events.length,
+    kind,
+    step,
+    detail,
+    at: at.toISOString(),
+  };
+  return { ...progress, events: [...progress.events, event] };
+}
+
+export type SectionState = "done" | "current" | "next";
+
+/** Each section's state on this step; after the core every section is done. */
+export function sectionStates(step: V3Step): Record<V3Section, SectionState> {
+  const current = step.section
+    ? V3_SECTIONS.indexOf(step.section)
+    : V3_SECTIONS.length;
+  return Object.fromEntries(
+    V3_SECTIONS.map((section, index) => [
+      section,
+      index < current ? "done" : index === current ? "current" : "next",
+    ]),
+  ) as Record<V3Section, SectionState>;
+}
