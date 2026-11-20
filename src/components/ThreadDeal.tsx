@@ -159,9 +159,11 @@ function dealMoment(
     return {
       phase: "deal_cancelled",
       by:
-        (deal.outcome.kind === "listing_reopened" || deal.outcome.kind === "pickup_expired")
-          ? "listing"
-          : deal.outcome.by === role
+        deal.outcome.kind === "pickup_expired"
+          ? "unconfirmed"
+          : deal.outcome.kind === "listing_reopened"
+            ? "listing"
+            : deal.outcome.by === role
             ? "me"
             : "them",
     };

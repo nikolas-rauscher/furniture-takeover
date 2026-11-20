@@ -16,7 +16,8 @@ export default function SavedNote({
   reservedForYou: boolean;
   onFindSimilar: () => void;
 }) {
-  const gone = item.status === "sold" || (item.status === "reserved" && !reservedForYou);
+  const gone =
+    item.status === "sold" || (item.status === "reserved" && !reservedForYou);
   if (gone)
     return (
       <div className="saved-note" data-kind="gone">

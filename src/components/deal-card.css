@@ -533,6 +533,16 @@ button.deal-strip:hover {
 .deal-strip-detail {
   color: var(--muted);
 }
+/* A closed deal has room to say why in full: its words wrap beside the action. */
+.thread-deal[data-tone="closed"] .deal-strip-words {
+  white-space: normal;
+}
+.thread-deal[data-tone="closed"] .deal-strip-detail {
+  display: block;
+}
+.thread-deal[data-tone="closed"] .deal-strip-detail > [aria-hidden] {
+  display: none;
+}
 .deal-strip-status {
   flex: none;
   padding: 2px 9px;

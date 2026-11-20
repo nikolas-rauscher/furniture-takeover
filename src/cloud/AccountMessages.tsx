@@ -570,6 +570,7 @@ export default function AccountMessages({
     const dealNote = threadDealNote(
       threadDealState,
       c.seller_id === userId ? "seller" : "buyer",
+      now,
     );
     if (threadDealState?.status === "agreed") return dealNote;
     if (c.buyer_id === userId && item && item.status !== "active")

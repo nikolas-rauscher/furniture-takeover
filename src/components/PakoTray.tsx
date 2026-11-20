@@ -401,9 +401,10 @@ export default function PakoTray({
   else if (moment.phase === "deal_cancelled" && role === "buyer")
     actions = (
       <div className="thread-tray-actions">
+        {/* The deal strip keeps the main action, such as a new offer; Pako's way on stays quieter. */}
         <Button
           animateIcon
-          className="button primary small"
+          className="button secondary small"
           onClick={onFindSimilar}
         >
           <Search size={16} aria-hidden="true" />

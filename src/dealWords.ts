@@ -382,18 +382,22 @@ export function agreedWords(
       };
 }
 
-/** The deal on a thread card in the inbox: "Offer · CHF 40", "Agreed · Thu 18:00". */
+/** The deal on a thread card in the inbox: "Offer · CHF 40", "Agreed · Thu 18:00", "Did the pickup happen?". */
 export function threadDealNote(
   deal: Deal | null | undefined,
   role: DealRole,
+  now: Date,
 ): string | undefined {
   if (!deal) return undefined;
   if (deal.status === "agreed" && deal.agreed) {
+    const check = pickupDay(deal, role, now)?.pickupCheck;
+    if (check) return check.expired ? RELEASED_STRIP.lead : "Did the pickup happen?";
     const { pickupAt } = deal.agreed.terms;
     return pickupAt ? `Agreed · ${shortPickup(pickupAt)}` : "Agreed";
   }
   if (deal.status === "completed")
     return completedWords(role, deal.agreed?.terms ?? null);
+  if (deal.outcome?.kind === "pickup_expired") return RELEASED_STRIP.lead;
   if (deal.status === "cancelled") return "Deal cancelled";
   const { proposal } = deal;
   if (!proposal) return undefined;
@@ -465,7 +469,7 @@ export function eventChip(event: DealEvent): string {
     case "listing_reopened":
       return "Listing available again · deal ended";
     case "completed":
-      return "Sold ✓";
+      return "Shipped ✓ · deal completed";
     case "pickup_check_due":
       return "Pako asked: did the pickup happen?";
     case "pickup_expired":

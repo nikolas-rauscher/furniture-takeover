@@ -225,16 +225,24 @@ test("pickup chips say today and tomorrow, then the weekday, then the date", () 
 });
 
 test("a thread card names its deal in a few words", () => {
+  const NOW = new Date("2026-11-19T13:05:00.000Z");
   const offer = deal({ proposal: { by: "seller", terms, messageId: "m1" } });
-  assert.equal(threadDealNote(offer, "buyer"), "Offer · CHF 40");
-  assert.equal(threadDealNote(offer, "seller"), "Your offer · CHF 40");
+  assert.equal(threadDealNote(offer, "buyer", NOW), "Offer · CHF 40");
+  assert.equal(threadDealNote(offer, "seller", NOW), "Your offer · CHF 40");
   assert.equal(
-    threadDealNote(deal({ status: "agreed", agreed: { terms, at: "2026-11-19T13:00:00.000Z" } }), "buyer"),
+    threadDealNote(deal({ status: "agreed", agreed: { terms, at: "2026-11-19T13:00:00.000Z" } }), "buyer", NOW),
     "Agreed · Fri 18:00",
   );
-  assert.equal(threadDealNote(deal({ status: "cancelled" }), "buyer"), "Deal cancelled");
-  assert.equal(threadDealNote(deal(), "buyer"), undefined);
-  assert.equal(threadDealNote(null, "buyer"), undefined);
+  assert.equal(threadDealNote(deal({ status: "cancelled" }), "buyer", NOW), "Deal cancelled");
+  assert.equal(threadDealNote(deal(), "buyer", NOW), undefined);
+  assert.equal(threadDealNote(null, "buyer", NOW), undefined);
+  const booked = deal({ status: "agreed", agreed: { terms, at: "2026-11-19T13:00:00.000Z" } });
+  const after = (hours: number) => new Date(Date.parse(terms.pickupAt!) + hours * 3_600_000);
+  assert.equal(threadDealNote(booked, "seller", after(25)), "Did the pickup happen?");
+  assert.equal(
+    threadDealNote(deal({ status: "cancelled", outcome: { kind: "pickup_expired", by: null, at: "2026-11-22T17:00:00.000Z" } }), "buyer", NOW),
+    "Reservation released",
+  );
 });
 
 test("away from its thread a deal reads as its strip, and a thread without an offer has none", () => {

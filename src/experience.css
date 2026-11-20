@@ -82,7 +82,7 @@
 /* New matches turn the count into a coral "2 new". */
 .app-header .nav-count[data-new] {
   background: var(--coral);
-  color: var(--on-primary);
+  color: var(--ink);
 }
 .header-actions {
   gap: 12px;

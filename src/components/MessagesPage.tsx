@@ -527,7 +527,7 @@ function DemoMessagesPage({
     }
   }
   const threadNote = (item: SellerConversation) => {
-    const dealNote = threadDealNote(item.deal, "buyer");
+    const dealNote = threadDealNote(item.deal, "buyer", now);
     if (item.deal?.status === "agreed") return dealNote;
     const status = productFor(item.listingId)?.status;
     if (status && status !== "active") return GONE_NOTES[status];

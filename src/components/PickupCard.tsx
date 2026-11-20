@@ -89,7 +89,7 @@ function CheckHead({
         <span>
           {check.expired
             ? `No answer by ${formatPickup(check.expiresAt)}`
-            : `Booked for ${formatPickup(day.terms.pickupAt!)} · answer by ${formatPickup(check.expiresAt)}`}
+            : `Booked for ${formatPickup(day.terms.pickupAt!)}`}
         </span>
       </p>
     </div>
