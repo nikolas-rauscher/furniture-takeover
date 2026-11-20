@@ -23,7 +23,34 @@ import PhotoBubble from "./PhotoBubble";
 import type { ListingDraft } from "../listingDraft";
 
 type Props = {
-  listing: ReturnType<typeof useListingConversation>;
+  listing: Pick<
+    ReturnType<typeof useListingConversation>,
+    | "state"
+    | "running"
+    | "input"
+    | "setInput"
+    | "queue"
+    | "activeQuestion"
+    | "answeredBefore"
+    | "askingOwnQuestion"
+    | "tapError"
+    | "priceReviews"
+    | "appliedIds"
+    | "undoneIds"
+    | "notices"
+    | "accept"
+    | "undo"
+    | "undoAnswer"
+    | "send"
+    | "retry"
+    | "cancel"
+    | "resetConversation"
+    | "choose"
+    | "choosePrice"
+    | "choosePickupDate"
+    | "skip"
+    | "decideLater"
+  >;
   draft: ListingDraft;
   /** Pako still reads the photos, before his first run of the listing starts. */
   starting: boolean;

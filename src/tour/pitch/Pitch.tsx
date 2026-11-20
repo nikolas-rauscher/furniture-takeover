@@ -2,7 +2,6 @@ import { MotionConfig } from "motion/react";
 import { useState } from "react";
 import { ArrowRight, Banknote, GraduationCap, Send } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import AskDemo from "@/components/onboarding/AskDemo";
 import Guide from "@/components/onboarding/Guide";
 import Pako from "@/components/onboarding/Pako";
 import WelcomeBurst from "@/components/onboarding/WelcomeBurst";
@@ -10,8 +9,8 @@ import type { IntroIcon } from "@/components/onboarding/onboardingIcons";
 import type { PakoMood } from "@/components/onboarding/storyTypes";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { motionBehavior } from "../../uiMotion";
-import PhoneFrame from "../PhoneFrame";
-import { BUYER_ANSWERS, HERO_ANSWERS, SELLER_ANSWERS } from "../tourScenes";
+import DeviceFrame from "../device/DeviceFrame";
+import { SCENE_COPY } from "../sceneCopy";
 import PitchScene, { type PitchSceneProps } from "./PitchScene";
 
 /** Channel tag of the study link on this page, so its visitors can be told apart. */
@@ -28,8 +27,7 @@ const SECTIONS: PitchSceneProps[] = [
       "Write what you need in your own words, like a message to a friend.",
       "Pako checks student listings near you and shows what fits and what to check.",
     ],
-    act: "ask",
-    answers: BUYER_ANSWERS,
+    scene: "find",
   },
   {
     id: "sell",
@@ -38,8 +36,7 @@ const SECTIONS: PitchSceneProps[] = [
       "Start with a photo of the item.",
       "Pako drafts the listing and a price from similar offers, and you check it before you publish.",
     ],
-    act: "snap",
-    answers: SELLER_ANSWERS,
+    scene: "sell",
   },
   {
     id: "agree",
@@ -48,8 +45,7 @@ const SECTIONS: PitchSceneProps[] = [
       "Pako reads replies and suggests what to say. You choose what to send.",
       "A deal needs both students to confirm, and then the pickup is booked.",
     ],
-    act: "chat",
-    answers: BUYER_ANSWERS,
+    scene: "deal",
   },
 ];
 
@@ -77,21 +73,16 @@ function scrollToTour() {
     ?.scrollIntoView({ behavior: motionBehavior(), block: "start" });
 }
 
-/** The hero's search ends on the visitor's pick; nothing follows it. */
-const NOTHING_FOLLOWS = () => undefined;
-
 /** The search scene playing in a phone, with Pako beside it following the scene. */
 function HeroDevice() {
   const [mood, setMood] = useState<PakoMood>("wave");
   return (
     <div className="tour-hero-device">
-      <PhoneFrame label="Find, example screen">
-        <AskDemo
-          answers={HERO_ANSWERS}
-          onMood={setMood}
-          onDone={NOTHING_FOLLOWS}
-        />
-      </PhoneFrame>
+      <DeviceFrame
+        scene="find"
+        label={SCENE_COPY.find.label}
+        onMood={setMood}
+      />
       <Pako className="tour-hero-pako" mood={mood} size={148} />
     </div>
   );

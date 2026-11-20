@@ -1,7 +1,7 @@
-import { StrictMode } from "react";
+import { StrictMode, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { globalStylesReady } from "../globalStyles";
-import TourPage from "./TourPage";
+import { sceneInAddress } from "./device/sceneMessages";
 
 function pageRoot() {
   const root = document.getElementById("root");
@@ -15,12 +15,18 @@ function showLoadFailure(error: unknown): never {
   throw error;
 }
 
-globalStylesReady
-  .then(() =>
-    createRoot(pageRoot()).render(
-      <StrictMode>
-        <TourPage />
-      </StrictMode>,
-    ),
+/** The page itself, or one of the app scenes its phones show. */
+function loadPage(): Promise<ReactElement> {
+  const scene = sceneInAddress(window.location.search);
+  if (scene)
+    return import("./scenes/ScenePage").then(({ default: ScenePage }) => (
+      <ScenePage scene={scene} />
+    ));
+  return import("./TourPage").then(({ default: TourPage }) => <TourPage />);
+}
+
+Promise.all([loadPage(), globalStylesReady])
+  .then(([page]) =>
+    createRoot(pageRoot()).render(<StrictMode>{page}</StrictMode>),
   )
   .catch(showLoadFailure);

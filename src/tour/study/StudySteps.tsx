@@ -4,7 +4,6 @@ import { ArrowLeft } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import Confetti from "@/components/onboarding/Confetti";
 import type { GuideBubble } from "@/components/onboarding/Guide";
-import { actCopy } from "@/components/onboarding/onboardingContent";
 import type { PakoMood } from "@/components/onboarding/storyTypes";
 import { orderOptions } from "../optionOrder";
 import { CONTACT_KEY, saveJob } from "../studyJobs";
@@ -17,7 +16,7 @@ import {
   withOrder,
 } from "../studyFlow";
 import type { StudyProgress } from "../studyProgress";
-import { SELLER_ANSWERS } from "../tourScenes";
+import { SCENE_COPY } from "../sceneCopy";
 import {
   isQuestion,
   stepById,
@@ -62,8 +61,10 @@ function bubbleFor(
       return answer.chosen.length > 0
         ? { id: `${step.id}-explained`, text: step.explanation }
         : { id: step.id, text: step.prompt };
-    case "scene":
-      return { id: step.id, ...actCopy(step.act, SELLER_ANSWERS.intent) };
+    case "scene": {
+      const { title, text } = SCENE_COPY[step.scene];
+      return { id: step.id, title, text };
+    }
     case "end":
       return undefined;
   }

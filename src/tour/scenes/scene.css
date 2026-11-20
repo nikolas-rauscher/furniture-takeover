@@ -1,0 +1,37 @@
+/* A scene inside the tour's phone: the app's own page, played by a script. Nothing scrolls by hand. */
+html:has(body[inert]) {
+  overflow: hidden;
+  scrollbar-width: none;
+}
+
+/* The finger: a soft round mark that presses in and fades where it touched. */
+.tour-touch {
+  position: fixed;
+  z-index: 1000;
+  width: 46px;
+  height: 46px;
+  margin: -23px 0 0 -23px;
+  border-radius: 50%;
+  background: rgb(41 41 41 / 0.2);
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 0.65);
+  pointer-events: none;
+  animation: tour-touch 0.75s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes tour-touch {
+  0% {
+    opacity: 0;
+    scale: 1.35;
+  }
+  25% {
+    opacity: 1;
+    scale: 0.82;
+  }
+  55% {
+    opacity: 1;
+    scale: 0.9;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.15;
+  }
+}

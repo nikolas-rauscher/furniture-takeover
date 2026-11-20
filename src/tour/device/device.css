@@ -1,0 +1,179 @@
+/* A phone drawn in CSS: a metal edge, a thin dark bezel, the camera cut-out and the status bar.
+   It is built at full size (a 402 × 874 screen) and scaled as a whole to its slot. */
+.tour-device-slot {
+  position: relative;
+  flex: none;
+  aspect-ratio: 436 / 902;
+  height: var(--tour-device-height, 760px);
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+}
+.tour-device-slot[data-ready] {
+  opacity: 1;
+}
+.tour-device-slot[data-bare] {
+  aspect-ratio: auto;
+  width: 100%;
+  height: var(--tour-screen-height, 560px);
+}
+
+.tour-device,
+.tour-device-bare {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+}
+.tour-device {
+  width: 436px;
+  height: 902px;
+}
+
+.tour-device-edge {
+  position: absolute;
+  inset: 0 3px;
+  padding: 3px;
+  border-radius: 69px;
+  background: linear-gradient(
+    150deg,
+    #a3a5aa 0%,
+    #e2e3e6 14%,
+    #8b8d92 32%,
+    #c9cbcf 58%,
+    #75777c 82%,
+    #b9bbbf 100%
+  );
+  box-shadow:
+    inset 0 0 0 0.5px rgb(255 255 255 / 0.55),
+    inset 0 0 1.5px 1.5px rgb(0 0 0 / 0.18),
+    0 1px 2px rgb(24 28 40 / 0.12),
+    0 22px 44px -14px rgb(24 28 40 / 0.34),
+    0 56px 96px -32px rgb(24 28 40 / 0.32);
+}
+.tour-device-bezel {
+  height: 100%;
+  padding: 11px;
+  border-radius: 66px;
+  background: #0b0b0c;
+  box-shadow: inset 0 0 0 1px #262629;
+}
+.tour-device-screen {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 55px;
+  background: var(--background);
+}
+
+.tour-device-key {
+  position: absolute;
+  width: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #7c7e83, #cfd1d4 50%, #8a8c91);
+}
+.tour-device-key[data-key="action"] {
+  top: 178px;
+  left: 0;
+  height: 34px;
+}
+.tour-device-key[data-key="volume-up"] {
+  top: 246px;
+  left: 0;
+  height: 62px;
+}
+.tour-device-key[data-key="volume-down"] {
+  top: 322px;
+  left: 0;
+  height: 62px;
+}
+.tour-device-key[data-key="power"] {
+  top: 270px;
+  right: 0;
+  height: 100px;
+}
+/* The camera control sits almost flush with the frame. */
+.tour-device-key[data-key="camera"] {
+  top: 540px;
+  right: 1px;
+  width: 3px;
+  height: 58px;
+  opacity: 0.75;
+}
+
+.tour-device-camera {
+  position: absolute;
+  top: 11px;
+  left: 50%;
+  z-index: 2;
+  width: 125px;
+  height: 37px;
+  border-radius: 20px;
+  background: #000;
+  translate: -50% 0;
+}
+
+.tour-status-bar {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 125px 1fr;
+  align-items: center;
+  height: 59px;
+  color: #111;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+.tour-status-time {
+  justify-self: center;
+  padding-left: 14px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.tour-status-icons {
+  grid-column: 3;
+  display: flex;
+  justify-self: center;
+  align-items: center;
+  gap: 6px;
+  padding-right: 12px;
+  fill: currentColor;
+}
+
+.tour-device-app {
+  position: absolute;
+  top: 62px;
+  left: 0;
+  display: block;
+  border: 0;
+  background: var(--background);
+}
+/* The app ends above the home indicator, as it does above a phone's own safe area. */
+.tour-device-home {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  z-index: 2;
+  width: 140px;
+  height: 5px;
+  border-radius: 3px;
+  background: #111;
+  translate: -50% 0;
+  pointer-events: none;
+}
+
+/* Without the device: the screen alone, with rounded corners and a hairline. */
+.tour-device-bare {
+  width: 402px;
+  overflow: hidden;
+  border: 1px solid var(--card-line);
+  border-radius: 28px;
+  background: var(--background);
+}
+.tour-device-bare .tour-device-app {
+  position: static;
+}

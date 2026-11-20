@@ -101,6 +101,11 @@ export function restoreAccountSession() {
 export function setAccountScope(userId?: string) {
   scope = client ? (userId ?? "guest") : "";
 }
+/** Keeps a page's saved state apart from the app's, such as the tour's example scenes. */
+export function setStorageScope(name: string) {
+  if (client) throw new Error("An account page keeps its own storage scope.");
+  scope = name;
+}
 export function accountStorageKey(key: string) {
   return scope ? `${key}:account:${scope}` : key;
 }

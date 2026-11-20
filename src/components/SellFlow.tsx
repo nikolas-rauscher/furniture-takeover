@@ -247,7 +247,10 @@ type SellFlowProps = {
   busy: boolean;
   uploadError: string;
   /** Whether Pako can help right now, and why not. */
-  pako: PakoStatus;
+  pako: Pick<
+    PakoStatus,
+    "configured" | "absence" | "quota" | "quotaResets" | "refresh"
+  >;
   /** The student fills in the details themselves, in place of Pako's conversation. */
   manual: boolean;
   photoAnalysis: PhotoAnalysis;

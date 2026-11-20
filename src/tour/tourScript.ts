@@ -3,7 +3,7 @@
  * what the server stores, so they change only together with `STUDY_VERSION`.
  */
 
-import type { Act } from "../components/onboarding/onboardingContent.ts";
+import type { TourScene } from "./device/sceneMessages.ts";
 
 /** Raised whenever a question, an option or its wording changes. */
 export const STUDY_VERSION = "pilot-1";
@@ -78,7 +78,7 @@ export type StudyStep =
   | LineStep
   | DeskTaskStep
   | DraftTaskStep
-  | (BaseStep & { kind: "scene"; act: Act })
+  | (BaseStep & { kind: "scene"; scene: TourScene })
   | (BaseStep & { kind: "contact"; question: string })
   | (BaseStep & { kind: "end"; text: string });
 
@@ -251,9 +251,9 @@ export const STUDY_STEPS: StudyStep[] = [
     id: "tour-intro",
     text: "Now the short tour. This is how takeover works.",
   },
-  { kind: "scene", id: "tour-snap", act: "snap" },
-  { kind: "scene", id: "tour-chat", act: "chat" },
-  { kind: "scene", id: "tour-ask", act: "ask" },
+  { kind: "scene", id: "tour-snap", scene: "sell" },
+  { kind: "scene", id: "tour-chat", scene: "deal" },
+  { kind: "scene", id: "tour-ask", scene: "find" },
   {
     kind: "multiple",
     id: "would-use",

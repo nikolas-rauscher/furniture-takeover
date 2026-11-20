@@ -29,8 +29,11 @@ export default function HomeSearch({
   footnote,
   actions,
 }: {
-  search: SearchSession;
-  pako: PakoStatus;
+  search: Pick<
+    SearchSession,
+    "query" | "setQuery" | "field" | "photo" | "searchByPhoto" | "running"
+  >;
+  pako: Pick<PakoStatus, "configured" | "quotaExhausted">;
   guide: ReturnType<typeof homeGuide>;
   suggestions: ReturnType<typeof useAgentAssist>;
   location: string;

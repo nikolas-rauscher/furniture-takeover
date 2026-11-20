@@ -28,7 +28,7 @@ export default function HomeFeed({
   cloud,
   webSearch,
 }: {
-  negotiations: ReturnType<typeof useNegotiations>;
+  negotiations: Pick<ReturnType<typeof useNegotiations>, "error" | "items">;
   offers: OfferCards;
   deals: InboxDeals["homeDeals"];
   onOpenDeal: (item: InboxDeal, message?: string) => void;

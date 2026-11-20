@@ -1,6 +1,7 @@
 import type { PakoMood } from "@/components/onboarding/storyTypes";
-import PhoneFrame from "../PhoneFrame";
-import { SELLER_ANSWERS, TOUR_SCENES } from "../tourScenes";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import DeviceFrame, { type DeviceFrameProps } from "../device/DeviceFrame";
+import { SCENE_COPY } from "../sceneCopy";
 import type { StepAnswer, StudyOption, StudyStep } from "../tourScript";
 import ChoiceStep from "./ChoiceStep";
 import ContactStep, { type ContactDraft } from "./ContactStep";
@@ -18,6 +19,12 @@ export type StepContentProps = {
   onMood: (mood: PakoMood) => void;
   onSceneDone: () => void;
 };
+
+/** On phones the study shows the app's screen alone; wider screens show it in the phone. */
+function StudyScene(props: DeviceFrameProps) {
+  const phone = useMediaQuery("(max-width: 760px)");
+  return <DeviceFrame {...props} bare={phone} />;
+}
 
 /** The body of one study step; Pako's line and the buttons live in the shell. */
 export default function StepContent({
@@ -65,18 +72,16 @@ export default function StepContent({
       );
     case "draft-check":
       return <DraftTask step={step} answer={answer} onChange={onAnswer} />;
-    case "scene": {
-      const Scene = TOUR_SCENES[step.act];
+    case "scene":
       return (
-        <PhoneFrame label="Example screen of takeover">
-          <Scene
-            answers={SELLER_ANSWERS}
-            onMood={onMood}
-            onDone={onSceneDone}
-          />
-        </PhoneFrame>
+        <StudyScene
+          key={step.id}
+          label={SCENE_COPY[step.scene].label}
+          scene={step.scene}
+          onMood={onMood}
+          onDone={onSceneDone}
+        />
       );
-    }
     case "contact":
       return <ContactStep draft={contact} onChange={onContact} />;
     case "line":

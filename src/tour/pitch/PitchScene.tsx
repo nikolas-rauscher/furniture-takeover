@@ -2,13 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { RotateCcw } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import Pako from "@/components/onboarding/Pako";
-import type {
-  Act,
-  CompleteAnswers,
-} from "@/components/onboarding/onboardingContent";
 import type { PakoMood } from "@/components/onboarding/storyTypes";
-import PhoneFrame from "../PhoneFrame";
-import { TOUR_SCENES } from "../tourScenes";
+import DeviceFrame from "../device/DeviceFrame";
+import type { TourScene } from "../device/sceneMessages";
+import { SCENE_COPY } from "../sceneCopy";
 
 /** Share of the frame that has to be on screen before its scene starts. */
 const START_VISIBLE = 0.3;
@@ -36,8 +33,7 @@ export type PitchSceneProps = {
   id: string;
   title: string;
   sentences: [string, string];
-  act: Act;
-  answers: CompleteAnswers;
+  scene: TourScene;
 };
 
 /** One part of the tour: two sentences beside the scene that shows them. */
@@ -45,20 +41,18 @@ export default function PitchScene({
   id,
   title,
   sentences,
-  act,
-  answers,
+  scene,
 }: PitchSceneProps) {
   const { element, seen } = useSeen<HTMLDivElement>();
-  const [round, setRound] = useState(0);
+  const [replays, setReplays] = useState(0);
   const [mood, setMood] = useState<PakoMood>("idle");
   const [finished, setFinished] = useState(false);
-  const Scene = TOUR_SCENES[act];
   const titleId = `${id}-title`;
 
   function replay() {
     setFinished(false);
     setMood("idle");
-    setRound((current) => current + 1);
+    setReplays((current) => current + 1);
   }
 
   return (
@@ -92,18 +86,17 @@ export default function PitchScene({
         className="tour-section-frame"
         data-seen={seen || undefined}
       >
-        <PhoneFrame label={`${title}, example screen`}>
-          {seen ? (
-            <Scene
-              key={round}
-              answers={answers}
-              onMood={setMood}
-              onDone={() => setFinished(true)}
-            />
-          ) : (
-            <div className="tour-phone-waiting" />
-          )}
-        </PhoneFrame>
+        {seen ? (
+          <DeviceFrame
+            scene={scene}
+            label={SCENE_COPY[scene].label}
+            replay={replays}
+            onMood={setMood}
+            onDone={() => setFinished(true)}
+          />
+        ) : (
+          <div className="tour-device-slot" />
+        )}
       </div>
     </section>
   );
