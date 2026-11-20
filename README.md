@@ -83,7 +83,7 @@ Names and purpose only. Never commit values. The full list with comments is in [
 | `npm run dev` | Frontend and API with reload |
 | `npm run typecheck` | TypeScript check |
 | `npm test` | All tests. No API keys needed |
-| `npm run check` | Typecheck and tests |
+| `npm run check` | Typecheck, lint, format check, import cycles, unused code and tests |
 | `npm run build` | Typecheck and build into `dist/` |
 | `npm start` | Serve the built app and the API on port 8787 |
 | `npm run format` | Format the source |
@@ -98,6 +98,48 @@ CI runs `check` and `build` on Node 22 and 24.
 - **Migrations** (`supabase/migrations/`). The database schema, row-level security and the deal, pickup and admin functions for account mode.
 
 Keep provider keys on the server. The browser never receives them.
+
+## Project structure
+
+Tests sit next to the module they test (`name.test.ts`).
+
+```text
+server/
+  index.ts, config.ts         composition root and environment
+  http.ts, http-*.ts          server, headers, auth throttling, body reading, error responses
+  routes/                     one handler per API area: agent, listings, messages, admin, account keys, location, quota
+  runtime.ts, run-*.ts        search and sell agent loop: tool policy per step, stream events, result and errors
+  agent-tools.ts              the agent's tools; agent-instructions.ts and agent-skills.ts are its prompts
+  action-schemas.ts           what a proposed listing or search change may contain
+  action-evidence.ts          whether a change quotes the student or a source
+  listing-action.ts           checks a proposed listing change field by field
+  preferences-action.ts       checks a proposed search filter change
+  price-research.ts           asking prices from marketplace offers, and the median proposal
+  thread-agent.ts             Pako reading a conversation (model call, repair step)
+  thread-proposal.ts          what that reading may propose
+  thread-grounding.ts         checks the reading's facts and agreement against the conversation
+  thread-options.ts           checks each suggested reply; thread-draft-wording.ts its wording
+  thread-conversation.ts      which amounts, times and places the conversation allows
+  thread-safe-text.ts         no contact details, payment methods or stray placeholders
+  service.ts, deepseek.ts     listing assist and photo grouping
+  web-search.ts               Brave Search with a shared queue and offer filtering
+  database.ts, messages.ts    local demo store: listings, conversations, deals (SQLite)
+  demo-admin.ts               admin actions for the local demo
+  cloud.ts, account-keys.ts   account mode: Supabase sessions, daily limits, personal API keys
+  testing/, runtime-tests/    fake model provider and scripted agent runs
+
+shared/                       zod contracts and rules, no Node or browser APIs
+  deal*.ts, pickupTime.ts     deal and pickup state machine, its wording and errors
+  dealScenarios.ts            scenario table run against TypeScript, SQLite and SQL
+  runs.ts, threadTurn.ts      agent request, stream and reading contracts
+  actions.ts, negotiation*.ts proposed changes and negotiation terms
+  marketplace.ts              search parsing and listing types
+  admin.ts                    admin action contract
+  demoListings.ts, demoSellers.ts   the demo catalogue
+
+scripts/                      dev, setup and test runners, demo seed rendering
+supabase/                     migrations and the rendered demo seed
+```
 
 ## Documentation
 

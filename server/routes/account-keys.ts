@@ -1,6 +1,6 @@
 import { unavailableKeyStatus } from "../account-keys.ts";
 import { AgentError } from "../errors.ts";
-import { isJson, readBody, send } from "../http-io.ts";
+import { requireJson, readBody, send } from "../http-io.ts";
 import type { RouteHandler, ServerOptions } from "./types.ts";
 
 export function createAccountKeysRoute({
@@ -38,8 +38,7 @@ export function createAccountKeysRoute({
       );
       return;
     }
-    if (!isJson(request))
-      throw new AgentError(415, "UNSUPPORTED_MEDIA_TYPE", "Send JSON.");
+    requireJson(request);
     if (Number(request.headers["content-length"] ?? 0) > 2048)
       throw new AgentError(
         413,

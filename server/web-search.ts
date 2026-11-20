@@ -152,14 +152,11 @@ function retryDelay(response: Response): number {
 
 export function validSourceUrl(value: unknown): string | null {
   if (typeof value !== "string" || value.length > 2000) return null;
-  try {
-    const url = new URL(value);
-    if (url.protocol !== "https:" || url.username || url.password) return null;
-    url.hash = "";
-    return url.href;
-  } catch {
+  const url = URL.parse(value);
+  if (!url || url.protocol !== "https:" || url.username || url.password)
     return null;
-  }
+  url.hash = "";
+  return url.href;
 }
 
 function plain(value: unknown, limit: number): string {

@@ -60,11 +60,12 @@ export async function reversePickupLocation(
         .filter(Boolean)
         .join(", "),
     };
-  } catch {
+  } catch (cause) {
     throw new AgentError(
       503,
       "LOCATION_LOOKUP_FAILED",
       "Could not find your area. Enter a pickup location instead.",
+      { cause },
     );
   }
 }

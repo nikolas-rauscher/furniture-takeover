@@ -1,6 +1,6 @@
 import type { MessagesStore } from "../messages.ts";
 import { AgentError } from "../errors.ts";
-import { isJson, readBody, send } from "../http-io.ts";
+import { requireJson, readBody, send } from "../http-io.ts";
 import type { RouteHandler, RouteTable } from "./types.ts";
 
 export function createMessageRoutes(messages?: MessagesStore): RouteTable {
@@ -36,8 +36,7 @@ export function createMessageRoutes(messages?: MessagesStore): RouteTable {
         ),
       });
     } else if (request.method === "POST") {
-      if (!isJson(request))
-        throw new AgentError(415, "UNSUPPORTED_MEDIA_TYPE", "Send JSON.");
+      requireJson(request);
       const body = await readBody(request, actionRoute ? 65536 : undefined);
       const result =
         pathname === "/api/messages/pickup"

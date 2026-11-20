@@ -41,12 +41,13 @@ const inputSchema = z
         )
           return true;
         if (image.length > 4096) return false;
-        try {
-          const url = new URL(image);
-          return url.protocol === "https:" && !url.username && !url.password;
-        } catch {
-          return false;
-        }
+        const url = URL.parse(image);
+        return (
+          url !== null &&
+          url.protocol === "https:" &&
+          !url.username &&
+          !url.password
+        );
       })
       .optional(),
     text: z.string().trim().min(1).max(4000),
@@ -55,6 +56,26 @@ const inputSchema = z
   })
   .strict();
 /** Local prototype workspace only. Seller mode is a preview, not authentication. */
+/** A rejected deal or pickup input, named by the deal error of the field that broke. */
+function invalidInput(error: z.ZodError, fallback: string, message: string) {
+  const path = error.issues[0].path;
+  const key =
+    path[0] === "text"
+      ? "message_invalid"
+      : path.includes("terms")
+        ? "terms_invalid"
+        : path.includes("minutes")
+          ? "minutes_invalid"
+          : path.includes("reason")
+            ? "reason_invalid"
+            : path[0] === "action"
+              ? "action_invalid"
+              : undefined;
+  return key
+    ? new AgentError(400, key, dealErrorMessage(key))
+    : new AgentError(400, fallback, message);
+}
+
 export function createMessagesStore(path: string, clock = () => new Date()) {
   const db = new DatabaseSync(path);
   initializeDemoModeration(db);
@@ -356,26 +377,12 @@ export function createMessagesStore(path: string, clock = () => new Date()) {
     list,
     act(workspace: string, input: unknown) {
       const parsed = dealInput.safeParse(input);
-      if (!parsed.success) {
-        const path = parsed.error.issues[0].path;
-        const key =
-          path[0] === "text"
-            ? "message_invalid"
-            : path.includes("terms")
-              ? "terms_invalid"
-              : path.includes("reason")
-                ? "reason_invalid"
-                : path[0] === "action"
-                  ? "action_invalid"
-                  : "INVALID_DEAL";
-        throw new AgentError(
-          400,
-          key,
-          key === "INVALID_DEAL"
-            ? "Check the offer and try again."
-            : dealErrorMessage(key),
+      if (!parsed.success)
+        throw invalidInput(
+          parsed.error,
+          "INVALID_DEAL",
+          "Check the offer and try again.",
         );
-      }
       const { conversation, statusChange } = append(
         workspace,
         parsed.data,
@@ -385,28 +392,12 @@ export function createMessagesStore(path: string, clock = () => new Date()) {
     },
     actPickup(workspace: string, input: unknown) {
       const parsed = pickupInput.safeParse(input);
-      if (!parsed.success) {
-        const path = parsed.error.issues[0].path;
-        const key =
-          path[0] === "text"
-            ? "message_invalid"
-            : path.includes("terms")
-              ? "terms_invalid"
-              : path.includes("minutes")
-                ? "minutes_invalid"
-                : path.includes("reason")
-                  ? "reason_invalid"
-                  : path[0] === "action"
-                    ? "action_invalid"
-                    : "INVALID_PICKUP";
-        throw new AgentError(
-          400,
-          key,
-          key === "INVALID_PICKUP"
-            ? "Check the pickup details and try again."
-            : dealErrorMessage(key),
+      if (!parsed.success)
+        throw invalidInput(
+          parsed.error,
+          "INVALID_PICKUP",
+          "Check the pickup details and try again.",
         );
-      }
       const { conversation, pickupStatusChange } = append(
         workspace,
         parsed.data,

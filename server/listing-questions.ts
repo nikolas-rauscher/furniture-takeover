@@ -3,7 +3,7 @@ import type {
   AgentListingQuestion,
   AgentQuestionEvent,
 } from "../shared/actions.ts";
-import type { questionSchema } from "./actions.ts";
+import type { questionSchema } from "./action-schemas.ts";
 
 type Question = z.infer<typeof questionSchema>;
 

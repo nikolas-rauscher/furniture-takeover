@@ -273,8 +273,8 @@ export async function groupPhotosWithDeepSeek(
     );
     try {
       return validatePhotoGroups(JSON.parse(message), images.length);
-    } catch {
-      throw invalidOutput();
+    } catch (cause) {
+      throw invalidOutput(cause);
     }
   } catch (error) {
     throw providerError(error, signal, timeout);

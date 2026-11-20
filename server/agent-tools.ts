@@ -19,14 +19,13 @@ import type {
   AgentRunSource,
 } from "../shared/runs.ts";
 import {
-  askingPriceOf,
-  questionSchema,
-  researchedProposal,
   listingUpdateSchema,
   preferencesUpdateSchema,
-  prepareListingAction,
-  preferencesAction,
-} from "./actions.ts";
+  questionSchema,
+} from "./action-schemas.ts";
+import { prepareListingAction } from "./listing-action.ts";
+import { preferencesAction } from "./preferences-action.ts";
+import { askingPriceOf, researchedProposal } from "./price-research.ts";
 
 /** An offer as the model reads it: askingPrice is the one CHF price propose_price can quote, or null. */
 function withAskingPrice(source: AgentRunSource) {

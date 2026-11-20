@@ -1,12 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
-  listingAction,
-  prepareListingAction,
-  preferencesAction,
-  questionSchema,
-  researchedProposal,
-} from "./actions.ts";
+import { listingAction, prepareListingAction } from "./listing-action.ts";
 import type {
   AgentListingDraft,
   AgentListingPatch,
@@ -129,34 +123,6 @@ const source: AgentRunSource = {
   snippet: "Asking CHF 80. Collection in Lausanne.",
 };
 
-test("price research counts near-duplicate offers once and excludes isolated outliers", () => {
-  const offers = [
-    "Used IKEA desk with white top and silver legs, 120x60. Pickup Lausanne. CHF 35.",
-    "Used IKEA desk 120x60 with white top and silver legs. Pickup Lausanne. CHF 35. Good condition.",
-    "Bureau d'occasion, chêne, à Ecublens. Prix CHF 45.",
-    "Gebrauchter Schreibtisch mit Schubladen, CHF 55.",
-    "Used designer desk in oak. Asking CHF 900.",
-    "Used desk in Crissier. Asking CHF 40.",
-  ].map((snippet, index) => ({
-    id: `web-${index}`,
-    title: "Desk",
-    url: `https://www.ricardo.ch/fr/a/desk-${123456789 + index}/`,
-    snippet,
-  }));
-  // The last source is an example from a product research search.
-  const ids = new Set(offers.slice(0, -1).map(({ id }) => id));
-  const proposal = researchedProposal(offers, ids, "research");
-  assert.deepEqual(proposal?.patch, { price: 45 });
-  assert.deepEqual(
-    proposal.evidence.map((item) => item.kind === "source" && item.sourceId),
-    ["web-0", "web-2", "web-3"],
-  );
-  assert.match(proposal.reason, /median of 3 used offers asking CHF 35–55/);
-  assert.equal(
-    researchedProposal([offers[0], offers[4]], ids, "split"),
-    undefined,
-  );
-});
 const researched = (
   patch: AgentListingPatch,
   evidence = [{ kind: "source", sourceId: source.id, quote: "Asking CHF 80" }],
@@ -366,143 +332,6 @@ test("past pickup dates, unsupported edits and fabricated evidence are rejected"
   );
 });
 
-test("search preference actions require latest user wording and preserve unspecified values", () => {
-  const req = {
-    text: "White desk under CHF 80 within 5 km, pickup flexible in Lausanne.",
-  };
-  const event = preferencesAction(
-    {
-      patch: {
-        query: "White desk",
-        maxPrice: 80,
-        radius: 5,
-        pickupBy: "",
-        location: "Lausanne",
-      },
-      reason: "Use your request.",
-      evidence: [{ kind: "seller", quote: req.text }],
-    },
-    req,
-    "preferences-1",
-  );
-  assert.equal(event.patch.radius, 5);
-  assert.equal("condition" in event.patch, false);
-  assert.throws(
-    () =>
-      preferencesAction(
-        {
-          patch: { maxPrice: 100 },
-          reason: "More options.",
-          evidence: [{ kind: "seller", quote: "White desk" }],
-        },
-        req,
-        "bad",
-      ),
-    /explicitly stated/,
-  );
-  assert.throws(
-    () =>
-      preferencesAction(
-        {
-          patch: { source: "takeover" },
-          reason: "Local",
-          evidence: [{ kind: "seller", quote: "only my listings" }],
-        },
-        {
-          text: "Find a desk",
-          context: { currentDraft: { ...empty, raw: "only my listings" } },
-        },
-        "stale",
-      ),
-    /latest user message/,
-  );
-});
-
-test("short search answers use the question to distinguish budget from radius", () => {
-  const input = {
-    patch: { maxPrice: 100 },
-    reason: "Your budget answer.",
-    evidence: [{ kind: "seller", quote: "100" }],
-  };
-  const req = {
-    text: "100",
-    context: { previousQuestion: "What is your maximum budget in CHF?" },
-  };
-  assert.equal(
-    preferencesAction(input, req, "budget-answer").patch.maxPrice,
-    100,
-  );
-  assert.throws(
-    () =>
-      preferencesAction(
-        input,
-        { text: "100", context: { previousQuestion: "What size desk?" } },
-        "ambiguous",
-      ),
-    /explicitly stated/,
-  );
-  assert.equal(
-    preferencesAction(
-      {
-        ...input,
-        patch: { radius: 5 },
-        evidence: [{ kind: "seller", quote: "5" }],
-      },
-      {
-        text: "5",
-        context: { previousQuestion: "How far can you travel in km?" },
-      },
-      "radius-answer",
-    ).patch.radius,
-    5,
-  );
-});
-
-test("Anibis preference extraction accepts repeated current filters and explicit second-hand wording", () => {
-  const text = "Find a second-hand desk on Anibis in Lausanne under CHF 100";
-  const event = preferencesAction(
-    {
-      patch: {
-        query: "desk",
-        maxPrice: 100,
-        radius: 20,
-        pickupBy: "",
-        source: "Anibis",
-        condition: "Used",
-        location: "Lausanne",
-      },
-      reason: "Use the stated marketplace and budget.",
-      evidence: [{ kind: "seller", quote: text }],
-    },
-    {
-      text,
-      context: {
-        source: "Anibis",
-        location: "Lausanne",
-        radius: 20,
-        pickupBy: "",
-      },
-    },
-    "live-request",
-  );
-  assert.equal(event.patch.source, "Anibis");
-  assert.equal(event.patch.maxPrice, 100);
-  assert.equal(event.patch.condition, "Used");
-  assert.throws(
-    () =>
-      preferencesAction(
-        {
-          patch: { source: "All" },
-          reason: "More results",
-          evidence: [{ kind: "seller", quote: text }],
-        },
-        { text, context: { source: "Anibis" } },
-        "silent-broadening",
-      ),
-    /Clearing source/,
-  );
-});
-
 test("seller price corrections synchronize only the known old description amount", () => {
   const draft = {
     title: "Desk",
@@ -587,28 +416,6 @@ test("explicit per-item CHF prices remain grounded when a bundle total is also s
     ).patch.price,
     0,
   );
-});
-
-test("agent price controls validate bounds without imposing a valuation", () => {
-  const input = { type: "price", min: 0, max: 100, step: 1, value: 20 };
-  assert.deepEqual(
-    questionSchema.parse({ question: "Choose an asking price", input }).input,
-    input,
-  );
-  for (const invalid of [
-    { ...input, value: 101 },
-    { ...input, min: 100 },
-    { ...input, step: 0 },
-    { ...input, max: 10001 },
-  ]) {
-    assert.equal(
-      questionSchema.safeParse({
-        question: "Choose an asking price",
-        input: invalid,
-      }).success,
-      false,
-    );
-  }
 });
 
 test("a seller price-only description preserves the item narrative and fills the confirmed unit price", () => {

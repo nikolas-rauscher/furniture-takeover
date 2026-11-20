@@ -1,6 +1,6 @@
 import { DEFAULT_AGENT_CONCURRENCY } from "../config.ts";
 import { AgentError } from "../errors.ts";
-import { isJson, MAX_BODY_BYTES, readBody, send } from "../http-io.ts";
+import { requireJson, MAX_BODY_BYTES, readBody, send } from "../http-io.ts";
 import { validateThreadTurnRequest } from "../thread-agent.ts";
 import type { AgentService } from "../service.ts";
 import { spendMarketplaceAllowance, spendThreadAllowance } from "./quota.ts";
@@ -78,12 +78,7 @@ export function createAgentRoutes(
           "METHOD_NOT_ALLOWED",
           "Use POST for agent requests.",
         );
-      if (!isJson(request))
-        throw new AgentError(
-          415,
-          "UNSUPPORTED_MEDIA_TYPE",
-          "Send the request as application/json.",
-        );
+      requireJson(request);
       if (Number(request.headers["content-length"] ?? 0) > bodyLimit)
         throw new AgentError(
           413,

@@ -11,7 +11,7 @@ import {
   toolStep,
 } from "../testing/runtime.ts";
 import { validateRunRequest } from "../runtime.ts";
-import { questionSchema } from "../actions.ts";
+import { questionSchema } from "../action-schemas.ts";
 
 const search = () =>
   toolCall(

@@ -1,5 +1,5 @@
 import { AgentError } from "../errors.ts";
-import { isJson, readBody, send } from "../http-io.ts";
+import { requireJson, readBody, send } from "../http-io.ts";
 import { reversePickupLocation } from "../location.ts";
 import type { RouteHandler } from "./types.ts";
 
@@ -12,12 +12,7 @@ export function createLocationRoute(): RouteHandler {
         "METHOD_NOT_ALLOWED",
         "Use POST for location lookups.",
       );
-    if (!isJson(request))
-      throw new AgentError(
-        415,
-        "UNSUPPORTED_MEDIA_TYPE",
-        "Send the request as application/json.",
-      );
+    requireJson(request);
     const body = await readBody(request);
     if (typeof body !== "object" || body === null || Array.isArray(body))
       throw new AgentError(

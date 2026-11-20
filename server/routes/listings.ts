@@ -1,7 +1,7 @@
 import { adminFailure } from "../demo-admin.ts";
 import type { ListingsStore } from "../database.ts";
 import { AgentError } from "../errors.ts";
-import { isJson, MAX_BODY_BYTES, readBody, send } from "../http-io.ts";
+import { requireJson, MAX_BODY_BYTES, readBody, send } from "../http-io.ts";
 import type { RouteHandler, RouteTable } from "./types.ts";
 
 export function createListingRoutes(listings?: ListingsStore): RouteTable {
@@ -40,12 +40,7 @@ export function createListingRoutes(listings?: ListingsStore): RouteTable {
       send(response, 200, { listings: listings.seedDemo() });
       return;
     }
-    if (!isJson(request))
-      throw new AgentError(
-        415,
-        "UNSUPPORTED_MEDIA_TYPE",
-        "Send the request as application/json.",
-      );
+    requireJson(request);
     const body = await readBody(request);
     if (typeof body !== "object" || body === null || Array.isArray(body))
       throw new AgentError(

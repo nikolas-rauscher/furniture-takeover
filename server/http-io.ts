@@ -79,10 +79,20 @@ export function readBody(
   });
 }
 
-export function isJson(request: IncomingMessage): boolean {
+function isJson(request: IncomingMessage): boolean {
   return /^application\/json(?:\s*;|$)/i.test(
     request.headers["content-type"] ?? "",
   );
+}
+
+/** Rejects a body that is not declared as JSON. */
+export function requireJson(request: IncomingMessage) {
+  if (!isJson(request))
+    throw new AgentError(
+      415,
+      "UNSUPPORTED_MEDIA_TYPE",
+      "Send the request as application/json.",
+    );
 }
 
 /** What the server log keeps of a failure: its code and cause, never the request body. */
