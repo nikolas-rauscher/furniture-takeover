@@ -24,6 +24,13 @@ export type Beat<State> = {
   press?: string;
   /** A finger drags a slider through these values, as a CSS selector and the values. */
   slide?: { selector: string; values: number[] };
+  /**
+   * A key moment: Pako's hint, such as "Tap Confirm sale". The scene waits for
+   * the visitor to tap or drag the beat's control, and does it itself if they don't.
+   */
+  cue?: string;
+  /** The element this beat's change brings: it scrolls into view and lights up briefly. */
+  show?: string;
   /** Pako's mood beside the phone from this beat on. */
   mood?: PakoMood;
   changes?: Change<State>[];

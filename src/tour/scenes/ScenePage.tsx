@@ -1,10 +1,11 @@
 import { MotionConfig } from "motion/react";
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import { setStorageScope } from "../../cloud/session";
-import { readCommand, report, type TourScene } from "../device/sceneMessages";
+import { readCommand, type TourScene } from "../device/sceneMessages";
 import DealScene from "./DealScene";
 import FindScene from "./FindScene";
 import SellScene from "./SellScene";
+import { keepScrollsInScene } from "./sceneScroll";
 import type { SceneProps } from "./sceneScript";
 import "./scene.css";
 
@@ -33,22 +34,29 @@ function fade(direction: "in" | "out") {
   ).finished;
 }
 
+keepScrollsInScene();
 // The scenes' saved state, such as celebrations already shown, stays apart from the app's.
 setStorageScope("tour-scene");
-// Nothing in a scene can be tapped or focused, sheets and menus outside its root included.
+// Nothing in a scene can be focused, sheets and menus outside its root included; key moments read the pointer by position.
 document.body.inert = true;
 
-/** Becomes true while any of the page is on the visitor's screen. */
-function useOnScreen() {
-  const [onScreen, setOnScreen] = useState(false);
+/**
+ * Whether the page is on the visitor's screen now, and whether it was shown
+ * since the last round ended. A page transition hides the page from the
+ * observer for a moment, so a round that started plays on to its end.
+ */
+function useShown() {
+  const onScreen = useRef(false);
+  const [shown, setShown] = useState(false);
   useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) =>
-      setOnScreen(entry.isIntersecting),
-    );
+    const observer = new IntersectionObserver(([entry]) => {
+      onScreen.current = entry.isIntersecting;
+      if (entry.isIntersecting) setShown(true);
+    });
     observer.observe(document.body);
     return () => observer.disconnect();
   }, []);
-  return onScreen;
+  return { onScreen, shown, setShown };
 }
 
 /** The page's replay starts the scene again at once. */
@@ -67,13 +75,13 @@ function useReplays(restart: () => void) {
 }
 
 /**
- * One app scene inside the tour's phone: it plays while on screen, holds its
- * end, fades out and starts over. Nothing in it can be tapped or focused.
+ * One app scene inside the tour's phone: it starts once on screen, holds its
+ * end, fades out and starts over, or waits off screen until it is seen again.
+ * Only its key moments answer the visitor's taps; nothing in it can be focused.
  */
 export default function ScenePage({ scene }: { scene: TourScene }) {
-  const onScreen = useOnScreen();
+  const { onScreen, shown, setShown } = useShown();
   const [round, setRound] = useState(0);
-  const reported = useRef(false);
   const ending = useRef<number>(undefined);
   const Scene = SCENES[scene];
 
@@ -90,18 +98,20 @@ export default function ScenePage({ scene }: { scene: TourScene }) {
   }, [round]);
 
   function end() {
-    if (!reported.current) report({ kind: "done" });
-    reported.current = true;
     const finished = round;
     ending.current = window.setTimeout(
-      () => void fade("out").then(() => startAfter(finished)),
+      () =>
+        void fade("out").then(() => {
+          if (!onScreen.current) setShown(false);
+          startAfter(finished);
+        }),
       END_HOLD_MS,
     );
   }
 
   return (
     <MotionConfig reducedMotion="user">
-      {onScreen && <Scene key={round} onEnd={end} />}
+      {shown && <Scene key={round} onEnd={end} />}
     </MotionConfig>
   );
 }

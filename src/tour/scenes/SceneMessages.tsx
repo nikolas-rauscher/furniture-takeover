@@ -6,6 +6,7 @@ import type { DealController } from "../../components/ThreadDeal";
 import {
   useMessagesState,
   type MessagesModel,
+  type ThreadRow,
 } from "../../components/messagesModel";
 import type { MessagesProps } from "../../components/messagesProps";
 import type { PakoTurnCache } from "../../pakoTurnCache";
@@ -40,6 +41,12 @@ const nextMessageId = () => `scene-message-${(sent += 1)}`;
 /** The example search named no price, so the offer card starts from Pako's own. */
 const NO_NAMED_PRICE = () => null;
 
+/** The inbox around the thread: its rows, and whether the thread is open over it. */
+export type SceneInbox = { open: boolean; rows: ThreadRow[] };
+
+/** The thread open from the start, as after a listing's "Draft offer". */
+export const OPEN_THREAD: SceneInbox = { open: true, rows: [] };
+
 type SceneThreadSetup = {
   thread: SceneThread;
   onThread: (thread: SceneThread) => void;
@@ -47,6 +54,9 @@ type SceneThreadSetup = {
   otherName: string;
   /** The scene's clock, which the pickup counts down on. */
   now: Date;
+  inbox: SceneInbox;
+  /** Pako is beside the thread; the scene wakes him when he has something to say. */
+  pakoAwake: boolean;
   /** Set once the listing's "Draft offer" was tapped: the offer card opens. */
   offerRequest?: number;
 };
@@ -61,6 +71,8 @@ function useSceneThread({
   role,
   otherName,
   now,
+  inbox,
+  pakoAwake,
   offerRequest,
 }: SceneThreadSetup): { app: MessagesProps; model: MessagesModel } {
   const state = useMessagesState({});
@@ -102,10 +114,10 @@ function useSceneThread({
     selected: thread.conversationId,
     draftKey: threadKey,
     role,
-    conversationOpen: true,
-    visible: true,
+    conversationOpen: inbox.open,
+    visible: inbox.open,
     now,
-    rows: [],
+    rows: inbox.rows,
     loading: false,
     empty: "none",
     thread: {
@@ -142,15 +154,17 @@ function useSceneThread({
     dealEnabled: true,
     nextBuyer: undefined,
     pako: {
-      thread: {
-        key: threadKey,
-        role,
-        listing,
-        messages,
-        loaded: true,
-        deal: threadDealSnapshot(thread.deal, role),
-        cache: NO_READINGS,
-      },
+      thread: pakoAwake
+        ? {
+            key: threadKey,
+            role,
+            listing,
+            messages,
+            loaded: true,
+            deal: threadDealSnapshot(thread.deal, role),
+            cache: NO_READINGS,
+          }
+        : null,
       canNudge: false,
       agreedWith: undefined,
     },

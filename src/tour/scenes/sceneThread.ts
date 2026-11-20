@@ -41,6 +41,24 @@ type Move<Action> = {
   messageId: string;
 };
 
+function structuredMessage(move: Move<unknown>): SceneMessage {
+  return {
+    id: move.messageId,
+    sender: move.actor,
+    text: move.text,
+    at: move.now.toISOString(),
+    structured: true,
+  };
+}
+
+/** A move's message alone, shown before its terms reach the deal card. */
+export function writeAhead(
+  thread: SceneThread,
+  move: Move<unknown>,
+): SceneThread {
+  return { ...thread, messages: [...thread.messages, structuredMessage(move)] };
+}
+
 /** The thread after one side's move, written as the message that carried it. */
 function recorded(
   thread: SceneThread,
@@ -55,16 +73,10 @@ function recorded(
       ...thread,
       listing: { ...thread.listing, status },
       deal: outcome.deal,
-      messages: [
-        ...thread.messages,
-        {
-          id: move.messageId,
-          sender: move.actor,
-          text: move.text,
-          at,
-          structured: true,
-        },
-      ],
+      // A message written ahead of its terms keeps its place.
+      messages: thread.messages.some(({ id }) => id === move.messageId)
+        ? thread.messages
+        : [...thread.messages, structuredMessage(move)],
       events: [
         ...thread.events,
         {

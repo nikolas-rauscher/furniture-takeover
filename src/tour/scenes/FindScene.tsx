@@ -36,9 +36,9 @@ import {
 } from "./findScript";
 import { stream, typing, type Beat, type SceneProps } from "./sceneScript";
 import { startThread, type SceneThread } from "./sceneThread";
-import TouchMark from "./TouchMark";
+import SceneMarks from "./SceneMarks";
 import { useSceneScript } from "./useSceneScript";
-import SceneMessages from "./SceneMessages";
+import SceneMessages, { OPEN_THREAD } from "./SceneMessages";
 
 type Page = "home" | "chat" | "listing" | "thread";
 
@@ -84,6 +84,7 @@ const BEATS: Beat<FindState>[] = [
       ...state,
       run: applyAgentRunEvent(state.run, event),
     })),
+    show: ".agent-product-slide:first-child",
   },
   {
     hold: 3200,
@@ -91,7 +92,13 @@ const BEATS: Beat<FindState>[] = [
     mood: "happy",
   },
   { hold: 2600, tap: ".listing-detail-offer", mood: "work" },
-  { hold: 4200, tap: '.offer-editor button[type="submit"]', mood: "cheer" },
+  {
+    hold: 3000,
+    tap: '.offer-editor button[type="submit"]',
+    cue: "Tap Send offer",
+    mood: "cheer",
+    show: ".thread-deal",
+  },
 ];
 
 const NO_PHOTO = {
@@ -299,6 +306,8 @@ function OfferThread({
       role="buyer"
       otherName={DESK.seller}
       now={new Date()}
+      inbox={OPEN_THREAD}
+      pakoAwake
       offerRequest={1}
     />
   );
@@ -311,7 +320,7 @@ const AREA_CRITERIA = { ...defaults, radius: 5 };
 
 /** Find: a request typed on Home, Pako's search, the desk's page and the offer card. */
 export default function FindScene({ onEnd }: SceneProps) {
-  const { state, setState, touch } = useSceneScript(initial, BEATS, onEnd);
+  const { state, setState, marks } = useSceneScript(initial, BEATS, onEnd);
   const go = (
     page: Page,
     change: (current: FindState) => FindState = unchanged,
@@ -373,7 +382,7 @@ export default function FindScene({ onEnd }: SceneProps) {
           />
         )}
       </AppScreen>
-      <TouchMark touch={touch} />
+      <SceneMarks {...marks} />
     </>
   );
 }

@@ -35,3 +35,103 @@ html:has(body[inert]) {
     scale: 1.15;
   }
 }
+
+/* A new element lights up for a moment, so the eye finds what changed. */
+.tour-glow {
+  position: fixed;
+  z-index: 999;
+  box-shadow:
+    0 0 0 2px var(--sun),
+    0 0 0 7px rgb(242 193 78 / 0.28);
+  pointer-events: none;
+  opacity: 0;
+  animation: tour-glow 1.6s ease-out;
+}
+@keyframes tour-glow {
+  12%,
+  60% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-glow {
+    opacity: 1;
+  }
+}
+
+/* A key moment: a ring pulses on the control, Pako's hint says what to do. */
+.tour-cue-ring {
+  position: fixed;
+  z-index: 1000;
+  width: 52px;
+  height: 52px;
+  margin: -26px 0 0 -26px;
+  border: 3px solid var(--blue);
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.25);
+  pointer-events: none;
+  animation: tour-cue-pulse 1.2s ease-in-out infinite;
+}
+@keyframes tour-cue-pulse {
+  0%,
+  100% {
+    scale: 0.8;
+    opacity: 0.95;
+  }
+  50% {
+    scale: 1.1;
+    opacity: 0.55;
+  }
+}
+.tour-cue {
+  position: fixed;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 6px;
+  border: 2px solid var(--card-line);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgb(41 41 41 / 0.16);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+  pointer-events: none;
+  animation: tour-cue-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.tour-cue svg {
+  flex: none;
+}
+@keyframes tour-cue-in {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+/* The visitor's own finger over a key moment's control. */
+html[data-over] {
+  cursor: pointer;
+}
+
+/* The Deal scene's clock jumped ahead: a label under the thread's header says to when. */
+.tour-time-skip {
+  position: fixed;
+  top: 124px;
+  left: 50%;
+  z-index: 998;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--surface);
+  font-size: 14px;
+  font-weight: 700;
+  translate: -50% 0;
+  pointer-events: none;
+  animation: tour-cue-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}

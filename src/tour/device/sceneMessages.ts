@@ -11,7 +11,7 @@ export type SceneReport =
   | { source: typeof SOURCE; kind: "clock"; time: string }
   /** The phone's camera covers the screen, status bar included. */
   | { source: typeof SOURCE; kind: "camera"; open: boolean }
-  /** The scene has played through once. */
+  /** The scene's last key moment has passed. */
   | { source: typeof SOURCE; kind: "done" };
 
 /** Messages the page sends to its scene. */

@@ -39,7 +39,7 @@ import {
   WRITING_EVENTS,
 } from "./sellScript";
 import SceneCamera, { type CameraStage } from "./SceneCamera";
-import TouchMark from "./TouchMark";
+import SceneMarks from "./SceneMarks";
 import { useSceneScript } from "./useSceneScript";
 
 type Page = "photo" | "writing" | "listings";
@@ -101,10 +101,11 @@ const BEATS: Beat<SellState>[] = [
     mood: "listen",
     changes: now((state) => ({ ...state, camera: "aiming" })),
   },
-  { hold: 2500, tap: ".tour-camera-shutter" },
+  { hold: 2100, tap: ".tour-camera-shutter", cue: "Take the photo" },
   {
-    hold: 1800,
+    hold: 1500,
     tap: ".tour-camera-use",
+    cue: "Tap Use photo",
     mood: "work",
     changes: [
       {
@@ -121,7 +122,12 @@ const BEATS: Beat<SellState>[] = [
       insight: { status: "ready", response: PHOTO_READING, note: "" },
     })),
   },
-  { hold: 2600, tap: ".sell-photo-footer button[type='submit']", mood: "work" },
+  {
+    hold: 2600,
+    tap: ".sell-photo-footer button[type='submit']",
+    cue: "Tap Write my listing",
+    mood: "work",
+  },
   {
     hold: 300,
     changes: stream(WRITING_EVENTS, listingGap, applyEvent),
@@ -131,13 +137,18 @@ const BEATS: Beat<SellState>[] = [
     tap: ".listing-tray-choices .listing-tray-choice:first-child",
     mood: "happy",
   },
-  { hold: 400, changes: stream(PRICE_EVENTS, listingGap, applyEvent) },
+  {
+    hold: 400,
+    changes: stream(PRICE_EVENTS, listingGap, applyEvent),
+    show: ".price-card",
+  },
   {
     hold: 2400,
     slide: {
       selector: ".price-slider-track",
       values: [36, 37, 38, 39, CHOSEN_PRICE],
     },
+    cue: "Drag the price",
   },
   { hold: 1100, tap: ".price-card-use", mood: "cheer" },
   { hold: 2200, tap: SAVE, mood: "love" },
@@ -277,7 +288,7 @@ function useCameraReport(open: boolean) {
 
 /** Sell: the photo taken with the phone's camera, Pako's reading of it, his questions, the price and Save on this device. */
 export default function SellScene({ onEnd }: SceneProps) {
-  const { state, setState, touch } = useSceneScript(initial, BEATS, onEnd);
+  const { state, setState, marks } = useSceneScript(initial, BEATS, onEnd);
   const go = (page: Page, change: (current: SellState) => SellState) =>
     transitionPage("nav-forward", () =>
       setState((current) => ({ ...change(current), page })),
@@ -376,7 +387,7 @@ export default function SellScene({ onEnd }: SceneProps) {
           />
         )}
       </AnimatePresence>
-      <TouchMark touch={touch} />
+      <SceneMarks {...marks} />
     </>
   );
 }
