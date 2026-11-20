@@ -1,6 +1,7 @@
 import { useId, useState, type ReactNode } from "react";
 import Modal from "../Modal";
 import { Button } from "../ui/button";
+import AdminDialogFooter from "./AdminDialogFooter";
 import { useAdminAction } from "./useAdminAction";
 
 /**
@@ -63,19 +64,11 @@ export default function ReasonDialog({
           placeholder="A short reason"
           onChange={(event) => setReason(event.target.value)}
         />
-        {action.refusal && (
-          <p id={refusalId} role="alert" className="admin-refusal">
-            {action.refusal}
-          </p>
-        )}
-        <div className="admin-reason-actions">
-          <Button
-            type="button"
-            className="button secondary"
-            onClick={() => setOpen(false)}
-          >
-            Cancel
-          </Button>
+        <AdminDialogFooter
+          refusal={action.refusal}
+          refusalId={refusalId}
+          onCancel={() => setOpen(false)}
+        >
           <Button
             type="submit"
             className={`button ${danger ? "danger" : "primary"}`}
@@ -83,7 +76,7 @@ export default function ReasonDialog({
           >
             {action.busy ? "Saving…" : confirmLabel}
           </Button>
-        </div>
+        </AdminDialogFooter>
       </form>
     </Modal>
   );

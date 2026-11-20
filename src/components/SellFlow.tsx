@@ -25,9 +25,9 @@ import {
   Pencil,
   Sparkles,
 } from "@/components/icons";
-import { TODAY, money, shortDate } from "../../shared/marketplace";
+import { money, shortDate } from "../../shared/marketplace";
 import { useFocused } from "../hooks/useFocused";
-import type { AgentQuota } from "../../shared/agent";
+import type { PakoStatus } from "../hooks/usePakoStatus";
 import Modal from "./Modal";
 import PhotoGallery from "./PhotoGallery";
 import SnapTarget from "./SnapTarget";
@@ -46,7 +46,6 @@ import {
   FILL_IN_ACTION,
   sellGuide,
   WRITE_ACTION,
-  type PakoAbsence,
 } from "../sellGuide";
 import ListingFields from "./ListingFields";
 import PhotoSplitQuestion from "./PhotoSplitQuestion";
@@ -206,36 +205,54 @@ function DescriptionPreview({ text }: { text: string }) {
   );
 }
 
+/** Pako's reading of the photos, and the student's answers to how he sorted them. */
+type PhotoAnalysis = {
+  /** The chosen photos are still being read in. */
+  reading: boolean;
+  /** What Pako made of the photos so far. */
+  insight: PhotoInsight;
+  /** Sorting the photos did not work, so they count as one item. */
+  sortFailed: boolean;
+  /** One listing per pile; `review` opens the piles to check first. */
+  onSeparate: (groups: PhotoGroup[], review: boolean) => void;
+  /** The photos show one thing after all. */
+  onKeepTogether: () => void;
+  /** Opens the photos as one pile each, for the student to sort when Pako could not. */
+  onSortYourself: () => void;
+};
+
+/** Help with the price beside the listing being written. */
+type PriceHelp = {
+  /** Prices of similar listings. */
+  insight: ReactNode;
+  /** Pako's suggested price while the listing has none of its own. */
+  suggested?: number;
+  /** Takes the student to Pako's price question, where the price is decided. */
+  onReview?: () => void;
+};
+
+/** Pako's side of writing the listing: his conversation, his tools, and whether he is at work. */
+type AgentPanel = {
+  conversation: ReactNode;
+  tools: ReactNode;
+  working: boolean;
+};
+
 type SellFlowProps = {
-  cloud?: boolean;
+  cloud: boolean;
   draft: ListingDraft;
   step: number;
   editing: boolean;
-  pickupMin?: string;
+  pickupMin: string;
   busy: boolean;
-  photoReading?: boolean;
   uploadError: string;
-  liveAgent: boolean;
-  /** Why Pako cannot help right now; absent while he can, or while that is still being checked. */
-  pakoAbsence?: PakoAbsence;
-  /** When Pako's allowance comes back. */
-  pakoBack?: string;
+  /** Whether Pako can help right now, and why not. */
+  pako: PakoStatus;
   /** The student fills in the details themselves, in place of Pako's conversation. */
   manual: boolean;
-  /** What Pako made of the photos so far. */
-  photoInsight: PhotoInsight;
-  /** Sorting the photos did not work, so they count as one item. */
-  sortFailed: boolean;
-  agentConversation?: ReactNode;
-  agentTools?: ReactNode;
-  agentWorking?: boolean;
-  /** Prices of similar listings for the one being written, beside its price. */
-  insight?: ReactNode;
-  /** Pako's suggested price while the listing has none of its own. */
-  suggestedPrice?: number;
-  /** Takes the student to Pako's price question, where the price is decided. */
-  onReviewPrice?: () => void;
-  quota?: AgentQuota;
+  photoAnalysis: PhotoAnalysis;
+  price: PriceHelp;
+  agent: AgentPanel;
   onAccount: () => void;
   onBack: () => void;
   onDraftChange: (changes: Partial<ListingDraft>) => void;
@@ -243,14 +260,6 @@ type SellFlowProps = {
   onCreateDraft: () => void;
   /** Goes on to the details without Pako. */
   onFillIn: () => void;
-  /** One listing per pile; `review` opens the piles to check first. */
-  onSeparate: (groups: PhotoGroup[], review: boolean) => void;
-  /** The photos show one thing after all. */
-  onKeepTogether: () => void;
-  /** Opens the photos as one pile each, for the student to sort when Pako could not. */
-  onSortYourself: () => void;
-  /** Checks again whether Pako's tools can be reached. */
-  onRetryPako: () => void;
   /** The student left the Details field, so what they wrote counts now. */
   onNotesDone: () => void;
   onPublish: (event: FormEvent<HTMLFormElement>) => void;
@@ -261,42 +270,39 @@ type SellFlowProps = {
 };
 
 export default function SellFlow({
-  cloud = false,
+  cloud,
   draft,
   step,
   editing,
-  pickupMin = TODAY,
-  insight,
-  suggestedPrice,
-  onReviewPrice,
+  pickupMin,
   busy,
-  photoReading = false,
   uploadError,
-  liveAgent,
-  pakoAbsence,
-  pakoBack,
+  pako,
   manual,
-  photoInsight,
-  sortFailed,
-  agentConversation,
-  agentTools,
-  agentWorking = false,
-  quota,
+  photoAnalysis,
+  price,
+  agent,
   onAccount,
   onBack,
   onDraftChange,
   onPhotoSelected,
   onCreateDraft,
   onFillIn,
-  onSeparate,
-  onKeepTogether,
-  onSortYourself,
-  onRetryPako,
   onNotesDone,
   onPublish,
   onSellSeveral,
   batch,
 }: SellFlowProps) {
+  const { configured: liveAgent, absence: pakoAbsence, quota } = pako;
+  const pakoBack = pako.quotaResets || undefined;
+  const {
+    reading: photoReading,
+    insight: photoInsight,
+    sortFailed,
+    onSeparate,
+    onKeepTogether,
+    onSortYourself,
+  } = photoAnalysis;
   const [photosOpen, setPhotosOpen] = useState(false);
   const [fieldsOpen, setFieldsOpen] = useState(false);
   /** The field the details dialog opens on, when a missing detail sent the student there. */
@@ -346,10 +352,10 @@ export default function SellFlow({
       label: "Price",
       state: priceSet
         ? "ready"
-        : suggestedPrice === undefined
+        : price.suggested === undefined
           ? "missing"
           : "suggested",
-      open: !priceSet && onReviewPrice ? onReviewPrice : fieldOpener("price"),
+      open: !priceSet && price.onReview ? price.onReview : fieldOpener("price"),
     },
     {
       label: "Pickup area",
@@ -361,7 +367,7 @@ export default function SellFlow({
   const onlyPriceToConfirm =
     missing.length === 1 && missing[0].state === "suggested";
   /** The price on the card: the student's own, else Pako's suggestion until it is accepted. */
-  const shownPrice = priceSet ? Number(draft.price) : suggestedPrice;
+  const shownPrice = priceSet ? Number(draft.price) : price.suggested;
   // Always editable; the label adapts to the item type when it is known.
   const measurementField = listingMeasurementField(draft) ?? {
     label: "Measurements",
@@ -431,7 +437,7 @@ export default function SellFlow({
       form={form}
       pickupMin={pickupMin}
       measurement={measurementField}
-      priceContext={insight}
+      priceContext={price.insight}
       onDraftChange={onDraftChange}
     />
   );
@@ -475,13 +481,13 @@ export default function SellFlow({
         onBack={onBack}
         onAccount={onAccount}
         quota={quota}
-        actions={isPhotoStep || manual ? undefined : agentTools}
+        actions={isPhotoStep || manual ? undefined : agent.tools}
       />
       {batch && (
         <BatchTray
           batch={batch}
           cloud={cloud}
-          disabled={busy || agentWorking}
+          disabled={busy || agent.working}
         />
       )}
 
@@ -524,7 +530,7 @@ export default function SellFlow({
               )}
               {pakoAbsence === "offline" && (
                 <div className="sell-guide-actions">
-                  <Button className="button quiet small" onClick={onRetryPako}>
+                  <Button className="button quiet small" onClick={pako.refresh}>
                     Try again
                   </Button>
                 </div>
@@ -677,7 +683,7 @@ export default function SellFlow({
                 {fields(saveFormId)}
               </section>
             ) : (
-              agentConversation
+              agent.conversation
             )}
             <form
               id={saveFormId}
@@ -734,7 +740,7 @@ export default function SellFlow({
                 animateIcon
                 className="button primary large"
                 type="submit"
-                disabled={agentWorking || busy || photoReading}
+                disabled={agent.working || busy || photoReading}
               >
                 <Check size={18} />
                 {busy ? "Saving…" : saveActionLabel({ cloud, editing, batch })}
@@ -771,9 +777,9 @@ export default function SellFlow({
                 </span>
               </span>
             </Button>
-            <div aria-busy={agentWorking}>
+            <div aria-busy={agent.working}>
               <AnimatePresence initial={false} mode="wait">
-                {agentWorking ? (
+                {agent.working ? (
                   <motion.span
                     key="writing"
                     className="listing-preview-status"
@@ -809,14 +815,14 @@ export default function SellFlow({
                     : money(shownPrice)}
                 </motion.strong>
                 <AnimatePresence initial={false}>
-                  {!priceSet && suggestedPrice !== undefined && (
+                  {!priceSet && price.suggested !== undefined && (
                     <motion.button
                       key="suggested"
                       type="button"
                       className="chip listing-price-suggested"
-                      aria-label={`Suggested price ${money(suggestedPrice)}. Choose your asking price.`}
-                      disabled={!onReviewPrice}
-                      onClick={onReviewPrice}
+                      aria-label={`Suggested price ${money(price.suggested)}. Choose your asking price.`}
+                      disabled={!price.onReview}
+                      onClick={price.onReview}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
@@ -827,7 +833,7 @@ export default function SellFlow({
                   )}
                 </AnimatePresence>
               </div>
-              {insight}
+              {price.insight}
               {draft.description && (
                 <DescriptionPreview text={draft.description} />
               )}

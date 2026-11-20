@@ -8,6 +8,7 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import { AutoHeight } from "@animate-ui/react/primitives/effects/auto-height";
 import { Check, Search } from "@/components/icons";
+import { SETTLE_IN_PLACE } from "../uiMotion";
 import type { DealRole } from "../../shared/deal";
 import {
   askToBeNextMessage,
@@ -23,20 +24,6 @@ import Pako from "./onboarding/Pako";
 import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
 import "./pako-tray.css";
-
-/**
- * The tray's content settles in place of the last one, like the deal card's:
- * the old content leaves at once, so a tap is answered without an empty bubble.
- */
-const SWAP = {
-  initial: { opacity: 0, y: 6 },
-  animate: {
-    opacity: 1,
-    y: 0,
-    transition: { type: "spring", stiffness: 420, damping: 34 },
-  },
-  exit: { opacity: 0, y: -4, transition: { duration: 0.1 } },
-} as const;
 
 /** The terms an acceptance can still leave open, as the tray names them. */
 const OPEN_WORDS: Record<ThreadTurn["agreement"]["missing"][number], string> = {
@@ -459,7 +446,7 @@ export default function PakoTray({
           <motion.div
             key={contentKey}
             className="thread-tray-content"
-            {...SWAP}
+            {...SETTLE_IN_PLACE}
           >
             <TrayLine text={guide.line} folds={moment.phase === "ready"} />
             {actions}

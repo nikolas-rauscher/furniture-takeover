@@ -4,6 +4,7 @@ import type { AdminApi } from "../../api/admin";
 import { Plus } from "../icons";
 import Modal from "../Modal";
 import { Button } from "../ui/button";
+import AdminDialogFooter from "./AdminDialogFooter";
 import AdminLoad from "./AdminLoad";
 import { useAdminAction } from "./useAdminAction";
 import { useAdminResource } from "./useAdminResource";
@@ -71,19 +72,11 @@ function SellerEditor({
             setDraft({ ...draft, styleNote: event.target.value })
           }
         />
-        {action.refusal && (
-          <p id={refusalId} role="alert" className="admin-refusal">
-            {action.refusal}
-          </p>
-        )}
-        <div className="admin-reason-actions">
-          <Button
-            type="button"
-            className="button secondary"
-            onClick={() => setOpen(false)}
-          >
-            Cancel
-          </Button>
+        <AdminDialogFooter
+          refusal={action.refusal}
+          refusalId={refusalId}
+          onCancel={() => setOpen(false)}
+        >
           <Button
             type="submit"
             className="button primary"
@@ -92,7 +85,7 @@ function SellerEditor({
           >
             {action.busy ? "Saving…" : adding ? "Add seller" : "Save"}
           </Button>
-        </div>
+        </AdminDialogFooter>
       </form>
     </Modal>
   );

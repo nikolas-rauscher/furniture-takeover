@@ -8,6 +8,7 @@ import {
   MapPin,
   Package,
 } from "@/components/icons";
+import { SETTLE_IN_PLACE } from "../uiMotion";
 import type { Deal, DealRole, DealTerms, LateMinutes } from "../../shared/deal";
 import type { Product } from "../../shared/marketplace";
 import {
@@ -29,7 +30,7 @@ import {
   type PickupDay,
   type PickupSend,
 } from "../pickupOptions";
-import { CARD_SWAP, PlaceNote } from "./DealTerms";
+import { PlaceNote } from "./DealTerms";
 import Pako from "./onboarding/Pako";
 import { TapChip, TimePanel } from "./OfferEditor";
 import { Button } from "./ui/button";
@@ -228,7 +229,11 @@ function PakoLine({ mood, line }: ReturnType<typeof pickupGuide>) {
     <div className="pickup-pako">
       <Pako mood={mood} size={40} />
       <AnimatePresence mode="wait" initial={false}>
-        <motion.p key={line} className="pickup-pako-bubble" {...CARD_SWAP}>
+        <motion.p
+          key={line}
+          className="pickup-pako-bubble"
+          {...SETTLE_IN_PLACE}
+        >
           {line}
         </motion.p>
       </AnimatePresence>
@@ -330,7 +335,7 @@ function LateStep({
   const [minutes, setMinutes] = useState<LateMinutes>(10);
   const send = lateSend(minutes);
   return (
-    <motion.div className="deal-card-confirm" {...CARD_SWAP}>
+    <motion.div className="deal-card-confirm" {...SETTLE_IN_PLACE}>
       <p className="deal-card-question">About how late?</p>
       <div className="offer-chips" role="group" aria-label="Minutes late">
         {LATE_MINUTES.map((option) => (
@@ -386,7 +391,7 @@ function ChangeStep({
   const [slot, setSlot] = useState<Slot | null>(null);
   const send = slot && changeSend(movedTerms(day.terms, slot.pickupAt));
   return (
-    <motion.div className="deal-card-confirm" {...CARD_SWAP}>
+    <motion.div className="deal-card-confirm" {...SETTLE_IN_PLACE}>
       <p className="deal-card-question">Which time works for you?</p>
       <TimePanel slots={slots} slot={slot} now={now} onSlot={setSlot} />
       {send && slot ? (
@@ -432,7 +437,7 @@ function CheckStep({
   onBack: () => void;
 }) {
   return (
-    <motion.div className="deal-card-confirm" {...CARD_SWAP}>
+    <motion.div className="deal-card-confirm" {...SETTLE_IN_PLACE}>
       {choice.confirm && <p className="deal-card-question">{choice.confirm}</p>}
       <MessagePreview other={other} message={choice.send.message} />
       <StepActions
@@ -470,7 +475,7 @@ function CheckAnswers({
   const [tapped, setTapped] = useState<CheckAnswer["id"]>();
   const revealed = useRevealed<HTMLDivElement>(answers.length);
   return (
-    <motion.div ref={revealed} className="pickup-answers" {...CARD_SWAP}>
+    <motion.div ref={revealed} className="pickup-answers" {...SETTLE_IN_PLACE}>
       {answers.map((answer, index) => (
         <div
           key={answer.id}
@@ -650,7 +655,7 @@ export default function PickupCard({
               key="choices"
               ref={choicesRevealed}
               className="deal-card-choices"
-              {...CARD_SWAP}
+              {...SETTLE_IN_PLACE}
             >
               {primary && (
                 <ChoiceButton

@@ -52,85 +52,84 @@ export function SellPage({
           pickupMin={listingPickupMinimum(draft.pickup, sell.editingItem)}
           busy={(sell.busy && !sell.starting) || savingListings}
           cloud={cloud}
-          photoReading={sell.photoReading}
           uploadError={sell.uploadError}
-          liveAgent={pako.configured}
-          photoInsight={sell.analysis.insight}
-          pakoAbsence={pako.absence}
-          pakoBack={pako.quotaResets || undefined}
+          pako={pako}
           manual={sell.manual}
+          photoAnalysis={{
+            reading: sell.photoReading,
+            insight: sell.analysis.insight,
+            sortFailed: sell.analysis.sortFailed,
+            onSeparate: sell.separateItems,
+            onKeepTogether: sell.analysis.keepTogether,
+            onSortYourself: () =>
+              sell.separateItems(
+                listingPhotos(sell.draftRef.current).map((_, index) => ({
+                  photos: [index],
+                  label: "",
+                })),
+                true,
+              ),
+          }}
+          price={{
+            insight: (
+              <SellerInsight
+                similar={similarListings(
+                  market.listings,
+                  draft.title,
+                  sell.editingListing ?? undefined,
+                )}
+                ladder={
+                  market.developerMode
+                    ? demandLadder(market.savedSearches, {
+                        title: draft.title,
+                        price: draft.price.trim()
+                          ? Number(draft.price)
+                          : Number.NaN,
+                        condition: draft.condition,
+                        pickupBy: draft.pickup,
+                      })
+                    : undefined
+                }
+              />
+            ),
+            suggested: pendingPrice(
+              [...listing.state.history, listing.state],
+              draft,
+            ),
+            onReview: listing.decidingPrice ? listing.reviewPrice : undefined,
+          }}
+          agent={{
+            conversation: (
+              <ListingConversation
+                listing={listing}
+                draft={draft}
+                starting={sell.starting}
+                editing={Boolean(sell.editingListing)}
+                saveAction={saveActionLabel({
+                  cloud,
+                  editing: Boolean(sell.editingListing),
+                  batch: sell.batch,
+                })}
+                configured={pako.configured}
+                asleep={pako.quotaExhausted}
+                onManual={sell.fillInDetails}
+              />
+            ),
+            tools: (
+              <AskPakoMenu
+                requests={LISTING_REQUESTS}
+                disabled={!pako.configured || listing.running}
+                onAsk={(request) => void listing.send(request, {}, true)}
+              />
+            ),
+            working: sell.starting || listing.running,
+          }}
           onFillIn={sell.fillInDetails}
-          onRetryPako={pako.refresh}
           onBack={onBack}
           onDraftChange={listing.editDraft}
-          agentWorking={sell.starting || listing.running}
-          suggestedPrice={pendingPrice(
-            [...listing.state.history, listing.state],
-            draft,
-          )}
-          onReviewPrice={
-            listing.decidingPrice ? listing.reviewPrice : undefined
-          }
-          insight={
-            <SellerInsight
-              similar={similarListings(
-                market.listings,
-                draft.title,
-                sell.editingListing ?? undefined,
-              )}
-              ladder={
-                market.developerMode
-                  ? demandLadder(market.savedSearches, {
-                      title: draft.title,
-                      price: draft.price.trim()
-                        ? Number(draft.price)
-                        : Number.NaN,
-                      condition: draft.condition,
-                      pickupBy: draft.pickup,
-                    })
-                  : undefined
-              }
-            />
-          }
-          agentConversation={
-            <ListingConversation
-              listing={listing}
-              draft={draft}
-              starting={sell.starting}
-              editing={Boolean(sell.editingListing)}
-              saveAction={saveActionLabel({
-                cloud,
-                editing: Boolean(sell.editingListing),
-                batch: sell.batch,
-              })}
-              configured={pako.configured}
-              asleep={pako.quotaExhausted}
-              onManual={sell.fillInDetails}
-            />
-          }
-          agentTools={
-            <AskPakoMenu
-              requests={LISTING_REQUESTS}
-              disabled={!pako.configured || listing.running}
-              onAsk={(request) => void listing.send(request, {}, true)}
-            />
-          }
-          quota={pako.quota}
           onAccount={onAccount}
           onPhotoSelected={sell.upload}
           onCreateDraft={() => void sell.generateDraft()}
-          sortFailed={sell.analysis.sortFailed}
-          onSeparate={sell.separateItems}
-          onKeepTogether={sell.analysis.keepTogether}
-          onSortYourself={() =>
-            sell.separateItems(
-              listingPhotos(sell.draftRef.current).map((_, index) => ({
-                photos: [index],
-                label: "",
-              })),
-              true,
-            )
-          }
           onNotesDone={sell.analysis.flushNote}
           onPublish={sell.publish}
           batch={sell.batch}

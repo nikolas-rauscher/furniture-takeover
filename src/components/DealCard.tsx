@@ -28,9 +28,10 @@ import {
 } from "../dealWords";
 import BookedBanner from "./BookedBanner";
 import { PakoLabel } from "./ChatParts";
-import { CARD_SWAP, DealTermsGrid, DealTile, PlaceNote } from "./DealTerms";
+import { DealTermsGrid, DealTile, PlaceNote } from "./DealTerms";
 import PickupCard, { type PickupLink } from "./PickupCard";
 import { Button } from "./ui/button";
+import { SETTLE_IN_PLACE } from "../uiMotion";
 import "./deal-card.css";
 
 /** The seller's next interested buyer once a pickup was released. */
@@ -203,7 +204,7 @@ function ConfirmStep({
   onBack: () => void;
 }) {
   return (
-    <motion.div className="deal-card-confirm" {...CARD_SWAP}>
+    <motion.div className="deal-card-confirm" {...SETTLE_IN_PLACE}>
       <p className="deal-card-question">{option.confirm}</p>
       <p className="deal-card-sends">
         Message to {otherName}: <q>{option.message}</q>
@@ -306,7 +307,7 @@ function CardBody({
           <motion.div
             key="actions"
             className="deal-card-choices"
-            {...CARD_SWAP}
+            {...SETTLE_IN_PLACE}
           >
             {primary && (
               <Button
@@ -529,7 +530,7 @@ export default function DealCard(props: Props) {
               exit={{ opacity: 0, transition: { duration: 0.12 } }}
             >
               <AnimatePresence mode="wait" initial={false}>
-                <motion.div key={phase} {...CARD_SWAP}>
+                <motion.div key={phase} {...SETTLE_IN_PLACE}>
                   <ExpandedBody {...props} />
                 </motion.div>
               </AnimatePresence>

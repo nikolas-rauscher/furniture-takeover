@@ -2,6 +2,7 @@ import { AutoHeight } from "@animate-ui/react/primitives/effects/auto-height";
 import { AnimatePresence, motion } from "motion/react";
 import { useId, useMemo, useState, type ReactNode } from "react";
 import { Banknote, Clock, MapPin, Minus, Plus } from "@/components/icons";
+import { SETTLE_IN_PLACE } from "../uiMotion";
 import { campusPickupPoints } from "../../shared/campusPickupPoints";
 import { missingTerms, type DealRole, type DealTerms } from "../../shared/deal";
 import {
@@ -41,16 +42,6 @@ type Panel = "price" | "time" | "place";
 
 const MAX_PRICE = 1_000_000;
 
-/** A new value or panel settles in place; the old one leaves at once. */
-const SETTLE = {
-  initial: { opacity: 0, y: 6 },
-  animate: {
-    opacity: 1,
-    y: 0,
-    transition: { type: "spring", stiffness: 420, damping: 34 },
-  },
-  exit: { opacity: 0, y: -4, transition: { duration: 0.1 } },
-} as const;
 const GROW = { type: "spring", stiffness: 360, damping: 34 } as const;
 
 const TITLES: Record<OfferMode, string> = {
@@ -130,7 +121,7 @@ function PakoProposal({ line }: { line: string }) {
       <Pako mood="happy" size={48} className="offer-pako-figure" />
       <div className="offer-pako-bubble">
         <AnimatePresence mode="wait" initial={false}>
-          <motion.p key={line} aria-live="polite" {...SETTLE}>
+          <motion.p key={line} aria-live="polite" {...SETTLE_IN_PLACE}>
             {line}
           </motion.p>
         </AnimatePresence>
@@ -174,7 +165,7 @@ function TermTile({
         <motion.span
           key={value ?? placeholder}
           className="offer-tile-value"
-          {...SETTLE}
+          {...SETTLE_IN_PLACE}
         >
           {value ?? placeholder}
         </motion.span>
@@ -606,7 +597,7 @@ export default function OfferEditor({
                   key={panel}
                   id={panelId}
                   className="offer-panel"
-                  {...SETTLE}
+                  {...SETTLE_IN_PLACE}
                 >
                   {panel === "price" && (
                     <PricePanel

@@ -18,7 +18,7 @@ Also included: saved listings, saved searches, side-by-side comparison, selling 
 
 | | Local demo | Account mode |
 | --- | --- | --- |
-| Sign-in | None | Supabase accounts, invitation only |
+| Sign-in | None | Supabase accounts, self sign-up with @epfl.ch or @unil.ch |
 | Data | SQLite file `data/marketplace.sqlite`, browser storage | Supabase Postgres and Storage |
 | Other students | Fictional demo sellers only | Real students, real messages |
 | Admin area | Settings, then Developer mode | Accounts listed in `public.admins` |
@@ -92,7 +92,7 @@ CI runs `check` and `build` on Node 22 and 24.
 
 ## Architecture
 
-- **Client** (`src/`). A React and Vite app. Screens are in `src/components/`, client state in `src/hooks/`, API calls in `src/api/`, and Supabase access in `src/cloud/`.
+- **Client** (`src/`). A React and Vite app. Screens are in `src/shell/`, their building blocks in `src/components/`, client state in `src/hooks/`, the data seam in `src/api/` (demo) and `src/cloud/` (account mode, Supabase).
 - **Server** (`server/`). A Node.js API that checks every request. It runs Pako: the agent loop, its tools and prompts (`runtime.ts`, `agent-tools.ts`), the DeepSeek and Brave Search calls, and the local SQLite store. In account mode it also checks logins and daily AI limits through Supabase. It runs TypeScript directly, so Node 22.18 or newer is required.
 - **Shared contracts** (`shared/`). Types and validation used by both sides: listings, deals, pickup rules, messages, admin actions and the demo catalog. The server and the client both validate against them.
 - **Migrations** (`supabase/migrations/`). The database schema, row-level security and the deal, pickup and admin functions for account mode.
@@ -104,6 +104,19 @@ Keep provider keys on the server. The browser never receives them.
 Tests sit next to the module they test (`name.test.ts`).
 
 ```text
+src/
+  main.tsx, bootstrap.tsx     entry: app-wide styles, then the demo or the account app
+  App.tsx, screens.ts         the shell and its lazily loaded screens
+  shell/                      one file per screen or app region (header, footer, sell, messages, settings)
+  components/                 building blocks and their CSS; admin/ and onboarding/ have their own folders
+  components/ui, animate-ui/  generated shadcn and Animate UI parts (not linted)
+  hooks/                      client state, one hook per concern
+  api/                        demo transport: local API calls and the demo providers
+  cloud/                      account mode: Supabase session, providers and screens (loaded only there)
+  alerts/, availability/      feature folders: logic, UI, CSS and tests together
+  *.ts                        pure rules and wording (deals, listings, search, Pako)
+  styles.css, experience.css, responsive.css   app-wide sheets, loaded once and last (globalStyles.ts)
+
 server/
   index.ts, config.ts         composition root and environment
   http.ts, http-*.ts          server, headers, auth throttling, body reading, error responses
@@ -140,6 +153,8 @@ shared/                       zod contracts and rules, no Node or browser APIs
 scripts/                      dev, setup and test runners, demo seed rendering
 supabase/                     migrations and the rendered demo seed
 ```
+
+Each component imports its own sheet, and those sheets load in whatever order screens open. Component sheets must not override each other on equal specificity; only the app-wide sheets, loaded last, may override a component sheet.
 
 ## Documentation
 
