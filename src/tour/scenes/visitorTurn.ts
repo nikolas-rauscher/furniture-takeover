@@ -1,3 +1,5 @@
+import { readVisitorPointer } from "./visitorPointer";
+
 /** How far outside a control a finger still counts, in pixels: fingers are wider than buttons. */
 const SLACK = 10;
 
@@ -15,7 +17,7 @@ function within(box: DOMRect, event: PointerEvent, slack: number) {
 
 /**
  * Waits for the visitor's own tap on a control, or their drag along it. The
- * scene stays inert, so the pointer is read from the page by position. After
+ * scene stays inert, so the pointer is read by position. After
  * `waitMs` without a touch the scene takes the turn; a drag under way stops
  * that clock.
  */
@@ -53,11 +55,10 @@ export function visitorTurn({
       if (dragging || hit(event))
         finish({ by: "visitor", x: event.clientX, y: event.clientY });
     }
+    const stopReading = readVisitorPointer({ move, down, up });
     function stop() {
       window.clearTimeout(timer);
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerdown", down);
-      window.removeEventListener("pointerup", up);
+      stopReading();
       signal.removeEventListener("abort", abort);
       root.removeAttribute("data-over");
     }
@@ -69,9 +70,6 @@ export function visitorTurn({
       stop();
       reject(signal.reason);
     }
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerdown", down);
-    window.addEventListener("pointerup", up);
     signal.addEventListener("abort", abort);
   });
 }

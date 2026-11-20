@@ -265,7 +265,7 @@ function useDealCardStage(stage: DealCardStage) {
 }
 
 /** Agree and pick up: Noah's offer arrives, Léa confirms, the pickup counts down, Picked up and Mark sold. */
-export default function DealScene({ onEnd }: SceneProps) {
+export default function DealScene(round: SceneProps) {
   const [start] = useState(() => new Date());
   const [beats] = useState(() => dealBeats(pickupTime(start)));
   const { state, setState, marks } = useSceneScript<DealState>(
@@ -279,7 +279,7 @@ export default function DealScene({ onEnd }: SceneProps) {
       card: "held",
     }),
     beats,
-    onEnd,
+    round,
   );
   useEffect(() => {
     report({ kind: "clock", time: state.now.toISOString() });

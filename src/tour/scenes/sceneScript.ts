@@ -1,7 +1,10 @@
 import type { PakoMood } from "@/components/onboarding/storyTypes";
 
-/** What every scene receives: called once its last beat has played. */
-export type SceneProps = { onEnd: () => void };
+/** What every scene receives: called once its last beat has played, or once a beat failed. */
+export type SceneProps = {
+  onEnd: () => void;
+  onFail: (error: unknown) => void;
+};
 
 /** One change to the scene, `delay` ms after the one before it. */
 export type Change<State> = {

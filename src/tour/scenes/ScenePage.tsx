@@ -8,6 +8,7 @@ import SellScene from "./SellScene";
 import { preloadImages, SCENE_IMAGES } from "./sceneImages";
 import { keepScrollsInScene } from "./sceneScroll";
 import type { SceneProps } from "./sceneScript";
+import { shieldSceneFromVisitor } from "./visitorPointer";
 import "./scene.css";
 
 const SCENES: Record<TourScene, ComponentType<SceneProps>> = {
@@ -40,6 +41,7 @@ keepScrollsInScene();
 setStorageScope("tour-scene");
 // Nothing in a scene can be focused, sheets and menus outside its root included; key moments read the pointer by position.
 document.body.inert = true;
+shieldSceneFromVisitor();
 
 /** How long the page may be off screen before its round stops; a page transition hides it for less. */
 const AWAY_MS = 2000;
@@ -109,6 +111,7 @@ function useImagesLoaded(scene: TourScene) {
  * Leaving the screen stops a round; the scene starts over on its return.
  * Its images load first, so none appears late.
  * Only its key moments answer the visitor's taps; nothing in it can be focused.
+ * A round that fails is reported in the console and the scene starts over.
  */
 export default function ScenePage({ scene }: { scene: TourScene }) {
   const [round, setRound] = useState(0);
@@ -129,7 +132,8 @@ export default function ScenePage({ scene }: { scene: TourScene }) {
     void fade("in");
   }, [round]);
 
-  function end() {
+  /** Fades the round out and starts the next one, after `holdMs` on its last screen. */
+  function next(holdMs: number) {
     const finished = round;
     ending.current = window.setTimeout(
       () =>
@@ -137,13 +141,20 @@ export default function ScenePage({ scene }: { scene: TourScene }) {
           if (!onScreen.current) setShown(false);
           startAfter(finished);
         }),
-      END_HOLD_MS,
+      holdMs,
     );
+  }
+
+  function fail(error: unknown) {
+    console.error(`The "${scene}" scene failed; it starts over.`, error);
+    next(0);
   }
 
   return (
     <MotionConfig reducedMotion="user">
-      {shown && imagesLoaded && <Scene key={round} onEnd={end} />}
+      {shown && imagesLoaded && (
+        <Scene key={round} onEnd={() => next(END_HOLD_MS)} onFail={fail} />
+      )}
     </MotionConfig>
   );
 }

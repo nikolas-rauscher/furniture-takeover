@@ -287,8 +287,8 @@ function useCameraReport(open: boolean) {
 }
 
 /** Sell: the photo taken with the phone's camera, Pako's reading of it, his questions, the price and Save on this device. */
-export default function SellScene({ onEnd }: SceneProps) {
-  const { state, setState, marks } = useSceneScript(initial, BEATS, onEnd);
+export default function SellScene(round: SceneProps) {
+  const { state, setState, marks } = useSceneScript(initial, BEATS, round);
   const go = (page: Page, change: (current: SellState) => SellState) =>
     transitionPage("nav-forward", () =>
       setState((current) => ({ ...change(current), page })),

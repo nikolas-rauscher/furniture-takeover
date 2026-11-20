@@ -325,8 +325,8 @@ const unchanged = (state: FindState) => state;
 const AREA_CRITERIA = { ...defaults, radius: 5 };
 
 /** Find: a request typed on Home, Pako's search, the desk's page and the offer card. */
-export default function FindScene({ onEnd }: SceneProps) {
-  const { state, setState, marks } = useSceneScript(initial, BEATS, onEnd);
+export default function FindScene(round: SceneProps) {
+  const { state, setState, marks } = useSceneScript(initial, BEATS, round);
   const go = (
     page: Page,
     change: (current: FindState) => FindState = unchanged,
