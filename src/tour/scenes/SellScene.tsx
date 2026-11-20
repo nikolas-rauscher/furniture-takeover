@@ -86,7 +86,7 @@ function describe(event: AgentListingPatchEvent): Partial<ListingDraft> {
   return { description };
 }
 
-const SAVE = ".listing-save-form button[type='submit']";
+const SAVE = ".listing-chat-actions button[type='submit']";
 
 /** The camera slides away before the photo lands in the listing. */
 const CAMERA_CLOSE_MS = 420;
@@ -131,7 +131,7 @@ const BEATS: Beat<SellState>[] = [
   },
   {
     hold: 1200,
-    tap: ".listing-tray-choices .listing-tray-choice:first-child",
+    tap: ".listing-pako-choices .listing-pako-choice:first-child",
     mood: "happy",
   },
   {
