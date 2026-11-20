@@ -7,6 +7,10 @@ import { createThreadAgent } from "./thread-agent.ts";
 import { isLoopbackHost, readServerConfig } from "./config.ts";
 import { createListingsStore } from "./database.ts";
 import { createAccountKeyStore } from "./account-keys.ts";
+import {
+  createSqliteStudyStore,
+  createSupabaseStudyStore,
+} from "./study-store.ts";
 import { access } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
@@ -60,6 +64,14 @@ const runtime = createAgentRuntime({
 });
 const threads = createThreadAgent({ apiKey, model, baseUrl });
 const messages = cloud ? undefined : createMessagesStore(config.databasePath);
+const study = config.study.open
+  ? {
+      config: config.study,
+      store: cloud
+        ? createSupabaseStudyStore(cloud.internalUrl, cloud.serviceKey)
+        : createSqliteStudyStore(config.databasePath),
+    }
+  : undefined;
 const server = createAgentServer(service, {
   runtime,
   threads,
@@ -96,12 +108,14 @@ const server = createAgentServer(service, {
     : undefined,
   listings,
   messages,
+  study,
   allowedOrigins: config.allowedOrigins,
   maxConcurrent: config.maxConcurrent,
   staticDirectory,
 });
 server.once("close", () => messages?.close());
 server.once("close", () => listings?.close());
+server.once("close", () => study?.store.close?.());
 server.listen(port, config.host, () => {
   const state = service.health();
   console.log(

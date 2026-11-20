@@ -189,6 +189,8 @@ export function createCloud(
     config: { supabaseUrl: publicUrl, supabaseKey: key },
     /** Used by this server only; may be a private address. */
     internalUrl: url,
+    /** For server-side calls to functions that only the service role may run. */
+    serviceKey: secretKey,
     quota: (userId: string, spend = false) =>
       allowance("marketplace", userId, spend),
     spendReplyReading: (userId: string) => allowance("thread", userId, true),

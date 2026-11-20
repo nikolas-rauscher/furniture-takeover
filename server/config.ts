@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import { isIP } from "node:net";
+import { studyConfigSchema, type StudyConfig } from "../shared/study.ts";
 
 export const DEFAULT_AGENT_CONCURRENCY = 16;
 
@@ -34,6 +35,29 @@ export function localOrigins(appPort = 5173, previewPort = 4173): string[] {
     `http://localhost:${port}`,
     `http://127.0.0.1:${port}`,
   ]);
+}
+
+/**
+ * The study is open only when the deployment names a contact address and a future deletion date,
+ * because the consent text promises both.
+ */
+export function readStudyConfig(
+  env: Environment,
+  now = new Date(),
+): StudyConfig {
+  const contact = env.STUDY_CONTACT?.trim();
+  const deleteBy = env.STUDY_DELETE_BY?.trim();
+  if (!contact && !deleteBy) return { open: false };
+  if (!contact || !deleteBy)
+    throw new Error("Set both STUDY_CONTACT and STUDY_DELETE_BY, or neither.");
+  const parsed = studyConfigSchema.safeParse({ open: true, contact, deleteBy });
+  if (!parsed.success)
+    throw new Error(
+      "STUDY_CONTACT must be an email address and STUDY_DELETE_BY an ISO date (YYYY-MM-DD).",
+    );
+  if (deleteBy <= now.toISOString().slice(0, 10))
+    throw new Error("STUDY_DELETE_BY must be a date in the future.");
+  return parsed.data;
 }
 
 export function readServerConfig(env: Environment = process.env) {
@@ -97,5 +121,6 @@ export function readServerConfig(env: Environment = process.env) {
       env.DATABASE_PATH?.trim() || "data/marketplace.sqlite",
     ),
     allowedOrigins: [...new Set(allowedOrigins)],
+    study: readStudyConfig(env),
   };
 }

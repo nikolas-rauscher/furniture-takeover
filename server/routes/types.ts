@@ -5,8 +5,17 @@ import type { AgentService } from "../service.ts";
 import type { CloudAccess } from "../cloud.ts";
 import type { ListingsStore } from "../database.ts";
 import type { MessagesStore } from "../messages.ts";
+import type { StudyStore } from "../study-store.ts";
 import type { ThreadAgent } from "../thread-agent.ts";
+import type { StudyConfig } from "../../shared/study.ts";
 import type { AgentRunEvent, AgentRuntimeHealth } from "../../shared/runs.ts";
+
+/** A study that is configured to run. Without one, the study routes answer that it is closed. */
+export type StudyAccess = {
+  config: Extract<StudyConfig, { open: true }>;
+  store: StudyStore;
+  now?: () => Date;
+};
 
 export type ServerOptions = {
   cloud?: CloudAccess;
@@ -24,6 +33,7 @@ export type ServerOptions = {
   allowedOrigins?: readonly string[];
   listings?: ListingsStore;
   messages?: MessagesStore;
+  study?: StudyAccess;
   runtime?: {
     health: () => AgentRuntimeHealth;
     run: (

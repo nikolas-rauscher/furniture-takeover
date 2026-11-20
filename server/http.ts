@@ -16,6 +16,7 @@ import { createHealthRoutes } from "./routes/health.ts";
 import { createListingRoutes } from "./routes/listings.ts";
 import { createLocationRoute } from "./routes/location.ts";
 import { createMessageRoutes } from "./routes/messages.ts";
+import { createStudyRoutes } from "./routes/study.ts";
 import type {
   RouteContext,
   RouteTable,
@@ -41,6 +42,7 @@ export function createAgentServer(
     ...createListingRoutes(options.listings),
     ...createMessageRoutes(options.messages),
     ...createAgentRoutes(service, options),
+    ...createStudyRoutes(options.study),
     "/api/account/keys": createAccountKeysRoute(options),
     "/api/location/reverse": createLocationRoute(),
   };

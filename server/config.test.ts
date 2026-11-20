@@ -3,7 +3,12 @@ import assert from "node:assert/strict";
 import { isAbsolute } from "node:path";
 import { once } from "node:events";
 import type { AddressInfo } from "node:net";
-import { readServerConfig, readPort, isLoopbackHost } from "./config.ts";
+import {
+  readServerConfig,
+  readPort,
+  isLoopbackHost,
+  readStudyConfig,
+} from "./config.ts";
 import { createAgentServer } from "./http.ts";
 import { createAgentService } from "./service.ts";
 
@@ -111,4 +116,60 @@ test("the API listens on loopback unless another address is configured", () => {
     assert.equal(isLoopbackHost(host), true, host);
   for (const host of ["0.0.0.0", "192.168.1.30", "::", "app-lxc.lan"])
     assert.equal(isLoopbackHost(host), false, host);
+});
+
+test("the study is open only with a contact address and a future deletion date", () => {
+  const now = new Date("2026-11-21T12:00:00Z");
+  assert.deepEqual(readStudyConfig({}, now), { open: false });
+  assert.deepEqual(
+    readStudyConfig({ STUDY_CONTACT: " ", STUDY_DELETE_BY: "" }, now),
+    { open: false },
+  );
+  assert.deepEqual(
+    readStudyConfig(
+      {
+        STUDY_CONTACT: " study@takeover.example ",
+        STUDY_DELETE_BY: "2026-12-31",
+      },
+      now,
+    ),
+    { open: true, contact: "study@takeover.example", deleteBy: "2026-12-31" },
+  );
+  assert.equal(readServerConfig({}).study.open, false);
+});
+
+test("a half-set or invalid study configuration stops the server", () => {
+  const now = new Date("2026-11-21T12:00:00Z");
+  const contact = "study@takeover.example";
+  assert.throws(() => readStudyConfig({ STUDY_CONTACT: contact }, now), /both/);
+  assert.throws(
+    () => readStudyConfig({ STUDY_DELETE_BY: "2026-12-31" }, now),
+    /both/,
+  );
+  for (const deleteBy of ["31.12.2026", "2026-02-30", "2026-12-31T00:00:00Z"])
+    assert.throws(
+      () =>
+        readStudyConfig(
+          { STUDY_CONTACT: contact, STUDY_DELETE_BY: deleteBy },
+          now,
+        ),
+      /ISO date/,
+    );
+  assert.throws(
+    () =>
+      readStudyConfig(
+        { STUDY_CONTACT: "not-an-address", STUDY_DELETE_BY: "2026-12-31" },
+        now,
+      ),
+    /email address/,
+  );
+  for (const deleteBy of ["2026-11-21", "2026-11-20"])
+    assert.throws(
+      () =>
+        readStudyConfig(
+          { STUDY_CONTACT: contact, STUDY_DELETE_BY: deleteBy },
+          now,
+        ),
+      /future/,
+    );
 });
