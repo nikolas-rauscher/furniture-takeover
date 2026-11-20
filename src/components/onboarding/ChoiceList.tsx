@@ -13,8 +13,8 @@ export type ChoiceOption<Id extends string> = {
   id: Id;
   title: string;
   detail?: string;
-  icon: IntroIcon;
-  tint: ChoiceTint;
+  /** A tinted tile before the text; the study's plain answers go without. */
+  tile?: { icon: IntroIcon; tint: ChoiceTint };
 };
 export type ChoiceListProps<Id extends string> = {
   /** The question, as the accessible name of the group. */
@@ -84,7 +84,6 @@ export default function ChoiceList<Id extends string>({
     >
       {options.map((option, index) => {
         const checked = selected.includes(option.id);
-        const Icon = option.icon;
         return (
           <motion.div
             key={option.id}
@@ -104,7 +103,7 @@ export default function ChoiceList<Id extends string>({
               }}
               type="button"
               className="ob-choice"
-              data-tint={option.tint}
+              data-tint={option.tile?.tint}
               role={multiple ? undefined : "radio"}
               aria-checked={multiple ? undefined : checked}
               aria-pressed={multiple ? checked : undefined}
@@ -115,9 +114,11 @@ export default function ChoiceList<Id extends string>({
               onClick={() => onToggle(option.id)}
               onKeyDown={(event) => roveFrom(index, event)}
             >
-              <span className="ob-choice-tile">
-                <Icon size={24} strokeWidth={1.9} />
-              </span>
+              {option.tile && (
+                <span className="ob-choice-tile">
+                  <option.tile.icon size={24} strokeWidth={1.9} />
+                </span>
+              )}
               <span className="ob-choice-text">
                 <span className="ob-choice-title">{option.title}</span>
                 {option.detail && (

@@ -4,7 +4,6 @@ import {
   MotionConfig,
   motion,
   useReducedMotion,
-  type Variants,
 } from "motion/react";
 import {
   useCallback,
@@ -28,6 +27,7 @@ import ChoiceList, {
 import Confetti from "./Confetti";
 import Guide from "./Guide";
 import SnapDemo from "./SnapDemo";
+import { stepFade, stepMotion } from "./stepMotion";
 import WelcomeBurst from "./WelcomeBurst";
 import {
   intentOptions,
@@ -100,8 +100,7 @@ const intentChoices: ChoiceOption<Intent>[] = intentOptions.map(
     id,
     title,
     detail,
-    icon: intentIcons[id],
-    tint: INTENT_TINTS[id],
+    tile: { icon: intentIcons[id], tint: INTENT_TINTS[id] },
   }),
 );
 const placeChoices: ChoiceOption<PlaceId>[] = places.map(
@@ -109,47 +108,19 @@ const placeChoices: ChoiceOption<PlaceId>[] = places.map(
     id,
     title: name,
     detail: area,
-    icon: placeIcons[kind],
-    tint: PLACE_TINTS[kind],
+    tile: { icon: placeIcons[kind], tint: PLACE_TINTS[kind] },
   }),
 );
 const itemChoices: ChoiceOption<ItemId>[] = items.map(({ id, label }) => ({
   id,
   title: label,
-  icon: itemIcons[id],
-  tint: "sand",
+  tile: { icon: itemIcons[id], tint: "sand" },
 }));
 
 const scenes: Record<Act, ComponentType<SceneProps>> = {
   snap: SnapDemo,
   ask: AskDemo,
   chat: ChatDemo,
-};
-
-/** Steps slide in the direction of travel; the very first one rises in. */
-const stepMotion: Variants = {
-  enter: (direction: number) => ({
-    opacity: 0,
-    x: direction * 48,
-    y: direction === 0 ? 16 : 0,
-  }),
-  center: {
-    opacity: 1,
-    x: 0,
-    y: 0,
-    transition: { type: "spring", stiffness: 420, damping: 36, mass: 0.8 },
-  },
-  exit: (direction: number) => ({
-    opacity: 0,
-    x: direction * -32,
-    transition: { duration: 0.14, ease: [0.4, 0, 1, 1] },
-  }),
-};
-/** With reduced motion a step swaps in place: the old one goes at once, the new one fades in. */
-const stepFade: Variants = {
-  enter: { opacity: 0 },
-  center: { opacity: 1, transition: { duration: 0.16, ease: "easeOut" } },
-  exit: { opacity: 0, transition: { duration: 0 } },
 };
 
 type QuestionView = {
