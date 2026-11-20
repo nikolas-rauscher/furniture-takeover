@@ -5,6 +5,7 @@ import { readCommand, type TourScene } from "../device/sceneMessages";
 import DealScene from "./DealScene";
 import FindScene from "./FindScene";
 import SellScene from "./SellScene";
+import { preloadImages, SCENE_IMAGES } from "./sceneImages";
 import { keepScrollsInScene } from "./sceneScroll";
 import type { SceneProps } from "./sceneScript";
 import "./scene.css";
@@ -74,13 +75,26 @@ function useReplays(restart: () => void) {
   }, []);
 }
 
+/** Whether the scene's images are loaded; a failed load is thrown where it shows. */
+function useImagesLoaded(scene: TourScene) {
+  const [loaded, setLoaded] = useState(false);
+  const [failure, setFailure] = useState<Error>();
+  useEffect(() => {
+    preloadImages(SCENE_IMAGES[scene]).then(() => setLoaded(true), setFailure);
+  }, [scene]);
+  if (failure) throw failure;
+  return loaded;
+}
+
 /**
  * One app scene inside the tour's phone: it starts once on screen, holds its
  * end, fades out and starts over, or waits off screen until it is seen again.
+ * Its images load first, so none appears late.
  * Only its key moments answer the visitor's taps; nothing in it can be focused.
  */
 export default function ScenePage({ scene }: { scene: TourScene }) {
   const { onScreen, shown, setShown } = useShown();
+  const imagesLoaded = useImagesLoaded(scene);
   const [round, setRound] = useState(0);
   const ending = useRef<number>(undefined);
   const Scene = SCENES[scene];
@@ -111,7 +125,7 @@ export default function ScenePage({ scene }: { scene: TourScene }) {
 
   return (
     <MotionConfig reducedMotion="user">
-      {shown && <Scene key={round} onEnd={end} />}
+      {shown && imagesLoaded && <Scene key={round} onEnd={end} />}
     </MotionConfig>
   );
 }

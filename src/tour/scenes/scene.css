@@ -135,3 +135,33 @@ html[data-over] {
   pointer-events: none;
   animation: tour-cue-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
+
+/* The Deal scene: Pako's reading and then his line come before the deal card, which
+   waits until he has spoken and then rises in below him. */
+html[data-deal-card] .thread-after > .tour-reading,
+html[data-deal-card] .thread-after > .thread-tray,
+html[data-deal-card] .thread-after > :has(.thread-tray) {
+  order: -1;
+}
+html[data-deal-card="held"] .thread-after > .thread-deal {
+  display: none;
+}
+html[data-deal-card="rising"] .thread-after > .thread-deal {
+  animation: tour-card-rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes tour-card-rise {
+  from {
+    opacity: 0;
+    translate: 0 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-deal-card="rising"] .thread-after > .thread-deal {
+    animation: tour-card-fade 0.3s linear both;
+  }
+}
+@keyframes tour-card-fade {
+  from {
+    opacity: 0;
+  }
+}

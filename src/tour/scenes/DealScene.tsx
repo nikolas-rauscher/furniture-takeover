@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Clock } from "@/components/icons";
 import type { DealTerms } from "../../../shared/deal";
 import { offerMessage, pickedUpMessage } from "../../../shared/dealMessages";
@@ -7,8 +8,10 @@ import { formatPickup } from "../../../shared/pickupTime";
 import type { ThreadRow } from "../../components/messagesModel";
 import { transitionPage } from "../../pageTransition";
 import { report } from "../device/sceneMessages";
-import AppScreen, { type ScenePage } from "./AppScreen";
+import PakoTray from "../../components/PakoTray";
+import AppScreen, { INERT, type ScenePage } from "./AppScreen";
 import { DESK } from "./findScript";
+import { EARLIER_LAMP } from "./sceneImages";
 import SceneMarks from "./SceneMarks";
 import SceneMessages from "./SceneMessages";
 import { now, type Beat, type SceneProps } from "./sceneScript";
@@ -26,6 +29,7 @@ const MINUTE = 60_000;
 const OFFER_ID = "noah-offer";
 
 type View = "inbox" | "thread";
+type DealCardStage = "held" | "rising";
 
 const PAGES: Record<View, ScenePage> = {
   inbox: { key: "inbox", view: "messages", destination: "messages" },
@@ -36,7 +40,7 @@ const PAGES: Record<View, ScenePage> = {
 const EARLIER_ROW: ThreadRow = {
   id: "tour-earlier",
   active: false,
-  image: "/samples/desk-lamp.svg",
+  image: EARLIER_LAMP,
   name: "Maya",
   title: "Desk lamp",
   preview: "Thanks, see you on Thursday.",
@@ -49,7 +53,11 @@ type DealState = {
   /** The clock just jumped: a label says to when. */
   skipped: boolean;
   thread: SceneThread;
+  /** Pako reads Noah's offer before he says anything about it. */
+  reading: boolean;
   pakoAwake: boolean;
+  /** The deal card waits until Pako has commented on the offer, then rises in. */
+  card: DealCardStage;
 };
 
 /** A pickup on the next full half hour at least three hours ahead, so the deal can be booked. */
@@ -125,9 +133,13 @@ const skipTo =
   });
 
 const DEAL_CARD = ".thread-deal";
+const READING = ".tour-reading";
 const PICKUP_CARD = ".pickup-card";
 
-/** One thing at a time: the row, the message, the card, Pako's line, then each tap and its answer. */
+/**
+ * One thing at a time: the row, the offer, Pako reading it, his line, the
+ * card, then each tap and its answer.
+ */
 function dealBeats(pickupAt: Date): Beat<DealState>[] {
   const terms = offerTerms(pickupAt);
   return [
@@ -139,19 +151,29 @@ function dealBeats(pickupAt: Date): Beat<DealState>[] {
     },
     { hold: 2200, tap: ".chat-thread.unread" },
     {
-      hold: 2000,
-      changes: now((state) => buyer.offers(state, terms)),
-      show: DEAL_CARD,
-      mood: "work",
+      hold: 1600,
+      changes: now((state) => ({ ...state, reading: true })),
+      show: READING,
+      mood: "think",
     },
     {
-      hold: 1500,
-      changes: now((state) => ({ ...state, pakoAwake: true })),
+      hold: 1800,
+      changes: now((state) => ({
+        ...buyer.offers(state, terms),
+        reading: false,
+        pakoAwake: true,
+      })),
       show: ".thread-tray",
       mood: "listen",
     },
     {
-      hold: 2800,
+      hold: 2600,
+      changes: now((state) => ({ ...state, card: "rising" })),
+      show: DEAL_CARD,
+      mood: "work",
+    },
+    {
+      hold: 2400,
       tap: ".deal-card-choices > .button.primary",
       cue: "Tap Confirm sale",
       mood: "cheer",
@@ -198,6 +220,50 @@ function TimeSkip({ time }: { time: Date }) {
   );
 }
 
+/**
+ * Pako's tray as the app shows it while he reads a reply, placed where his line
+ * will follow: after the thread's messages, above the deal card.
+ */
+function PakoReading() {
+  const [host, setHost] = useState<Element | null>(null);
+  useLayoutEffect(() => {
+    const after = document.querySelector(".thread-after");
+    if (!after) throw new Error("The thread to read in is not open.");
+    setHost(after);
+  }, []);
+  if (!host) return null;
+  return createPortal(
+    <div className="tour-reading">
+      <PakoTray
+        state={{ phase: "reading" }}
+        notice={null}
+        dealMoment={null}
+        role="seller"
+        otherName={BUYER}
+        title={DESK.title}
+        remaining={undefined}
+        draft=""
+        chosen={undefined}
+        onRead={INERT}
+        onWrite={INERT}
+        onFindSimilar={INERT}
+      />
+    </div>,
+    host,
+  );
+}
+
+/** Holds the deal card back with the scene's styles, then lets it rise in. */
+function useDealCardStage(stage: DealCardStage) {
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.dealCard = stage;
+    return () => {
+      delete root.dataset.dealCard;
+    };
+  }, [stage]);
+}
+
 /** Agree and pick up: Noah's offer arrives, Léa confirms, the pickup counts down, Picked up and Mark sold. */
 export default function DealScene({ onEnd }: SceneProps) {
   const [start] = useState(() => new Date());
@@ -208,7 +274,9 @@ export default function DealScene({ onEnd }: SceneProps) {
       now: start,
       skipped: false,
       thread: startThread("tour-deal", DESK),
+      reading: false,
       pakoAwake: false,
+      card: "held",
     }),
     beats,
     onEnd,
@@ -216,6 +284,7 @@ export default function DealScene({ onEnd }: SceneProps) {
   useEffect(() => {
     report({ kind: "clock", time: state.now.toISOString() });
   }, [state.now]);
+  useDealCardStage(state.card);
   const latest = state.thread.messages.at(-1);
   const rows: ThreadRow[] = latest
     ? [
@@ -248,6 +317,7 @@ export default function DealScene({ onEnd }: SceneProps) {
           pakoAwake={state.pakoAwake}
         />
       </AppScreen>
+      {state.reading && <PakoReading />}
       {state.skipped && <TimeSkip key={state.now.getTime()} time={state.now} />}
       <SceneMarks {...marks} />
     </>
