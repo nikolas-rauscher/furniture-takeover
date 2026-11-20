@@ -31,6 +31,7 @@ import StepContent from "./StepContent";
 import { StudyEndContent, useShare } from "./StudyEnd";
 import StudyShell from "./StudyShell";
 import type { Recorder } from "./useRecorder";
+import { useSceneDeadline } from "./useSceneDeadline";
 
 /** How long Pako stays happy about an answer before settling again. */
 const PICK_MOOD_MS = 1400;
@@ -184,10 +185,14 @@ export default function StudySteps({
     );
   }
 
+  const finishScene = () =>
+    setFinishedScenes((done) =>
+      done.includes(step.id) ? done : [...done, step.id],
+    );
+  const sceneFinished = finishedScenes.includes(step.id);
+  useSceneDeadline(step, sceneFinished, finishScene);
   const canContinue =
-    step.kind === "scene"
-      ? finishedScenes.includes(step.id)
-      : isAnswered(step, answer);
+    step.kind === "scene" ? sceneFinished : isAnswered(step, answer);
 
   // Number keys pick answers and Enter moves on, as long as no control has the key.
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
@@ -345,11 +350,7 @@ export default function StudySteps({
           contact={contact}
           onContact={setContact}
           onMood={setMood}
-          onSceneDone={() =>
-            setFinishedScenes((done) =>
-              done.includes(step.id) ? done : [...done, step.id],
-            )
-          }
+          onSceneDone={finishScene}
         />
       )}
     </StudyShell>
