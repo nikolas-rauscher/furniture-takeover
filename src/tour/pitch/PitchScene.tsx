@@ -11,7 +11,7 @@ import PhoneFrame from "../PhoneFrame";
 import { TOUR_SCENES } from "../tourScenes";
 
 /** Share of the frame that has to be on screen before its scene starts. */
-const START_VISIBLE = 0.45;
+const START_VISIBLE = 0.3;
 
 /** Becomes true once the element has been on screen, and stays true. */
 function useSeen<T extends HTMLElement>() {
@@ -65,7 +65,7 @@ export default function PitchScene({
     <section id={id} className="tour-section" aria-labelledby={titleId}>
       <div className="tour-section-text">
         <div className="tour-section-head">
-          <Pako mood={mood} size={56} />
+          <Pako mood={mood} size={64} />
           <h2 id={titleId} className="tour-section-title">
             {title}
           </h2>
@@ -87,7 +87,11 @@ export default function PitchScene({
           {finished ? `${title}: the example has finished.` : ""}
         </p>
       </div>
-      <div ref={element} className="tour-section-frame">
+      <div
+        ref={element}
+        className="tour-section-frame"
+        data-seen={seen || undefined}
+      >
         <PhoneFrame label={`${title}, example screen`}>
           {seen ? (
             <Scene

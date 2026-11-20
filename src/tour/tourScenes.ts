@@ -15,6 +15,13 @@ export const TOUR_SCENES: Record<Act, ComponentType<SceneProps>> = {
   chat: ChatDemo,
 };
 
+/** The pitch's opening search: someone at EPFL looking for a chair. */
+export const HERO_ANSWERS: CompleteAnswers = {
+  intent: "find",
+  place: "epfl",
+  items: ["chair"],
+};
+
 /** A student in the Atrium residence selling a desk… */
 export const SELLER_ANSWERS: CompleteAnswers = {
   intent: "sell",

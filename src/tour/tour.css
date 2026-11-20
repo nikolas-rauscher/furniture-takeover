@@ -16,8 +16,6 @@
 }
 .tour-phone-waiting {
   min-height: 320px;
-  border: 2px dashed var(--card-line);
-  border-radius: var(--radius-stage);
 }
 
 @media (min-width: 761px) {
@@ -88,10 +86,8 @@
 .tour-hero-text .ob-lead {
   max-width: 38ch;
 }
-.tour-hero .tour-phone {
-  order: -1;
-}
 .tour-hero-screen {
+  order: -1;
   display: grid;
   place-items: center;
   min-height: 260px;
@@ -146,6 +142,24 @@
 .tour-section .button.tour-replay {
   min-height: 44px;
   margin-top: 6px;
+}
+/* A frame fades in as it comes into view, together with the start of its scene. */
+.tour-section-frame {
+  opacity: 0;
+  translate: 0 24px;
+  transition:
+    opacity 0.5s ease-out,
+    translate 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tour-section-frame[data-seen] {
+  opacity: 1;
+  translate: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-section-frame {
+    translate: none;
+    transition: opacity 0.2s linear;
+  }
 }
 
 .tour-card {
@@ -222,41 +236,88 @@
 }
 
 @media (min-width: 761px) {
+  /* The hero fills the first screen, so the tour's frames start below it. */
   .tour-hero {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: 48px;
-    padding: 56px 32px 72px;
+    min-height: 100dvh;
+    padding: 48px 32px;
   }
   .tour-hero-text {
     align-items: flex-start;
     text-align: left;
   }
-  .tour-hero .tour-phone {
-    order: 0;
-    --tour-phone-height: 560px;
+  .tour-hero-text .ob-wordmark {
+    margin-bottom: 20px;
+    font-size: clamp(2.75rem, 1.6rem + 2.2vw, 4rem);
   }
-  .tour-hero-screen {
-    min-height: 100%;
+  .tour-hero .tour-hero-title {
+    max-width: 14ch;
+    margin-bottom: 18px;
+    font-size: clamp(2.25rem, 1.3rem + 1.9vw, 3.25rem);
+    line-height: 1.06;
+    letter-spacing: -0.035em;
+  }
+  .tour-hero-text .ob-lead {
+    max-width: 40ch;
+    font-size: 1.1875rem;
+  }
+  .tour-hero-device {
+    position: relative;
+    justify-self: end;
+  }
+  .tour-hero-device .tour-phone {
+    --tour-phone-height: clamp(440px, 100dvh - 260px, 560px);
+  }
+  /* Pako stands beside the phone and overlaps its edge. */
+  .tour-hero-device .tour-hero-pako {
+    position: absolute;
+    bottom: 40px;
+    left: -72px;
+    z-index: 2;
+    width: 112px;
+    height: 112px;
+    pointer-events: none;
   }
   .tour-actions {
     flex-direction: row;
     width: auto;
+    margin-top: 32px;
   }
   .tour-main {
-    gap: 88px;
+    gap: 112px;
     padding: 0 32px 72px;
   }
   .tour-sections {
-    gap: 88px;
+    gap: 112px;
+    padding-top: 32px;
   }
+  /* Text and frame swap sides from one section to the next. */
   .tour-section {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: 48px;
+    gap: 64px;
+  }
+  .tour-section:nth-child(even) {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .tour-section:nth-child(even) .tour-section-frame {
+    order: -1;
   }
   .tour-section-text {
-    max-width: 44ch;
+    justify-self: center;
+    max-width: 30rem;
+    gap: 14px;
+  }
+  .tour-section-text .tour-section-title {
+    font-size: clamp(1.875rem, 1.2rem + 1.2vw, 2.5rem);
+  }
+  .tour-section-text .ob-lead {
+    font-size: 1.1875rem;
+  }
+  .tour-section .tour-phone {
+    --tour-phone-height: clamp(480px, 100dvh - 160px, 620px);
   }
   .tour-principle-list {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -266,6 +327,15 @@
   }
   .tour-footer {
     padding: 28px 32px 40px;
+  }
+}
+
+/* With room beside the phone, Pako grows and steps further out. */
+@media (min-width: 1100px) {
+  .tour-hero-device .tour-hero-pako {
+    left: -104px;
+    width: 148px;
+    height: 148px;
   }
 }
 

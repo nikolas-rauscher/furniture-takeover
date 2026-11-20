@@ -1,17 +1,24 @@
 import { MotionConfig } from "motion/react";
+import { useState } from "react";
 import { ArrowRight, Banknote, GraduationCap, Send } from "@/components/icons";
 import { Button } from "@/components/ui/button";
+import AskDemo from "@/components/onboarding/AskDemo";
 import Guide from "@/components/onboarding/Guide";
+import Pako from "@/components/onboarding/Pako";
 import WelcomeBurst from "@/components/onboarding/WelcomeBurst";
 import type { IntroIcon } from "@/components/onboarding/onboardingIcons";
+import type { PakoMood } from "@/components/onboarding/storyTypes";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { motionBehavior } from "../../uiMotion";
 import PhoneFrame from "../PhoneFrame";
-import { BUYER_ANSWERS, SELLER_ANSWERS } from "../tourScenes";
+import { BUYER_ANSWERS, HERO_ANSWERS, SELLER_ANSWERS } from "../tourScenes";
 import PitchScene, { type PitchSceneProps } from "./PitchScene";
 
 /** Channel tag of the study link on this page, so its visitors can be told apart. */
 const PITCH_STUDY_LINK = "/tour?s=pitch";
 const HOW_ID = "how-it-works";
+/** From this width the hero shows the app in a phone frame beside the text. */
+const WIDE_SCREEN = "(min-width: 761px)";
 
 const SECTIONS: PitchSceneProps[] = [
   {
@@ -70,7 +77,28 @@ function scrollToTour() {
     ?.scrollIntoView({ behavior: motionBehavior(), block: "start" });
 }
 
+/** The hero's search ends on the visitor's pick; nothing follows it. */
+const NOTHING_FOLLOWS = () => undefined;
+
+/** The search scene playing in a phone, with Pako beside it following the scene. */
+function HeroDevice() {
+  const [mood, setMood] = useState<PakoMood>("wave");
+  return (
+    <div className="tour-hero-device">
+      <PhoneFrame label="Find, example screen">
+        <AskDemo
+          answers={HERO_ANSWERS}
+          onMood={setMood}
+          onDone={NOTHING_FOLLOWS}
+        />
+      </PhoneFrame>
+      <Pako className="tour-hero-pako" mood={mood} size={148} />
+    </div>
+  );
+}
+
 function Hero() {
+  const wide = useMediaQuery(WIDE_SCREEN);
   return (
     <header className="tour-hero">
       <div className="tour-hero-text">
@@ -92,11 +120,13 @@ function Hero() {
           </a>
         </div>
       </div>
-      <PhoneFrame label="Pako, the helper in takeover">
+      {wide ? (
+        <HeroDevice />
+      ) : (
         <div className="tour-hero-screen">
           <Guide mood="wave" layout="hero" burst={<WelcomeBurst />} />
         </div>
-      </PhoneFrame>
+      )}
     </header>
   );
 }
