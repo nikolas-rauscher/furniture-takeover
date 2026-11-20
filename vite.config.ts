@@ -1,4 +1,4 @@
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig, loadEnv, type Connect, type Plugin } from "vite";
 import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath } from "node:url";
 import { readPort } from "./server/config";
@@ -16,6 +16,25 @@ function vendorChunk(id: string) {
   );
 }
 
+const TOUR_PATH = /^\/tour(?=\?|$)/;
+
+/** `/tour` serves the tour page in dev and preview; the production server maps it itself. */
+const rewriteTour: Connect.NextHandleFunction = (request, _response, next) => {
+  if (request.url) request.url = request.url.replace(TOUR_PATH, "/tour.html");
+  next();
+};
+
+function tourRoute(): Plugin {
+  return {
+    name: "tour-route",
+    configureServer: (server) => void server.middlewares.use(rewriteTour),
+    configurePreviewServer: (server) =>
+      void server.middlewares.use(rewriteTour),
+  };
+}
+
+const page = (file: string) => fileURLToPath(new URL(file, import.meta.url));
+
 export default defineConfig(({ mode }) => {
   const env = {
     ...loadEnv(mode, process.cwd(), ["API_", "APP_", "PREVIEW_"]),
@@ -29,12 +48,13 @@ export default defineConfig(({ mode }) => {
     .map((host) => host.trim())
     .filter(Boolean);
   return {
-    plugins: [tailwindcss()],
+    plugins: [tailwindcss(), tourRoute()],
     resolve: {
-      alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+      alias: { "@": page("./src") },
     },
     build: {
       rollupOptions: {
+        input: { main: page("./index.html"), tour: page("./tour.html") },
         output: {
           manualChunks: vendorChunk,
           // Folds the many tiny shared chunks into their neighbours: fewer requests per screen.

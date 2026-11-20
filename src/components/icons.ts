@@ -63,5 +63,6 @@ export {
   Truck,
   TrendingDown,
   MailCheck,
+  RotateCcw,
   Zap,
 } from "lucide-react";
