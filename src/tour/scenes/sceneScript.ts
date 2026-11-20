@@ -17,6 +17,11 @@ export type Beat<State> = {
   reveal?: string;
   /** The control a finger taps, as a CSS selector inside the scene; the tap clicks it. */
   tap?: string;
+  /**
+   * A finger taps this control, but the scene plays what follows itself:
+   * the phone's camera, which the app leaves to the phone.
+   */
+  press?: string;
   /** A finger drags a slider through these values, as a CSS selector and the values. */
   slide?: { selector: string; values: number[] };
   /** Pako's mood beside the phone from this beat on. */

@@ -1,4 +1,5 @@
-import { Fragment, useRef, type SetStateAction } from "react";
+import { AnimatePresence } from "motion/react";
+import { Fragment, useEffect, useRef, type SetStateAction } from "react";
 import { emptyFavorites } from "../../api/favorites";
 import { MarketplaceDataContext } from "../../marketplaceData";
 import type { AgentListingPatchEvent } from "../../../shared/actions";
@@ -23,18 +24,21 @@ import type { ListingDraft } from "../../listingDraft";
 import { pendingPrice, PICKUP_QUESTION } from "../../listingQuestions";
 import { saveActionLabel } from "../../listingSaveWords";
 import { transitionPage } from "../../pageTransition";
+import { report } from "../device/sceneMessages";
 import AppScreen, { INERT, type ScenePage } from "./AppScreen";
 import { DESK } from "./findScript";
 import { stream, now, type Beat, type SceneProps } from "./sceneScript";
 import {
   CHOSEN_PRICE,
   draftFromPhoto,
+  EMPTY_DRAFT,
   listingGap,
-  PHOTO_DRAFT,
   PHOTO_READING,
   PRICE_EVENTS,
+  withPhoto,
   WRITING_EVENTS,
 } from "./sellScript";
+import SceneCamera, { type CameraStage } from "./SceneCamera";
 import TouchMark from "./TouchMark";
 import { useSceneScript } from "./useSceneScript";
 
@@ -42,6 +46,7 @@ type Page = "photo" | "writing" | "listings";
 
 type SellState = {
   page: Page;
+  camera: CameraStage | "closed";
   draft: ListingDraft;
   insight: PhotoInsight;
   run: AgentRunState;
@@ -57,7 +62,8 @@ const PAGES: Record<Page, ScenePage> = {
 
 const initial = (): SellState => ({
   page: "photo",
-  draft: PHOTO_DRAFT,
+  camera: "closed",
+  draft: EMPTY_DRAFT,
   insight: { status: "reading", noteOnly: false },
   run: emptyAgentRunState(),
   applied: [],
@@ -85,9 +91,30 @@ function describe(event: AgentListingPatchEvent): Partial<ListingDraft> {
 
 const SAVE = ".listing-save-form button[type='submit']";
 
+/** The camera slides away before the photo lands in the listing. */
+const CAMERA_CLOSE_MS = 420;
+
 const BEATS: Beat<SellState>[] = [
   {
-    hold: 1500,
+    hold: 1900,
+    press: ".snap-target-shutter",
+    mood: "listen",
+    changes: now((state) => ({ ...state, camera: "aiming" })),
+  },
+  { hold: 2500, tap: ".tour-camera-shutter" },
+  {
+    hold: 1800,
+    tap: ".tour-camera-use",
+    mood: "work",
+    changes: [
+      {
+        delay: CAMERA_CLOSE_MS,
+        apply: (state) => ({ ...state, draft: withPhoto(state.draft) }),
+      },
+    ],
+  },
+  {
+    hold: 1700,
     mood: "happy",
     changes: now((state) => ({
       ...state,
@@ -239,7 +266,16 @@ const PAKO_READY = {
   refresh: INERT,
 };
 
-/** Sell: a photo, Pako's reading of it, his questions, the price and Save on this device. */
+/** The page's status bar turns light while the camera covers the screen. */
+function useCameraReport(open: boolean) {
+  useEffect(() => {
+    if (!open) return;
+    report({ kind: "camera", open: true });
+    return () => report({ kind: "camera", open: false });
+  }, [open]);
+}
+
+/** Sell: the photo taken with the phone's camera, Pako's reading of it, his questions, the price and Save on this device. */
 export default function SellScene({ onEnd }: SceneProps) {
   const { state, setState, touch } = useSceneScript(initial, BEATS, onEnd);
   const go = (page: Page, change: (current: SellState) => SellState) =>
@@ -248,6 +284,7 @@ export default function SellScene({ onEnd }: SceneProps) {
     );
   const listing = sceneListing(state, setState);
   const working = state.run.status === "running";
+  useCameraReport(state.camera !== "closed");
   return (
     <>
       <AppScreen page={PAGES[state.page]}>
@@ -326,6 +363,19 @@ export default function SellScene({ onEnd }: SceneProps) {
           />
         )}
       </AppScreen>
+      <AnimatePresence>
+        {state.camera !== "closed" && (
+          <SceneCamera
+            stage={state.camera}
+            onShoot={() =>
+              setState((current) => ({ ...current, camera: "taken" }))
+            }
+            onUse={() =>
+              setState((current) => ({ ...current, camera: "closed" }))
+            }
+          />
+        )}
+      </AnimatePresence>
       <TouchMark touch={touch} />
     </>
   );

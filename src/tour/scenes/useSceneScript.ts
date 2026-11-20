@@ -74,14 +74,13 @@ export function useSceneScript<State>(
             block: "center",
             behavior: reduced ? "auto" : "smooth",
           });
-        if (beat.tap) {
-          if (!reduced) {
-            setTouch({ ...centreOf(beat.tap), key: index });
-            await pause(PRESS_MS, signal);
-          }
-          // The app's own handler answers the tap, as it would a finger's.
-          sceneElement(beat.tap).click();
+        const touched = beat.tap ?? beat.press;
+        if (touched && !reduced) {
+          setTouch({ ...centreOf(touched), key: index });
+          await pause(PRESS_MS, signal);
         }
+        // The app's own handler answers the tap, as it would a finger's.
+        if (beat.tap) sceneElement(beat.tap).click();
         if (beat.slide) {
           const { selector, values } = beat.slide;
           const slider = sceneElement(selector);

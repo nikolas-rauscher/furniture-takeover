@@ -56,7 +56,7 @@ function useFit(bare: boolean) {
   return { slot, fit };
 }
 
-/** Passes the scene's mood and its end to the page, and the page's replays to the scene. */
+/** Passes the scene's mood, clock, camera and end to the page, and the page's replays to the scene. */
 function useSceneLink(
   frame: RefObject<HTMLIFrameElement | null>,
   replay: number,
@@ -64,11 +64,13 @@ function useSceneLink(
   onDone: (() => void) | undefined,
 ) {
   const [sceneTime, setSceneTime] = useState<Date>();
+  const [cameraOpen, setCameraOpen] = useState(false);
   useEffect(() => {
     const listen = (event: MessageEvent) => {
       const message = readReport(event, frame.current?.contentWindow ?? null);
       if (message?.kind === "mood") onMood?.(message.mood);
       if (message?.kind === "clock") setSceneTime(new Date(message.time));
+      if (message?.kind === "camera") setCameraOpen(message.open);
       if (message?.kind === "done") onDone?.();
     };
     window.addEventListener("message", listen);
@@ -82,7 +84,7 @@ function useSceneLink(
     if (!scene) throw new Error("The scene to replay is not loaded.");
     command(scene, { kind: "replay" });
   }, [frame, replay]);
-  return sceneTime;
+  return { sceneTime, cameraOpen };
 }
 
 export type DeviceFrameProps = {
@@ -108,7 +110,7 @@ export default function DeviceFrame({
 }: DeviceFrameProps) {
   const { slot, fit } = useFit(bare);
   const frame = useRef<HTMLIFrameElement>(null);
-  const sceneTime = useSceneLink(frame, replay, onMood, onDone);
+  const { sceneTime, cameraOpen } = useSceneLink(frame, replay, onMood, onDone);
   const screen = (
     <iframe
       ref={frame}
@@ -142,7 +144,10 @@ export default function DeviceFrame({
           <span className="tour-device-key" data-key="camera" />
           <div className="tour-device-edge">
             <div className="tour-device-bezel">
-              <div className="tour-device-screen">
+              <div
+                className="tour-device-screen"
+                data-camera={cameraOpen || undefined}
+              >
                 <StatusBar sceneTime={sceneTime} />
                 <span className="tour-device-camera" />
                 {screen}

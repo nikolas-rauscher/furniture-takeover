@@ -5,13 +5,17 @@ import { emptyDraft, type ListingDraft } from "../../listingDraft";
 import { DESK } from "./findScript";
 
 /** Léa's photo of her desk: the project's own drawing of it. */
-const PHOTO = "/samples/compact-study-desk.svg";
+export const PHOTO = "/samples/compact-study-desk.svg";
 
-export const PHOTO_DRAFT: ListingDraft = {
-  ...emptyDraft("FMEL Triaudes, Ecublens"),
+/** The new listing before the photo: only the pickup place is known. */
+export const EMPTY_DRAFT: ListingDraft = emptyDraft("FMEL Triaudes, Ecublens");
+
+/** The draft once the camera's photo is in. */
+export const withPhoto = (draft: ListingDraft): ListingDraft => ({
+  ...draft,
   image: PHOTO,
   images: [PHOTO],
-};
+});
 
 /** The details Pako reads from the photo. */
 const PHOTO_DETAILS = {

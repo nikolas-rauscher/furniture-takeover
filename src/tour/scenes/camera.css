@@ -1,0 +1,289 @@
+/* The phone's camera over the Sell scene: dark controls around a handheld view of the desk. */
+.tour-camera {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: #000;
+  color: #fff;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+.tour-camera-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 18px;
+}
+.tour-camera-round {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.12);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.tour-camera-round[data-label] {
+  font-size: 13px;
+  font-weight: 600;
+}
+.tour-camera-off {
+  stroke-width: 2;
+}
+
+/* The view keeps the photo's 4:3 band in its middle; the room continues above and below. */
+.tour-camera-view {
+  position: relative;
+  overflow: hidden;
+  container-type: size;
+}
+.tour-camera-live,
+.tour-camera-shot,
+.tour-camera-room {
+  position: absolute;
+  inset: 0;
+}
+.tour-camera-room {
+  background: #e0f0e2;
+}
+.tour-camera-window {
+  position: absolute;
+  top: calc(50% - 37.5cqw - 104px);
+  left: 12%;
+  width: 26%;
+  height: 84px;
+  border: 5px solid #f7fbf7;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #cfe2f6, #e6f0fa);
+  box-shadow: 0 2px 0 rgb(41 41 41 / 0.06);
+}
+/* Where the drawing's floor begins: 238 of its 300 units, the drawing filling the width. */
+.tour-camera-floor {
+  position: absolute;
+  inset: calc(50% + 22cqw) 0 0;
+  background: #d7e6d9;
+}
+.tour-camera-desk {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  translate: 0 -50%;
+}
+/* A hand never holds still: the view drifts a few pixels and turns a little. */
+.tour-camera-room[data-live] {
+  scale: 1.08;
+  animation: tour-camera-hand 3.2s ease-in-out infinite alternate;
+}
+@keyframes tour-camera-hand {
+  0% {
+    translate: -4px 3px;
+    rotate: -0.5deg;
+  }
+  45% {
+    translate: 3px -2px;
+    rotate: 0.3deg;
+  }
+  100% {
+    translate: -1px -4px;
+    rotate: -0.2deg;
+  }
+}
+
+/* The focus square settles on the desk, as the app's own example camera draws it. */
+.tour-camera-focus {
+  position: absolute;
+  top: calc(50% - 1cqw);
+  left: 50%;
+  width: 34cqw;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border: 2.5px solid var(--sun);
+  border-radius: 12px;
+  filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.35));
+  opacity: 0;
+  animation: tour-camera-focus 1s 0.7s ease-out forwards;
+}
+@keyframes tour-camera-focus {
+  0% {
+    opacity: 0;
+    scale: 1.35;
+  }
+  30% {
+    opacity: 1;
+    scale: 0.94;
+  }
+  60% {
+    opacity: 0.5;
+    scale: 1.02;
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+/* The shot: the view freezes, crops to the photo's 4:3 band and settles lower down. */
+.tour-camera[data-stage="taken"] .tour-camera-live {
+  animation: tour-camera-fade-out 0.3s 0.2s ease-out forwards;
+}
+.tour-camera-shot {
+  animation: tour-camera-shot 0.6s 0.3s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+@keyframes tour-camera-shot {
+  from {
+    clip-path: inset(0 0 0 0 round 0);
+    transform: none;
+  }
+  to {
+    clip-path: inset(calc(50% - 37.5cqw) 0 round 14px);
+    transform: translateY(9%) scale(0.86);
+  }
+}
+.tour-camera-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  pointer-events: none;
+  opacity: 0;
+  animation: tour-camera-flash 0.36s ease-out;
+}
+@keyframes tour-camera-flash {
+  25% {
+    opacity: 1;
+  }
+}
+
+.tour-camera-controls {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 14px 0 22px;
+}
+.tour-camera-zoom {
+  display: flex;
+  gap: 8px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.1);
+  font-size: 12px;
+  font-weight: 600;
+}
+.tour-camera-zoom span {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.35);
+}
+.tour-camera-zoom [data-chosen] {
+  color: var(--sun);
+}
+.tour-camera-mode {
+  color: var(--sun);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.tour-camera-rows {
+  display: grid;
+  width: 100%;
+}
+.tour-camera-row {
+  grid-area: 1 / 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 32px;
+}
+.tour-camera-last {
+  width: 46px;
+  height: 46px;
+  border: 1.5px solid rgb(255 255 255 / 0.3);
+  border-radius: 10px;
+  background: #1c1c1e;
+}
+.tour-camera-shutter {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  padding: 0;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  background: transparent;
+}
+.tour-camera-shutter span {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #fff;
+  transition: scale 120ms ease-out;
+}
+.tour-camera-shutter:disabled span {
+  scale: 0.88;
+}
+.tour-camera-row .tour-camera-round {
+  width: 46px;
+  height: 46px;
+}
+.tour-camera[data-stage="taken"] [data-row="shutter"] {
+  animation: tour-camera-fade-out 0.25s 0.3s ease-out forwards;
+}
+[data-row="review"] {
+  min-height: 76px;
+  animation: tour-camera-fade-in 0.3s 0.55s ease-out both;
+}
+.tour-camera-retake {
+  font-size: 17px;
+}
+.tour-camera-use {
+  min-height: 44px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  color: #111;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+}
+@keyframes tour-camera-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes tour-camera-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Reduced motion: the app turns every animation off, so each step is a still frame of its end. */
+@media (prefers-reduced-motion: reduce) {
+  .tour-camera-focus {
+    opacity: 1;
+  }
+  .tour-camera-flash {
+    display: none;
+  }
+  .tour-camera[data-stage="taken"] .tour-camera-live,
+  .tour-camera[data-stage="taken"] [data-row="shutter"] {
+    visibility: hidden;
+  }
+  .tour-camera-shot {
+    clip-path: inset(calc(50% - 37.5cqw) 0 round 14px);
+    transform: translateY(9%) scale(0.86);
+  }
+}

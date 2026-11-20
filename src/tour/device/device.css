@@ -65,6 +65,24 @@
   background: var(--background);
 }
 
+/* The phone's camera is dark from edge to edge; the status bar and home indicator turn light. */
+.tour-device-screen,
+.tour-status-bar,
+.tour-device-home {
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+.tour-device-screen[data-camera] {
+  background: #000;
+}
+.tour-device-screen[data-camera] .tour-status-bar {
+  color: #fff;
+}
+.tour-device-screen[data-camera] .tour-device-home {
+  background: #fff;
+}
+
 .tour-device-key {
   position: absolute;
   width: 4px;
