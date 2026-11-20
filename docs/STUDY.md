@@ -128,7 +128,7 @@ Pako: "Last bit, all optional: it helps us understand who answered." Two rows pe
 | `level` | "What are you studying?" | `bachelor` Bachelor · `master` Master · `phd` PhD · `other` Other studies · `not-student` Not a student | students (`who` is not `no`) |
 | `exchange` | "Are you an exchange student?" | `yes` Yes · `no` No · `na` Prefer not to say | students |
 
-Then two equal buttons: `finish` Finish · `tour` Peek at the app (1 min, optional).
+Then two equal buttons, saved as the answer to step `peek`: `finish` Finish · `tour` Peek at the app (1 min, optional).
 
 ### 7. Optional tour
 
