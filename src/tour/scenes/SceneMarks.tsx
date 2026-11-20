@@ -36,19 +36,68 @@ function GlowMark({ glow }: { glow: Glow }) {
   );
 }
 
+/** What a visitor might tap, which a hint should not cover. */
+const CONTROLS = "button, a[href], input, textarea, [role=slider]";
+
+type Side = "above" | "below";
+
+function hintTop(side: Side, area: DOMRect) {
+  return side === "below"
+    ? area.bottom + HINT.gap
+    : area.top - HINT.gap - HINT.height;
+}
+
+function within(inner: DOMRect, outer: DOMRect) {
+  return (
+    inner.left >= outer.left &&
+    inner.right <= outer.right &&
+    inner.top >= outer.top &&
+    inner.bottom <= outer.bottom
+  );
+}
+
+/** How many controls outside the control's group a hint at this place would cover. */
+function coveredControls(top: number, left: number, area: DOMRect) {
+  return [...document.querySelectorAll(CONTROLS)].filter((element) => {
+    const box = element.getBoundingClientRect();
+    return (
+      box.width > 0 &&
+      !within(box, area) &&
+      box.left < left + HINT.width &&
+      box.right > left &&
+      box.top < top + HINT.height &&
+      box.bottom > top
+    );
+  }).length;
+}
+
 /**
- * Pako's hint below the control, where the app keeps small print, or above it
- * near the bottom of the screen; and a ring pulsing on the control.
+ * Below the control's group, where the app keeps small print, unless it does
+ * not fit there or covers more controls than above it.
+ */
+function hintSide(area: DOMRect, left: number): Side {
+  const fitsBelow =
+    hintTop("below", area) + HINT.height <= window.innerHeight - BOTTOM_BAND;
+  const fitsAbove = hintTop("above", area) >= HINT.edge;
+  if (!fitsBelow) return "above";
+  if (!fitsAbove) return "below";
+  const covered = (side: Side) =>
+    coveredControls(hintTop(side, area), left, area);
+  return covered("below") > covered("above") ? "above" : "below";
+}
+
+/**
+ * Pako's hint beside the control's group, never over it, and a ring pulsing
+ * on the control.
  */
 function CueMark({ cue }: { cue: Cue }) {
-  const { box } = cue;
+  const { box, area } = cue;
   const centre = box.left + box.width / 2;
   const left = Math.min(
     Math.max(centre - HINT.width / 2, HINT.edge),
     window.innerWidth - HINT.width - HINT.edge,
   );
-  const above =
-    box.bottom + HINT.gap + HINT.height > window.innerHeight - BOTTOM_BAND;
+  const side = hintSide(area, left);
   return (
     <>
       <span
@@ -57,13 +106,13 @@ function CueMark({ cue }: { cue: Cue }) {
       />
       <span
         className="tour-cue"
-        data-side={above ? "above" : "below"}
+        data-side={side}
         style={{
           left,
           width: HINT.width,
-          ...(above
-            ? { bottom: window.innerHeight - box.top + HINT.gap }
-            : { top: box.bottom + HINT.gap }),
+          ...(side === "above"
+            ? { bottom: window.innerHeight - area.top + HINT.gap }
+            : { top: area.bottom + HINT.gap }),
         }}
       >
         <Pako mood="wave" size={34} />

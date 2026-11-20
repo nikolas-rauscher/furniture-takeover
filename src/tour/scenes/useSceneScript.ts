@@ -14,7 +14,11 @@ export type Glow = {
   key: number;
 };
 /** The control a key moment waits on, with Pako's hint. */
-export type Cue = { box: DOMRect; text: string; key: number };
+/**
+ * A key moment's hint: the control's box, and the box the hint keeps clear of,
+ * which is the control's group where one is marked `data-cue-area`.
+ */
+export type Cue = { box: DOMRect; area: DOMRect; text: string; key: number };
 
 /** How long a finger rests on a control before the screen answers. */
 const PRESS_MS = 260;
@@ -141,7 +145,13 @@ export function useSceneScript<State>(
       const control = sceneElement(selector);
       bringIntoView(control, "nearest", scroll);
       if (!reduced) await pause(SCROLL_MS, signal);
-      setCue({ box: control.getBoundingClientRect(), text, key });
+      const area = control.closest("[data-cue-area]") ?? control;
+      setCue({
+        box: control.getBoundingClientRect(),
+        area: area.getBoundingClientRect(),
+        text,
+        key,
+      });
       const slider = beat.slide ? asSlider(control) : null;
       const turn = await visitorTurn({
         control,

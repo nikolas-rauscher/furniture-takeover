@@ -111,7 +111,7 @@ export default function SceneCamera({ stage, onShoot, onUse }: CameraProps) {
         )}
         {taken && <span className="tour-camera-flash" />}
       </div>
-      <div className="tour-camera-controls">
+      <div className="tour-camera-controls" data-cue-area>
         <div className="tour-camera-zoom">
           <span>.5</span>
           <span data-chosen>1×</span>
