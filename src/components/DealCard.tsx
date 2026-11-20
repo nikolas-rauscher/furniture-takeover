@@ -30,9 +30,11 @@ import BookedBanner from "./BookedBanner";
 import { PakoLabel } from "./ChatParts";
 import { CARD_SWAP, DealTermsGrid, DealTile, PlaceNote } from "./DealTerms";
 import PickupCard, { type PickupLink } from "./PickupCard";
-import type { NextBuyer } from "./ThreadDeal";
 import { Button } from "./ui/button";
 import "./deal-card.css";
+
+/** The seller's next interested buyer once a pickup was released. */
+export type NextBuyer = { name: string; onOffer: () => void };
 
 /** The card grows out of the strip and folds back into it. */
 const GROW = { type: "spring", stiffness: 360, damping: 34 } as const;

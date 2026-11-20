@@ -267,7 +267,7 @@ function changedValue(field: string, value: unknown) {
 const LONG_FIELDS = new Set(["title", "description"]);
 
 /** What Pako changed, in his words: one short value is named, long texts are not repeated. */
-export function changeSummary(action: AgentRunAction): string {
+function changeSummary(action: AgentRunAction): string {
   if (action.type === "preferences_patch")
     return searchChangeSummary(action.patch);
   const fields = Object.entries(action.patch);

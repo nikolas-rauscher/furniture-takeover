@@ -12,7 +12,7 @@ import type {
 } from "./types.ts";
 
 /** A reading sends at most 20 messages of one thread. */
-export const THREAD_BODY_BYTES = 64 * 1024;
+const THREAD_BODY_BYTES = 64 * 1024;
 
 type Agents = Pick<ServerOptions, "runtime" | "threads"> & {
   service: AgentService;

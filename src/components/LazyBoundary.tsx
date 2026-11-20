@@ -5,7 +5,7 @@ import { retryFailedScreens } from "../lazyScreen";
 import "./screen-placeholder.css";
 
 /** Holds the screen's place while its code arrives, so nothing jumps when it renders. */
-export function ScreenPlaceholder({ label }: { label: string }) {
+function ScreenPlaceholder({ label }: { label: string }) {
   return (
     <div className="screen-placeholder" role="status" aria-label={label}>
       <Skeleton className="screen-placeholder-title" />

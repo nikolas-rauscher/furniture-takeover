@@ -1,6 +1,6 @@
 import type { AgentRunRequest } from "../shared/runs.ts";
 import { agentDraft } from "./agentActions.ts";
-import type { ListingDraft } from "./components/SellFlow.tsx";
+import type { ListingDraft } from "./listingDraft.ts";
 import type { AgentRunState, AgentRunTurn } from "./hooks/useAgentRun.ts";
 
 /** What the photo analysis noticed; every run of the listing gets it as a hint. */

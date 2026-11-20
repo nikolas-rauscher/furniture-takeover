@@ -19,7 +19,7 @@ function quotaUnavailable(options?: ErrorOptions): AgentError {
 }
 
 /** Loopback, private-network and Tailscale addresses; never a public host. */
-export function isPrivateHost(hostname: string): boolean {
+function isPrivateHost(hostname: string): boolean {
   if (hostname === "localhost" || hostname === "[::1]") return true;
   if (!isIPv4(hostname)) return false;
   const [a, b] = hostname.split(".").map(Number);

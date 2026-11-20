@@ -24,7 +24,6 @@ import type {
 import type { AgentService } from "./service.ts";
 
 export { MAX_BODY_BYTES } from "./http-io.ts";
-export { THREAD_BODY_BYTES } from "./routes/agent.ts";
 
 export function createAgentServer(
   service: AgentService,

@@ -112,7 +112,7 @@ export async function createCardPhoto(photo: string): Promise<string> {
 }
 
 /** A smaller copy for sorting many photos at once within one request budget. */
-export async function photoPreview(photo: string): Promise<string> {
+async function photoPreview(photo: string): Promise<string> {
   if (dataUrlBytes(photo) <= MAX_PHOTO_PREVIEW_BYTES) return photo;
   return encodeJpeg(await decodedImage(photo), {
     longestSide: 640,

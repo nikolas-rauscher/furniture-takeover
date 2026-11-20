@@ -21,7 +21,7 @@ import type {
   MessagesProps,
   OfferAgain,
   ThreadRequest,
-} from "../components/MessagesPage";
+} from "../components/messagesProps";
 import InboxEmpty from "../components/InboxEmpty";
 import {
   ChatPartner,

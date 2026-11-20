@@ -141,7 +141,7 @@ export const places: Place[] = [
   },
 ];
 
-export type Condition = "Good" | "Very good" | "Used";
+type Condition = "Good" | "Very good" | "Used";
 
 export type Item = {
   id: ItemId;

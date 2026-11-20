@@ -11,7 +11,7 @@ export type AgentListingDraft = {
 };
 
 export type SellerEvidence = { kind: "seller"; quote: string };
-export type SourceEvidence = {
+type SourceEvidence = {
   kind: "source";
   sourceId: string;
   quote: string;

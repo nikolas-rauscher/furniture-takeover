@@ -4,7 +4,7 @@ import { plainPrice, priceText } from "../priceText";
 import { Input } from "./ui/input";
 import { SelectField } from "./ui/select-field";
 import { Textarea } from "./ui/textarea";
-import type { ListingDraft } from "./SellFlow";
+import type { ListingDraft } from "../listingDraft";
 
 /** Ids of the required fields, so a missing one can be focused from the checklist. */
 export type ListingFieldIds = Record<

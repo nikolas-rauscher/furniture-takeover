@@ -1,4 +1,4 @@
-export type AgentIntent = "search" | "listing";
+type AgentIntent = "search" | "listing";
 
 export type AssistRequest = {
   intent: AgentIntent;

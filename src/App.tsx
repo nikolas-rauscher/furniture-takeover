@@ -4,7 +4,7 @@ import { Textarea } from "./components/ui/textarea";
 import { Input } from "./components/ui/input";
 import { historyPosition, readRoute, type View } from "./navigation";
 import { formatPickup } from "../shared/pickupTime";
-import type { AccountConnection } from "./cloud/AccountSession";
+import type { AccountConnection } from "./cloud/connection";
 import { useMarketplaceListings } from "./cloud/useMarketplaceListings";
 import { savedListing, useFavorites } from "./cloud/useFavorites";
 import { useAppViewport } from "./hooks/useAppViewport";
@@ -24,7 +24,7 @@ import WorkspaceHeader from "./components/WorkspaceHeader";
 import type {
   MessagesInboxProps,
   ThreadRequest,
-} from "./components/MessagesPage";
+} from "./components/messagesProps";
 import PakoReadingSetting from "./components/PakoReadingSetting";
 import {
   NamedOfferPriceContext,
@@ -114,7 +114,7 @@ import Modal from "./components/Modal";
 import ProductCard from "./components/ProductCard";
 import ProductGrid from "./components/ProductGrid";
 import SearchPreferencesFields from "./components/SearchPreferencesFields";
-import type { BatchProgress, ListingDraft } from "./components/SellFlow";
+import type { BatchProgress, ListingDraft } from "./listingDraft";
 import { listingSaveWords, saveActionLabel } from "./listingSaveWords";
 import AskPakoMenu, { LISTING_REQUESTS } from "./components/AskPakoMenu";
 import { useDeveloperMode } from "./availability/useDeveloperMode";

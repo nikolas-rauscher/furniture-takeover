@@ -101,7 +101,7 @@ export function effectiveStatus(
     ? "reserved"
     : listing.status;
 }
-export function dealActivity(deal: Deal | undefined | null, role: DealRole) {
+function dealActivity(deal: Deal | undefined | null, role: DealRole) {
   if (deal?.status === "agreed")
     return deal.agreed?.terms.fulfillment === "shipping"
       ? "Agreed"

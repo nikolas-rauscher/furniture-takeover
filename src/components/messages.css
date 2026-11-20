@@ -715,17 +715,6 @@
   line-height: 1.6;
 }
 
-/* The listing editor quotes a prepared buyer message in the same frame. */
-.proposal-message-preview {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  padding: 16px;
-  border: 1px solid #dce0ed;
-  border-radius: 12px;
-  background: white;
-  line-height: 1.5;
-}
-
 .chat-delete-notice {
   display: flex;
   flex-shrink: 0;

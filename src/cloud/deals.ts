@@ -143,13 +143,6 @@ type ThreadEventDetails = {
 };
 export type ThreadDealEvent = DealEvent & ThreadEventDetails;
 export type ThreadPickupEvent = PickupEvent & ThreadEventDetails;
-export async function loadDealEvents(
-  client: SupabaseClient,
-  conversationId: string,
-) {
-  return (await loadThreadDealHistory(client, conversationId)).events;
-}
-
 export async function loadThreadDealHistory(client: SupabaseClient, conversationId: string) {
   const events: ThreadDealEvent[] = [];
   const pickupEvents: ThreadPickupEvent[] = [];

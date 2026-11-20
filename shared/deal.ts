@@ -73,7 +73,7 @@ export function messageStatesTerms(
 const roleSchema = z.enum(["buyer", "seller"]);
 export const lateMinutesSchema = z.union([z.literal(10), z.literal(20), z.literal(30)]);
 export type LateMinutes = z.infer<typeof lateMinutesSchema>;
-export const pickupSignalsSchema = z.object({
+const pickupSignalsSchema = z.object({
   onWay: z.object({ buyer: z.string().nullable(), seller: z.string().nullable() }).strict(),
   late: z.object({ minutes: lateMinutesSchema, by: roleSchema, at: z.string() }).strict().nullable(),
   noShow: z.object({ by: roleSchema, at: z.string() }).strict().nullable(),
@@ -221,7 +221,7 @@ export function pickupDay(deal: Deal | null | undefined, role: DealRole, now: Da
   };
 }
 
-export function isPickupReleased(deal: Deal | null | undefined): boolean {
+function isPickupReleased(deal: Deal | null | undefined): boolean {
   return deal?.status === "cancelled" &&
     deal.agreed?.terms.fulfillment === "pickup" &&
     (deal.outcome?.kind === "no_show" || deal.outcome?.kind === "cancelled" || deal.outcome?.kind === "pickup_expired");
@@ -347,9 +347,9 @@ export class DealError extends Error {
     this.key = key;
   }
 }
-export const termsComplete = (terms: DealTerms) =>
+const termsComplete = (terms: DealTerms) =>
   missingTerms(terms).length === 0;
-export const sameTerms = (a: DealTerms, b: DealTerms) =>
+const sameTerms = (a: DealTerms, b: DealTerms) =>
   (Object.keys(a) as (keyof DealTerms)[]).every((k) => a[k] === b[k]);
 export function applyDealAction(input: {
   deal: Deal | null;

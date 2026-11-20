@@ -136,7 +136,6 @@
     font-size: var(--type-body);
     scroll-margin-block: 80px;
   }
-  .search-hero textarea,
   .main-content input,
   .main-content textarea,
   .main-content select,
@@ -148,7 +147,6 @@
     font-size: var(--type-body);
   }
   .title-with-action,
-  .results-controls,
   .modal-actions {
     flex-wrap: wrap;
   }
@@ -265,10 +263,7 @@
   }
   :root[data-compact-viewport]
     .messages-page.has-conversation
-    > :is(.page-title, .quiet-caption),
-  :root[data-compact-viewport] .chat-layout .results-controls,
-  :root[data-compact-viewport] .selling-chat-layout .listing-preview,
-  :root[data-compact-viewport] .selling-chat-layout .page-title {
+    > :is(.page-title, .quiet-caption), :root[data-compact-viewport] .selling-chat-layout .listing-preview, :root[data-compact-viewport] .selling-chat-layout .page-title {
     display: none;
   }
   :root[data-compact-viewport]

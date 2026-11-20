@@ -34,7 +34,7 @@ import {
   useChatCelebration,
   type ChatMoment,
 } from "./ChatParts";
-import DealCard from "./DealCard";
+import DealCard, { type NextBuyer } from "./DealCard";
 import { useNamedOfferPrice } from "./namedOfferPrice";
 import OfferEditor from "./OfferEditor";
 
@@ -79,8 +79,6 @@ export type DealController = {
   ) => Promise<DealResult>;
 };
 
-/** The seller's next interested buyer once a pickup was released. */
-export type NextBuyer = { name: string; onOffer: () => void };
 
 /** Phases in which the other student's move waits for this one: the card opens for them. */
 const NEEDS_YOU: readonly DealPhase[] = [

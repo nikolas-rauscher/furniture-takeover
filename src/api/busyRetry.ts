@@ -1,5 +1,5 @@
 /** How long Pako waits before trying a busy request once more. */
-export const BUSY_RETRY_MS = 1_000;
+const BUSY_RETRY_MS = 1_000;
 
 /** The server turned a request away because every agent slot was taken; nothing started. */
 export const isAgentBusy = (error: unknown) =>

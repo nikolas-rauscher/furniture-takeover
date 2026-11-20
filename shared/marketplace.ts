@@ -2,7 +2,7 @@ import { inventoryWords } from "./inventoryTerms.ts";
 
 // Optional free-form labels on legacy listings; users never choose from a taxonomy.
 export type Category = string;
-export type Source = "takeover" | "Ricardo" | "Anibis";
+type Source = "takeover" | "Ricardo" | "Anibis";
 export type Product = {
   id: string;
   title: string;

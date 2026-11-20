@@ -203,10 +203,6 @@
   margin-bottom: 10px;
   min-width: 0;
 }
-.price-suggestion-details {
-  margin: 8px 0;
-  font-size: 13px;
-}
 
 /* The reply bubble frames every turn, so the panel inside it has no frame of its own. */
 .chat-workspace .agent-run-panel {

@@ -1,7 +1,7 @@
 import type { AgentMetadata } from "../shared/agent";
 import { listingPhotos } from "../shared/listingPhotos.ts";
 import { shortDate, type Product } from "../shared/marketplace.ts";
-import type { ListingDraft } from "./components/SellFlow";
+import type { ListingDraft } from "./listingDraft";
 import { undatedPickup } from "./listingQuestions.ts";
 import { validListingPickup } from "./listingValidation.ts";
 

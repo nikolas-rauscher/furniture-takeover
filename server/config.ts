@@ -19,7 +19,7 @@ export function readPort(
 }
 
 /** Address the API listens on. Loopback unless a proxy on another machine needs it. */
-export function readHost(value: string | undefined, name = "API_HOST") {
+function readHost(value: string | undefined, name = "API_HOST") {
   const host = value?.trim() || "127.0.0.1";
   if (!isIP(host) && !/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/i.test(host))
     throw new Error(`${name} must be an IP address or hostname.`);

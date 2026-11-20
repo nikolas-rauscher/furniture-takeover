@@ -11,7 +11,7 @@ import {
   type FieldRevisions,
   type ListingChanges,
 } from "../agentActions";
-import type { ListingDraft } from "../components/SellFlow";
+import type { ListingDraft } from "../listingDraft";
 import { money, shortDate } from "../../shared/marketplace";
 import {
   asksPrice,

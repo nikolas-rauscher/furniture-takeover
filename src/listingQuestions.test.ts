@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { AgentQuestionEvent } from "../shared/actions.ts";
-import type { ListingDraft } from "./components/SellFlow.tsx";
+import type { ListingDraft } from "./listingDraft.ts";
 import {
   appendToDescription,
   asksPrice,

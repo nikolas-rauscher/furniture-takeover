@@ -80,7 +80,7 @@ export function cardPhase(phase: DealPhase, turn: ThreadTurn | null) {
 }
 
 /** Accepting a complete offer agrees the deal at once, so the button names what it books. */
-export const confirmLabel = (role: DealRole, terms: DealTerms) =>
+const confirmLabel = (role: DealRole, terms: DealTerms) =>
   role === "seller"
     ? "Confirm sale"
     : terms.fulfillment === "shipping"

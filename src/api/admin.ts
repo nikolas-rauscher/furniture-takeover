@@ -10,7 +10,7 @@ import {
   type AdminInput,
   type AdminOutput,
 } from "../../shared/admin.ts";
-import type { AccountConnection } from "../cloud/AccountSession";
+import type { AccountConnection } from "../cloud/connection";
 
 export { adminIllustrations, adminMeetingPoints } from "../../shared/admin.ts";
 export const adminCatalogChanged = "takeover:admin-catalog-changed";

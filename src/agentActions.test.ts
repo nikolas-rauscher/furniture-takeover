@@ -5,7 +5,7 @@ import type {
   AgentPreferencesPatchEvent,
 } from "../shared/actions.ts";
 import { defaults } from "../shared/marketplace.ts";
-import type { ListingDraft } from "./components/SellFlow.tsx";
+import type { ListingDraft } from "./listingDraft.ts";
 import {
   agentDraft,
   applyListingAction,

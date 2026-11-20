@@ -142,7 +142,7 @@ const partialSummary = (terms: DealTerms) =>
   [termsSummary(terms, "brief"), openTerms(terms)].filter(Boolean).join(" · ");
 
 /** How the strip looks: a nudge to act, a calm wait, a booked pickup or a closed deal. */
-export type StripTone = "start" | "needs" | "waiting" | "booked" | "closed";
+type StripTone = "start" | "needs" | "waiting" | "booked" | "closed";
 export type StripView = {
   lead: string;
   detail: string;

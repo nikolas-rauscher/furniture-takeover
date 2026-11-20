@@ -449,11 +449,3 @@
   }
 }
 
-/* The hero's link to replay the intro sits apart from the two modes. */
-.agent-modes:has(> .agent-modes-intro) {
-  flex-wrap: wrap;
-  row-gap: 4px;
-}
-.agent-modes > .agent-modes-intro {
-  margin-left: auto;
-}

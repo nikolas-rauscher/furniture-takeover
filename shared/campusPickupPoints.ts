@@ -109,7 +109,3 @@ export function isLegacyCampusPickupPoint(point: unknown): boolean {
       old.sourceUrl === candidate.sourceUrl,
   );
 }
-
-export function campusPickupPoint(index: number) {
-  return campusPickupPoints[index % campusPickupPoints.length];
-}

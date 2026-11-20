@@ -3,7 +3,7 @@ import type { PhotoGroup } from "../../shared/agent";
 import { sortListingPhotos } from "../listingPhotos";
 
 /** How Pako sorted a set of photos. */
-export type PhotoSort =
+type PhotoSort =
   /** One item: a single photo, one pile, or kept together by the student. */
   | { status: "one" }
   | { status: "sorting" }

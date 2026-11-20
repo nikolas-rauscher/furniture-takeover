@@ -379,9 +379,6 @@
   font-size: 12px;
   color: var(--muted);
 }
-.listing-research-actions {
-  flex-wrap: wrap;
-}
 @media (max-width: 760px) {
   .settings-layout {
     grid-template-columns: minmax(0, 1fr);

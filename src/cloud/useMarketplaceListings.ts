@@ -16,9 +16,9 @@ import { refreshPickupChecks } from "./accountInbox";
 import { listingPhotoBlob } from "./listingPhoto";
 import { withCardImages } from "../cardPhotos";
 import { randomUuid } from "../randomUuid";
-import type { AccountConnection } from "./AccountSession";
+import type { AccountConnection } from "./connection";
 
-export function toProduct(
+function toProduct(
   row: Listing,
   userId?: string,
   name = "Seller",
@@ -51,7 +51,7 @@ export function toProduct(
     status: row.hidden_at ? "withdrawn" : row.status,
   };
 }
-export async function loadProducts(client: SupabaseClient, userId?: string) {
+async function loadProducts(client: SupabaseClient, userId?: string) {
   if (userId) await refreshPickupChecks(client, true);
   const rows: Listing[] = [];
   for (let offset = 0; ; offset += 500) {

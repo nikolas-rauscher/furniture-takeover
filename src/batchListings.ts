@@ -1,6 +1,6 @@
 import type { PhotoGroup } from "../shared/agent";
 import { MAX_LISTING_PHOTOS } from "../shared/listingPhotos.ts";
-import type { ListingDraft } from "./components/SellFlow";
+import type { ListingDraft } from "./listingDraft";
 import { listingDraftReady } from "./listingPreparation.ts";
 import { randomUuid } from "./randomUuid.ts";
 
@@ -131,7 +131,7 @@ export function missingDetails(draft: ListingDraft): string[] {
 }
 
 /** Writing one item takes Pako two requests: looking at its photos and writing the listing. */
-export const REQUESTS_PER_ITEM = 2;
+const REQUESTS_PER_ITEM = 2;
 
 /** How many of these items today's allowance still covers, when it cannot cover them all. */
 export function itemsCovered(

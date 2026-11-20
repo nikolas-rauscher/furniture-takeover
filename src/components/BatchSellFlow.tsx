@@ -27,7 +27,7 @@ import {
   type BatchItem,
 } from "../batchListings";
 import { readListingPhoto, sortListingPhotos } from "../listingPhotos";
-import type { ListingDraft } from "./SellFlow";
+import type { ListingDraft } from "../listingDraft";
 import { PickupLocationInput } from "./PickupLocationInput";
 import SnapTarget from "./SnapTarget";
 import WorkspaceHeader from "./WorkspaceHeader";

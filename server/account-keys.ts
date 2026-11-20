@@ -2,7 +2,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { AgentError } from "./errors.ts";
 
-export const keyProviders = ["deepseek", "brave"] as const;
+const keyProviders = ["deepseek", "brave"] as const;
 export type KeyProvider = (typeof keyProviders)[number];
 type KeyStatus = { saved: boolean; lastFour?: string; updatedAt?: string };
 export type AccountKeyStatus = {

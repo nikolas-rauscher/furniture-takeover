@@ -20,7 +20,7 @@ import { POLISH_DESCRIPTION } from "./AskPakoMenu";
 import { plainAnswer } from "./agentAnswer";
 import ListingTray from "./ListingTray";
 import PhotoBubble from "./PhotoBubble";
-import type { ListingDraft } from "./SellFlow";
+import type { ListingDraft } from "../listingDraft";
 
 type Props = {
   listing: ReturnType<typeof useListingConversation>;

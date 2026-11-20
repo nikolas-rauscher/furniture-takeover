@@ -1,6 +1,6 @@
 import { Button } from "../components/ui/button";
 import { useEffect, useState } from "react";
-import type { Session, SupabaseClient } from "@supabase/supabase-js";
+import type { Session } from "@supabase/supabase-js";
 import Marketplace from "../Marketplace";
 import Modal from "../components/Modal";
 import Auth from "./Auth";
@@ -11,10 +11,6 @@ import {
   restoreAccountSession,
   setAccountScope,
 } from "./session";
-export type AccountConnection = {
-  client: SupabaseClient;
-  session: Session | null;
-};
 
 function configuredClient() {
   const client = getCloudClient();

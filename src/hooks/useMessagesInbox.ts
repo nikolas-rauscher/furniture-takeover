@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { AccountConnection } from "../cloud/AccountSession";
+import type { AccountConnection } from "../cloud/connection";
 import { useAccountAutoRead } from "../cloud/useAccountAutoRead";
 import { useAccountInbox } from "../cloud/useAccountInbox";
 import {

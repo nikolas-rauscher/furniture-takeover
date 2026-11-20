@@ -4,7 +4,7 @@ import { z } from "zod";
 import { draftMessage } from "./dealMessages.ts";
 import { negotiationTermsSchema, type NegotiationTerms } from "./negotiationTerms.ts";
 
-export { negotiationTermsSchema, type NegotiationTerms } from "./negotiationTerms.ts";
+export type { NegotiationTerms } from "./negotiationTerms.ts";
 
 export const negotiationFields = [
   "amount",

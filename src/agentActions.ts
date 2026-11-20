@@ -8,7 +8,7 @@ import {
   TODAY,
   type Criteria,
 } from "../shared/marketplace.ts";
-import type { ListingDraft } from "./components/SellFlow.tsx";
+import type { ListingDraft } from "./listingDraft.ts";
 import type { SearchSnapshot } from "./searchRequest.ts";
 
 export const listingFieldNames = [

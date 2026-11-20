@@ -1,4 +1,4 @@
-import type { BatchProgress } from "./components/SellFlow";
+import type { BatchProgress } from "./listingDraft";
 
 /**
  * Accounts publish a listing for other students; the local demo only saves it on

@@ -4,7 +4,7 @@ import type {
   AgentTapAnswer,
 } from "../shared/actions.ts";
 import { listingFieldNames, type ListingField } from "./agentActions.ts";
-import type { ListingDraft } from "./components/SellFlow.tsx";
+import type { ListingDraft } from "./listingDraft.ts";
 import type { AgentRunAction } from "./hooks/useAgentRun.ts";
 
 const MAX_DESCRIPTION = 4000;

@@ -46,7 +46,7 @@ function initialOf(name: string) {
 }
 
 /** The listing photo with the other student's initial on it, recognisable at a glance. */
-export function ChatIdentity({
+function ChatIdentity({
   image,
   name,
 }: {
@@ -293,8 +293,6 @@ export function PakoLabel({ children }: { children: ReactNode }) {
 
 const isMessageIds = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((item) => typeof item === "string");
-
-export type PakoDrafts = ReturnType<typeof usePakoDrafts>;
 
 /** Remembers which sent messages started as Pako's drafts, to label them in the thread. */
 export function usePakoDrafts() {

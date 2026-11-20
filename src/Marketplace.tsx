@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { AccountConnection } from "./cloud/AccountSession";
+import type { AccountConnection } from "./cloud/connection";
 import type { OnboardingOutcome } from "./components/onboarding/onboardingFlow";
 import { opensWithIntro } from "./firstScreen";
 import { introFocusTarget } from "./components/onboarding/introFocus";

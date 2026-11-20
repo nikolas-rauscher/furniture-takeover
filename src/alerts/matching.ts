@@ -33,7 +33,7 @@ export type AlertItem = {
   read: boolean;
 };
 
-export type AlertBaseline = {
+type AlertBaseline = {
   /** Criteria the baseline was taken for; an edited search starts over silently. */
   signature: string;
   listingIds: string[];
@@ -54,7 +54,7 @@ export const emptyAlerts = (): AlertsState => ({
 const signature = (criteria: Criteria) => JSON.stringify(criteria);
 
 /** Only listings a buyer could act on today can raise an alert. */
-export function currentMatches(
+function currentMatches(
   listings: Product[],
   criteria: Criteria,
   today = marketplaceToday(),
@@ -78,7 +78,7 @@ export function matchFacts(item: Product, criteria: Criteria): string[] {
   ].filter(Boolean);
 }
 
-export const matchReason = (item: Product, criteria: Criteria) =>
+const matchReason = (item: Product, criteria: Criteria) =>
   matchFacts(item, criteria).join(" · ");
 
 /**

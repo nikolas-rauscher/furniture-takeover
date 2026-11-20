@@ -30,7 +30,7 @@ const MAX_TEXT_CHARS = 100_000;
 const MAX_EVENTS = 10_000;
 const MAX_SOURCES = 40;
 
-export class AgentRunError extends Error {
+class AgentRunError extends Error {
   readonly code: string;
   constructor(message: string, code = "RUN_FAILED") {
     super(message);

@@ -25,12 +25,7 @@ import {
   Pencil,
   Sparkles,
 } from "@/components/icons";
-import {
-  TODAY,
-  money,
-  shortDate,
-  type Category,
-} from "../../shared/marketplace";
+import { TODAY, money, shortDate } from "../../shared/marketplace";
 import { useFocused } from "../hooks/useFocused";
 import type { AgentQuota } from "../../shared/agent";
 import Modal from "./Modal";
@@ -61,34 +56,8 @@ import PakoReaction from "./PakoReaction";
 import { listingPhotos } from "../../shared/listingPhotos";
 import { motionBehavior } from "../uiMotion";
 import { listingSaveWords, saveActionLabel } from "../listingSaveWords";
+import type { BatchProgress, ListingDraft } from "../listingDraft";
 import "./sell-flow.css";
-
-/** Where the seller is when creating several listings one after another. */
-export type BatchProgress = {
-  /** Zero-based position of the listing being created. */
-  index: number;
-  covers: string[];
-  /** Outcome of the listings before this one. */
-  results: ("saved" | "skipped")[];
-  /** Pako's line about the listing just finished, which the tray celebrates for a moment. */
-  note?: string;
-  onSkip: () => void;
-};
-
-export type ListingDraft = {
-  image: string;
-  images?: string[];
-  raw: string;
-  title: string;
-  tags?: string[];
-  description: string;
-  price: string;
-  condition: string;
-  dimensions: string;
-  location: string;
-  pickup: string;
-  category: Category;
-};
 
 /** A detail Pako just filled in settles into place instead of jumping. */
 const previewSwap = {

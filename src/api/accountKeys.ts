@@ -1,7 +1,7 @@
 import { accountAccessToken } from "../cloud/session.ts";
 
 export type KeyProvider = "deepseek" | "brave";
-export type ProviderKeyStatus = {
+type ProviderKeyStatus = {
   saved: boolean;
   lastFour?: string;
   updatedAt?: string;

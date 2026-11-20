@@ -6,7 +6,7 @@ import {
   WAITLIST_PRIORITY_HOURS,
 } from "./config.ts";
 
-export type ListingStatus = Product["status"];
+type ListingStatus = Product["status"];
 export type ListingRef = Pick<Product, "id" | "title" | "status">;
 
 /** Only open reservations are kept; a closed one leaves a notice behind. */
@@ -22,7 +22,7 @@ export type Reservation = {
 };
 
 /** One browser plays one buyer, so every entry belongs to that buyer. */
-export type WaitlistEntry = {
+type WaitlistEntry = {
   listingId: string;
   title: string;
   joinedAt: string;
@@ -30,7 +30,7 @@ export type WaitlistEntry = {
   priorityUntil?: string;
 };
 
-export type NoticeKind =
+type NoticeKind =
   "declined" | "expired" | "hold_ended" | "available_again";
 
 export type AvailabilityNotice = {
@@ -177,7 +177,7 @@ function handOver(t: Transition, listing: ListingRef, now: Date) {
   notify(t, "available_again", listing, now, priorityUntil);
 }
 
-export function reservationFor(state: AvailabilityState, listingId: string) {
+function reservationFor(state: AvailabilityState, listingId: string) {
   return state.reservations.find((item) => item.listingId === listingId);
 }
 

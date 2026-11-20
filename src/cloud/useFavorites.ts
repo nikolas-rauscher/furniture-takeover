@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type SetStateAction } from "react";
 import { useSaved } from "../hooks/useSaved";
 import { isFavoriteIds } from "../hooks/savedState";
 import type { Product, SavedListing } from "../../shared/marketplace.ts";
-import type { AccountConnection } from "./AccountSession";
+import type { AccountConnection } from "./connection";
 import { fail } from "./client";
 type SavePrices = Record<string, number>;
 const isSavePrices = (value: unknown): value is SavePrices =>
