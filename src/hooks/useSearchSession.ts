@@ -1,7 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { AgentPreferencesPatchEvent } from "../../shared/actions";
 import { defaults, type Criteria, type Product } from "../../shared/marketplace";
-import type { Negotiation } from "../../shared/negotiation";
+import { discardNegotiation, type Negotiation } from "../../shared/negotiation";
 import {
   applyPreferenceAction,
   undoPreferenceAction,
@@ -370,6 +370,20 @@ export function useSearchSession({
     );
     void performSearch(search, undefined, proposal, Boolean(agentRun.state.id));
   }
+  /** Throws the offer draft away; Messages forgets its unsent message too. */
+  function discardOffer(proposal: Negotiation) {
+    try {
+      agentRun.cancel();
+      negotiations.commit({
+        type: "negotiation_update",
+        previousVersion: proposal.version,
+        negotiation: discardNegotiation(proposal, proposal.version),
+      });
+      onDraftDiscarded(proposal.listingId);
+    } catch (error) {
+      toast.say(error instanceof Error ? error.message : "Couldn't discard the offer draft.");
+    }
+  }
   function answerQuestion(id: string, answer: string) {
     if (running) return false;
     const question = agentRun.state.questions.find((item) => item.id === id);
@@ -425,6 +439,7 @@ export function useSearchSession({
     },
     searchByPhoto,
     continueOffer,
+    discardOffer,
     answerQuestion,
     applyPatch,
     undoPatch,

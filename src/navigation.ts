@@ -24,6 +24,8 @@ export function historyPosition(state: unknown): number {
 
 export type AccountTab = "favorites" | "listings" | "archive";
 
+export const SEARCH_HEADING = "Search with Pako";
+
 /** Where the mobile bar and header lead; settings sits beside them. */
 export type Destination =
   | "browse"
@@ -110,6 +112,28 @@ export function pageKey(page: {
   }
 }
 
+/** The app layout for the page on screen: home, a focused page, the chat, Messages or a selling step. */
+export function layoutClassName(page: {
+  view: View;
+  home: boolean;
+  sellMode: "single" | "batch";
+  sellStep: number;
+}) {
+  const sellLayout =
+    page.sellMode === "batch"
+      ? " selling-batch-layout"
+      : page.sellStep === 2
+        ? " selling-chat-layout"
+        : " selling-photo-layout";
+  return (
+    "app-layout " +
+    (page.home ? "home-layout" : "focused-layout") +
+    (page.view === "discover" && !page.home ? " chat-layout" : "") +
+    (page.view === "messages" ? " messages-layout" : "") +
+    (page.view === "sell" ? sellLayout : "")
+  );
+}
+
 /** The way back from a listing names the page it was opened from. */
 export function detailBackLabel(
   origin: View,
@@ -129,6 +153,45 @@ export function detailBackLabel(
       return "Back to comparison";
     default:
       return "Back";
+  }
+}
+
+/** The page on screen as the browser tab names it; home keeps the app's own title. */
+export function pageTitle(page: {
+  view: View;
+  home: boolean;
+  /** The search reviews the student's own listing. */
+  reviewing: boolean;
+  accountTab: AccountTab;
+  sellMode: "single" | "batch";
+  sellStep: number;
+  /** The open listing's title, once it is known. */
+  listingTitle: string | undefined;
+  /** Accounts are on; then settings is sign-in until someone is signed in. */
+  accounts: "none" | "signed-in" | "signed-out";
+}): string | null {
+  switch (page.view) {
+    case "discover":
+      if (page.home) return null;
+      return page.reviewing ? "Listing review" : SEARCH_HEADING;
+    case "searches":
+      return "Saved searches";
+    case "account":
+      return page.accountTab === "favorites" ? "Saved items" : "My listings";
+    case "messages":
+      return "Messages";
+    case "sell":
+      if (page.sellMode === "batch") return "Sell several items";
+      return page.sellStep === 1 ? "New listing" : "Your listing";
+    case "detail":
+      return page.listingTitle ?? "Listing unavailable";
+    case "compare":
+      return "Compare listings";
+    case "settings":
+      if (page.accounts === "none") return "Browser settings";
+      return page.accounts === "signed-in" ? "Account settings" : "Sign in";
+    case "admin":
+      return "Admin";
   }
 }
 
