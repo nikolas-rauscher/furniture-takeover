@@ -151,8 +151,7 @@ function StudyInvite() {
       </h2>
       <p className="ob-lead">
         Pako asks about the last time you bought or sold something second-hand
-        and shows two short situations. It takes about 4 minutes, and your
-        answers are saved without your name.
+        and shows two short situations. It takes about 4 minutes.
       </p>
       <a className="button primary large" href={PITCH_STUDY_LINK}>
         Take part
@@ -162,7 +161,7 @@ function StudyInvite() {
   );
 }
 
-/** The tour without a channel tag: nothing is recorded. */
+/** The tour without a channel tag: the pitch. */
 export default function Pitch({ studyOpen }: { studyOpen: boolean }) {
   return (
     <MotionConfig reducedMotion="user">
@@ -179,10 +178,6 @@ export default function Pitch({ studyOpen }: { studyOpen: boolean }) {
         </main>
         <footer className="tour-footer">
           <p>takeover is a student project of the course CS-500 at EPFL.</p>
-          <p>
-            This tour records nothing. The study saves answers only after you
-            agree, without your name.
-          </p>
         </footer>
       </div>
     </MotionConfig>
