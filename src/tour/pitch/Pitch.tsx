@@ -12,8 +12,11 @@ import { motionBehavior } from "../../uiMotion";
 import DeviceFrame from "../device/DeviceFrame";
 import type { TourScene } from "../device/sceneMessages";
 import { SCENE_COPY } from "../sceneCopy";
+import type { TourLook } from "../tourLook";
 import BackAndForth from "./BackAndForth";
 import { BACK_AND_FORTH_LABEL } from "./backAndForthScript";
+import { HERO_ANSWERS, ILLUSTRATED_SCENES } from "./illustratedScenes";
+import PhoneFrame from "./PhoneFrame";
 import PitchScene, { type ScenePlay } from "./PitchScene";
 
 /** Channel tag of the study link on this page, so its visitors can be told apart. */
@@ -83,38 +86,66 @@ function scrollToTour() {
     ?.scrollIntoView({ behavior: motionBehavior(), block: "start" });
 }
 
-/** The search scene playing in a phone, with Pako beside it following the scene. */
-function HeroDevice() {
+/** The hero's drawn search ends on the visitor's pick; nothing follows it. */
+const NOTHING_FOLLOWS = () => undefined;
+
+/** The search playing in a phone, with Pako beside it following the scene. */
+function HeroDevice({ look }: { look: TourLook }) {
   const [mood, setMood] = useState<PakoMood>("wave");
+  const { Scene } = ILLUSTRATED_SCENES.find;
   return (
     <div className="tour-hero-device">
-      <DeviceFrame
-        scene="find"
-        label={SCENE_COPY.find.label}
-        onMood={setMood}
-      />
+      {look === "app" ? (
+        <DeviceFrame
+          scene="find"
+          label={SCENE_COPY.find.label}
+          onMood={setMood}
+        />
+      ) : (
+        <PhoneFrame label="Find, example screen">
+          <Scene
+            answers={HERO_ANSWERS}
+            onMood={setMood}
+            onDone={NOTHING_FOLLOWS}
+          />
+        </PhoneFrame>
+      )}
       <Pako className="tour-hero-pako" mood={mood} size={148} />
     </div>
   );
 }
 
-/** A section's example: the app's own screens in a phone. */
+/** A section's example in the chosen look: the app's screens or the intro's drawn scene. */
 function SectionFrame({
+  look,
   section,
   play,
 }: {
+  look: TourLook;
   section: TourSection;
   play: ScenePlay;
 }) {
-  const { scene } = section;
+  const { scene, title } = section;
+  if (look === "app")
+    return (
+      <DeviceFrame
+        scene={scene}
+        label={SCENE_COPY[scene].label}
+        replay={play.replay}
+        onMood={play.onMood}
+        onDone={play.onDone}
+      />
+    );
+  const { Scene, answers } = ILLUSTRATED_SCENES[scene];
   return (
-    <DeviceFrame
-      scene={scene}
-      label={SCENE_COPY[scene].label}
-      replay={play.replay}
-      onMood={play.onMood}
-      onDone={play.onDone}
-    />
+    <PhoneFrame label={`${title}, example screen`}>
+      <Scene
+        key={play.replay}
+        answers={answers}
+        onMood={play.onMood}
+        onDone={play.onDone}
+      />
+    </PhoneFrame>
   );
 }
 
@@ -139,7 +170,7 @@ function BackAndForthSection() {
   );
 }
 
-function Hero() {
+function Hero({ look }: { look: TourLook }) {
   const wide = useMediaQuery(WIDE_SCREEN);
   return (
     <header className="tour-hero">
@@ -163,7 +194,7 @@ function Hero() {
         </div>
       </div>
       {wide ? (
-        <HeroDevice />
+        <HeroDevice look={look} />
       ) : (
         <div className="tour-hero-screen">
           <Guide mood="wave" layout="hero" burst={<WelcomeBurst />} />
@@ -212,12 +243,18 @@ function StudyInvite() {
   );
 }
 
-/** The tour without a channel tag: the pitch. */
-export default function Pitch({ studyOpen }: { studyOpen: boolean }) {
+/** The tour without a channel tag: the pitch, in the look the address asks for. */
+export default function Pitch({
+  studyOpen,
+  look,
+}: {
+  studyOpen: boolean;
+  look: TourLook;
+}) {
   return (
     <MotionConfig reducedMotion="user">
       <div className="tour-page">
-        <Hero />
+        <Hero look={look} />
         <main className="tour-main">
           <div id={HOW_ID} className="tour-sections">
             <BackAndForthSection />
@@ -227,8 +264,12 @@ export default function Pitch({ studyOpen }: { studyOpen: boolean }) {
                 id={section.id}
                 title={section.title}
                 sentences={section.sentences}
-                waitingClass="tour-device-slot"
-                frame={(play) => <SectionFrame section={section} play={play} />}
+                waitingClass={
+                  look === "app" ? "tour-device-slot" : "tour-phone-waiting"
+                }
+                frame={(play) => (
+                  <SectionFrame look={look} section={section} play={play} />
+                )}
               />
             ))}
           </div>

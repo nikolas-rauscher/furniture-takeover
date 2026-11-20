@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { studyStartSchema, type StudyConfig } from "../../shared/study.ts";
 import Pitch from "./pitch/Pitch";
+import { lookInAddress } from "./tourLook";
 import Study from "./study/Study";
 import StudyNotice from "./study/StudyNotice";
 import { readStudyConfig } from "./studyApi";
@@ -44,6 +45,7 @@ function useStudyConfig() {
 /** Without a tag the page is the pitch; with one it is the study, if the study is open. */
 export default function TourPage() {
   const [tag] = useState(readTag);
+  const [look] = useState(() => lookInAddress(window.location.search));
   const [pitch, setPitch] = useState(tag === null);
   const { state, retry } = useStudyConfig();
   const showPitch = () => {
@@ -52,7 +54,12 @@ export default function TourPage() {
   };
 
   if (pitch)
-    return <Pitch studyOpen={state.status === "ready" && state.config.open} />;
+    return (
+      <Pitch
+        studyOpen={state.status === "ready" && state.config.open}
+        look={look}
+      />
+    );
   const source = SOURCE.safeParse(tag);
   if (!source.success)
     return <StudyNotice kind="invalid-link" onShowPitch={showPitch} />;
