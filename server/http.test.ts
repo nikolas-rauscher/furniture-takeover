@@ -1107,3 +1107,19 @@ test("cloud guards and preflight keep their precedence over route matching", asy
   for (const path of ["/api/health", "/api/config"])
     assert.equal((await fetch(url + path, { method: "POST" })).status, 404);
 });
+
+test("the tour page is served at /tour, with or without a channel tag", async (t) => {
+  const dist = await mkdtemp(join(tmpdir(), "takeover-tour-"));
+  t.after(() => rm(dist, { recursive: true, force: true }));
+  await writeFile(join(dist, "index.html"), "<html>Takeover</html>");
+  await writeFile(join(dist, "tour.html"), "<html>Tour</html>");
+  const { url } = await startServer(t, undefined, { staticDirectory: dist });
+  for (const path of ["/tour", "/tour?s=moodle"]) {
+    const page = await fetch(url + path);
+    assert.equal(page.status, 200);
+    assert.match(page.headers.get("content-type") ?? "", /text\/html/);
+    assert.equal(await page.text(), "<html>Tour</html>");
+  }
+  assert.equal(await (await fetch(url)).text(), "<html>Takeover</html>");
+  assert.equal((await fetch(url + "/tour/")).status, 404);
+});

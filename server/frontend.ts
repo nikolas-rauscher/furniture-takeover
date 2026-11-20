@@ -26,6 +26,12 @@ function cacheControl(path: string): string {
   return "no-cache";
 }
 
+/** Clean URLs of the built pages. */
+const pages: Record<string, string> = {
+  "/": "/index.html",
+  "/tour": "/tour.html",
+};
+
 export async function serveFrontend(
   request: IncomingMessage,
   response: ServerResponse,
@@ -40,7 +46,7 @@ export async function serveFrontend(
   } catch {
     throw new AgentError(400, "INVALID_PATH", "Invalid file path.");
   }
-  if (path === "/") path = "/index.html";
+  path = pages[path] ?? path;
   const contentType = contentTypes[extname(path)];
   if (
     !contentType ||
