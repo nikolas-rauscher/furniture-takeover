@@ -29,8 +29,8 @@ const step = (
   task?: "listings",
 ): AgentRunEvent => ({ type: "status", id, label, state, task });
 
-/** Pako's search, written as the events his real turns stream, words in small groups. */
-export const SEARCH_EVENTS: AgentRunEvent[] = [
+/** Pako's search up to his picked matches, written as the events his real turns stream. */
+export const MATCHING_EVENTS: AgentRunEvent[] = [
   step("read", "Reading your request", "running"),
   step("read", "Reading your request", "complete"),
   step("catalog", "Searching takeover listings: desk", "running", "listings"),
@@ -39,6 +39,10 @@ export const SEARCH_EVENTS: AgentRunEvent[] = [
   step("select", "Selecting takeover matches", "running", "listings"),
   { type: "inventory_matches", ids: SEARCH_RESULTS.map((item) => item.id) },
   step("select", "Selecting takeover matches", "complete", "listings"),
+];
+
+/** The rest of his turn, below the matches: his answer, words in small groups. */
+export const ANSWER_EVENTS: AgentRunEvent[] = [
   step("review", "Reviewing tool results", "running"),
   step("review", "Reviewing tool results", "complete"),
   ...ANSWER.split(/(?<=\s)/).map((text): AgentRunEvent => ({

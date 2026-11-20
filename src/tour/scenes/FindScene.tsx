@@ -20,6 +20,7 @@ import type { PageTransitionEffect } from "@/components/animate-ui/components/pa
 import { transitionPage } from "../../pageTransition";
 import { quickReplies } from "../../quickReplies";
 import { defaults, TODAY, type Product } from "../../../shared/marketplace";
+import type { AgentRunEvent } from "../../../shared/runs";
 import { newSearch, type SearchSnapshot } from "../../searchRequest";
 import { activePreferences, compactPreferences } from "../../searchSummary";
 import HomeFeed from "../../shell/HomeFeed";
@@ -29,12 +30,13 @@ import {
   AREA,
   DESK,
   NEARBY,
+  ANSWER_EVENTS,
+  MATCHING_EVENTS,
   REQUEST,
-  SEARCH_EVENTS,
   SEARCH_RESULTS,
   searchGap,
 } from "./findScript";
-import { stream, typing, type Beat, type SceneProps } from "./sceneScript";
+import { now, stream, typing, type Beat, type SceneProps } from "./sceneScript";
 import { startThread, type SceneThread } from "./sceneThread";
 import SceneMarks from "./SceneMarks";
 import { useSceneScript } from "./useSceneScript";
@@ -47,6 +49,8 @@ type FindState = {
   query: string;
   search: SearchSnapshot | null;
   run: AgentRunState;
+  /** Pako picked his matches: their cards are in, before his answer. */
+  matchesShown: boolean;
   thread: SceneThread;
 };
 
@@ -62,8 +66,16 @@ const initial = (): FindState => ({
   query: "",
   search: null,
   run: emptyAgentRunState(),
+  matchesShown: false,
   thread: startThread("tour-find", DESK),
 });
+
+/** Pako's search events, as they arrive. */
+const streamed = (events: AgentRunEvent[]) =>
+  stream(events, searchGap, (state: FindState, event) => ({
+    ...state,
+    run: applyAgentRunEvent(state.run, event),
+  }));
 
 const BEATS: Beat<FindState>[] = [
   {
@@ -78,14 +90,14 @@ const BEATS: Beat<FindState>[] = [
     hold: 700,
     tap: '.agent-run-details [data-slot="trace-collapsible-trigger"]',
   },
+  { hold: 150, changes: streamed(MATCHING_EVENTS) },
+  // The cards come in once Pako has picked them, and his answer follows below them.
   {
-    hold: 150,
-    changes: stream(SEARCH_EVENTS, searchGap, (state, event) => ({
-      ...state,
-      run: applyAgentRunEvent(state.run, event),
-    })),
+    hold: 400,
+    changes: now((state) => ({ ...state, matchesShown: true })),
     show: ".agent-product-slide:first-child",
   },
+  { hold: 1200, changes: streamed(ANSWER_EVENTS) },
   {
     hold: 3200,
     tap: ".agent-product-slide:first-child .agent-product-title",
@@ -192,19 +204,15 @@ function Home({ state, onSearch }: { state: FindState; onSearch: () => void }) {
 function SearchTurn({
   search,
   run,
+  matchesShown,
   onOpen,
 }: {
   search: SearchSnapshot;
   run: AgentRunState;
+  matchesShown: boolean;
   onOpen: (item: Product) => void;
 }) {
   const place = "Vortex";
-  const order =
-    run.status === "running"
-      ? "pending"
-      : run.status === "complete"
-        ? "ranked"
-        : "unranked";
   return (
     <>
       <WorkspaceHeader
@@ -266,12 +274,10 @@ function SearchTurn({
                 )
               }
               localListings={
-                turn.inventoryMatchIds !== null && (
+                matchesShown && (
                   <AgentListings
-                    listings={SEARCH_RESULTS.filter((item) =>
-                      turn.inventoryMatchIds?.includes(item.id),
-                    )}
-                    order={order}
+                    listings={SEARCH_RESULTS}
+                    order="ranked"
                     onOpen={onOpen}
                     onOffer={onOpen}
                   />
@@ -354,6 +360,7 @@ export default function FindScene({ onEnd }: SceneProps) {
           <SearchTurn
             search={state.search}
             run={state.run}
+            matchesShown={state.matchesShown}
             onOpen={() => go("listing")}
           />
         )}
