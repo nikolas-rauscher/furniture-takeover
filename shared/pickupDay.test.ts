@@ -118,6 +118,29 @@ test("the seller can complete pickup from the booked time or when the buyer repo
   assert.equal(apply(collected, at(-1), sellerPickup).statusChange, "sold");
 });
 
+test("after the buyer's Picked up the follow-up can no longer release the item", () => {
+  const [buyerPickup] = scenarios.handling.slice(-2);
+  const collected = apply(booked, at(-1), buyerPickup).deal;
+  const followUp = at(24 * 60 + 5);
+  for (const actor of ["buyer", "seller"] as const) {
+    assert.throws(
+      () =>
+        apply(collected, followUp, {
+          actor,
+          action: { type: "release_stale_pickup" },
+          body: "No, release it",
+        }),
+      { key: "pickup_collected" },
+    );
+    const done = apply(collected, followUp, {
+      actor,
+      action: { type: "confirm_pickup_happened" },
+      body: "Yes, it's done",
+    });
+    assert.equal(done.statusChange, "sold");
+  }
+});
+
 test("reports need an overdue pickup and taking a release message is a separate action", () => {
   assert.throws(() => apply(booked, at(14), scenarios.earlyNoShow), {
     key: "too_early",

@@ -270,13 +270,12 @@ export const expirePickup = (deal: Deal, at: string): Deal => ({
 
 export type PickupPhase = "booked" | "pickup_soon" | "pickup_now" | "overdue";
 
-/** After the buyer's "Picked up", only Mark sold, the next-day check and an open time proposal's withdrawal remain. */
+/** After the buyer's "Picked up", collection is final: only Mark sold, the next-day "Yes, it's done" and an open time proposal's withdrawal remain. */
 function allowedAfterCollection(action: PickupAction, actor: DealRole) {
   switch (action.type) {
     case "picked_up":
       return actor === "seller";
     case "confirm_pickup_happened":
-    case "release_stale_pickup":
     case "keep_time":
     case "withdraw_time":
       return true;

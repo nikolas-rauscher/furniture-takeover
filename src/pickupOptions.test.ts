@@ -247,6 +247,30 @@ test("a day after the pickup both students get Pako's question, each answer prev
     primary: undefined,
     secondary: [],
   });
+  const collected = booked({
+    pickup: {
+      ...emptyPickupSignals(),
+      buyerPickedUpAt: minutes(2).toISOString(),
+    },
+  });
+  for (const role of ["buyer", "seller"] as const)
+    assert.deepEqual(ids(choicesAt(2 * day, role, collected)), {
+      primary: "confirm_pickup_happened",
+      secondary: [],
+    });
+  const guide = (role: DealRole) =>
+    pickupGuide({
+      day: pickupDay(collected, role, minutes(day + 5))!,
+      deal: collected,
+      role,
+      other: "Léa",
+      title: "desk",
+    }).line;
+  assert.equal(guide("buyer"), "You picked up the desk. Tap Yes to finish.");
+  assert.equal(
+    guide("seller"),
+    "Léa says they picked up the desk. Tap Yes to finish.",
+  );
   const deal = booked();
   const strip = (offset: number) =>
     dealStrip({

@@ -923,6 +923,21 @@ for (const ending of ["seller completion", "buyer deletion"] as const)
       );
       await db.exec("reset role");
       await db.query(
+        "update public.deals set pickup_at=now() - interval '25 hours' where conversation_id=$1",
+        [conversation],
+      );
+      for (const student of [buyer, seller]) {
+        await as(student);
+        await assert.rejects(
+          db.query(
+            "select public.pickup_action($1,$2,'No, release it','release_stale_pickup',3)",
+            [conversation, randomUUID()],
+          ),
+          /pickup_collected/,
+        );
+      }
+      await db.exec("reset role");
+      await db.query(
         "update public.deals set pickup_at=now() - interval '49 hours' where conversation_id=$1",
         [conversation],
       );

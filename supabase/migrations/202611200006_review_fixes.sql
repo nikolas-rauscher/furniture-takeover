@@ -187,7 +187,7 @@ begin
     end if;
     if d.buyer_picked_up_at is not null and not (
       (p_action = 'picked_up' and me = 'seller')
-      or p_action in ('confirm_pickup_happened', 'release_stale_pickup', 'keep_time', 'withdraw_time')
+      or p_action in ('confirm_pickup_happened', 'keep_time', 'withdraw_time')
     ) then raise exception 'pickup_collected'; end if;
   end if;
   if p_action in ('confirm_pickup_happened', 'release_stale_pickup') and

@@ -242,9 +242,10 @@ function overdueChoices(context: Context): PickupChoices {
 /**
  * A day after an unclosed pickup, Pako asks both students whether it
  * happened. Each answer sends its message on the tap that reads it; the
- * first answer closes the deal for both.
+ * first answer closes the deal for both. Once the buyer reported it picked
+ * up, it can no longer be released.
  */
-function pickupCheckChoices({ title }: Context): {
+function pickupCheckChoices({ day, title }: Context): {
   primary: PickupChoice & { send: PickupSend; effect: string };
   secondary: (PickupChoice & { send: PickupSend; effect: string })[];
 } {
@@ -258,17 +259,19 @@ function pickupCheckChoices({ title }: Context): {
       },
       effect: "Completes the deal and marks it sold.",
     },
-    secondary: [
-      {
-        id: "release_stale_pickup",
-        label: "No, release it",
-        send: {
-          action: { type: "release_stale_pickup" },
-          message: pickupDidntHappenMessage(title),
-        },
-        effect: "Ends the reservation and puts it back on sale.",
-      },
-    ],
+    secondary: day.buyerReportedPickup
+      ? []
+      : [
+          {
+            id: "release_stale_pickup",
+            label: "No, release it",
+            send: {
+              action: { type: "release_stale_pickup" },
+              message: pickupDidntHappenMessage(title),
+            },
+            effect: "Ends the reservation and puts it back on sale.",
+          },
+        ],
   };
 }
 

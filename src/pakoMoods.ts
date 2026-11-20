@@ -664,23 +664,34 @@ export function threadGuide(
   }
 }
 
-/** A day after the pickup Pako asks whether it happened; after two he says he released the item. */
+/**
+ * A day after the pickup Pako asks whether it happened; after two he says he
+ * released the item. A pickup the buyer reported collected never expires and
+ * only waits for the close.
+ */
 function pickupCheckGuide(
   check: NonNullable<PickupDay["pickupCheck"]>,
+  role: DealRole,
   other: string,
   title: string,
 ): { mood: PakoMood; line: string } {
-  return check.expired
-    ? {
-        mood: "idle",
-        line: `Neither of you answered, so I released the ${title}.`,
-      }
-    : {
-        mood: "think",
-        line: check.expiresAt
-          ? `Did the pickup with ${other} happen? If no one answers by ${formatPickup(check.expiresAt)}, I'll release the ${title}.`
-          : `Did the pickup with ${other} happen?`,
-      };
+  if (check.expired)
+    return {
+      mood: "idle",
+      line: `Neither of you answered, so I released the ${title}.`,
+    };
+  if (!check.expiresAt)
+    return {
+      mood: "think",
+      line:
+        role === "seller"
+          ? `${other} says they picked up the ${title}. Tap Yes to finish.`
+          : `You picked up the ${title}. Tap Yes to finish.`,
+    };
+  return {
+    mood: "think",
+    line: `Did the pickup with ${other} happen? If no one answers by ${formatPickup(check.expiresAt)}, I'll release the ${title}.`,
+  };
 }
 
 /** While the student picks a new time or how late they are, Pako speaks to that step instead of naming another button. */
@@ -715,7 +726,8 @@ export function pickupGuide({
   other: string;
   title: string;
 }): { mood: PakoMood; line: string } {
-  if (day.pickupCheck) return pickupCheckGuide(day.pickupCheck, other, title);
+  if (day.pickupCheck)
+    return pickupCheckGuide(day.pickupCheck, role, other, title);
   const signals = deal.pickup;
   const theirs: DealRole = role === "buyer" ? "seller" : "buyer";
   const proposed = deal.proposal?.terms.pickupAt;
