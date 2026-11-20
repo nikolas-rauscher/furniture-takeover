@@ -56,6 +56,7 @@ export default function StudyShell({
   children,
 }: StudyShellProps) {
   const { common } = useTourText();
+  const scrollsAlone = arrangement === "beside" || layout === "hero";
   const reduced = useReducedMotion() === true;
   const visibleArea = useVisibleArea();
   const body = useRef<HTMLDivElement>(null);
@@ -91,7 +92,14 @@ export default function StudyShell({
           </div>
           {languageSwitch && <LanguageSwitch />}
         </header>
-        <div className="ob-body" ref={body}>
+        {/* A scene's phone or a short hero screen holds nothing to tab to, so a scrolling body takes the focus itself. */}
+        <div
+          className="ob-body"
+          ref={body}
+          tabIndex={scrollsAlone ? 0 : undefined}
+          role={scrollsAlone ? "region" : undefined}
+          aria-label={scrollsAlone ? label : undefined}
+        >
           <div className="ob-body-inner">
             <Guide
               mood={mood}

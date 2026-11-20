@@ -366,3 +366,15 @@
     transition: none;
   }
 }
+
+.tour-study .ob-body:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: -3px;
+}
+
+/* Long words in French and German wrap inside a button instead of widening the page. */
+.tour-study .button {
+  height: auto;
+  white-space: normal;
+  text-align: center;
+}

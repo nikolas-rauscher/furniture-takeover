@@ -142,6 +142,9 @@ function Hero({ look }: { look: TourLook }) {
   const wide = useMediaQuery(WIDE_SCREEN);
   return (
     <header className="tour-hero">
+      <div className="tour-page-language">
+        <LanguageSwitch />
+      </div>
       <div className="tour-hero-text">
         <p className="ob-wordmark">takeover</p>
         <h1 className="ob-title tour-hero-title">{pitch.title}</h1>
@@ -218,9 +221,6 @@ export default function Pitch({
   return (
     <MotionConfig reducedMotion="user">
       <div className="tour-page">
-        <div className="tour-page-language">
-          <LanguageSwitch />
-        </div>
         <Hero look={look} />
         <main className="tour-main">
           <div id={HOW_ID} className="tour-sections">
