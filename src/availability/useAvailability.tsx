@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { Product } from "../../shared/marketplace";
 import type { SellerConversation } from "../../shared/messages";
 import {
@@ -236,14 +236,14 @@ export function useAvailability(options: Options) {
   }
 
   const { ready, listings } = options;
+  const sweepDeadlines = useEffectEvent(sweep);
   useEffect(() => {
-    if (enabled && ready) sweep();
     // Deadlines depend only on the clock and listing statuses.
+    if (enabled && ready) sweepDeadlines();
   }, [enabled, ready, listings]);
-  useEffect(() => {
-    // `?availability=off` undoes this prototype's listing changes once.
-    if (!flag.cleanup || !options.localDemo || !ready || cleaned.current)
-      return;
+  /** `?availability=off` undoes this prototype's listing changes once. */
+  const undoStoredChanges = useEffectEvent(() => {
+    if (!options.localDemo || cleaned.current) return;
     cleaned.current = true;
     try {
       const restored = repository.load();
@@ -251,6 +251,9 @@ export function useAvailability(options: Options) {
     } catch {
       /* storage unavailable: nothing to restore */
     }
+  });
+  useEffect(() => {
+    if (flag.cleanup && ready) undoStoredChanges();
   }, [flag.cleanup, ready]);
 
   if (!enabled) return null;

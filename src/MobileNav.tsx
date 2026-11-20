@@ -7,7 +7,7 @@ import {
   BottomNavigationLabel,
 } from "@animate-ui/react/primitives/bottom-navigation";
 import { AnimateIcon } from "@animate-ui/react/icons";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "./components/ui/button";
 import { useMediaQuery } from "./hooks/useMediaQuery";
 import {
@@ -71,6 +71,11 @@ function tabName(name: string, count: number, unit?: [string, string]) {
     : `${name}, ${count} new`;
 }
 
+/** A fresh scroll root for one page, so its restored scroll position is the bar's baseline. */
+function pageScrollRoot(pageKey: string | undefined) {
+  return { pageKey, ref: { current: null } as { current: HTMLElement | null } };
+}
+
 export default function MobileNav({
   active,
   pageKey,
@@ -85,10 +90,8 @@ export default function MobileNav({
   const selling = active === "sell";
   // The bar measures scrolling from where a page starts. A fresh (window) scroll root per
   // page makes a restored scroll position its baseline, so switching tabs never shrinks it.
-  const pageScrollRoot = useMemo(
-    () => ({ current: null }) as { current: HTMLElement | null },
-    [pageKey],
-  );
+  const [scrollRoot, setScrollRoot] = useState(() => pageScrollRoot(pageKey));
+  if (scrollRoot.pageKey !== pageKey) setScrollRoot(pageScrollRoot(pageKey));
   // Wider screens navigate from the header. The bar is not mounted there, because its
   // size animations cannot run, nor be interrupted, on an element that is not rendered.
   const phone = useMediaQuery("(max-width: 760px)");
@@ -99,7 +102,7 @@ export default function MobileNav({
       aria-label="Mobile navigation"
       value={active ?? ""}
       scrollBehavior="minimize"
-      scrollContainer={pageScrollRoot}
+      scrollContainer={scrollRoot.ref}
       onValueChange={(value) => {
         if (value !== active) onNavigate(value as MobileDestination);
       }}

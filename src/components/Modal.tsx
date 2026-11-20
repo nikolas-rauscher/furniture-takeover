@@ -54,7 +54,7 @@ export default function Modal({
         ?.querySelectorAll("textarea")
         .forEach((field) => fitTextarea(field));
   }, []);
-  useLayoutEffect(fitFields, [children]);
+  useLayoutEffect(fitFields, [children, fitFields]);
   const observeDialog = useCallback(
     (element: HTMLDivElement | null) => {
       dialogRef.current = element;

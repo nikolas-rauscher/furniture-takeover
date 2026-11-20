@@ -150,6 +150,7 @@ function useDemoListings() {
     let cancelled = false;
     let retries = 0;
     const delays = [1000, 2000, 4000];
+    const generation = loadGeneration;
     const recover = async () => {
       if (cancelled || reading.current) return;
       if (retryTimer.current) clearTimeout(retryTimer.current);
@@ -173,7 +174,7 @@ function useDemoListings() {
     return () => {
       cancelled = true;
       mounted.current = false;
-      ++loadGeneration.current;
+      ++generation.current;
       reading.current = false;
       if (retryTimer.current) clearTimeout(retryTimer.current);
       retryTimer.current = null;

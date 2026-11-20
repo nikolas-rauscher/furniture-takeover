@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { AssistResponse, PhotoGroup } from "../../shared/agent";
 import { requestAgentAssist } from "../api/agent";
 import {
@@ -147,17 +147,15 @@ export function useListingAnalysis({
   }, [photosKey]);
   useEffect(() => () => inFlight.current?.controller.abort(), []);
 
-  useEffect(() => {
-    if (!active || !available || !photos.length || !settled || typing) return;
-    if (!oneItem) return;
-    if (
-      ready?.key === key ||
-      failed?.key === key ||
-      inFlight.current?.key === key
-    )
-      return;
+  const analyseNew = useEffectEvent(() => {
+    if (!photos.length || inFlight.current?.key === key) return;
     void request(key, { photos, note: settledNote, location });
-    // The key stands for the photos, note and place it was made from.
+  });
+  // The key stands for the photos, note and place it was made from.
+  useEffect(() => {
+    if (!active || !available || !settled || typing || !oneItem) return;
+    if (ready?.key === key || failed?.key === key) return;
+    analyseNew();
   }, [active, available, settled, typing, oneItem, key, ready, failed]);
 
   /** The analysis of exactly these photos, note and place: finished, under way or new. */

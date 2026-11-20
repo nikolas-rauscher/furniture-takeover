@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { PhotoGroup } from "../../shared/agent";
 import { sortListingPhotos } from "../listingPhotos";
 
@@ -52,14 +52,15 @@ export function usePhotoSorting({
     }
   }
 
+  const startSort = useEffectEvent(sort);
+  // The key stands for the photos it was made from.
   useEffect(() => {
     if (!wanted || !settled || result?.photos === photosKey) return;
     if (request.current?.photos === photosKey) return;
     request.current?.controller.abort();
     const controller = new AbortController();
     request.current = { photos: photosKey, controller };
-    void sort(photosKey, controller);
-    // The key stands for the photos it was made from.
+    void startSort(photosKey, controller);
   }, [wanted, settled, photosKey, result]);
   useEffect(() => () => request.current?.controller.abort(), []);
 

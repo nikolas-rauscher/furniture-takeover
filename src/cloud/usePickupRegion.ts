@@ -4,13 +4,15 @@ import type { AccountConnection } from "./connection";
 /** Where a signed-in seller usually hands items over, from their account profile. */
 export function usePickupRegion(account: AccountConnection | undefined) {
   const [pickupRegion, setPickupRegion] = useState("");
+  const client = account?.client;
+  const userId = account?.session?.user.id;
   useEffect(() => {
     let alive = true;
-    if (account?.session)
-      void account.client
+    if (client && userId)
+      void client
         .from("account_preferences")
         .select("pickup_region")
-        .eq("user_id", account.session.user.id)
+        .eq("user_id", userId)
         .maybeSingle()
         .then(({ data }) => {
           if (alive && data) setPickupRegion(data.pickup_region);
@@ -18,6 +20,6 @@ export function usePickupRegion(account: AccountConnection | undefined) {
     return () => {
       alive = false;
     };
-  }, [account?.client, account?.session?.user.id]);
+  }, [client, userId]);
   return [pickupRegion, setPickupRegion] as const;
 }

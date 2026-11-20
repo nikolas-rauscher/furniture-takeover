@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useEffectEvent,
   useId,
   useRef,
   useState,
@@ -252,7 +253,8 @@ export default function ListingTray({
   const focusNext = useRef(false);
   /** The element in the tray that had focus last. */
   const lastFocused = useRef<Element | null>(null);
-  const [chosen, setChosen] = useState<string>();
+  /** The choice tapped on the content that shows now; a new question or step starts unchosen. */
+  const [choice, setChoice] = useState<{ content: string; label: string }>();
   const answered = queue.filter((item) => turn.answers[item.id]).length;
   const cheering =
     !useMomentPassed(
@@ -267,9 +269,8 @@ export default function ListingTray({
         ? "working"
         : phase;
 
-  useEffect(() => setChosen(undefined), [contentKey]);
-  useEffect(() => {
-    if (!focusRequest) return;
+  const chosen = choice?.content === contentKey ? choice.label : undefined;
+  const nudge = useEffectEvent(() => {
     const node = tray.current;
     node
       ?.querySelector(".listing-tray-bubble")
@@ -281,7 +282,10 @@ export default function ListingTray({
     if (titleNode.current?.dataset.content === contentKey)
       titleNode.current.focus({ preventScroll: true });
     else focusNext.current = true;
-    // Only a new request moves focus; the content it waits for comes later.
+  });
+  // Only a new request moves focus; the content it waits for comes later.
+  useEffect(() => {
+    if (focusRequest) nudge();
   }, [focusRequest]);
 
   if (phase === "hidden") return null;
@@ -306,12 +310,12 @@ export default function ListingTray({
   };
   const choose = (id: string, label: string) => {
     if (chosen) return;
-    setChosen(label);
+    setChoice({ content: contentKey, label });
     window.setTimeout(
       () =>
         answering(() => {
           const applied = onChoose(id, label);
-          if (!applied) setChosen(undefined);
+          if (!applied) setChoice(undefined);
           return applied;
         }),
       reduced ? 0 : CHOSEN_MS,

@@ -49,6 +49,7 @@ function useAccountListings(client: SupabaseClient, userId?: string) {
     }
   }, [api]);
   useEffect(() => {
+    const loads = generation;
     mounted.current = true;
     void load();
     const refresh = () => void load();
@@ -60,7 +61,7 @@ function useAccountListings(client: SupabaseClient, userId?: string) {
     window.addEventListener(adminCatalogChanged, refresh);
     return () => {
       mounted.current = false;
-      generation.current++;
+      loads.current++;
       window.removeEventListener("focus", refresh);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
       window.removeEventListener(adminCatalogChanged, refresh);

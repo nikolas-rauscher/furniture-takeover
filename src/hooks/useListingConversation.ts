@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type SetStateAction } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+  type SetStateAction,
+} from "react";
 import type {
   AgentListingPatchEvent,
   AgentQuestionEvent,
@@ -107,10 +113,11 @@ export function useListingConversation({
   );
 
   // His run's changes come first; a tap made meanwhile then applies on top of them.
+  const release = useEffectEvent(releaseTap);
   useEffect(() => {
     if (running || !heldTaps.length) return;
     setHeldTaps([]);
-    for (const tap of heldTaps) releaseTap(tap);
+    for (const tap of heldTaps) release(tap);
   }, [running, heldTaps]);
 
   function resetConversation() {

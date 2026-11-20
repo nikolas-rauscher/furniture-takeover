@@ -53,10 +53,11 @@ export function useAccountInbox(
     setLoadError("");
     setReadError("");
     if (!api) return;
+    const loads = generation;
     void refresh();
     const unsubscribe = api.subscribe(() => void refresh());
     return () => {
-      generation.current++;
+      loads.current++;
       inFlight.current = null;
       unsubscribe();
     };

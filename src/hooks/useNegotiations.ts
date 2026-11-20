@@ -1,5 +1,5 @@
 import { accountStorageKey, getCloudClient } from "../cloud/session.ts";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   newNegotiation,
   type Negotiation,
@@ -32,14 +32,14 @@ export function useNegotiations() {
     activeId.current = id;
     setActive(id);
   }
-  function refresh() {
+  const refresh = useCallback(() => {
     try {
       setItems(repository.list());
       setError("");
     } catch {
       setError("I couldn't open your saved offer drafts. Reload to try again.");
     }
-  }
+  }, [repository]);
   useEffect(() => {
     refresh();
     const changed = (event: StorageEvent) => {
@@ -47,7 +47,7 @@ export function useNegotiations() {
     };
     window.addEventListener("storage", changed);
     return () => window.removeEventListener("storage", changed);
-  }, [repository, key]);
+  }, [repository, key, refresh]);
   useEffect(() => {
     const migrationKey = `${key}-sent-migration-v1`;
     let cancelled = false;
@@ -73,7 +73,7 @@ export function useNegotiations() {
     return () => {
       cancelled = true;
     };
-  }, [repository, key]);
+  }, [repository, key, refresh]);
   function current() {
     return repository
       .list()

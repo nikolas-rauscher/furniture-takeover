@@ -173,7 +173,7 @@ export function useAdmin({
   const api = useMemo(() => {
     if (!isAdmin) return null;
     return createAdminApi(client ? { client } : { developerMode: true });
-  }, [client, isAdmin, userId]);
+  }, [client, isAdmin]);
   return {
     api,
     isAdmin,

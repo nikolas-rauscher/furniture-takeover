@@ -76,19 +76,17 @@ export function useAgentHealth() {
       window.removeEventListener("takeover-ai-quota", quotaChanged);
     };
   }, [check]);
+  const quotaResetAt = health?.quota?.resetAt;
   useEffect(() => {
-    if (!health?.quota) return;
+    if (!quotaResetAt) return;
     const timer = setTimeout(
       () => void check(),
       Math.max(
         1000,
-        Math.min(
-          86_400_000,
-          Date.parse(health.quota.resetAt) - Date.now() + 1000,
-        ),
+        Math.min(86_400_000, Date.parse(quotaResetAt) - Date.now() + 1000),
       ),
     );
     return () => clearTimeout(timer);
-  }, [health?.quota?.resetAt, check]);
+  }, [quotaResetAt, check]);
   return { health, error, checking, refresh: () => void check() };
 }
