@@ -27,6 +27,8 @@ export type ChoiceListProps<Id extends string> = {
 };
 
 const MAX_STAGGER = 0.24;
+/** Number keys 1–9 pick an option, so only the first nine show a key. */
+const KEYED_OPTIONS = 9;
 const ARROW_STEPS: Record<string, number> = {
   ArrowDown: 1,
   ArrowRight: 1,
@@ -136,9 +138,11 @@ export default function ChoiceList<Id extends string>({
                       <Check size={14} strokeWidth={3} />
                     </motion.span>
                   ) : (
-                    <motion.kbd key="key" className="ob-choice-key" {...mark}>
-                      {index + 1}
-                    </motion.kbd>
+                    index < KEYED_OPTIONS && (
+                      <motion.kbd key="key" className="ob-choice-key" {...mark}>
+                        {index + 1}
+                      </motion.kbd>
+                    )
                   )}
                 </AnimatePresence>
               </span>
