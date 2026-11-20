@@ -22,7 +22,7 @@ import PitchScene, { type ScenePlay } from "./PitchScene";
 /** Channel tag of the study link on this page, so its visitors can be told apart. */
 const PITCH_STUDY_LINK = "/tour?s=pitch";
 const HOW_ID = "how-it-works";
-/** From this width the hero shows the app in a phone frame beside the text. */
+/** From this width the drawn hero shows its phone frame beside the text; phones show Pako alone. */
 const WIDE_SCREEN = "(min-width: 761px)";
 
 type TourSection = {
@@ -193,7 +193,7 @@ function Hero({ look }: { look: TourLook }) {
           </a>
         </div>
       </div>
-      {wide ? (
+      {wide || look === "app" ? (
         <HeroDevice look={look} />
       ) : (
         <div className="tour-hero-screen">

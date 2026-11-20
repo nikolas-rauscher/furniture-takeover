@@ -24,10 +24,11 @@ const HOME_STRIP = 21;
 /** Screen, bezel and edge, plus the buttons standing out on both sides. */
 const DEVICE = { width: SCREEN.width + 34, height: SCREEN.height + 28 };
 
-type Fit = { scale: number; height: number };
+/** The device's scale, and its offset that centres it in a slot wider than it needs. */
+type Fit = { scale: number; left: number };
 
-/** How far the device shrinks to fill its slot, which the page's styles size. */
-function useFit(bare: boolean) {
+/** How far the device shrinks to fit whole into its slot, which the page's styles size. */
+function useFit() {
   const slot = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState<Fit | null>(null);
   useLayoutEffect(() => {
@@ -36,23 +37,14 @@ function useFit(bare: boolean) {
     const measure = () => {
       const { width, height } = element.getBoundingClientRect();
       if (!width || !height) return;
-      setFit(
-        bare
-          ? {
-              scale: width / SCREEN.width,
-              height: height / (width / SCREEN.width),
-            }
-          : {
-              scale: height / DEVICE.height,
-              height: SCREEN.height - STATUS_BAR - HOME_STRIP,
-            },
-      );
+      const scale = Math.min(width / DEVICE.width, height / DEVICE.height);
+      setFit({ scale, left: (width - DEVICE.width * scale) / 2 });
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [bare]);
+  }, []);
   return { slot, fit };
 }
 
@@ -91,8 +83,6 @@ export type DeviceFrameProps = {
   scene: TourScene;
   /** Says what the scene shows, for anyone who cannot see it. */
   label: string;
-  /** The screen alone, without the device around it. */
-  bare?: boolean;
   /** Counts the visitor's replays; each change starts the scene again. */
   replay?: number;
   onMood?: (mood: PakoMood) => void;
@@ -103,60 +93,55 @@ export type DeviceFrameProps = {
 export default function DeviceFrame({
   scene,
   label,
-  bare = false,
   replay = 0,
   onMood,
   onDone,
 }: DeviceFrameProps) {
-  const { slot, fit } = useFit(bare);
+  const { slot, fit } = useFit();
   const frame = useRef<HTMLIFrameElement>(null);
   const { sceneTime, cameraOpen } = useSceneLink(frame, replay, onMood, onDone);
-  const screen = (
-    <iframe
-      ref={frame}
-      className="tour-device-app"
-      src={sceneAddress(scene)}
-      title={label}
-      tabIndex={-1}
-      aria-hidden="true"
-      style={{ width: SCREEN.width, height: fit?.height ?? 0 }}
-    />
-  );
   return (
     <div
       ref={slot}
       className="tour-device-slot"
-      data-bare={bare || undefined}
       data-ready={fit ? true : undefined}
       role="img"
       aria-label={label}
     >
-      {bare ? (
-        <div className="tour-device-bare" style={{ scale: fit?.scale ?? 0 }}>
-          {screen}
-        </div>
-      ) : (
-        <div className="tour-device" style={{ scale: fit?.scale ?? 0 }}>
-          <span className="tour-device-key" data-key="action" />
-          <span className="tour-device-key" data-key="volume-up" />
-          <span className="tour-device-key" data-key="volume-down" />
-          <span className="tour-device-key" data-key="power" />
-          <span className="tour-device-key" data-key="camera" />
-          <div className="tour-device-edge">
-            <div className="tour-device-bezel">
-              <div
-                className="tour-device-screen"
-                data-camera={cameraOpen || undefined}
-              >
-                <StatusBar sceneTime={sceneTime} />
-                <span className="tour-device-camera" />
-                {screen}
-                <span className="tour-device-home" />
-              </div>
+      <div
+        className="tour-device"
+        style={{ scale: fit?.scale ?? 0, left: fit?.left ?? 0 }}
+      >
+        <span className="tour-device-key" data-key="action" />
+        <span className="tour-device-key" data-key="volume-up" />
+        <span className="tour-device-key" data-key="volume-down" />
+        <span className="tour-device-key" data-key="power" />
+        <span className="tour-device-key" data-key="camera" />
+        <div className="tour-device-edge">
+          <div className="tour-device-bezel">
+            <div
+              className="tour-device-screen"
+              data-camera={cameraOpen || undefined}
+            >
+              <StatusBar sceneTime={sceneTime} />
+              <span className="tour-device-camera" />
+              <iframe
+                ref={frame}
+                className="tour-device-app"
+                src={sceneAddress(scene)}
+                title={label}
+                tabIndex={-1}
+                aria-hidden="true"
+                style={{
+                  width: SCREEN.width,
+                  height: SCREEN.height - STATUS_BAR - HOME_STRIP,
+                }}
+              />
+              <span className="tour-device-home" />
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

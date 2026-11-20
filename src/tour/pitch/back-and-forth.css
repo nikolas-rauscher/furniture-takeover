@@ -346,6 +346,14 @@
     opacity: 1;
   }
 }
+.baf-figure {
+  margin: 0;
+}
+.baf-waiting {
+  width: 400px;
+  max-width: 100%;
+  height: 600px;
+}
 /* Phones: one column, so the stage takes its width. */
 @media (max-width: 760px) {
   .baf-stage,
@@ -357,13 +365,4 @@
   .baf-stage {
     height: 620px;
   }
-}
-
-.baf-figure {
-  margin: 0;
-}
-.baf-waiting {
-  width: 400px;
-  max-width: 100%;
-  height: 600px;
 }

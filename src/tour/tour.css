@@ -67,10 +67,11 @@
   }
 }
 
-/* The phone playing an app scene: its size comes from the space around it (device.css). */
+/* The phone playing an app scene: on phones as wide as the column allows while the
+   whole device still fits on one screen. */
 @media (max-width: 760px) {
   .tour-page .tour-device-slot {
-    width: min(100%, 400px);
+    width: min(100%, 400px, (100dvh - 48px) * 436 / 902);
     height: auto;
     margin: 0 auto;
   }
@@ -107,6 +108,26 @@
 .tour-hero-text .ob-lead {
   max-width: 38ch;
 }
+/* On phones the app's search plays below the buttons, with Pako beside the phone's top. */
+.tour-hero-device {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 28px;
+}
+.tour-hero-device .tour-hero-pako {
+  flex: none;
+  width: 84px;
+  height: 84px;
+  margin-top: 40px;
+}
+@media (max-width: 760px) {
+  .tour-page .tour-hero-device .tour-device-slot {
+    width: min(100% - 88px, 300px, (100dvh - 48px) * 436 / 902);
+    margin: 0;
+  }
+}
 .tour-hero-screen {
   order: -1;
   display: grid;
@@ -141,6 +162,7 @@
 }
 .tour-section {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
 }
 .tour-section-text {
@@ -286,7 +308,9 @@
   }
   .tour-hero-device {
     position: relative;
+    display: block;
     justify-self: end;
+    margin-top: 0;
   }
   .tour-hero-device .tour-device-slot {
     --tour-device-height: clamp(540px, 100dvh - 96px, 860px);
@@ -299,6 +323,7 @@
     z-index: 2;
     width: 112px;
     height: 112px;
+    margin-top: 0;
     pointer-events: none;
   }
   .tour-actions {
@@ -370,7 +395,28 @@
 }
 .tour-study .tour-device-slot {
   align-self: center;
-  --tour-screen-height: clamp(300px, 100dvh - 350px, 540px);
+}
+/* On phones a scene step gives the device all the height below Pako's line; the device
+   keeps its proportions and shrinks as a whole to fit. */
+@media (max-width: 760px) {
+  .tour-study[data-arrangement="beside"] .ob-body-inner {
+    gap: 12px;
+    padding-bottom: 12px;
+  }
+  .tour-study[data-arrangement="beside"] .ob-guide .ob-pako {
+    width: 64px;
+    height: 64px;
+  }
+  .tour-study[data-arrangement="beside"] .ob-step {
+    flex: 1;
+  }
+  .tour-study .tour-device-slot {
+    flex: 1 1 0;
+    width: 100%;
+    min-height: 280px;
+    height: auto;
+    aspect-ratio: auto;
+  }
 }
 /* On wide screens a scene step widens the sheet: Pako narrates beside a full-height phone. */
 @media (min-width: 761px) {

@@ -11,20 +11,12 @@
 .tour-device-slot[data-ready] {
   opacity: 1;
 }
-.tour-device-slot[data-bare] {
-  aspect-ratio: auto;
-  width: 100%;
-  height: var(--tour-screen-height, 560px);
-}
 
-.tour-device,
-.tour-device-bare {
+.tour-device {
   position: absolute;
   top: 0;
   left: 0;
   transform-origin: 0 0;
-}
-.tour-device {
   width: 436px;
   height: 902px;
 }
@@ -182,16 +174,4 @@
   background: #111;
   translate: -50% 0;
   pointer-events: none;
-}
-
-/* Without the device: the screen alone, with rounded corners and a hairline. */
-.tour-device-bare {
-  width: 402px;
-  overflow: hidden;
-  border: 1px solid var(--card-line);
-  border-radius: 28px;
-  background: var(--background);
-}
-.tour-device-bare .tour-device-app {
-  position: static;
 }
