@@ -2,23 +2,27 @@ import { Button } from "./components/ui/button";
 import { Badge } from "./components/ui/badge";
 import { Textarea } from "./components/ui/textarea";
 import { Input } from "./components/ui/input";
-import { historyPosition, readRoute, type View } from "./navigation";
+import {
+  accountTabHash,
+  destinationDirection,
+  destinationFor,
+  detailBackLabel,
+  pageKey as pageKeyFor,
+  type Destination,
+  type View,
+} from "./navigation";
 import { formatPickup } from "../shared/pickupTime";
 import type { AccountConnection } from "./cloud/connection";
 import { useMarketplaceListings } from "./cloud/useMarketplaceListings";
 import { savedListing, useFavorites } from "./cloud/useFavorites";
 import { useAppViewport } from "./hooks/useAppViewport";
 import { useWindowScrolled } from "./hooks/useWindowScrolled";
-import AccountPage, {
-  type AccountTab,
-  type ListingPickup,
-} from "./components/AccountPage";
+import AccountPage, { type ListingPickup } from "./components/AccountPage";
 import ListingDetailPage from "./components/ListingDetailPage";
 import SavedSearchesPage from "./components/SavedSearchesPage";
-import { listingPhotos, MAX_LISTING_PHOTOS } from "../shared/listingPhotos";
+import { listingPhotos } from "../shared/listingPhotos";
 import { readListingPhoto } from "./listingPhotos";
 import { randomUuid } from "./randomUuid";
-import type { PhotoGroup } from "../shared/agent";
 import WorkspacePage from "./components/WorkspacePage";
 import WorkspaceHeader from "./components/WorkspaceHeader";
 import type {
@@ -78,19 +82,11 @@ import AgentComposer from "./components/AgentComposer";
 import AgentQuickReplies from "./components/AgentQuickReplies";
 import { quickReplies, type TappableReply } from "./quickReplies";
 import {
-  listingDraftReady,
-  listingFromDraft,
-  prepareListingDraft,
-} from "./listingPreparation";
-import {
   useEffect,
   useEffectEvent,
-  useLayoutEffect,
   useRef,
   useState,
-  type FormEvent,
   type ReactNode,
-  type SetStateAction,
 } from "react";
 import {
   ArrowRight,
@@ -105,17 +101,26 @@ import {
   UserRound,
   X,
 } from "@/components/icons";
-import MobileNav, { type MobileDestination } from "./MobileNav";
+import MobileNav from "./MobileNav";
 import HeaderNav, { headerDestination } from "./components/HeaderNav";
 import CompareTray from "./components/CompareTray";
-import Toast, { type ToastAction } from "./components/Toast";
+import Toast from "./components/Toast";
+import { useToast } from "./hooks/useToast";
+import { useAppNavigation } from "./hooks/useAppNavigation";
+import { usePageScroll } from "./hooks/usePageScroll";
+import { useSellSession } from "./hooks/useSellSession";
 import DatabaseStatus from "./components/DatabaseStatus";
 import Modal from "./components/Modal";
 import ProductCard from "./components/ProductCard";
 import ProductGrid from "./components/ProductGrid";
 import SearchPreferencesFields from "./components/SearchPreferencesFields";
-import type { BatchProgress, ListingDraft } from "./listingDraft";
-import { listingSaveWords, saveActionLabel } from "./listingSaveWords";
+import { STATUS_NOTICES, statusFailure } from "./listingStatusWords";
+import {
+  activePreferences as activePreferencesOf,
+  compactPreferences as compactPreferencesOf,
+  shortPlace,
+} from "./searchSummary";
+import { saveActionLabel } from "./listingSaveWords";
 import AskPakoMenu, { LISTING_REQUESTS } from "./components/AskPakoMenu";
 import { useDeveloperMode } from "./availability/useDeveloperMode";
 import {
@@ -124,16 +129,11 @@ import {
   type PhotoSearchNotice,
 } from "./photoSearchFeedback";
 import PhotoSearchButton, { imageFrom } from "./components/PhotoSearchButton";
-import type { BatchStart } from "./components/BatchSellFlow";
-import { batchItem, itemsFromGroups } from "./batchListings";
-import { batchStepNote } from "./sellingCelebration";
 import AgentSuggestions from "./components/AgentSuggestions";
 import AgentRunPanel from "./components/AgentRunPanel";
 import { useAgentRun, type AgentRunState } from "./hooks/useAgentRun";
 import { useAgentAssist } from "./hooks/useAgentAssist";
-import { useListingAnalysis } from "./hooks/useListingAnalysis";
 import type { PakoAbsence } from "./sellGuide";
-import { useListingConversation } from "./hooks/useListingConversation";
 import { useSaved } from "./hooks/useSaved";
 import { isListingStatuses } from "./hooks/savedState";
 import { useSessionIds } from "./hooks/useSessionIds";
@@ -178,14 +178,12 @@ import {
   defaults,
   criteriaTitle,
   isMine,
-  money,
-  shortDate,
   type Criteria,
   type Product,
   type SavedListing,
 } from "../shared/marketplace";
 import SavedNote from "./components/SavedNote";
-import { transitionPage, type PageDirection } from "./pageTransition";
+import { transitionPage } from "./pageTransition";
 import {
   PageTransition,
   PageTransitionShared,
@@ -195,7 +193,6 @@ import type { OnboardingOutcome } from "./components/onboarding/Onboarding";
 import OnboardingInvite from "./components/onboarding/OnboardingInvite";
 import Pako from "./components/onboarding/Pako";
 import PakoReaction from "./components/PakoReaction";
-import type { PakoMood } from "./components/onboarding/storyTypes";
 import {
   firstVisitModeHere,
   readOnboarding,
@@ -225,63 +222,14 @@ import LazyBoundary from "./components/LazyBoundary";
 import { useIntentPrefetch } from "./hooks/useIntentPrefetch";
 import "./cloud/account.css";
 
-type Destination = MobileDestination | "settings";
-/** Order of the mobile bar, left to right: tabs, then Sell beside them, then settings. */
-const DESTINATION_ORDER: Destination[] = [
-  "browse",
-  "searches",
-  "favorites",
-  "messages",
-  "account",
-  "sell",
-  "settings",
-];
-
-type Dialog =
-  "filters" | "save" | "edit-search" | "location" | "help" | "clear" | null;
-/** The search pill's short name for an area: "EPFL" for "EPFL, Ecublens", "Vortex" for an FMEL residence. */
-function shortPlace(location: string) {
-  return location.split(",")[0].replace(/^FMEL\s+/, "").trim();
-}
-
 /** Results wait while Pako works and are ranked once his turn has finished. */
 function resultOrder(status: AgentRunState["status"]): ResultOrder {
   if (status === "running") return "pending";
   return status === "complete" ? "ranked" : "unranked";
 }
 
-/** A blank listing, picked up where the student lives or searches. */
-function newDraft(location: string): ListingDraft {
-  return {
-    image: "",
-    images: [],
-    raw: "",
-    title: "",
-    description: "",
-    price: "",
-    condition: "",
-    dimensions: "",
-    location,
-    pickup: "",
-    category: "All",
-  };
-}
-/** What changing a listing's status tells the seller. */
-const STATUS_NOTICES: Record<Product["status"], string> = {
-  active: "Listing is available again.",
-  reserved: "Marked as reserved.",
-  sold: "Marked as sold.",
-  withdrawn: "Listing archived. You can restore it from Archive.",
-};
-/** What a failed status change tells the seller, naming the change that did not save. */
-const STATUS_FAILURES: Record<Product["status"], string> = {
-  active: "Couldn't make the listing available.",
-  reserved: "Couldn't mark the listing as reserved.",
-  sold: "Couldn't mark the listing as sold.",
-  withdrawn: "Couldn't archive the listing.",
-};
-const statusFailure = (status: Product["status"]) =>
-  `${STATUS_FAILURES[status]} Check your browser storage and try again.`;
+type Dialog =
+  "filters" | "save" | "edit-search" | "location" | "help" | "clear" | null;
 
 export default function App({
   account,
@@ -295,6 +243,7 @@ export default function App({
   introOutcome?: OnboardingOutcome;
 }) {
   useAppViewport();
+  const toast = useToast();
   const pageScrolled = useWindowScrolled();
   const signedIn = !account || !!account.session;
   const [pickupRegion, setPickupRegion] = useState("");
@@ -343,7 +292,25 @@ export default function App({
     checking: healthChecking,
     refresh: refreshHealth,
   } = useAgentHealth();
-  const [view, setView] = useState<View>(readRoute(window.location.hash).view);
+  const nav = useAppNavigation({
+    signedIn,
+    onLeave: leavePage,
+    onNavigate: () => setModal(null),
+    onHistoryRoute: (route) =>
+      setMessageListingId(
+        route.view === "messages" ? route.listingId : undefined,
+      ),
+  });
+  const {
+    view,
+    accountTab,
+    setAccountTab,
+    selectedId,
+    detailOrigin,
+    navigate,
+    pushRoute,
+    replaceRoute,
+  } = nav;
   const messages = useMessagesInbox({
     account,
     open: view === "messages",
@@ -389,18 +356,13 @@ export default function App({
     radius: searchArea.radius,
   });
   const [messageListingId, setMessageListingId] = useState<string | undefined>(
-    readRoute(window.location.hash).view === "messages"
-      ? readRoute(window.location.hash).listingId
-      : undefined,
+    nav.initialRoute.view === "messages" ? nav.initialRoute.listingId : undefined,
   );
   /** Changes on each "Draft an offer" tap, so its thread opens the offer card again. */
   const [offerRequest, setOfferRequest] = useState<number>();
   /** A conversation to open by itself, such as a seller's deal from Home. */
   const [threadRequest, setThreadRequest] = useState<ThreadRequest>();
   const [modal, setModal] = useState<Dialog>(null);
-  const [accountTab, setAccountTab] = useState<AccountTab>(
-    readRoute(window.location.hash).accountTab,
-  );
   const {
     favorites,
     setFavorites,
@@ -442,7 +404,7 @@ export default function App({
     listings: own,
     ready: database.ready,
     setStatus,
-    setToast,
+    setToast: toast.say,
     onFindSimilar: (title) => void runSearch(title),
   });
   const [compared, setCompared] = useSessionIds("takeover-compare");
@@ -470,14 +432,6 @@ export default function App({
       ...(onboarding === "invite" ? (["intro"] as const) : []),
     ],
   );
-  const comparisonOrigin = useRef<View>("discover");
-  /** Where the open listing was reached from; a listing opened by link leads back to Browse. */
-  const [detailOrigin, setDetailOrigin] = useState<View>("discover");
-  const [selectedId, setSelectedId] = useState<string | null>(
-    readRoute(window.location.hash).view === "detail"
-      ? (readRoute(window.location.hash).listingId ?? null)
-      : null,
-  );
   const [messageProposal, setMessageProposal] = useState<
     Negotiation | undefined
   >();
@@ -485,50 +439,6 @@ export default function App({
   const [messageDraft, setMessageDraft] = useState<string>();
   const [jobTitle, setJobTitle] = useState("");
   const [editingJob, setEditingJob] = useState<string | null>(null);
-  const draftId = useRef(randomUuid());
-  const draftRef = useRef<ListingDraft>(newDraft(searchArea.location));
-  const [draft, setDraftState] = useState<ListingDraft>(draftRef.current);
-  function setDraft(value: SetStateAction<ListingDraft>) {
-    const next = typeof value === "function" ? value(draftRef.current) : value;
-    draftRef.current = next;
-    setDraftState(next);
-  }
-  const listing = useListingConversation({ draftRef, setDraft });
-  const [sellStep, setSellStep] = useState(1);
-  /** The student fills in the listing's details themselves, without Pako. */
-  const [manualListing, setManualListing] = useState(false);
-  const [sellMode, setSellMode] = useState<"single" | "batch">("single");
-  const [batchStart, setBatchStart] = useState<BatchStart | undefined>();
-  // Several sorted items, created one after another with the listing agent.
-  const [batchQueue, setBatchQueue] = useState<{
-    drafts: ListingDraft[];
-    index: number;
-    results: ("saved" | "skipped")[];
-    /** The listings this batch has saved so far, celebrated together at the end. */
-    savedIds: string[];
-    /** Pako's line about the listing just finished, which the batch tray shows. */
-    note?: string;
-  } | null>(null);
-  const [editingListing, setEditingListing] = useState<string | null>(null);
-  const [uploadError, setUploadError] = useState("");
-  /** Listings that were just published; My listings celebrates them briefly. */
-  const [publishedListings, setPublishedListings] = useState<string[]>([]);
-  const hasSellingDraft = useRef(view === "sell");
-  const [photoReading, setPhotoReading] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [toastNotice, setToastNotice] = useState<{
-    message: string;
-    /** How Pako brings the note; he stands calmly unless the news is a small joy. */
-    mood?: PakoMood;
-    /** A way to act on the news, such as undoing it; the note then stays longer. */
-    action?: ToastAction;
-    /** The favourite this note confirms; removing it again takes the note back. */
-    savedFavorite?: string;
-  } | null>(null);
-  const toast = toastNotice?.message || "";
-  function setToast(message: string) {
-    setToastNotice(message ? { message } : null);
-  }
   /** Puts a deleted saved search back where it was. */
   function restoreSavedSearch(job: SavedSearch, index: number) {
     setJobs((current) => {
@@ -536,10 +446,8 @@ export default function App({
       const at = Math.max(0, Math.min(index, current.length));
       return [...current.slice(0, at), job, ...current.slice(at)];
     });
-    setToast("Saved search restored.");
+    toast.say("Saved search restored.");
   }
-  const listingRequest = useRef<AbortController | null>(null);
-  const imageReader = useRef<AbortController | null>(null);
 
   // Preserve old browser records, but never show seeded inventory as real offers.
   const expiredReleases = new Set(messages.deals
@@ -573,7 +481,39 @@ export default function App({
   const archivedListings = localListings.filter(
     (item) => item.status === "withdrawn",
   );
-  const editingItem = own.find((item) => item.id === editingListing);
+  const quotaExhausted = agentHealth?.quota?.remaining === 0;
+  const quotaResets = agentHealth?.quota
+    ? formatPickup(agentHealth.quota.resetAt)
+    : "";
+  /** Why quick replies that ask Pako are paused; the footer under them says when they reset. */
+  const allowancePause = quotaExhausted
+    ? "I've used today's requests."
+    : undefined;
+  const configured =
+    agentHealth?.configured === true && signedIn && !quotaExhausted;
+  /** Why Pako cannot help with selling right now; nothing while that is still being checked. */
+  const pakoAbsence: PakoAbsence | undefined = quotaExhausted
+    ? "allowance"
+    : healthError || agentHealth?.configured === false
+      ? "offline"
+      : undefined;
+  const sell = useSellSession({
+    view,
+    signedIn,
+    cloud: Boolean(account),
+    configured,
+    initialLocation: searchArea.location,
+    own,
+    setOwn,
+    savingListings: database.pending > 0,
+    toast,
+    navigate,
+    openMyListings: () => {
+      setAccountTab("listings");
+      navigate("account");
+    },
+  });
+  const { draft, listing } = sell;
   const savedSearches = jobs.filter((job) => job.id !== "seed-search");
   const watches = useWatches({
     jobs,
@@ -688,52 +628,21 @@ export default function App({
   const bottomDocked =
     (view === "discover" && !isHome) || view === "messages" || view === "sell";
   const mainContent = useRef<HTMLElement>(null);
-  const pageKey =
-    view === "discover"
-      ? isHome
-        ? "home"
-        : "search"
-      : view === "account"
-        ? `account-${accountTab}`
-        : view === "sell"
-          ? sellMode === "batch"
-            ? "sell-batch"
-            : `sell-${sellStep}`
-          : view === "detail"
-            ? `listing-${selectedId}`
-            : view;
-  const previousPage = useRef(pageKey);
-  const scrollPositions = useRef(
-    new Map<string, { top: number; left: number }>(),
-  );
-  useEffect(() => {
-    const previous = window.history.scrollRestoration;
-    window.history.scrollRestoration = "manual";
-    return () => {
-      window.history.scrollRestoration = previous;
-    };
-  }, []);
-  useLayoutEffect(() => {
-    const changed = previousPage.current !== pageKey;
-    previousPage.current = pageKey;
-    const position = scrollPositions.current.get(pageKey) ?? {
-      top: 0,
-      left: 0,
-    };
-    if (changed) window.scrollTo({ ...position, behavior: "instant" });
-    if (changed && pageKey === "home" && focusSearchOnHome.current) {
+  const pageKey = pageKeyFor({
+    view,
+    home: isHome,
+    accountTab,
+    sellMode: sell.mode,
+    sellStep: sell.step,
+    selectedId,
+  });
+  const pageScroll = usePageScroll(pageKey, () => {
+    if (pageKey === "home" && focusSearchOnHome.current) {
       focusSearchOnHome.current = false;
       searchField.current?.focus({ preventScroll: true });
-    } else if (changed && document.activeElement === document.body)
+    } else if (document.activeElement === document.body)
       mainContent.current?.focus({ preventScroll: true });
-    const remember = () =>
-      scrollPositions.current.set(pageKey, {
-        top: window.scrollY,
-        left: window.scrollX,
-      });
-    window.addEventListener("scroll", remember, { passive: true });
-    return () => window.removeEventListener("scroll", remember);
-  }, [pageKey]);
+  });
   const reviewingListing =
     !isHome && committedSearch?.intent === "listing_review";
   const resultCriteria = committedSearch?.criteria ?? criteria;
@@ -741,38 +650,10 @@ export default function App({
   const searchPlace = committedSearch
     ? placeName(committedSearch.location)
     : undefined;
-  const budgetLabel =
-    resultCriteria.maxPrice >= 1_000_000
-      ? "Any budget"
-      : resultCriteria.maxPrice === 0
-        ? "Free only"
-        : "Up to " + money(resultCriteria.maxPrice);
-  const sourceLabel =
-    resultCriteria.source === "All"
-      ? "All sources"
-      : resultCriteria.source;
-  const compactPreferences = [
-    budgetLabel,
-    `${resultCriteria.radius} km`,
-    sourceLabel,
-  ].join(" · ");
+  const compactPreferences = compactPreferencesOf(resultCriteria);
   const activePreferences =
     committedSearch && !reviewingListing
-      ? [
-          budgetLabel,
-          committedSearch.criteria.radius +
-            " km of " +
-            committedSearch.location,
-          committedSearch.criteria.pickup
-            ? "Pickup by " + shortDate(committedSearch.criteria.pickup)
-            : "Flexible pickup",
-          committedSearch.criteria.condition === "All"
-            ? "Any condition"
-            : committedSearch.criteria.condition + " condition",
-          resultCriteria.source === "takeover"
-            ? "takeover only"
-            : sourceLabel,
-        ].join(" · ")
+      ? activePreferencesOf(committedSearch)
       : "";
   const running = agentRun.state.status === "running";
   /** Pako asked something and waits; the composer can answer it too. */
@@ -811,8 +692,8 @@ export default function App({
       case "messages":
         return "Messages";
       case "sell":
-        if (sellMode === "batch") return "Sell several items";
-        return sellStep === 1 ? "New listing" : "Your listing";
+        if (sell.mode === "batch") return "Sell several items";
+        return sell.step === 1 ? "New listing" : "Your listing";
       case "detail":
         return selected?.title ?? "Listing unavailable";
       case "compare":
@@ -825,22 +706,6 @@ export default function App({
     }
   }
   useDocumentTitle(pageName());
-  const quotaExhausted = agentHealth?.quota?.remaining === 0;
-  const quotaResets = agentHealth?.quota
-    ? formatPickup(agentHealth.quota.resetAt)
-    : "";
-  /** Why quick replies that ask Pako are paused; the footer under them says when they reset. */
-  const allowancePause = quotaExhausted
-    ? "I've used today's requests."
-    : undefined;
-  const configured =
-    agentHealth?.configured === true && signedIn && !quotaExhausted;
-  /** Why Pako cannot help with selling right now; nothing while that is still being checked. */
-  const pakoAbsence: PakoAbsence | undefined = quotaExhausted
-    ? "allowance"
-    : healthError || agentHealth?.configured === false
-      ? "offline"
-      : undefined;
   const normalizedFilterDraft = {
     ...filterDraft,
     category: "All",
@@ -882,134 +747,25 @@ export default function App({
     typing: searchFocused || hasSearchDraft,
     location,
   });
-  const listingAnalysis = useListingAnalysis({
-    photos: listingPhotos(draft),
-    note: draft.raw,
-    location: draft.location,
-    active:
-      view === "sell" &&
-      sellMode === "single" &&
-      sellStep === 1 &&
-      !editingListing &&
-      !busy,
-    available: configured,
-  });
-
-  useEffect(
-    () => () => {
-      listingRequest.current?.abort();
-      imageReader.current?.abort();
-    },
-    [],
-  );
-  useEffect(() => {
-    if (!toastNotice) return;
-    const timer = setTimeout(
-      () => setToastNotice(null),
-      toastNotice.action ? 10000 : 5000,
+  /** Leaving a page stops the work it started and saves where it was scrolled. */
+  function leavePage(from: View, to: View) {
+    pageScroll.remember();
+    // A listing opened from the chat is a side trip: the agent keeps working
+    // and the conversation is still there on the way back.
+    const sideTrip = [from, to].every(
+      (page) => page === "discover" || page === "detail",
     );
-    return () => clearTimeout(timer);
-  }, [toastNotice]);
-  useEffect(() => {
-    const failed = () =>
-      setToast(
-        "Browser storage is full. Your latest changes have not been saved for the next visit.",
-      );
-    window.addEventListener("storage-failure", failed);
-    return () => window.removeEventListener("storage-failure", failed);
-  }, []);
-
-  function cancelPhotoRead() {
-    imageReader.current?.abort();
-    imageReader.current = null;
-    setPhotoReading(false);
-  }
-  /** Where the page on screen sits in this tab's history. */
-  const historyPlace = useRef(historyPosition(window.history.state));
-  /** Adds a history entry one step after the current one. */
-  function pushRoute(url: string) {
-    historyPlace.current += 1;
-    window.history.pushState({ position: historyPlace.current }, "", url);
-  }
-  /** Changes the current history entry's address; its place stays. */
-  function replaceRoute(url: string) {
-    window.history.replaceState(window.history.state, "", url);
-  }
-  function navigate(next: View, fromHistory = false) {
-    if (
-      !signedIn &&
-      ["sell", "messages", "account", "searches"].includes(next)
-    ) {
-      navigate("settings", fromHistory);
-      return;
+    if (!sideTrip) {
+      searchRunToken.current += 1;
+      agentRun.cancel();
     }
-    if (next !== view) {
-      scrollPositions.current.set(pageKey, {
-        top: window.scrollY,
-        left: window.scrollX,
-      });
-      // A listing opened from the chat is a side trip: the agent keeps working
-      // and the conversation is still there on the way back.
-      const sideTrip = [view, next].every(
-        (page) => page === "discover" || page === "detail",
-      );
-      if (!sideTrip) {
-        searchRunToken.current += 1;
-        agentRun.cancel();
-      }
-      listing.cancel();
-      listingRequest.current?.abort();
-      photoSearchRequest.current?.abort();
-      photoSearchRequest.current = null;
-      setPhotoSearchBusy(false);
-      cancelPhotoRead();
-      setBusy(false);
-      // A note belongs to the page it was raised on.
-      setToastNotice(null);
-    }
-    setView(next);
-    if (!fromHistory) {
-      const hash =
-        next === "discover"
-          ? ""
-          : next === "account"
-            ? "#listings"
-            : `#${next}`;
-      if (window.location.hash !== hash)
-        pushRoute(window.location.pathname + window.location.search + hash);
-    }
-    setModal(null);
+    sell.stop();
+    photoSearchRequest.current?.abort();
+    photoSearchRequest.current = null;
+    setPhotoSearchBusy(false);
+    // A note belongs to the page it was raised on.
+    toast.show(null);
   }
-  /** Shows the page Back or Forward led to, moving the way the step went. */
-  const showHistoryEntry = useEffectEvent((direction: PageDirection) => {
-    const route = readRoute(window.location.hash);
-    transitionPage(direction, () => {
-      setAccountTab(route.accountTab);
-      setMessageListingId(
-        route.view === "messages" ? route.listingId : undefined,
-      );
-      if (route.view === "detail") setSelectedId(route.listingId ?? null);
-      navigate(route.view, true);
-    });
-  });
-  useEffect(() => {
-    const onPopState = (event: PopStateEvent) => {
-      const position = historyPosition(event.state);
-      const direction =
-        position < historyPlace.current ? "nav-back" : "nav-forward";
-      historyPlace.current = position;
-      // React renders a transition that starts during popstate at once, without
-      // its page transition. Started just after the event, Back and Forward
-      // move the page together with the tab highlight, like a tap does.
-      setTimeout(() => showHistoryEntry(direction), 0);
-    };
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
-  }, []);
-  useEffect(() => {
-    if (!signedIn && ["sell", "messages", "account", "searches"].includes(view))
-      navigate("settings");
-  }, [signedIn, view]);
   function openMessages(listingId?: string, proposal?: Negotiation) {
     if (!signedIn) {
       navigate("settings");
@@ -1051,7 +807,7 @@ export default function App({
       item.otherName,
       listing.title,
     );
-    setToastNotice({
+    toast.show({
       message: `${cheer} ${meaning}`,
       mood: "cheer",
       action: {
@@ -1066,7 +822,7 @@ export default function App({
     const listing = own.find((entry) => entry.id === item.listingId);
     const day = pickupDay(item.deal, item.role, messages.now);
     if (!listing || !day) return;
-    setToastNotice({
+    toast.show({
       message: `${pickupCountdown(day)}: the ${listing.title} with ${item.otherName}.`,
       mood: "wave",
       action: {
@@ -1077,7 +833,7 @@ export default function App({
     });
   }
   function goHome() {
-    scrollPositions.current.delete("home");
+    pageScroll.forget("home");
     navigate("discover");
     agentRun.reset();
     setPhotoSearch(null);
@@ -1095,26 +851,7 @@ export default function App({
     setSearchUndone([]);
   }
   function startSell() {
-    startSellAt(pickupRegion || location);
-  }
-  function startSellAt(pickupLocation: string) {
-    draftId.current = randomUuid();
-    if (!signedIn) {
-      navigate("settings");
-      return;
-    }
-    if (view === "sell") return;
-    hasSellingDraft.current = true;
-    navigate("sell");
-    listing.resetForNewDraft();
-    setDraft(newDraft(pickupLocation));
-    setSellStep(1);
-    setManualListing(false);
-    setSellMode("single");
-    setBatchStart(undefined);
-    setBatchQueue(null);
-    setEditingListing(null);
-    setUploadError("");
+    sell.startAt(pickupRegion || location);
   }
   /** Applies the visitor's intro answers and opens what they chose to do first. */
   function completeOnboarding(outcome: OnboardingOutcome) {
@@ -1122,7 +859,7 @@ export default function App({
     rememberOnboarding(area ? { location: area } : {});
     if (area) setSearchArea((current) => ({ ...current, location: area }));
     if (outcome.next === "sign-in") navigate("settings");
-    else if (outcome.next === "sell") startSellAt(outcome.location);
+    else if (outcome.next === "sell") sell.startAt(outcome.location);
     else if (outcome.next === "search") {
       // The intro also opens from the header on other pages; the query belongs on home.
       goHome();
@@ -1149,28 +886,9 @@ export default function App({
     rememberOnboarding({});
     setOnboarding("closed");
   }
-  const currentDestination: Destination =
-    view === "sell"
-      ? "sell"
-      : view === "messages"
-        ? "messages"
-        : view === "searches"
-          ? "searches"
-          : view === "settings" || view === "admin"
-            ? "settings"
-            : view === "account"
-              ? accountTab === "favorites"
-                ? "favorites"
-                : "account"
-              : "browse";
-  /** Tabs to the right push in from the right; tabs to the left from the left. */
+  const currentDestination = destinationFor(view, accountTab);
   function openDestination(destination: Destination) {
-    const direction =
-      DESTINATION_ORDER.indexOf(destination) >=
-      DESTINATION_ORDER.indexOf(currentDestination)
-        ? "nav-forward"
-        : "nav-back";
-    transitionPage(direction, () => {
+    transitionPage(destinationDirection(currentDestination, destination), () => {
       if (destination === "browse") openBrowse();
       else if (destination === "sell") openSell();
       else if (destination === "messages") openMessages();
@@ -1184,7 +902,7 @@ export default function App({
     });
   }
   function openSell() {
-    if (hasSellingDraft.current) navigate("sell");
+    if (sell.hasDraft()) navigate("sell");
     else startSell();
   }
   /** Entering the chat crossfades the page while the search box becomes the composer. */
@@ -1199,16 +917,7 @@ export default function App({
   function openBrowse() {
     navigate("discover");
   }
-  function openProduct(item: Product) {
-    if (item.status === "withdrawn") return;
-    transitionPage("nav-forward", () => {
-      // Similar items opened from a listing keep leading back to where you started.
-      if (view !== "detail") setDetailOrigin(view);
-      setSelectedId(item.id);
-      navigate("detail");
-    });
-    replaceRoute(`#listing/${encodeURIComponent(item.id)}`);
-  }
+  const openProduct = nav.openListing;
   async function toggleFavorite(id: string) {
     if (!signedIn) {
       navigate("settings");
@@ -1223,7 +932,7 @@ export default function App({
     );
     if (!stored) return;
     if (adding)
-      setToastNotice({
+      toast.show({
         message: "Added to your saved items.",
         mood: "love",
         savedFavorite: id,
@@ -1234,19 +943,16 @@ export default function App({
         },
       });
     else
-      setToastNotice((notice) =>
+      toast.show((notice) =>
         notice?.savedFavorite === id ? null : notice,
       );
   }
-  function openComparison() {
-    comparisonOrigin.current = view;
-    navigate("compare");
-  }
+  const openComparison = nav.openComparison;
   function toggleCompare(id: string) {
     setCompared((current) => {
       if (current.includes(id)) return current.filter((item) => item !== id);
       if (current.length >= 3) {
-        setToast("Compare up to three listings.");
+        toast.say("Compare up to three listings.");
         return current;
       }
       return [...current, id];
@@ -1320,7 +1026,7 @@ export default function App({
       try {
         currentProposal = negotiations.current();
       } catch (error) {
-        setToast(error instanceof Error ? error.message : "Couldn't load your offer draft.");
+        toast.say(error instanceof Error ? error.message : "Couldn't load your offer draft.");
         return;
       }
     }
@@ -1336,12 +1042,8 @@ export default function App({
       setSearchNotices({});
       setSearchUndone([]);
     }
-    listing.cancel();
-    listingRequest.current?.abort();
-    cancelPhotoRead();
-    setView("discover");
-    if (window.location.hash)
-      pushRoute(window.location.pathname + window.location.search);
+    sell.pause();
+    nav.showSearch();
     setModal(null);
     setSearching(true);
     if (!preserveHistory) setQuery(search.originalRequest);
@@ -1551,7 +1253,7 @@ export default function App({
             });
             forgetMessageDraft(proposal.listingId);
           } catch (error) {
-            setToast(error instanceof Error ? error.message : "Couldn't discard the offer draft.");
+            toast.say(error instanceof Error ? error.message : "Couldn't discard the offer draft.");
           }
         }}
       />
@@ -1577,13 +1279,13 @@ export default function App({
   /** Saves a search for an item, or says it is saved already. */
   function keepWatch({ query, maxPrice, radius }: WatchTarget) {
     if (!watches.watch({ query, maxPrice, radius })) {
-      setToastNotice({
+      toast.show({
         message: `“${query}” is already a saved search.`,
         mood: "search",
       });
       return;
     }
-    setToastNotice({
+    toast.show({
       message: "Search saved. New matches show up in Searches.",
       mood: "search",
       action:
@@ -1639,271 +1341,9 @@ export default function App({
     );
     setEditingJob(null);
     setModal(null);
-    setToast("Search saved in this browser.");
+    toast.say("Search saved in this browser.");
   }
 
-  async function upload(files: File[]) {
-    if (!files.length) return;
-    cancelPhotoRead();
-    const existing = listingPhotos(draftRef.current);
-    if (existing.length + files.length > MAX_LISTING_PHOTOS) {
-      setUploadError(`Add up to ${MAX_LISTING_PHOTOS} photos per listing.`);
-      return;
-    }
-    const controller = new AbortController();
-    imageReader.current = controller;
-    setUploadError("");
-    setPhotoReading(true);
-    try {
-      const added: string[] = [];
-      for (const file of files)
-        added.push(await readListingPhoto(file, controller.signal));
-      controller.signal.throwIfAborted();
-      const images = [...new Set([...existing, ...added])];
-      setDraft((current) => ({ ...current, image: images[0], images }));
-    } catch (error) {
-      if (!controller.signal.aborted)
-        setUploadError(
-          error instanceof Error
-            ? error.message
-            : "I couldn't read these photos. Try different ones.",
-        );
-    } finally {
-      if (imageReader.current === controller) {
-        imageReader.current = null;
-        setPhotoReading(false);
-      }
-    }
-  }
-  /** `keepTitle` keeps a title the seller already wrote instead of the agent's. */
-  async function generateDraft({ keepTitle = false } = {}) {
-    // The ref, not state: a batch item may start right after a cancelled read.
-    if (imageReader.current) {
-      setUploadError("Wait for the photo to load.");
-      return;
-    }
-    const start = draftRef.current;
-    if (!start.image) {
-      setUploadError("Add a photo first.");
-      return;
-    }
-    listingRequest.current?.abort();
-    const controller = new AbortController();
-    listingRequest.current = controller;
-    setBusy(true);
-    setUploadError("");
-    try {
-      const photos = listingPhotos(start);
-      setSellStep(2);
-      const response = await listingAnalysis.ensure({
-        photos,
-        note: start.raw,
-        location: start.location,
-      });
-      if (controller.signal.aborted) return;
-      const current = draftRef.current;
-      const prepared = prepareListingDraft(current, response.metadata);
-      if (keepTitle && current.title.trim()) prepared.title = current.title;
-      setDraft(prepared);
-      void listing.start({
-        missingDetails: response.missingDetails,
-        keywords: response.metadata.keywords,
-      });
-    } catch (error) {
-      if (controller.signal.aborted) return;
-      setSellStep(1);
-      setUploadError(
-        error instanceof Error
-          ? error.message
-          : "I couldn't draft the listing. Try again.",
-      );
-    } finally {
-      if (listingRequest.current === controller) setBusy(false);
-    }
-  }
-  async function publish(event: FormEvent) {
-    event.preventDefault();
-    if (listing.running || database.pending || busy) return;
-    if (!signedIn) {
-      navigate("settings");
-      return;
-    }
-    if (!listingDraftReady(draft, editingItem)) {
-      setToast(
-        `Check the listing details before ${listingSaveWords(Boolean(account)).gerund}.`,
-      );
-      return;
-    }
-    const item = listingFromDraft(
-      draft,
-      editingListing || draftId.current,
-      editingItem,
-    );
-    if (editingItem && draft.pickup === editingItem.pickupBy)
-      item.available = editingItem.available;
-    const saved = await setOwn((current) =>
-      editingListing
-        ? current.map((existing) =>
-            existing.id === editingListing ? item : existing,
-          )
-        : [item, ...current],
-    );
-    if (!saved) {
-      setToast(
-        `Couldn't ${listingSaveWords(Boolean(account)).verb.toLowerCase()} the listing. Your draft is still here; see the note above and try again.`,
-      );
-      return;
-    }
-    if (batchQueue && !editingListing) {
-      finishBatchItem("saved", item);
-      return;
-    }
-    hasSellingDraft.current = false;
-    setAccountTab("listings");
-    navigate("account");
-    // A new listing is celebrated on My listings; only edits get a toast.
-    if (editingListing)
-      setToast(
-        account
-          ? "Listing updated."
-          : "Changes saved on this device.",
-      );
-    else setPublishedListings([item.id]);
-  }
-  /** Load one sorted item into the single-listing flow and let the agent draft it. */
-  function openBatchItem(next: ListingDraft) {
-    listingRequest.current?.abort();
-    cancelPhotoRead();
-    listing.resetForNewDraft();
-    draftId.current = randomUuid();
-    setEditingListing(null);
-    setUploadError("");
-    setDraft(next);
-    // Without Pako the next item opens as plain details for the student to fill in.
-    setManualListing(!configured);
-    setSellStep(configured ? 1 : 2);
-    if (configured) void generateDraft({ keepTitle: true });
-  }
-  function startBatchListings(drafts: ListingDraft[]) {
-    if (!drafts.length) return;
-    if (!signedIn) {
-      navigate("settings");
-      return;
-    }
-    hasSellingDraft.current = true;
-    setBatchQueue({ drafts, index: 0, results: [], savedIds: [] });
-    setBatchStart(undefined);
-    setSellMode("single");
-    openBatchItem(drafts[0]);
-  }
-  /** Moves the batch on after a listing was saved or skipped; the last one opens My listings. */
-  function finishBatchItem(result: "saved" | "skipped", saved?: Product) {
-    if (!batchQueue) return;
-    const results = [...batchQueue.results, result];
-    const savedIds = saved
-      ? [...batchQueue.savedIds, saved.id]
-      : batchQueue.savedIds;
-    const index = batchQueue.index + 1;
-    const total = batchQueue.drafts.length;
-    if (index < total) {
-      const note = batchStepNote({
-        outcome: result,
-        title: saved?.title ?? draftRef.current.title,
-        next: index + 1,
-        total,
-        cloud: Boolean(account),
-      });
-      setBatchQueue({ ...batchQueue, index, results, savedIds, note });
-      openBatchItem(batchQueue.drafts[index]);
-      return;
-    }
-    setBatchQueue(null);
-    hasSellingDraft.current = false;
-    setAccountTab("listings");
-    navigate("account");
-    if (savedIds.length) setPublishedListings(savedIds);
-    else setToastNotice({ message: "No listings saved.", mood: "idle" });
-  }
-  /** Return the items not yet created to the sorting step. */
-  function backToBatchSorting() {
-    if (!batchQueue) return;
-    listingRequest.current?.abort();
-    listing.resetConversation();
-    const remaining = batchQueue.drafts.slice(batchQueue.index);
-    const photos = remaining.flatMap((item) => listingPhotos(item));
-    setBatchStart({
-      photos,
-      groups: [],
-      items: remaining.map((item) => {
-        const next = batchItem(listingPhotos(item), item.location);
-        return { ...next, draft: { ...next.draft, title: item.title } };
-      }),
-    });
-    setBatchQueue(null);
-    setBusy(false);
-    setSellMode("batch");
-  }
-  function editListing(item: Product) {
-    if (!isMine(item)) return;
-    if (item.status === "withdrawn") return;
-    hasSellingDraft.current = true;
-    navigate("sell");
-    listing.resetForNewDraft();
-    setBatchQueue(null);
-    setEditingListing(item.id);
-    setDraft({
-      image: item.image,
-      images: listingPhotos(item),
-      raw: "",
-      title: item.title,
-      tags: item.tags,
-      description: item.description,
-      price: String(item.price),
-      condition: item.condition,
-      dimensions: item.dimensions === "Not specified" ? "" : item.dimensions,
-      location: item.location,
-      pickup: item.pickupBy,
-      category: "All",
-    });
-    setSellStep(2);
-    setSellMode("single");
-    setManualListing(false);
-    setUploadError("");
-  }
-  /** Pako's piles become one listing each, or open for the student to check first. */
-  function separateItems(groups: PhotoGroup[], review: boolean) {
-    const photos = listingPhotos(draftRef.current);
-    if (!review) {
-      startBatchListings(
-        itemsFromGroups(photos, groups, draftRef.current.location).map(
-          (item) => item.draft,
-        ),
-      );
-      return;
-    }
-    setBatchStart({ photos, groups, review });
-    setSellMode("batch");
-  }
-  /** Goes on to the details without Pako, keeping what he made of the photos in step 1. */
-  function fillInDetails() {
-    const analysis =
-      sellStep === 1 && listingAnalysis.insight.status === "ready"
-        ? listingAnalysis.insight.response
-        : undefined;
-    listingRequest.current?.abort();
-    listing.cancel();
-    setDraft((current) => {
-      const prepared = analysis
-        ? prepareListingDraft(current, analysis.metadata)
-        : current;
-      return {
-        ...prepared,
-        description: prepared.description.trim() || current.raw,
-      };
-    });
-    setManualListing(true);
-    setSellStep(2);
-  }
   /** The one path a listing's status changes through: My listings and deals alike. */
   async function applyListingStatus(id: string, status: Product["status"]) {
     if (!own.some((item) => item.id === id))
@@ -1926,7 +1366,7 @@ export default function App({
     if (before && !Object.hasOwn(dealStatusBefore, id))
       setDealStatusBefore((current) => ({ ...current, [id]: before }));
     if (!(await applyListingStatus(id, status)))
-      setToast(statusFailure(status));
+      toast.say(statusFailure(status));
   }
   /**
    * Clears this browser's workspace: the student's listings and choices, then
@@ -1960,18 +1400,18 @@ export default function App({
     setCriteria({ ...defaults });
     resetMessageWorkspace();
     await messages.demoInbox.reset();
-    setToast("Browser data cleared.");
+    toast.say("Browser data cleared.");
   }
   async function setStatus(id: string, status: Product["status"]) {
     const listing = own.find((item) => item.id === id);
     if (!listing) throw new Error(`Listing ${id} is not among your listings.`);
     if (!(await applyListingStatus(id, status))) {
-      setToast(statusFailure(status));
+      toast.say(statusFailure(status));
       return;
     }
     if (status === "withdrawn")
       setCompared((current) => current.filter((item) => item !== id));
-    setToastNotice({
+    toast.show({
       message: STATUS_NOTICES[status],
       action:
         status === "withdrawn"
@@ -2001,32 +1441,20 @@ export default function App({
       onAsk={(request) => void listing.send(request, {}, true)}
     />
   );
-  /** Pako still reads the photos in step 2, before his first run of the listing starts. */
-  const listingStarting = busy && sellStep === 2 && !listing.state.id;
-  const sellBatch: BatchProgress | undefined =
-    batchQueue && !editingListing
-      ? {
-          index: batchQueue.index,
-          covers: batchQueue.drafts.map((item) => item.image),
-          results: batchQueue.results,
-          note: batchQueue.note,
-          onSkip: () => finishBatchItem("skipped"),
-        }
-      : undefined;
   const listingConversation = (
     <ListingConversation
       listing={listing}
       draft={draft}
-      starting={listingStarting}
-      editing={Boolean(editingListing)}
+      starting={sell.starting}
+      editing={Boolean(sell.editingListing)}
       saveAction={saveActionLabel({
         cloud: Boolean(account),
-        editing: Boolean(editingListing),
-        batch: sellBatch,
+        editing: Boolean(sell.editingListing),
+        batch: sell.batch,
       })}
       configured={configured}
       asleep={quotaExhausted}
-      onManual={fillInDetails}
+      onManual={sell.fillInDetails}
     />
   );
   const productCard = (item: Product, arriving = false, footer?: ReactNode) => (
@@ -2189,9 +1617,9 @@ export default function App({
           (view === "discover" && !isHome ? " chat-layout" : "") +
           (view === "messages" ? " messages-layout" : "") +
           (view === "sell"
-            ? sellMode === "batch"
+            ? sell.mode === "batch"
               ? " selling-batch-layout"
-              : sellStep === 2
+              : sell.step === 2
                 ? " selling-chat-layout"
                 : " selling-photo-layout"
             : "")
@@ -2928,7 +2356,7 @@ export default function App({
                     setJobs((current) =>
                       current.filter((item) => item.id !== job.id),
                     );
-                    setToastNotice({
+                    toast.show({
                       message: "Saved search deleted.",
                       action: {
                         label: "Undo",
@@ -2941,7 +2369,7 @@ export default function App({
               </PageTransitionView>
             )}
 
-            {view === "sell" && sellMode === "batch" && (
+            {view === "sell" && sell.mode === "batch" && (
               <PageTransitionView>
                 <LazyBoundary label="Loading selling">
                   <BatchSellFlow
@@ -2949,50 +2377,38 @@ export default function App({
                     liveAgent={configured}
                     quota={healthError ? undefined : agentHealth?.quota}
                     onAccount={() => navigate("settings")}
-                    start={batchStart}
-                    onBack={() => {
-                      setBatchStart(undefined);
-                      setSellMode("single");
-                    }}
-                    onStart={startBatchListings}
+                    start={sell.batchStart}
+                    onBack={sell.leaveBatch}
+                    onStart={sell.startBatchListings}
                   />
                 </LazyBoundary>
                 {connectionStatus}
               </PageTransitionView>
             )}
-            <WorkspacePage active={view === "sell" && sellMode === "single"}>
+            <WorkspacePage active={view === "sell" && sell.mode === "single"}>
               <>
                 <LazyBoundary label="Loading selling">
                   <SellFlow
                     draft={draft}
-                    step={sellStep}
-                    editing={!!editingListing}
-                    pickupMin={listingPickupMinimum(draft.pickup, editingItem)}
-                    busy={(busy && !listingStarting) || database.pending > 0}
+                    step={sell.step}
+                    editing={!!sell.editingListing}
+                    pickupMin={listingPickupMinimum(draft.pickup, sell.editingItem)}
+                    busy={(sell.busy && !sell.starting) || database.pending > 0}
                     cloud={!!account}
-                    photoReading={photoReading}
-                    uploadError={uploadError}
+                    photoReading={sell.photoReading}
+                    uploadError={sell.uploadError}
                     liveAgent={configured}
-                    photoInsight={listingAnalysis.insight}
+                    photoInsight={sell.analysis.insight}
                     pakoAbsence={pakoAbsence}
                     pakoBack={quotaResets || undefined}
-                    manual={manualListing}
-                    onFillIn={fillInDetails}
+                    manual={sell.manual}
+                    onFillIn={sell.fillInDetails}
                     onRetryPako={refreshHealth}
                     onBack={() =>
-                      transitionPage("nav-back", () => {
-                        if (sellStep === 2 && !editingListing) {
-                          listingRequest.current?.abort();
-                          listing.resetConversation();
-                          setManualListing(false);
-                          setSellStep(1);
-                        } else if (editingListing) navigate("account");
-                        else if (batchQueue) backToBatchSorting();
-                        else openBrowse();
-                      })
+                      transitionPage("nav-back", () => sell.back(openBrowse))
                     }
                     onDraftChange={listing.editDraft}
-                    agentWorking={listingStarting || listing.running}
+                    agentWorking={sell.starting || listing.running}
                     suggestedPrice={pendingPrice(
                       [...listing.state.history, listing.state],
                       draft,
@@ -3005,7 +2421,7 @@ export default function App({
                         similar={similarListings(
                           visibleListings,
                           draft.title,
-                          editingListing ?? undefined,
+                          sell.editingListing ?? undefined,
                         )}
                         ladder={
                           developerMode
@@ -3025,33 +2441,24 @@ export default function App({
                     agentTools={listingTools}
                     quota={healthError ? undefined : agentHealth?.quota}
                     onAccount={() => navigate("settings")}
-                    onPhotoSelected={upload}
-                    onCreateDraft={() => void generateDraft()}
-                    sortFailed={listingAnalysis.sortFailed}
-                    onSeparate={separateItems}
-                    onKeepTogether={listingAnalysis.keepTogether}
+                    onPhotoSelected={sell.upload}
+                    onCreateDraft={() => void sell.generateDraft()}
+                    sortFailed={sell.analysis.sortFailed}
+                    onSeparate={sell.separateItems}
+                    onKeepTogether={sell.analysis.keepTogether}
                     onSortYourself={() =>
-                      separateItems(
-                        listingPhotos(draftRef.current).map((_, index) => ({
+                      sell.separateItems(
+                        listingPhotos(sell.draftRef.current).map((_, index) => ({
                           photos: [index],
                           label: "",
                         })),
                         true,
                       )
                     }
-                    onNotesDone={listingAnalysis.flushNote}
-                    onPublish={publish}
-                    batch={sellBatch}
-                    onSellSeveral={
-                      batchQueue
-                        ? undefined
-                        : () => {
-                            cancelPhotoRead();
-                            setUploadError("");
-                            setBatchStart(undefined);
-                            setSellMode("batch");
-                          }
-                    }
+                    onNotesDone={sell.analysis.flushNote}
+                    onPublish={sell.publish}
+                    batch={sell.batch}
+                    onSellSeveral={sell.inBatch ? undefined : sell.sellSeveral}
                   />
                 </LazyBoundary>
                 {connectionStatus}
@@ -3086,21 +2493,7 @@ export default function App({
                       <Report client={account.client} listingId={selected.id} />
                     ) : undefined
                   }
-                  backLabel={
-                    detailOrigin === "discover"
-                      ? searching
-                        ? "Back to search"
-                        : "Back to browse"
-                      : detailOrigin === "account"
-                        ? accountTab === "favorites"
-                          ? "Back to saved items"
-                          : "Back to my listings"
-                        : detailOrigin === "messages"
-                          ? "Back to messages"
-                          : detailOrigin === "compare"
-                            ? "Back to comparison"
-                            : "Back"
-                  }
+                  backLabel={detailBackLabel(detailOrigin, searching, accountTab)}
                   onBack={() =>
                     transitionPage("nav-back", () => navigate(detailOrigin))
                   }
@@ -3113,10 +2506,10 @@ export default function App({
                       "fade",
                     )
                   }
-                  onEdit={() => selected && editListing(selected)}
+                  onEdit={() => selected && sell.editListing(selected)}
                   onAskAgent={() => {
                     if (!selected) return;
-                    editListing(selected);
+                    sell.editListing(selected);
                     void listing.send(
                       "Review my supplied listing and help me improve it. Ask about missing facts; do not invent them.",
                     );
@@ -3131,11 +2524,7 @@ export default function App({
                   <ComparePage
                     loaded={listingsSettled}
                     items={comparison}
-                    onBack={() =>
-                      transitionPage("nav-back", () =>
-                        navigate(comparisonOrigin.current),
-                      )
-                    }
+                    onBack={nav.leaveComparison}
                     onOpen={openProduct}
                     onRemove={toggleCompare}
                   />
@@ -3149,13 +2538,7 @@ export default function App({
                 accountTab={accountTab}
                 setAccountTab={(tab) => {
                   setAccountTab(tab);
-                  pushRoute(
-                    tab === "favorites"
-                      ? "#saved"
-                      : tab === "archive"
-                        ? "#listings/archive"
-                        : "#listings",
-                  );
+                  pushRoute(accountTabHash(tab));
                 }}
                 visibleListings={visibleListings.filter(isMine)}
                 cloud={!!account}
@@ -3164,11 +2547,11 @@ export default function App({
                 onSell={startSell}
                 onBrowse={openBrowse}
                 onOpen={openProduct}
-                onEdit={editListing}
+                onEdit={sell.editListing}
                 onStatusChange={setStatus}
                 renderSaved={savedCard}
-                publishedIds={publishedListings}
-                onCelebrationEnd={() => setPublishedListings([])}
+                publishedIds={sell.publishedListings}
+                onCelebrationEnd={sell.clearPublished}
                 agreementFor={(listingId) => {
                   const agreement = sellerAgreementFor(inboxDeals, listingId);
                   const agreed = agreement?.deal.agreed;
@@ -3207,11 +2590,11 @@ export default function App({
         onClear={() => setCompared([])}
       />
       <Toast
-        message={toast}
+        message={toast.notice?.message || ""}
         placement={bottomDocked ? "top" : "bottom"}
-        mood={toastNotice?.mood}
-        action={toastNotice?.action}
-        onDismiss={() => setToast("")}
+        mood={toast.notice?.mood}
+        action={toast.notice?.action}
+        onDismiss={() => toast.say("")}
       />
       {availability?.overlay}
 
@@ -3379,7 +2762,7 @@ export default function App({
               <Bookmark size={20} />
               <p>
                 <strong>Keep</strong>Saved searches and alerts stay in this
-                browser. Nothing reaches another student until you publish a
+                browser. Nothing reaches another student until you sell.publish a
                 listing or send a message.
               </p>
             </div>

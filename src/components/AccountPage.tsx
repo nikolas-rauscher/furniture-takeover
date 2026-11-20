@@ -1,4 +1,5 @@
 import { cardImageFor } from "../../shared/listingPhotos";
+import type { AccountTab } from "../navigation";
 import {
   useEffect,
   useEffectEvent,
@@ -46,7 +47,6 @@ import {
   useListingStatusConfirmation,
 } from "../hooks/useListingPickup";
 
-export type AccountTab = "favorites" | "listings" | "archive";
 
 /** How long Pako celebrates a listing that was just published. */
 const CELEBRATION_MS = 6000;
