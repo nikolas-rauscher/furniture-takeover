@@ -2,33 +2,22 @@ import { MotionConfig } from "motion/react";
 import { Button } from "@/components/ui/button";
 import Guide from "@/components/onboarding/Guide";
 import type { PakoMood } from "@/components/onboarding/storyTypes";
+import LanguageSwitch from "../i18n/LanguageSwitch";
+import { useTourText } from "../i18n/TourLanguage";
+import type { TourText } from "../i18n/en";
 
-type NoticeKind = "loading" | "invalid-link" | "unreachable" | "closed";
+type NoticeKind =
+  "loading" | "invalid-link" | "unreachable" | "closed" | "done-before";
 
 const NOTICES: Record<
   NoticeKind,
-  { title: string; text: string; mood: PakoMood }
+  { words: keyof Omit<TourText["notices"], "showTour">; mood: PakoMood }
 > = {
-  loading: {
-    title: "One moment…",
-    text: "I'm getting the study ready.",
-    mood: "think",
-  },
-  "invalid-link": {
-    title: "This study link isn't complete.",
-    text: "You can still see the tour of takeover.",
-    mood: "dizzy",
-  },
-  unreachable: {
-    title: "I can't reach the study right now.",
-    text: "Check your connection and try again, or see the tour instead.",
-    mood: "sad",
-  },
-  closed: {
-    title: "The study is closed at the moment.",
-    text: "Thanks for stopping by. You can still see the tour of takeover.",
-    mood: "sleep",
-  },
+  loading: { words: "loading", mood: "think" },
+  "invalid-link": { words: "invalidLink", mood: "dizzy" },
+  unreachable: { words: "unreachable", mood: "sad" },
+  closed: { words: "closed", mood: "sleep" },
+  "done-before": { words: "doneBefore", mood: "happy" },
 };
 
 /** Shown instead of the study while it loads, or when it cannot run. */
@@ -41,7 +30,9 @@ export default function StudyNotice({
   onShowPitch: () => void;
   onRetry?: () => void;
 }) {
+  const { notices, common } = useTourText();
   const notice = NOTICES[kind];
+  const words = notices[notice.words];
   return (
     <MotionConfig reducedMotion="user">
       <main
@@ -49,7 +40,10 @@ export default function StudyNotice({
         data-layout="hero"
         aria-labelledby="notice-title"
       >
-        <div />
+        <header className="ob-header tour-study-header">
+          <div className="tour-study-nav" />
+          <LanguageSwitch />
+        </header>
         <div className="ob-body">
           <div className="ob-body-inner">
             <Guide mood={notice.mood} layout="hero" />
@@ -58,16 +52,16 @@ export default function StudyNotice({
               role={kind === "loading" ? "status" : undefined}
             >
               <h1 id="notice-title" className="ob-title">
-                {notice.title}
+                {words.title}
               </h1>
-              <p className="ob-lead">{notice.text}</p>
+              <p className="ob-lead">{words.text}</p>
             </div>
           </div>
         </div>
         <footer className="ob-footer">
           {onRetry && (
             <Button className="button primary large" onClick={onRetry}>
-              Try again
+              {common.tryAgain}
             </Button>
           )}
           {kind !== "loading" && (
@@ -75,7 +69,7 @@ export default function StudyNotice({
               className={`button large ${onRetry ? "quiet" : "primary"}`}
               onClick={onShowPitch}
             >
-              Show me the tour
+              {notices.showTour}
             </Button>
           )}
         </footer>

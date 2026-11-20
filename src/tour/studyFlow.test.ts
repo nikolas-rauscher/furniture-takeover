@@ -8,12 +8,16 @@ import {
   withOrder,
 } from "./studyFlow.ts";
 import type { StudyProgress } from "./studyProgress.ts";
-import { stepById } from "./tourScript.ts";
+import { STUDY_SCRIPTS, stepById as findStep } from "./tourScript.ts";
+
+const STEPS = STUDY_SCRIPTS.en;
+const stepById = (id: string) => findStep(STEPS, id);
 
 const progress: StudyProgress = {
   session: "6f1c1f9e-5b7a-4c1e-9a1d-2f3b4c5d6e7f",
   source: "moodle",
   device: "phone",
+  language: "en",
   stepId: "last-hard",
   answers: {},
   orders: {},
@@ -39,9 +43,12 @@ test("next and back follow the participant's answers", () => {
   const answers = {
     "last-role": { chosen: ["not-tried"], shown: [], text: "" },
   };
-  assert.equal(nextStep(answers, "last-role").id, "tasks-intro");
-  assert.equal(previousStep(answers, "tasks-intro").id, "last-role");
-  assert.throws(() => previousStep(answers, "student"), /no step before/);
+  assert.equal(nextStep(STEPS, answers, "last-role").id, "tasks-intro");
+  assert.equal(previousStep(STEPS, answers, "tasks-intro").id, "last-role");
+  assert.throws(
+    () => previousStep(STEPS, answers, "student"),
+    /no step before/,
+  );
 });
 
 test("time on a step adds up over visits and stays within the limit", () => {

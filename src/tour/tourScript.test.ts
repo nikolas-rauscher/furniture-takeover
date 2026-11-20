@@ -4,15 +4,18 @@ import { studyAnswerSchema, studyStartSchema } from "../../shared/study.ts";
 import {
   DRAFT_ACTIONS,
   DRAFT_RESULTS,
-  STUDY_STEPS,
+  STUDY_SCRIPTS,
   STUDY_VERSION,
   isQuestion,
-  visibleSteps,
+  visibleSteps as shownSteps,
   type StudyOption,
   type StudyStep,
 } from "./tourScript.ts";
 
 const SESSION = "6f1c1f9e-5b7a-4c1e-9a1d-2f3b4c5d6e7f";
+const STUDY_STEPS = STUDY_SCRIPTS.en;
+const visibleSteps = (answers: Parameters<typeof shownSteps>[1]) =>
+  shownSteps(STUDY_STEPS, answers);
 
 function stepOptions(step: StudyStep): StudyOption[] {
   return "options" in step ? step.options : [];
@@ -98,6 +101,18 @@ test("every question is stored and the script ends with the end", () => {
   const stored = STUDY_STEPS.filter(isQuestion).map((step) => step.id);
   assert.ok(stored.includes("draft-check"));
   assert.ok(!stored.includes("contact"));
+});
+
+test("every language has the same steps, options and conditions", () => {
+  const shape = (steps: StudyStep[]) =>
+    steps.map((step) => ({
+      id: step.id,
+      kind: step.kind,
+      when: step.when,
+      options: optionIds(step),
+    }));
+  assert.deepEqual(shape(STUDY_SCRIPTS.fr), shape(STUDY_STEPS));
+  assert.deepEqual(shape(STUDY_SCRIPTS.de), shape(STUDY_STEPS));
 });
 
 test("the version is valid on the wire", () => {

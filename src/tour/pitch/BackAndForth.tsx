@@ -17,6 +17,7 @@ import {
   type Chapter,
   type Moment,
 } from "./backAndForthScript";
+import { useTourText } from "../i18n/TourLanguage";
 import "./back-and-forth.css";
 
 const SPRING = { type: "spring", stiffness: 300, damping: 28 } as const;
@@ -101,12 +102,13 @@ function Finger() {
 }
 
 function ChapterTabs({ current }: { current: Chapter }) {
+  const { chapters } = useTourText().pitch.backAndForth;
   return (
     <ol className="baf-chapters">
       {CHAPTERS.map((chapter, order) => (
         <li key={chapter} data-current={chapter === current || undefined}>
           <span className="baf-chapter-number">{order + 1}</span>
-          {chapter}
+          {chapters[chapter]}
         </li>
       ))}
     </ol>
@@ -352,8 +354,8 @@ function PickupView({ progress }: { progress: Progress }) {
 
 function ChapterView({ progress }: { progress: Progress }) {
   const { chapter } = STEPS[progress.index];
-  if (chapter === "Search") return <SearchView progress={progress} />;
-  if (chapter === "Messages") return <MessagesView progress={progress} />;
+  if (chapter === "search") return <SearchView progress={progress} />;
+  if (chapter === "messages") return <MessagesView progress={progress} />;
   return <PickupView progress={progress} />;
 }
 
@@ -365,6 +367,7 @@ function ChapterView({ progress }: { progress: Progress }) {
 export default function BackAndForth({ onEnd }: { onEnd: () => void }) {
   const progress = usePlay(onEnd);
   const step = STEPS[progress.index];
+  const { lines } = useTourText().pitch.backAndForth;
   return (
     <div className="ob-stage baf-stage" aria-hidden="true">
       <ChapterTabs current={step.chapter} />
@@ -384,7 +387,7 @@ export default function BackAndForth({ onEnd }: { onEnd: () => void }) {
         <Guide
           mood={step.mood}
           layout="guide"
-          bubble={{ id: step.moment, text: step.line }}
+          bubble={{ id: step.moment, text: lines[step.moment] }}
         />
       </div>
     </div>

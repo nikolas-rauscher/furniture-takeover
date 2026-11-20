@@ -16,9 +16,11 @@ import {
   withOrder,
 } from "../studyFlow";
 import type { StudyProgress } from "../studyProgress";
-import { SCENE_COPY } from "../sceneCopy";
+import { useTourLanguage } from "../i18n/TourLanguage";
+import type { TourText } from "../i18n/en";
 import {
   isQuestion,
+  STUDY_SCRIPTS,
   stepById,
   visibleSteps,
   type StepAnswer,
@@ -48,6 +50,7 @@ function moodFor(step: StudyStep): PakoMood {
 function bubbleFor(
   step: StudyStep,
   answer: StepAnswer,
+  scenes: TourText["scenes"],
 ): GuideBubble | undefined {
   switch (step.kind) {
     case "single":
@@ -63,7 +66,7 @@ function bubbleFor(
         ? { id: `${step.id}-explained`, text: step.explanation }
         : { id: step.id, text: step.prompt };
     case "scene": {
-      const { title, text } = SCENE_COPY[step.scene];
+      const { title, text } = scenes[step.scene];
       return { id: step.id, title, text };
     }
     case "end":
@@ -113,8 +116,10 @@ export default function StudySteps({
   onProgress: (progress: StudyProgress) => void;
   recorder: Recorder;
 }) {
-  const step = stepById(progress.stepId);
-  const steps = visibleSteps(progress.answers);
+  const { language, text } = useTourLanguage();
+  const script = STUDY_SCRIPTS[language];
+  const step = stepById(script, progress.stepId);
+  const steps = visibleSteps(script, progress.answers);
   const index = steps.findIndex((candidate) => candidate.id === step.id);
   const options = optionsFor(step, progress);
   const [draft, setDraft] = useState<DraftAnswer | null>(null);
@@ -142,7 +147,7 @@ export default function StudySteps({
 
   function proceed(given: StepAnswer = answer) {
     if (!isQuestion(step)) {
-      goTo(nextStep(progress.answers, step.id), 1, progress);
+      goTo(nextStep(script, progress.answers, step.id), 1, progress);
       return;
     }
     const recorded = recordAnswer(
@@ -155,7 +160,7 @@ export default function StudySteps({
       answers: { ...progress.answers, [step.id]: recorded },
     };
     recorder.add(saveJob(next, step.id));
-    goTo(nextStep(next.answers, step.id), 1, next);
+    goTo(nextStep(script, next.answers, step.id), 1, next);
   }
 
   function sendContact() {
@@ -168,7 +173,7 @@ export default function StudySteps({
       },
     };
     recorder.add(saveJob(next, CONTACT_KEY));
-    goTo(nextStep(next.answers, step.id), 1, next);
+    goTo(nextStep(script, next.answers, step.id), 1, next);
   }
 
   function changeAnswer(changed: StepAnswer) {
@@ -230,16 +235,16 @@ export default function StudySteps({
     }
   }
 
-  const bubble = bubbleFor(step, answer);
+  const bubble = bubbleFor(step, answer, text.scenes);
   const header =
     step.kind === "end" ? undefined : (
       <>
         <Button
           className="ob-back"
-          aria-label="Back"
+          aria-label={text.common.back}
           disabled={index === 0}
           onClick={() =>
-            goTo(previousStep(progress.answers, step.id), -1, progress)
+            goTo(previousStep(script, progress.answers, step.id), -1, progress)
           }
         >
           <ArrowLeft size={22} aria-hidden="true" />
@@ -247,11 +252,11 @@ export default function StudySteps({
         <div
           className="ob-progress"
           role="progressbar"
-          aria-label="Study progress"
+          aria-label={text.v1.progress}
           aria-valuemin={0}
           aria-valuemax={steps.length - 1}
           aria-valuenow={index}
-          aria-valuetext={`Step ${index + 1} of ${steps.length}`}
+          aria-valuetext={text.v1.stepOf(index + 1, steps.length)}
         >
           <motion.span
             className="ob-progress-fill"
@@ -268,10 +273,10 @@ export default function StudySteps({
       return (
         <>
           <a className="button primary large" href="/">
-            Open takeover
+            {text.common.openApp}
           </a>
           <Button className="button quiet large" onClick={copy}>
-            Share the study
+            {text.v1.end.share}
           </Button>
         </>
       );
@@ -283,15 +288,15 @@ export default function StudySteps({
             disabled={!isValidEmail(contact.email)}
             onClick={sendContact}
           >
-            Send
+            {text.common.send}
           </Button>
           <Button
             className="button quiet large"
             onClick={() =>
-              goTo(nextStep(progress.answers, step.id), 1, progress)
+              goTo(nextStep(script, progress.answers, step.id), 1, progress)
             }
           >
-            Skip
+            {text.common.skip}
           </Button>
         </>
       );
@@ -303,14 +308,16 @@ export default function StudySteps({
           disabled={!canContinue}
           onClick={() => proceed()}
         >
-          {textOnly && answer.text.trim() === "" ? "Skip" : "Continue"}
+          {textOnly && answer.text.trim() === ""
+            ? text.common.skip
+            : text.common.continue}
         </Button>
         {isSkippable(step) && (
           <Button
             className="button quiet large"
             onClick={() => proceed(EMPTY_ANSWER)}
           >
-            Skip
+            {text.common.skip}
           </Button>
         )}
       </>

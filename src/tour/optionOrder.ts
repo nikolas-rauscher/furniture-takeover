@@ -14,20 +14,20 @@ function shuffled<T>(items: readonly T[], random: RandomSource): T[] {
 }
 
 /** Shuffles the options; those marked "always last" keep their place below, in order. */
-export function shuffleOptions(
-  options: readonly StudyOption[],
+export function shuffleOptions<Option extends { last?: boolean }>(
+  options: readonly Option[],
   random: RandomSource = Math.random,
-): StudyOption[] {
+): Option[] {
   const movable = options.filter((option) => !option.last);
   const fixed = options.filter((option) => option.last);
   return [...shuffled(movable, random), ...fixed];
 }
 
 /** Puts options back into a stored order of ids. */
-export function orderOptions(
-  options: readonly StudyOption[],
+export function orderOptions<Option extends { id: string }>(
+  options: readonly Option[],
   ids: readonly string[],
-): StudyOption[] {
+): Option[] {
   return ids.map((id) => {
     const match = options.find((option) => option.id === id);
     if (!match) throw new Error(`No option ${id} to show.`);

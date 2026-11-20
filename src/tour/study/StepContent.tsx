@@ -1,6 +1,6 @@
 import type { PakoMood } from "@/components/onboarding/storyTypes";
 import DeviceFrame from "../device/DeviceFrame";
-import { SCENE_COPY } from "../sceneCopy";
+import { useTourText } from "../i18n/TourLanguage";
 import type { StepAnswer, StudyOption, StudyStep } from "../tourScript";
 import ChoiceStep from "./ChoiceStep";
 import ContactStep, { type ContactDraft } from "./ContactStep";
@@ -30,6 +30,7 @@ export default function StepContent({
   onMood,
   onSceneDone,
 }: StepContentProps) {
+  const text = useTourText();
   switch (step.kind) {
     case "single":
     case "multiple":
@@ -45,7 +46,7 @@ export default function StepContent({
     case "nearer-or-cheaper":
       return (
         <>
-          <p className="ob-note">Same desk, same condition.</p>
+          <p className="ob-note">{text.v1.sameDesk}</p>
           <ChoiceStep
             question={step.question}
             options={options}
@@ -58,7 +59,7 @@ export default function StepContent({
     case "text":
       return (
         <TextAnswer
-          label="Your answer (optional)"
+          label={text.common.optional}
           value={answer.text}
           onChange={(text) => onAnswer({ ...answer, text })}
         />
@@ -69,7 +70,7 @@ export default function StepContent({
       return (
         <DeviceFrame
           key={step.id}
-          label={SCENE_COPY[step.scene].label}
+          label={text.scenes[step.scene].label}
           scene={step.scene}
           onMood={onMood}
           onDone={onSceneDone}

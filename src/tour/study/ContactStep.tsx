@@ -1,5 +1,6 @@
 import { useId } from "react";
 import { studyContactSchema } from "../../../shared/study.ts";
+import { useTourText } from "../i18n/TourLanguage";
 
 export type ContactDraft = { email: string; pilot: boolean; link: boolean };
 
@@ -43,12 +44,13 @@ export default function ContactStep({
   onChange: (draft: ContactDraft) => void;
 }) {
   const id = useId();
+  const words = useTourText().v1.contact;
   const invalid = draft.email.trim() !== "" && !isValidEmail(draft.email);
   return (
     <div className="tour-contact">
       <div className="tour-text">
         <label htmlFor={id} className="tour-text-label">
-          Email address (optional)
+          {words.email}
         </label>
         <input
           id={id}
@@ -64,18 +66,16 @@ export default function ContactStep({
           }
         />
         <p id={`${id}-note`} className="tour-text-count">
-          {invalid
-            ? "This doesn't look like an email address yet."
-            : "Stored apart from your answers unless you tick the second box."}
+          {invalid ? words.invalid : words.note}
         </p>
       </div>
       <Tick
-        label="Invite me to the test with real items"
+        label={words.pilot}
         checked={draft.pilot}
         onChange={(pilot) => onChange({ ...draft, pilot })}
       />
       <Tick
-        label="Link this address to my answers"
+        label={words.link}
         checked={draft.link}
         onChange={(link) => onChange({ ...draft, link })}
       />

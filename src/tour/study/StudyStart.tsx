@@ -1,19 +1,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useTourText } from "../i18n/TourLanguage";
+import { formatDay } from "../i18n/tourText";
 import StudyShell from "./StudyShell";
-
-const INVITATION =
-  "Hi, I'm Pako! I'm the helper in takeover, a student project at EPFL. I'd like to ask about the last time you bought or sold something second-hand, then show you what we're building. It takes about 4 minutes.";
-const CONSENT_TITLE = "Before we start";
-
-function formatDate(isoDate: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${isoDate}T00:00:00Z`));
-}
 
 function ConsentText({
   contact,
@@ -22,18 +11,17 @@ function ConsentText({
   contact: string;
   deleteBy: string;
 }) {
+  const text = useTourText();
+  const { consent } = text.v1;
   return (
     <div className="tour-card tour-consent">
-      <p>Your answers are saved without your name.</p>
+      <p>{consent.anonymous}</p>
+      <p>{consent.extra}</p>
+      <p>{consent.ip}</p>
+      <p>{consent.email}</p>
+      <p>{consent.deleted(formatDay(deleteBy, text))}</p>
       <p>
-        I also save how long each step takes, which link brought you here and
-        whether you're on a phone or a computer.
-      </p>
-      <p>Your IP address isn't saved with your answers.</p>
-      <p>An email address is optional, at the end, and stored separately.</p>
-      <p>Everything is deleted by {formatDate(deleteBy)}.</p>
-      <p>
-        Questions:{" "}
+        {consent.questions}{" "}
         <a className="tour-link" href={`mailto:${contact}`}>
           {contact}
         </a>
@@ -54,27 +42,29 @@ export default function StudyStart({
   onAgree: () => void;
   onShowPitch: () => void;
 }) {
+  const { v1 } = useTourText();
   const [consent, setConsent] = useState(false);
   if (!consent)
     return (
       <StudyShell
         stepKey="invitation"
-        label={INVITATION}
+        label={v1.invitation}
         layout="guide"
         arrangement="centred"
         mood="wave"
-        bubble={{ id: "invitation", text: INVITATION }}
+        bubble={{ id: "invitation", text: v1.invitation }}
         direction={0}
+        languageSwitch
         footer={
           <>
             <Button
               className="button primary large"
               onClick={() => setConsent(true)}
             >
-              Start
+              {v1.start}
             </Button>
             <Button className="button quiet large" onClick={onShowPitch}>
-              Just show me the tour
+              {v1.justTour}
             </Button>
           </>
         }
@@ -85,18 +75,18 @@ export default function StudyStart({
   return (
     <StudyShell
       stepKey="consent"
-      label={CONSENT_TITLE}
+      label={v1.consentTitle}
       layout="guide"
       mood="listen"
-      bubble={{ id: "consent", text: CONSENT_TITLE }}
+      bubble={{ id: "consent", text: v1.consentTitle }}
       direction={1}
       footer={
         <>
           <Button className="button primary large" onClick={onAgree}>
-            I'm 18 or older and I agree
+            {v1.agree}
           </Button>
           <Button className="button quiet large" onClick={onShowPitch}>
-            No thanks, just show me the tour
+            {v1.decline}
           </Button>
         </>
       }

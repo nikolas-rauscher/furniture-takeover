@@ -560,3 +560,57 @@
   box-shadow: 0 4px 0 #dba9ad;
   color: var(--danger-dark);
 }
+
+.tour-study-nav {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.tour-study-nav[data-hidden] {
+  visibility: hidden;
+}
+
+.tour-language {
+  display: flex;
+  flex: none;
+  border: 2px solid var(--card-line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.tour-language-option {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--type-support);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.tour-language-option:hover {
+  color: var(--ink);
+}
+.tour-language-option[aria-pressed="true"] {
+  background: var(--selected);
+  color: var(--blue-dark);
+}
+.tour-language-option:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 1px;
+}
+
+.tour-page {
+  position: relative;
+}
+.tour-page-language {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  z-index: 5;
+}

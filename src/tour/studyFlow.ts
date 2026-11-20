@@ -1,4 +1,5 @@
 import { shuffleOptions, type RandomSource } from "./optionOrder.ts";
+import { neighbourStep } from "./stepConditions.ts";
 import type { RecordedAnswer, StudyProgress } from "./studyProgress.ts";
 import {
   visibleSteps,
@@ -31,22 +32,16 @@ export function withOrder(
   return { ...progress, orders: { ...progress.orders, [step.id]: order } };
 }
 
-function neighbour(answers: AnswerSheet, id: string, offset: 1 | -1) {
-  const steps = visibleSteps(answers);
-  const index = steps.findIndex((step) => step.id === id);
-  if (index === -1) throw new Error(`Step ${id} is not part of this run.`);
-  const step = steps[index + offset];
-  if (!step)
-    throw new Error(
-      `Step ${id} has no step ${offset > 0 ? "after" : "before"} it.`,
-    );
-  return step;
-}
-
-export const nextStep = (answers: AnswerSheet, id: string) =>
-  neighbour(answers, id, 1);
-export const previousStep = (answers: AnswerSheet, id: string) =>
-  neighbour(answers, id, -1);
+export const nextStep = (
+  steps: readonly StudyStep[],
+  answers: AnswerSheet,
+  id: string,
+) => neighbourStep(visibleSteps(steps, answers), id, 1);
+export const previousStep = (
+  steps: readonly StudyStep[],
+  answers: AnswerSheet,
+  id: string,
+) => neighbourStep(visibleSteps(steps, answers), id, -1);
 
 /**
  * The answer as stored. Time adds up over every visit to the step, and a tab left open

@@ -2,6 +2,8 @@ import { StrictMode, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { globalStylesReady } from "../globalStyles";
 import { sceneInAddress } from "./device/sceneMessages";
+import { initialLanguage } from "./i18n/language";
+import { TOUR_TEXT } from "./i18n/tourText";
 
 function pageRoot() {
   const root = document.getElementById("root");
@@ -10,8 +12,16 @@ function pageRoot() {
 }
 
 function showLoadFailure(error: unknown): never {
-  pageRoot().innerHTML =
-    '<main style="padding:32px"><h1>Connection unavailable</h1><p role="alert">The tour could not load. Check your connection and reload the page.</p></main>';
+  const words = TOUR_TEXT[initialLanguage()].notices.loadFailed;
+  const main = document.createElement("main");
+  main.style.padding = "32px";
+  const title = document.createElement("h1");
+  title.textContent = words.title;
+  const text = document.createElement("p");
+  text.setAttribute("role", "alert");
+  text.textContent = words.text;
+  main.append(title, text);
+  pageRoot().replaceChildren(main);
   throw error;
 }
 
@@ -22,7 +32,14 @@ function loadPage(): Promise<ReactElement> {
     return import("./scenes/ScenePage").then(({ default: ScenePage }) => (
       <ScenePage scene={scene} />
     ));
-  return import("./TourPage").then(({ default: TourPage }) => <TourPage />);
+  return Promise.all([
+    import("./TourPage"),
+    import("./i18n/TourLanguage"),
+  ]).then(([{ default: TourPage }, { TourLanguage }]) => (
+    <TourLanguage>
+      <TourPage />
+    </TourLanguage>
+  ));
 }
 
 Promise.all([loadPage(), globalStylesReady])

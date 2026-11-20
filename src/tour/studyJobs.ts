@@ -37,7 +37,9 @@ export function saveJob(progress: StudyProgress, key: string): SaveJob {
       send: () =>
         startSession({
           session: progress.session,
+          survey: "v1",
           version: STUDY_VERSION,
+          language: progress.language,
           source: progress.source,
           device: progress.device,
           adult: true,

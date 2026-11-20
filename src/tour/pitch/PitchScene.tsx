@@ -3,6 +3,7 @@ import { RotateCcw } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import Pako from "@/components/onboarding/Pako";
 import type { PakoMood } from "@/components/onboarding/storyTypes";
+import { useTourText } from "../i18n/TourLanguage";
 
 /** Share of the frame that has to be on screen before its scene starts. */
 const START_VISIBLE = 0.3;
@@ -52,6 +53,7 @@ export default function PitchScene({
   frame,
   waitingClass,
 }: PitchSceneProps) {
+  const { pitch } = useTourText();
   const { element, seen } = useSeen<HTMLDivElement>();
   const [replays, setReplays] = useState(0);
   const [mood, setMood] = useState<PakoMood>("idle");
@@ -84,7 +86,7 @@ export default function PitchScene({
           onClick={replay}
         >
           <RotateCcw size={16} aria-hidden="true" />
-          Replay
+          {pitch.replay}
         </Button>
         <p className="sr-only" role="status">
           {finished ? `${title}: the example has finished.` : ""}

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useTourText } from "../i18n/TourLanguage";
 import type { SaveState } from "../saveQueue";
 
 const SHARE_TAG = "friend";
@@ -13,24 +14,23 @@ function shareLink() {
   return `${window.location.origin}/tour?s=${SHARE_TAG}`;
 }
 
-function SaveStatus({
+/** Whether every answer reached the server, with a retry once saving stopped. */
+export function SaveStatus({
   save,
   onRetry,
 }: {
   save: SaveState;
   onRetry: () => void;
 }) {
+  const { common } = useTourText();
   if (save.unsaved.length === 0)
-    return <p className="tour-save">Your answers are saved.</p>;
-  if (save.sending) return <p className="tour-save">Saving your answers…</p>;
+    return <p className="tour-save">{common.save.saved}</p>;
+  if (save.sending) return <p className="tour-save">{common.save.saving}</p>;
   return (
     <div className="tour-card tour-save-failed">
-      <p>
-        Some of your answers aren't saved yet. Check your connection, then try
-        again.
-      </p>
+      <p>{common.save.failed}</p>
       <Button className="button secondary small" onClick={onRetry}>
-        Try again
+        {common.tryAgain}
       </Button>
     </div>
   );
@@ -50,6 +50,7 @@ export function StudyEndContent({
   onRetry: () => void;
   share: ShareState;
 }) {
+  const { end } = useTourText().v1;
   return (
     <div className="ob-welcome tour-end">
       <h2 id={headingId} className="ob-title">
@@ -59,11 +60,10 @@ export function StudyEndContent({
         <SaveStatus save={save} onRetry={onRetry} />
       </div>
       <p className="tour-save" role="status">
-        {share.status === "copied" && "Study link copied."}
+        {share.status === "copied" && end.copied}
         {share.status === "failed" && (
           <>
-            I couldn't copy the link. Here it is:{" "}
-            <span className="tour-link">{share.link}</span>
+            {end.copyFailed} <span className="tour-link">{share.link}</span>
           </>
         )}
       </p>

@@ -3,7 +3,11 @@
  * what the server stores, so they change only together with `STUDY_VERSION`.
  */
 
+import type { StudyLanguage } from "../../shared/study.ts";
 import type { TourScene } from "./device/sceneMessages.ts";
+import type { TourText } from "./i18n/en.ts";
+import { TOUR_TEXT } from "./i18n/tourText.ts";
+import { isShown, type StepCondition } from "./stepConditions.ts";
 
 /** Raised whenever a question, an option or its wording changes. */
 export const STUDY_VERSION = "pilot-1";
@@ -19,9 +23,6 @@ export type StudyOption = {
   /** Asks for a few words once picked. */
   withText?: boolean;
 };
-
-/** A step is shown only when an earlier answer includes one of these options. */
-type StepCondition = { step: string; anyOf: string[] };
 
 type BaseStep = { id: string; when?: StepCondition };
 
@@ -82,7 +83,6 @@ export type StudyStep =
   | (BaseStep & { kind: "contact"; question: string })
   | (BaseStep & { kind: "end"; text: string });
 
-const NOT_TRIED = "not-tried";
 const STUDENT_ANSWERS = ["yes-epfl", "yes-unil", "yes-elsewhere"];
 /** Everything in part B after `last-role` follows only an attempt in the last 12 months. */
 const TRIED: StepCondition = {
@@ -90,253 +90,202 @@ const TRIED: StepCondition = {
   anyOf: ["buying", "selling", "giving-away"],
 };
 
-const option = (id: string, label: string): StudyOption => ({ id, label });
+type V1Text = TourText["v1"];
+type V1StepText = V1Text["steps"];
 
-const TRANSPORT_OPTIONS: StudyOption[] = [
-  option("on-foot", "On foot"),
-  option("bike", "By bike"),
-  option("public-transport", "Public transport"),
-  option("car", "Car or van"),
-  option("delivery", "Delivery or post"),
-];
+/** Options in the order listed, with their words from the dictionary. */
+function choices<Id extends string>(
+  labels: Record<Id, string>,
+  ids: readonly Id[],
+): StudyOption[] {
+  return ids.map((id) => ({ id, label: labels[id] }));
+}
 
-function single(
-  id: string,
-  question: string,
-  options: StudyOption[],
+function single<Id extends keyof V1StepText>(
+  text: V1Text,
+  id: Id,
+  ids: readonly (keyof V1StepText[Id]["options"] & string)[],
   extra: Partial<ChoiceStep> = {},
 ): ChoiceStep {
+  const { question, options } = text.steps[id];
   return {
     kind: "single",
     id,
     question,
-    options,
+    options: choices(options as Record<string, string>, ids),
     shuffle: false,
     skippable: false,
     ...extra,
   };
 }
 
-function text(id: string, question: string, when?: StepCondition): TextStep {
+function textStep(
+  id: string,
+  question: string,
+  when?: StepCondition,
+): TextStep {
   return { kind: "text", id, question, skippable: true, when };
 }
 
-export const STUDY_STEPS: StudyStep[] = [
-  single("student", "Are you a student?", [
-    option("yes-epfl", "Yes, at EPFL"),
-    option("yes-unil", "Yes, at UNIL"),
-    option("yes-elsewhere", "Yes, somewhere else"),
-    option("no", "No"),
-  ]),
-  single("housing", "Where do you live at the moment?", [
-    option("fmel", "FMEL residence"),
-    option("shared-flat", "Shared flat"),
-    option("own-flat", "My own flat or studio"),
-    option("with-family", "With family"),
-    option("elsewhere", "Somewhere else"),
-  ]),
-  single(
-    "last-role",
-    "Think of the last time you tried to buy, sell or give away a used item. What were you doing?",
-    [
-      option("buying", "Buying"),
-      option("selling", "Selling"),
-      option("giving-away", "Giving it away"),
-      option(NOT_TRIED, "I haven't tried in the last 12 months"),
-    ],
-  ),
-  single(
-    "last-occasion",
-    "What was the occasion?",
-    [
-      option("moving-in", "Moving in"),
-      option("moving-out", "Moving out"),
-      option("during-year", "Neither, it was during the year"),
-    ],
-    { when: TRIED },
-  ),
-  single(
-    "last-outcome",
-    "How did it end?",
-    [
-      option("worked-out", "It worked out"),
-      option("gave-up", "I gave up"),
-      option("still-open", "It's still open"),
-    ],
-    { when: TRIED },
-  ),
-  text("last-story", "In a few words, what happened?", TRIED),
-  {
-    kind: "multiple",
-    id: "last-hard",
-    question: "What made it hard? Pick all that apply.",
-    options: [
-      option("finding", "Finding the right item or a buyer"),
-      option("listing", "Writing the listing"),
-      option("price", "Agreeing on a price"),
-      option("replies", "Slow or no replies"),
-      option("pickup-fell-through", "A pickup that fell through"),
-      option("timing", "Finding a time that worked"),
-      option("transport", "Getting the item from A to B"),
-      option("trust", "Not sure I could trust the other person"),
-      {
-        id: "nothing",
-        label: "Nothing, it was easy",
-        last: true,
-        exclusive: true,
-      },
-      {
-        id: "something-else",
-        label: "Something else",
-        last: true,
-        withText: true,
-      },
-    ],
-    shuffle: true,
-    skippable: false,
-    when: TRIED,
-  },
-  single(
-    "last-transport",
-    "How did the item get from A to B?",
-    [...TRANSPORT_OPTIONS, option("didnt", "It didn't")],
-    { when: TRIED },
-  ),
-  single(
-    "attempts",
-    "How often did you try to buy, sell or give away something used in the last 12 months?",
-    [
-      option("once", "Once"),
-      option("two-to-five", "2 to 5 times"),
-      option("more-than-five", "More than 5 times"),
-    ],
-    { when: TRIED },
-  ),
-  {
-    kind: "line",
-    id: "tasks-intro",
-    text: "Thanks! Now two short situations. Nothing here is real and nothing gets sent.",
-  },
-  {
-    kind: "nearer-or-cheaper",
-    id: "nearer-or-cheaper",
-    question:
-      "You need a desk. I found two that fit. Which one would you go for?",
-    options: [
-      { id: "nearer", label: "CHF 45", detail: "In your residence, 200 m" },
-      { id: "cheaper", label: "CHF 30", detail: "Lausanne centre, 4 km" },
-      { id: "neither", label: "Neither", last: true },
-    ],
-  },
-  single(
-    "far-transport",
-    "How would you get it home?",
-    [...TRANSPORT_OPTIONS, option("not-sure", "Not sure yet")],
-    { when: { step: "nearer-or-cheaper", anyOf: ["cheaper"] } },
-  ),
-  {
-    kind: "draft-check",
-    id: "draft-check",
-    situation:
-      "You'd like Mia's desk. You told her you can only pick it up on Saturday.",
-    prompt: "I drafted your offer. Check it, then decide.",
-    draft:
-      "Hi Mia! I'd like your white work desk. Would CHF 40 work? I could pick it up on Friday at 17:30 at FMEL Atrium.",
-    explanation:
-      "One thing: the draft said Friday, but you'd said Saturday. That was on purpose. We want to see how drafts get checked.",
-  },
-  text("draft-why", "What made you choose that?"),
-  {
-    kind: "line",
-    id: "tour-intro",
-    text: "Now the short tour. This is how takeover works.",
-  },
-  { kind: "scene", id: "tour-snap", scene: "sell" },
-  { kind: "scene", id: "tour-chat", scene: "deal" },
-  { kind: "scene", id: "tour-ask", scene: "find" },
-  {
-    kind: "multiple",
-    id: "would-use",
-    question: "Which of these would you use? Pick any.",
-    options: [
-      option("describe-search", "Search by describing what I need"),
-      option("photo-listing", "A listing drafted from my photos"),
-      option("price-suggestion", "A price suggestion from similar offers"),
-      option("offer-drafts", "Offer drafts I can edit and send"),
-      option("pickup-reminders", "Pickup with confirmations and reminders"),
-      { id: "none", label: "None of these", last: true, exclusive: true },
-    ],
-    shuffle: true,
-    skippable: false,
-  },
-  text("missing", "What's missing, or what would stop you from using it?"),
-  single(
-    "autonomy",
-    "What should I be allowed to do without asking you first?",
-    [
-      option("nothing", "Nothing. I send everything myself"),
-      option("short-updates", "Short updates like “On my way”"),
-      option("simple-replies", "Replies to simple questions"),
-      option("negotiate", "Negotiate within limits I set"),
-    ],
-  ),
-  single(
-    "need-soon",
-    "In the next four weeks, do you have something to sell or do you need something?",
-    [
-      option("sell", "Something to sell"),
-      option("need", "I need something"),
-      option("both", "Both"),
-      option("neither", "Neither"),
-    ],
-  ),
-  {
-    kind: "contact",
-    id: "contact",
-    question:
-      "Can we email you two or three follow-up questions, or an invitation when we test with real items?",
-  },
-  single(
-    "age",
-    "How old are you?",
-    [
-      option("18-20", "18–20"),
-      option("21-23", "21–23"),
-      option("24-26", "24–26"),
-      option("27-plus", "27 or older"),
-      option("no-answer", "Prefer not to say"),
-    ],
-    { skippable: true },
-  ),
-  single(
-    "gender",
-    "Your gender?",
-    [
-      option("woman", "Woman"),
-      option("man", "Man"),
-      option("non-binary", "Non-binary"),
-      option("no-answer", "Prefer not to say"),
-    ],
-    { skippable: true },
-  ),
-  single(
-    "level",
-    "What are you studying towards?",
-    [
-      option("bachelor", "Bachelor"),
-      option("master", "Master"),
-      option("phd", "PhD"),
-      option("exchange", "Exchange semester"),
-      option("other", "Something else"),
-    ],
-    { skippable: true, when: { step: "student", anyOf: STUDENT_ANSWERS } },
-  ),
-  {
-    kind: "end",
-    id: "end",
-    text: "Thanks! That helps us decide what to build next.",
-  },
-];
+const TRANSPORT = [
+  "on-foot",
+  "bike",
+  "public-transport",
+  "car",
+  "delivery",
+] as const;
+
+/** The v1 questionnaire in one language; ids, order and conditions are the same in all. */
+function buildStudySteps(text: V1Text): StudyStep[] {
+  const { steps } = text;
+  return [
+    single(text, "student", ["yes-epfl", "yes-unil", "yes-elsewhere", "no"]),
+    single(text, "housing", [
+      "fmel",
+      "shared-flat",
+      "own-flat",
+      "with-family",
+      "elsewhere",
+    ]),
+    single(text, "last-role", [
+      "buying",
+      "selling",
+      "giving-away",
+      "not-tried",
+    ]),
+    single(text, "last-occasion", ["moving-in", "moving-out", "during-year"], {
+      when: TRIED,
+    }),
+    single(text, "last-outcome", ["worked-out", "gave-up", "still-open"], {
+      when: TRIED,
+    }),
+    textStep("last-story", text.lastStory, TRIED),
+    {
+      kind: "multiple",
+      id: "last-hard",
+      question: steps["last-hard"].question,
+      options: [
+        ...choices(steps["last-hard"].options, [
+          "finding",
+          "listing",
+          "price",
+          "replies",
+          "pickup-fell-through",
+          "timing",
+          "transport",
+          "trust",
+        ]),
+        {
+          id: "nothing",
+          label: steps["last-hard"].options.nothing,
+          last: true,
+          exclusive: true,
+        },
+        {
+          id: "something-else",
+          label: steps["last-hard"].options["something-else"],
+          last: true,
+          withText: true,
+        },
+      ],
+      shuffle: true,
+      skippable: false,
+      when: TRIED,
+    },
+    single(text, "last-transport", [...TRANSPORT, "didnt"], { when: TRIED }),
+    single(text, "attempts", ["once", "two-to-five", "more-than-five"], {
+      when: TRIED,
+    }),
+    { kind: "line", id: "tasks-intro", text: text.tasksIntro },
+    {
+      kind: "nearer-or-cheaper",
+      id: "nearer-or-cheaper",
+      question: steps["nearer-or-cheaper"].question,
+      options: [
+        {
+          id: "nearer",
+          label: steps["nearer-or-cheaper"].options.nearer,
+          detail: text.deskDetails.nearer,
+        },
+        {
+          id: "cheaper",
+          label: steps["nearer-or-cheaper"].options.cheaper,
+          detail: text.deskDetails.cheaper,
+        },
+        {
+          id: "neither",
+          label: steps["nearer-or-cheaper"].options.neither,
+          last: true,
+        },
+      ],
+    },
+    single(text, "far-transport", [...TRANSPORT, "not-sure"], {
+      when: { step: "nearer-or-cheaper", anyOf: ["cheaper"] },
+    }),
+    {
+      kind: "draft-check",
+      id: "draft-check",
+      situation: text.draft.situation,
+      prompt: text.draft.prompt,
+      draft: text.draft.draft,
+      explanation: text.draft.explanation,
+    },
+    textStep("draft-why", text.draftWhy),
+    { kind: "line", id: "tour-intro", text: text.tourIntro },
+    { kind: "scene", id: "tour-snap", scene: "sell" },
+    { kind: "scene", id: "tour-chat", scene: "deal" },
+    { kind: "scene", id: "tour-ask", scene: "find" },
+    {
+      kind: "multiple",
+      id: "would-use",
+      question: steps["would-use"].question,
+      options: [
+        ...choices(steps["would-use"].options, [
+          "describe-search",
+          "photo-listing",
+          "price-suggestion",
+          "offer-drafts",
+          "pickup-reminders",
+        ]),
+        {
+          id: "none",
+          label: steps["would-use"].options.none,
+          last: true,
+          exclusive: true,
+        },
+      ],
+      shuffle: true,
+      skippable: false,
+    },
+    textStep("missing", text.missing),
+    single(text, "autonomy", [
+      "nothing",
+      "short-updates",
+      "simple-replies",
+      "negotiate",
+    ]),
+    single(text, "need-soon", ["sell", "need", "both", "neither"]),
+    { kind: "contact", id: "contact", question: text.contact.question },
+    single(text, "age", ["18-20", "21-23", "24-26", "27-plus", "no-answer"], {
+      skippable: true,
+    }),
+    single(text, "gender", ["woman", "man", "non-binary", "no-answer"], {
+      skippable: true,
+    }),
+    single(text, "level", ["bachelor", "master", "phd", "exchange", "other"], {
+      skippable: true,
+      when: { step: "student", anyOf: STUDENT_ANSWERS },
+    }),
+    { kind: "end", id: "end", text: text.end.text },
+  ];
+}
+
+/** The v1 steps in every language the page speaks. */
+export const STUDY_SCRIPTS: Record<StudyLanguage, StudyStep[]> = {
+  en: buildStudySteps(TOUR_TEXT.en.v1),
+  fr: buildStudySteps(TOUR_TEXT.fr.v1),
+  de: buildStudySteps(TOUR_TEXT.de.v1),
+};
 
 /** Steps whose answers are stored; lines, scenes, the contact and the end are not. */
 export function isQuestion(step: StudyStep): boolean {
@@ -352,20 +301,16 @@ export function isQuestion(step: StudyStep): boolean {
 export type StepAnswer = { chosen: string[]; shown: string[]; text: string };
 export type AnswerSheet = Record<string, StepAnswer>;
 
-function isShown(step: StudyStep, answers: AnswerSheet): boolean {
-  if (!step.when) return true;
-  const { step: earlier, anyOf } = step.when;
-  const chosen = answers[earlier]?.chosen ?? [];
-  return chosen.some((id) => anyOf.includes(id));
-}
-
 /** The steps this participant sees, given their answers so far. */
-export function visibleSteps(answers: AnswerSheet): StudyStep[] {
-  return STUDY_STEPS.filter((step) => isShown(step, answers));
+export function visibleSteps(
+  steps: readonly StudyStep[],
+  answers: AnswerSheet,
+): StudyStep[] {
+  return steps.filter((step) => isShown(step, answers));
 }
 
-export function stepById(id: string): StudyStep {
-  const step = STUDY_STEPS.find((candidate) => candidate.id === id);
+export function stepById(steps: readonly StudyStep[], id: string): StudyStep {
+  const step = steps.find((candidate) => candidate.id === id);
   if (!step) throw new Error(`The study has no step ${id}.`);
   return step;
 }

@@ -8,6 +8,8 @@ import { useCallback, useRef, type KeyboardEvent, type ReactNode } from "react";
 import Guide, { type GuideBubble } from "@/components/onboarding/Guide";
 import { stepFade, stepMotion } from "@/components/onboarding/stepMotion";
 import type { PakoMood } from "@/components/onboarding/storyTypes";
+import LanguageSwitch from "../i18n/LanguageSwitch";
+import { useTourText } from "../i18n/TourLanguage";
 import { useVisibleArea } from "./useVisibleArea";
 
 export type StudyShellProps = {
@@ -22,8 +24,10 @@ export type StudyShellProps = {
   bubble?: GuideBubble;
   lines?: GuideBubble[];
   burst?: ReactNode;
-  /** Back and progress; the header keeps its space while hidden. */
+  /** Back and progress; their place stays while hidden. */
   header?: ReactNode;
+  /** The first screen offers EN, FR and DE; later steps keep the language chosen there. */
+  languageSwitch?: boolean;
   footer: ReactNode;
   /** 1 forwards, -1 back, 0 for the first step. */
   direction: number;
@@ -44,12 +48,14 @@ export default function StudyShell({
   lines,
   burst,
   header,
+  languageSwitch = false,
   footer,
   direction,
   onKeyDown,
   focusFirst = false,
   children,
 }: StudyShellProps) {
+  const { common } = useTourText();
   const reduced = useReducedMotion() === true;
   const visibleArea = useVisibleArea();
   const body = useRef<HTMLDivElement>(null);
@@ -74,13 +80,16 @@ export default function StudyShell({
         style={visibleArea}
         onKeyDown={onKeyDown}
       >
-        <h1 className="sr-only">takeover study</h1>
-        <header
-          className="ob-header"
-          data-hidden={header ? undefined : true}
-          inert={!header}
-        >
-          {header}
+        <h1 className="sr-only">{common.surveyHeading}</h1>
+        <header className="ob-header tour-study-header">
+          <div
+            className="tour-study-nav"
+            data-hidden={header ? undefined : true}
+            inert={!header}
+          >
+            {header}
+          </div>
+          {languageSwitch && <LanguageSwitch />}
         </header>
         <div className="ob-body" ref={body}>
           <div className="ob-body-inner">

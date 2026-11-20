@@ -1,4 +1,9 @@
-import type { StudyContact, StudyStart } from "../../shared/study.ts";
+import type {
+  StudyContact,
+  StudyLanguage,
+  StudyStart,
+} from "../../shared/study.ts";
+import { tabStorage } from "./tabStorage.ts";
 import type { StepAnswer } from "./tourScript.ts";
 
 export type RecordedAnswer = StepAnswer & { elapsedMs: number };
@@ -8,6 +13,8 @@ export type StudyProgress = {
   session: string;
   source: string;
   device: StudyStart["device"];
+  /** The page's language when the session started. */
+  language: StudyLanguage;
   stepId: string;
   answers: Record<string, RecordedAnswer>;
   /** Option orders as first shown, for steps that shuffle them. */
@@ -20,24 +27,8 @@ export type StoredProgress = { progress: StudyProgress; unsaved: string[] };
 
 const STORAGE_KEY = "takeover-study";
 
-/**
- * Session storage is missing in some private windows. The study still runs there,
- * only a reload starts it again, so the problem is reported and not thrown.
- */
-function storage(): Storage | null {
-  try {
-    return window.sessionStorage;
-  } catch (error) {
-    console.warn(
-      "Session storage is unavailable; a reload restarts the study.",
-      error,
-    );
-    return null;
-  }
-}
-
 export function loadProgress(source: string): StoredProgress | null {
-  const raw = storage()?.getItem(STORAGE_KEY);
+  const raw = tabStorage()?.getItem(STORAGE_KEY);
   if (!raw) return null;
   const stored = JSON.parse(raw) as StoredProgress;
   // A link from another channel starts a session of its own.
@@ -45,5 +36,5 @@ export function loadProgress(source: string): StoredProgress | null {
 }
 
 export function storeProgress(stored: StoredProgress) {
-  storage()?.setItem(STORAGE_KEY, JSON.stringify(stored));
+  tabStorage()?.setItem(STORAGE_KEY, JSON.stringify(stored));
 }

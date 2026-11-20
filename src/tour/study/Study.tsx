@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { randomUuid } from "../../randomUuid";
+import { deviceClass } from "../deviceClass";
 import { SESSION_KEY, saveJob } from "../studyJobs";
 import {
   loadProgress,
@@ -7,20 +8,21 @@ import {
   type StudyProgress,
 } from "../studyProgress";
 import { withOrder } from "../studyFlow";
-import { STUDY_STEPS } from "../tourScript";
+import type { StudyLanguage } from "../../../shared/study.ts";
+import { useTourLanguage } from "../i18n/TourLanguage";
+import { STUDY_SCRIPTS } from "../tourScript";
 import StudyStart from "./StudyStart";
 import StudySteps from "./StudySteps";
 import { useRecorder } from "./useRecorder";
 
-const PHONE_QUERY = "(hover: none) and (pointer: coarse)";
-
-function firstProgress(source: string): StudyProgress {
-  const first = STUDY_STEPS[0];
+function firstProgress(source: string, language: StudyLanguage): StudyProgress {
+  const first = STUDY_SCRIPTS[language][0];
   return withOrder(
     {
       session: randomUuid(),
       source,
-      device: window.matchMedia(PHONE_QUERY).matches ? "phone" : "desktop",
+      device: deviceClass(),
+      language,
       stepId: first.id,
       answers: {},
       orders: {},
@@ -43,17 +45,21 @@ export default function Study({
   onShowPitch: () => void;
 }) {
   const [stored] = useState(() => loadProgress(source));
+  const [resumed] = useState(() =>
+    stored ? stored.unsaved.map((key) => saveJob(stored.progress, key)) : [],
+  );
   const [progress, setProgress] = useState<StudyProgress | null>(
     stored?.progress ?? null,
   );
-  const recorder = useRecorder(stored);
+  const recorder = useRecorder(resumed);
+  const { language } = useTourLanguage();
 
   useEffect(() => {
     if (progress) storeProgress({ progress, unsaved: recorder.save.unsaved });
   }, [progress, recorder.save.unsaved]);
 
   function agree() {
-    const started = firstProgress(source);
+    const started = firstProgress(source, language);
     setProgress(started);
     recorder.add(saveJob(started, SESSION_KEY));
   }

@@ -1,6 +1,7 @@
 import ChoiceList, {
   type ChoiceOption,
 } from "@/components/onboarding/ChoiceList";
+import { useTourText } from "../i18n/TourLanguage";
 import { toggleOption } from "../optionOrder";
 import type { StepAnswer, StudyOption } from "../tourScript";
 import TextAnswer from "./TextAnswer";
@@ -30,6 +31,7 @@ export default function ChoiceStep({
   multiple,
   answer,
   onChange,
+  layout = "list",
 }: {
   question: string;
   /** In the order shown. */
@@ -37,7 +39,10 @@ export default function ChoiceStep({
   multiple: boolean;
   answer: StepAnswer;
   onChange: (answer: StepAnswer) => void;
+  /** Short answers such as age bands sit side by side. */
+  layout?: "list" | "grid";
 }) {
+  const text = useTourText();
   const withText = options.find(
     (option) => option.withText && answer.chosen.includes(option.id),
   );
@@ -48,12 +53,12 @@ export default function ChoiceStep({
         options={choiceOptions(options)}
         selected={answer.chosen}
         multiple={multiple}
-        layout="list"
+        layout={layout}
         onToggle={(id) => onChange(pickOption(options, answer, id, multiple))}
       />
       {withText && (
         <TextAnswer
-          label={`${withText.label}: in a few words (optional)`}
+          label={text.common.inAFewWords(withText.label)}
           value={answer.text}
           onChange={(text) => onChange({ ...answer, text })}
         />
