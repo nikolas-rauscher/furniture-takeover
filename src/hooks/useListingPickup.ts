@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { useMarketplaceData } from "../marketplaceData";
-import { cancelDealMessage } from "../../shared/dealMessages";
+import { cancelDealMessage, shippedMessage } from "../../shared/dealMessages";
 import type { Product } from "../../shared/marketplace";
 import {
   listingPickupChoices,
@@ -71,6 +71,22 @@ export function useListingStatusConfirmation() {
     };
   }
 
+  function markShipped(
+    other: string,
+    title: string,
+    send: (message: string) => Promise<void>,
+  ) {
+    const message = shippedMessage();
+    return {
+      other,
+      message,
+      label: "Mark shipped",
+      question: `Mark the ${title} as shipped to ${other}?`,
+      primary: true,
+      send: () => send(message),
+    };
+  }
+
   return async function confirmStatus(
     item: Product,
     status: Product["status"],
@@ -79,14 +95,23 @@ export function useListingStatusConfirmation() {
   ) {
     const agreement = await api.listingAgreement(item, knownAgreement);
     if (!agreement) return;
-    const { threadId, other, pickup } = agreement;
-    if (!pickup)
-      return cancelDeal(other, async (text) => {
+    const { threadId, other, pickup, completeShipping } = agreement;
+    const sendOnce =
+      (
+        act: (
+          text: string,
+          id: string,
+        ) => Promise<Product["status"] | undefined>,
+      ) =>
+      async (text: string) => {
         const id = pending.current.idFor(threadId, "seller", text);
-        const result = await agreement.cancel(text, id);
+        const result = await act(text, id);
         pending.current.acknowledge(id);
         if (result) onStatusChange(result);
-      });
+      };
+    if (status === "sold" && completeShipping)
+      return markShipped(other, item.title, sendOnce(completeShipping));
+    if (!pickup) return cancelDeal(other, sendOnce(agreement.cancel));
     const { sold, reopen } = listingPickupChoices({
       day: pickup.day,
       deal: pickup.deal,

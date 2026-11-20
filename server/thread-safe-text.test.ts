@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { checkSafeText } from "./thread-safe-text.ts";
+import { checkSafeText, withoutContactDetails } from "./thread-safe-text.ts";
 
 test("safe text passes, with the other student's placeholder", () => {
   assert.doesNotThrow(() =>
@@ -24,4 +24,16 @@ test("payment methods, advance payment and other placeholders are refused", () =
     /payment/,
   );
   assert.throws(() => checkSafeText("Hi {name}", "x"), /placeholder/);
+});
+
+test("contact details are removed from a message before it reaches the model", () => {
+  assert.equal(
+    withoutContactDetails(
+      "Text me on 079 123 45 67 or +41 79 123 45 67, or mail lea@epfl.ch.",
+    ),
+    "Text me on [contact removed] or [contact removed], or mail [contact removed].",
+  );
+  const terms =
+    "CHF 30, Fri 20 Nov, 18:00 at Atrium, on 2026-11-20 or 20.11.2026";
+  assert.equal(withoutContactDetails(terms), terms);
 });

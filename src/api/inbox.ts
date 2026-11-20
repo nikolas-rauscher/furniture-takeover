@@ -24,7 +24,10 @@ type DraftsApi = { draftCache: (key: string) => PakoTurnCache };
 export type DemoInboxApi = DraftsApi & {
   load: () => Promise<SellerConversation[]>;
   send: (
-    listing: Pick<SellerConversation, "title" | "seller" | "image"> & {
+    listing: Pick<
+      SellerConversation,
+      "title" | "seller" | "image" | "buyerKey"
+    > & {
       id: string;
     },
     text: string,

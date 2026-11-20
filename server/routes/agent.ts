@@ -1,7 +1,9 @@
 import { DEFAULT_AGENT_CONCURRENCY } from "../config.ts";
-import { AgentError } from "../errors.ts";
+import { AgentError, RunError, agentNotConfigured } from "../errors.ts";
 import { requireJson, MAX_BODY_BYTES, readBody, send } from "../http-io.ts";
+import { validateRunRequest } from "../runtime.ts";
 import { validateThreadTurnRequest } from "../thread-agent.ts";
+import { validatePhotoGroupRequest, validateRequest } from "../validation.ts";
 import type { AgentService } from "../service.ts";
 import { spendMarketplaceAllowance, spendThreadAllowance } from "./quota.ts";
 import type {
@@ -22,6 +24,34 @@ type AgentHandler = (
   body: unknown,
   agents: Agents,
 ) => Promise<void>;
+/** Throws when a marketplace request cannot start, before it costs an allowance. */
+type StartCheck = (body: unknown, agents: Agents) => void;
+
+const serviceCanStart =
+  (validate: (body: unknown) => unknown): StartCheck =>
+  (body, { service }) => {
+    validate(body);
+    if (!service.health().configured) throw agentNotConfigured();
+  };
+
+const runtimeMissing = () =>
+  new AgentError(
+    503,
+    "AGENT_NOT_CONFIGURED",
+    "The agent runtime is not configured.",
+  );
+
+const runCanStart: StartCheck = (body, { runtime }) => {
+  if (!runtime) throw runtimeMissing();
+  try {
+    validateRunRequest(body);
+  } catch (error) {
+    if (error instanceof RunError)
+      throw new AgentError(400, error.code, error.message, { cause: error });
+    throw error;
+  }
+  if (!runtime.health().configured) throw agentNotConfigured();
+};
 
 export function createAgentRoutes(
   service: AgentService,
@@ -137,12 +167,7 @@ export function createAgentRoutes(
 
   const run: AgentHandler = async (context, body, { runtime }) => {
     const { response, signal } = context;
-    if (!runtime)
-      throw new AgentError(
-        503,
-        "AGENT_NOT_CONFIGURED",
-        "The agent runtime is not configured.",
-      );
+    if (!runtime) throw runtimeMissing();
     options.listings?.admin.countPako(false);
     response.writeHead(200, {
       "Content-Type": "application/x-ndjson; charset=utf-8",
@@ -162,8 +187,12 @@ export function createAgentRoutes(
     if (!response.destroyed && !response.writableEnded) response.end();
   };
 
-  function marketplace(handle: AgentHandler): RouteHandler {
+  function marketplace(
+    handle: AgentHandler,
+    canStart: StartCheck,
+  ): RouteHandler {
     return withAgentRequest(async (context, body, agents) => {
+      canStart(body, agents);
       if (context.actor && options.cloud)
         await spendMarketplaceAllowance(
           context.response,
@@ -175,16 +204,21 @@ export function createAgentRoutes(
   }
 
   function assist(method: "assist" | "groupPhotos"): RouteHandler {
-    return marketplace(async ({ response, signal }, body, agents) => {
-      options.listings?.admin.countPako(false);
-      send(response, 200, await agents.service[method](body, signal));
-    });
+    return marketplace(
+      async ({ response, signal }, body, agents) => {
+        options.listings?.admin.countPako(false);
+        send(response, 200, await agents.service[method](body, signal));
+      },
+      serviceCanStart(
+        method === "assist" ? validateRequest : validatePhotoGroupRequest,
+      ),
+    );
   }
 
   return {
     "/api/agent/assist": assist("assist"),
     "/api/agent/group-photos": assist("groupPhotos"),
-    "/api/agent/run": marketplace(run),
+    "/api/agent/run": marketplace(run, runCanStart),
     "/api/agent/thread": withAgentRequest(thread, THREAD_BODY_BYTES),
   };
 }

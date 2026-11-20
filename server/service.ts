@@ -11,7 +11,7 @@ import {
 } from "./deepseek.ts";
 import { appPrices, explicitPrice } from "./facts.ts";
 import { validatePhotoGroupRequest, validateRequest } from "./validation.ts";
-import { AgentError, invalidOutput } from "./errors.ts";
+import { AgentError, agentNotConfigured, invalidOutput } from "./errors.ts";
 import {
   defaults,
   extractSearchConstraints,
@@ -238,12 +238,7 @@ export function createAgentService(config: ProviderConfig): AgentService {
       );
   };
   const requireKey = () => {
-    if (!apiKey)
-      throw new AgentError(
-        503,
-        "AGENT_NOT_CONFIGURED",
-        "Add a DeepSeek API key to the server .env to enable the agent.",
-      );
+    if (!apiKey) throw agentNotConfigured();
   };
   return {
     health,

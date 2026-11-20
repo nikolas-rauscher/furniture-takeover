@@ -7,6 +7,21 @@ const CONTACT_DETAILS = [
   /\+?\d(?:[\s\-/().]?\d){6,}/,
 ];
 
+/** Email addresses and international or Swiss phone numbers, which dates and prices never match. */
+const PRIVATE_CONTACT = [
+  /[^\s@]+@[^\s@]+\.[a-z]{2,}/gi,
+  /(?:\+|\b00)\d{2}(?:[\s.\-/]?\d){7,}/g,
+  /\b0\d{2}(?:[\s.\-/]?\d){7}\b/g,
+];
+
+/** A student's message without the contact details they typed, before it leaves the app. */
+export function withoutContactDetails(text: string) {
+  return PRIVATE_CONTACT.reduce(
+    (redacted, pattern) => redacted.replace(pattern, "[contact removed]"),
+    text,
+  );
+}
+
 /** Pako's words carry no links or contact details, and no placeholder but the other student's. */
 export function checkSafeText(text: string, where: string) {
   if (CONTACT_DETAILS.some((pattern) => pattern.test(text)))

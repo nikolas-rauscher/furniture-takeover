@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Product } from "../../shared/marketplace.ts";
+import { createAccountDeals } from "./accountDealsApi.ts";
 import type { DealRow } from "./client.ts";
 import {
   pickupUpdateNeeded,
@@ -138,4 +140,51 @@ test("an account pickup writes the expected version and returns a sale transitio
     outcome_by: "seller",
   });
   assert.equal(sale.statusChange, "sold");
+});
+
+test("Mark sold on an agreed shipping deal completes it instead of cancelling", async () => {
+  const shipping = {
+    ...legacy,
+    agreed: {
+      ...legacy.agreed!,
+      fulfillment: "shipping" as const,
+      pickup_at: null,
+      pickup_time: null,
+      pickup_point: null,
+    },
+  };
+  const actions: unknown[] = [];
+  const client = {
+    from: () => {
+      const query = {
+        select: () => query,
+        eq: () => query,
+        single: async () => ({
+          data: {
+            conversation_id: "conversation",
+            version: 2,
+            agreed: shipping.agreed,
+          },
+          error: null,
+        }),
+      };
+      return query;
+    },
+    rpc: (name: string, input: { p_action: string }) => {
+      actions.push([name, input.p_action]);
+      return {
+        single: async () => ({
+          data: { ...shipping, status: "completed", version: 3 },
+          error: null,
+        }),
+      };
+    },
+  } as unknown as SupabaseClient;
+  const agreement = await createAccountDeals(client).listingAgreement(
+    { id: "desk" } as Product,
+    true,
+  );
+  assert.ok(agreement?.completeShipping);
+  await agreement.completeShipping("I've shipped the item.", "message");
+  assert.deepEqual(actions, [["deal_action", "complete_shipping"]]);
 });

@@ -17,6 +17,7 @@ import {
 } from "../shared/threadTurn.ts";
 import { AgentError } from "./errors.ts";
 import { groundProposal } from "./thread-grounding.ts";
+import { withoutContactDetails } from "./thread-safe-text.ts";
 import { logDroppedOption, replacementOption } from "./thread-options.ts";
 import { proposalSchema } from "./thread-proposal.ts";
 import { threadInstructions } from "./thread-instructions.ts";
@@ -106,6 +107,10 @@ function safeError(
 function threadPrompt(request: ThreadTurnRequest, now: Date) {
   return JSON.stringify({
     ...request,
+    messages: request.messages.map((message) => ({
+      ...message,
+      text: withoutContactDetails(message.text),
+    })),
     pickupLabels: {
       agreed: request.deal?.agreed?.pickupAt
         ? formatPickup(request.deal.agreed.pickupAt)

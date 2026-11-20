@@ -13,6 +13,7 @@ import {
   cancelDealMessage,
   confirmAgreementMessage,
   declineMessage,
+  shippedMessage,
   withdrawMessage,
 } from "../shared/dealMessages.ts";
 import { campusPickupPoints } from "../shared/campusPickupPoints.ts";
@@ -240,7 +241,7 @@ export function dealOptions({
                 id: "complete-shipping",
                 label: "Mark shipped",
                 action: { type: "complete_shipping" },
-                message: "I've shipped the item.",
+                message: shippedMessage(),
                 confirm: "This completes the deal and marks the listing sold.",
               },
             }

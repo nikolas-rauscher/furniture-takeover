@@ -66,6 +66,11 @@ type ListingAgreement = {
     text: string,
     messageId: string,
   ) => Promise<DealStatusChange | undefined>;
+  /** Present for a shipping deal, which Mark sold completes. */
+  completeShipping?: (
+    text: string,
+    messageId: string,
+  ) => Promise<DealStatusChange | undefined>;
   pickup?: {
     day: NonNullable<ReturnType<typeof pickupDay>>;
     deal: Deal;

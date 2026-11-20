@@ -276,17 +276,14 @@ export function useDemoMessages(app: DemoMessagesProps): MessagesModel {
       : undefined;
   /** A message without terms: the thread's ordinary path. */
   async function sendPlain(thread: SellerConversation, text: string) {
-    const messageId = pendingMessage.current.idFor(
-      thread.listingId,
-      role,
-      text,
-    );
+    const messageId = pendingMessage.current.idFor(thread.id, role, text);
     const updated = await source.send(
       {
         id: thread.listingId,
         title: thread.title,
         seller: thread.seller,
         image: imageFor(thread),
+        buyerKey: thread.buyerKey,
       },
       text,
       role,

@@ -198,6 +198,15 @@ test("daily allowance blocks both agent routes before provider work and health c
   }
   assert.equal(providerCalls, 0);
   assert.deepEqual(reservations, [false, true, true]);
+  for (const path of ["/api/agent/assist", "/api/agent/run"]) {
+    const invalid = await fetch(url + path, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ intent: "search" }),
+    });
+    assert.equal(invalid.status, 400);
+  }
+  assert.deepEqual(reservations, [false, true, true]);
   allowed = true;
   assert.equal(
     (

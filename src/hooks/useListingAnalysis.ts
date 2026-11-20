@@ -99,6 +99,8 @@ export function useListingAnalysis({
   /** Asks for one analysis; its result is kept for every later caller with the same key. */
   function request(requestKey: string, input: AnalysisInput) {
     const controller = new AbortController();
+    // A superseded or cancelled analysis must not replace a newer one's outcome.
+    const isCurrent = () => inFlight.current?.controller === controller;
     const result = requestAgentAssist(
       {
         intent: "listing",
@@ -109,7 +111,7 @@ export function useListingAnalysis({
       { signal: controller.signal },
     ).then(
       (response): Result => {
-        if (!controller.signal.aborted)
+        if (isCurrent())
           setReady({
             key: requestKey,
             photos: photosOf(input.photos),
@@ -118,7 +120,7 @@ export function useListingAnalysis({
         return { ok: true, response };
       },
       (error: unknown): Result => {
-        if (!controller.signal.aborted)
+        if (isCurrent())
           setFailed({
             key: requestKey,
             error: photoReadProblem(error),

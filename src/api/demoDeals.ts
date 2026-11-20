@@ -1,4 +1,4 @@
-import { pickupDay } from "../../shared/deal.ts";
+import { pickupDay, type DealAction } from "../../shared/deal.ts";
 import type { SellerConversation } from "../../shared/messages.ts";
 import { demoPickupNow } from "../hooks/useNow.ts";
 import { demoListings } from "./demoListings.ts";
@@ -60,20 +60,20 @@ export const demoDeals: DealsApi = {
     const now = demoPickupNow();
     const day = pickupDay(deal, "seller", now ?? new Date());
     const listing = { ...item, buyerKey, status: "reserved" as const };
+    const send = async (action: DealAction, text: string, id: string) =>
+      (await sendDemoDeal(listing, "seller", action, text, deal.version, id))
+        .statusChange;
     return {
       threadId,
       other,
-      cancel: async (text, id) =>
-        (
-          await sendDemoDeal(
-            listing,
-            "seller",
-            { type: "cancel", reason: "changed_mind" },
-            text,
-            deal.version,
-            id,
-          )
-        ).statusChange,
+      cancel: (text, id) =>
+        send({ type: "cancel", reason: "changed_mind" }, text, id),
+      ...(deal.agreed?.terms.fulfillment === "shipping"
+        ? {
+            completeShipping: (text: string, id: string) =>
+              send({ type: "complete_shipping" }, text, id),
+          }
+        : {}),
       pickup: day
         ? {
             day,

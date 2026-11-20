@@ -15,6 +15,13 @@ export class AgentError extends Error {
   }
 }
 
+export const agentNotConfigured = () =>
+  new AgentError(
+    503,
+    "AGENT_NOT_CONFIGURED",
+    "Add a DeepSeek API key to the server .env to enable the agent.",
+  );
+
 export const invalidOutput = (cause?: unknown) =>
   new AgentError(
     502,

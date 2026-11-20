@@ -1,8 +1,13 @@
 import assert from "node:assert/strict";
-import test from "node:test";
-import { listMessages, resetMessageWorkspace } from "./messages.ts";
+import test, { type TestContext } from "node:test";
+import {
+  listMessages,
+  resetMessageWorkspace,
+  sendMessage,
+} from "./messages.ts";
 
-test("reset starts a fresh inbox and rejects old workspace responses", async (t) => {
+/** A localStorage kept in memory for one test. */
+function useMemoryStorage(t: TestContext) {
   const stored = new Map<string, string>();
   const prior = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
   Object.defineProperty(globalThis, "localStorage", {
@@ -17,6 +22,10 @@ test("reset starts a fresh inbox and rejects old workspace responses", async (t)
     if (prior) Object.defineProperty(globalThis, "localStorage", prior);
     else Reflect.deleteProperty(globalThis, "localStorage");
   });
+}
+
+test("reset starts a fresh inbox and rejects old workspace responses", async (t) => {
+  useMemoryStorage(t);
   const ids: string[] = [];
   let release!: (response: Response) => void;
   const pending = new Promise<Response>((resolve) => {
@@ -38,4 +47,24 @@ test("reset starts a fresh inbox and rejects old workspace responses", async (t)
   await listMessages();
   assert.notEqual(ids[0], ids[1]);
   assert.equal(ids[1], ids[2]);
+});
+
+test("a plain reply names the buyer whose thread it belongs to", async (t) => {
+  useMemoryStorage(t);
+  const bodies: unknown[] = [];
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async (_path: string, init: RequestInit) => {
+      bodies.push(JSON.parse(String(init.body)));
+      return Response.json({ conversation: { id: "second" } });
+    },
+  );
+  const buyerKey = "22222222-2222-4222-8222-222222222222";
+  await sendMessage(
+    { id: "desk", title: "Desk", seller: "Léa", buyerKey },
+    "Sure, Thursday works.",
+    "seller",
+  );
+  assert.equal((bodies[0] as { buyerKey: string }).buyerKey, buyerKey);
 });

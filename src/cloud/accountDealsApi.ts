@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { DealAction } from "../../shared/deal.ts";
 import type { DealsApi } from "../api/deals.ts";
 import {
   dealUpdateNeeded,
@@ -63,27 +64,28 @@ export function createAccountDeals(client: SupabaseClient): DealsApi {
       if (!knownAgreement) return;
       const { data, error } = await client
         .from("deals")
-        .select("conversation_id, version")
+        .select("conversation_id, version, agreed")
         .eq("listing_id", item.id)
         .eq("status", "agreed")
         .single();
       if (error)
         throw new Error("The agreement changed. Open the chat to check it.");
-      const { conversation_id: threadId, version } = data;
+      const { conversation_id: threadId, version, agreed } = data;
+      const send = async (action: DealAction, text: string, id: string) => {
+        await sendAccountDeal(client, threadId, action, text, version, id);
+        return undefined;
+      };
       return {
         threadId,
         other: "the buyer",
-        async cancel(text, id) {
-          await sendAccountDeal(
-            client,
-            threadId,
-            { type: "cancel", reason: "changed_mind" },
-            text,
-            version,
-            id,
-          );
-          return undefined;
-        },
+        cancel: (text, id) =>
+          send({ type: "cancel", reason: "changed_mind" }, text, id),
+        ...(agreed?.fulfillment === "shipping"
+          ? {
+              completeShipping: (text: string, id: string) =>
+                send({ type: "complete_shipping" }, text, id),
+            }
+          : {}),
       };
     },
   };

@@ -51,7 +51,13 @@ export async function listMessages(): Promise<SellerConversation[]> {
   return (await request()).conversations;
 }
 export async function sendMessage(
-  listing: { id: string; title: string; seller: string; image?: string },
+  listing: {
+    id: string;
+    title: string;
+    seller: string;
+    image?: string;
+    buyerKey?: string;
+  },
   text: string,
   sender: "buyer" | "seller" = "buyer",
   messageId: string = randomUuid(),
@@ -64,6 +70,7 @@ export async function sendMessage(
         title: listing.title,
         image: listing.image,
         seller: listing.seller,
+        ...(listing.buyerKey ? { buyerKey: listing.buyerKey } : {}),
         text,
         sender,
         messageId,

@@ -40,6 +40,11 @@ export function nudgeMessage(role: DealRole, title: string): string {
     : `Hi! Just checking in: are you still interested in the ${title}?`;
 }
 
+/** The seller's message that completes a shipping deal. */
+export function shippedMessage(): string {
+  return "I've shipped the item.";
+}
+
 /** When the item is reserved, a buyer can still ask to be next. */
 export function askToBeNextMessage(title: string): string {
   return `Hi! If the ${title} becomes available again, I'd still like it. Could you let me know?`;
