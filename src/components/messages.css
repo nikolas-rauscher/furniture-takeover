@@ -265,6 +265,10 @@
   min-height: 0;
   padding: 18px 22px 16px;
 }
+/* Focus lands on the thread itself when it replaces the list; its controls show their own ring. */
+.messages-page .seller-chat:focus {
+  outline: none;
+}
 .messages-page .seller-chat > header {
   display: flex;
   flex-shrink: 0;

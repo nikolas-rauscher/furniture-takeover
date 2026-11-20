@@ -10,6 +10,8 @@ type Inbox = {
   screen: InboxView;
   scope: string;
   loaded: boolean;
+  /** Loaded, failed, or there is no inbox to load: Home can lay out its sections. */
+  settled: boolean;
   deals: Deal[];
   items: InboxDeal[];
   threads: InboxThread[];

@@ -114,6 +114,7 @@ export function AccountInboxProvider({
           : { mode: "signed-out" },
         scope: userId ?? "",
         loaded: rows !== null,
+        settled: !api || rows !== null || inbox.loadError !== "",
         deals: Object.values(rows?.deals ?? {}),
         items: rows && userId ? accountInboxDeals(rows, userId) : [],
         threads,

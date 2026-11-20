@@ -33,6 +33,7 @@ export function DemoInboxProvider({ children }: PropsWithChildren) {
         screen: { mode: "demo", inbox, reads, source: demoInboxApi },
         scope: "local",
         loaded: inbox.loaded,
+        settled: inbox.loaded || inbox.error !== "",
         deals: conversations.flatMap((thread) =>
           thread.deal ? [thread.deal] : [],
         ),

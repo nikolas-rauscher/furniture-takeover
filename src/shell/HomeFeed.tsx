@@ -11,7 +11,7 @@ import ProposalCard, { type OfferCards } from "./ProposalCard";
 
 type Listings = {
   visible: Product[];
-  /** They loaded, or loading failed and the status says why. */
+  /** They and the deals above them loaded, or loading failed and the status says why. */
   settled: boolean;
   render: (item: Product, arriving: boolean) => ReactNode;
 };

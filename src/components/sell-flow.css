@@ -211,6 +211,10 @@
   align-items: center;
   gap: 8px;
 }
+/* The source label takes the writing chip's place at the chip's height, so the draft below stays put. */
+.listing-preview > div > .source-label {
+  min-height: calc(var(--type-label) * 1.3 + 12px);
+}
 .listing-preview-status .chip svg {
   animation: sell-sparkle 1.4s ease-in-out infinite;
 }

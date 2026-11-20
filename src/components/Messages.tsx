@@ -10,6 +10,7 @@ import {
 } from "@/components/icons";
 import { NO_TERMS } from "../dealOptions";
 import { attachedTermsNote } from "../dealWords";
+import { useConversationFocus } from "../hooks/useConversationFocus";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { usePageVisible } from "../hooks/usePageVisible";
 import { newestAt } from "../inboxDeals";
@@ -160,6 +161,7 @@ export default function Messages({
       state.setBusy(false);
     }
   }
+  const focus = useConversationFocus(model.conversationOpen);
   return (
     <section
       className={`messages-page ${model.kind}-messages${model.conversationOpen ? " has-conversation" : ""}`}
@@ -167,10 +169,12 @@ export default function Messages({
     >
       <PageTitle model={model} />
       <div className="seller-chat-layout">
-        <nav aria-label="Conversations">
+        <nav ref={focus.list} aria-label="Conversations">
           <InboxList model={model} busy={busy} onBrowse={app.onBrowse} />
         </nav>
         <section
+          ref={focus.conversation}
+          tabIndex={-1}
           className="seller-chat"
           aria-label={
             thread ? `Conversation with ${otherName}` : "Conversation"

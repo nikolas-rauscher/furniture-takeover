@@ -46,6 +46,11 @@ type AgentConversationProps = {
   typing?: boolean;
   /** The photo the conversation started from; it rides in the first request bubble. */
   startPhoto?: string;
+  /**
+   * The listings its answers show have loaded. Until then the turns wait, so the
+   * latest request is placed once, with every answer above it at its full height.
+   */
+  loaded?: boolean;
 };
 
 export default function AgentConversation({
@@ -58,6 +63,7 @@ export default function AgentConversation({
   requestTransitionName,
   typing = false,
   startPhoto,
+  loaded = true,
 }: AgentConversationProps) {
   const headingId = useId();
   const viewport = useRef<HTMLDivElement>(null);
@@ -65,7 +71,7 @@ export default function AgentConversation({
   // jump-to-latest pill rests in the lower fade's right corner. No shrink or blur: a whole message
   // still in view looked out of focus.
   useScrollFade(viewport, { size: 48, shrink: 0, blur: 0 });
-  const turns = state.id ? [...state.history, state] : [];
+  const turns = state.id && loaded ? [...state.history, state] : [];
   return (
     <section
       className="search-conversation chat-workspace"

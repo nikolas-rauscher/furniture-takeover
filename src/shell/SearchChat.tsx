@@ -69,8 +69,8 @@ export default function SearchChat({
   agentRun: ReturnType<typeof useAgentRun>;
   negotiations: ReturnType<typeof useNegotiations>;
   pako: PakoStatus;
-  /** Listings Pako's matches can show, and every listing for their titles. */
-  listings: { active: Product[]; own: Product[] };
+  /** Listings Pako's matches can show, every listing for their titles, and whether they loaded. */
+  listings: { active: Product[]; own: Product[]; settled: boolean };
   watches: ReturnType<typeof useWatches>;
   comparison: Comparison;
   /** Pako's status above the composer. */
@@ -134,6 +134,7 @@ export default function SearchChat({
         announcement={turnAnnouncement(agentRun.state, place)}
         requestTransitionName="agent-query"
         typing={search.followUp.trim() !== ""}
+        loaded={listings.settled}
         context={
           negotiations.active &&
           !search.activeDraftInChat && (

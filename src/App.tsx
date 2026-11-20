@@ -534,7 +534,11 @@ export default function App({
                     agentRun={agentRun}
                     negotiations={negotiations}
                     pako={pako}
-                    listings={{ active: catalog.active, own }}
+                    listings={{
+                      active: catalog.active,
+                      own,
+                      settled: listingsSettled,
+                    }}
                     watches={watches}
                     comparison={{
                       items: compare.items,
@@ -572,7 +576,7 @@ export default function App({
                     notices={availability?.notices()}
                     listings={{
                       visible: catalog.visible,
-                      settled: listingsSettled,
+                      settled: listingsSettled && messages.settled,
                       render: productCard,
                     }}
                     cloud={Boolean(account)}
