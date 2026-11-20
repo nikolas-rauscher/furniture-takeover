@@ -74,6 +74,8 @@ export {
   Sofa,
   Store,
   Truck,
+  TrendingDown,
+  MailCheck,
   Zap,
 } from "lucide-react";
 

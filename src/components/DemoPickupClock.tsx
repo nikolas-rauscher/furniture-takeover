@@ -4,6 +4,7 @@ import { setDemoPickupClock } from "../hooks/useNow";
 import { Button } from "./ui/button";
 
 const MINUTE_MS = 60_000;
+const DAY_MS = 24 * 60 * MINUTE_MS;
 
 /**
  * Developer mode only: jumps the local demo's clock around a booked pickup,
@@ -22,6 +23,8 @@ export default function DemoPickupClock({
     { label: "2 h before", to: at - 120 * MINUTE_MS },
     { label: "Pickup time", to: at },
     { label: "20 min after", to: at + 20 * MINUTE_MS },
+    { label: "Next day", to: at + DAY_MS + 5 * MINUTE_MS },
+    { label: "2 days after", to: at + 2 * DAY_MS },
   ];
   return (
     <div className="pickup-clock" role="group" aria-label="Demo clock">

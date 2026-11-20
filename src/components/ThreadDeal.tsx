@@ -121,6 +121,8 @@ function dealFailure(failure: unknown, other: string, title: string) {
       return "You can send this from 3 h before the pickup.";
     case "pickup_window_ended":
       return "Pickup was over an hour ago, so this can't be sent anymore.";
+    case "pickup_check_not_due":
+      return "I ask whether the pickup happened a day after it. Try again then.";
     case "pickup_unavailable":
       return "This pickup isn't booked anymore. Check the deal card.";
     default:

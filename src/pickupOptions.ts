@@ -16,6 +16,8 @@ import {
   noShowReleaseMessage,
   onMyWayMessage,
   pickedUpMessage,
+  pickupDidntHappenMessage,
+  pickupHappenedMessage,
   withdrawTimeMessage,
 } from "../shared/dealMessages.ts";
 import { formatPickup, zurichClockTime } from "../shared/pickupTime.ts";
@@ -53,6 +55,8 @@ export type PickupChoice = {
   confirmLabel?: string;
   /** Why the choice can't be tapped now, said beside it. */
   unavailable?: string;
+  /** What the tap does to the deal, said under its message when it sends at once. */
+  effect?: string;
 };
 
 export type PickupChoices = {
@@ -233,6 +237,39 @@ function overdueChoices(context: Context): PickupChoices {
   };
 }
 
+/**
+ * A day after an unclosed pickup, Pako asks both students whether it
+ * happened. Each answer sends its message on the tap that reads it; the
+ * first answer closes the deal for both.
+ */
+function pickupCheckChoices({ title }: Context): {
+  primary: PickupChoice & { send: PickupSend; effect: string };
+  secondary: (PickupChoice & { send: PickupSend; effect: string })[];
+} {
+  return {
+    primary: {
+      id: "confirm_pickup_happened",
+      label: "Yes, it's done",
+      send: {
+        action: { type: "confirm_pickup_happened" },
+        message: pickupHappenedMessage(title),
+      },
+      effect: "Completes the deal and marks it sold.",
+    },
+    secondary: [
+      {
+        id: "release_stale_pickup",
+        label: "No, release it",
+        send: {
+          action: { type: "release_stale_pickup" },
+          message: pickupDidntHappenMessage(title),
+        },
+        effect: "Ends the reservation and puts it back on sale.",
+      },
+    ],
+  };
+}
+
 /** A choice that sends, with the question asked before it. */
 export type ListingPickupChoice = PickupChoice & {
   send: PickupSend;
@@ -267,23 +304,8 @@ export function listingPickupChoices(context: Omit<Context, "role">): {
  */
 export function pickupChoices(context: Context): PickupChoices {
   const { day, deal, role } = context;
-  if (day.pickupCheck) {
-    if (day.pickupCheck.expired) return { secondary: [] };
-    return {
-      primary: {
-        id: "confirm_pickup_happened", label: "Yes, it happened",
-        send: { action: { type: "confirm_pickup_happened" }, message: "Yes, the pickup happened." },
-        confirm: "Confirming completes the deal and marks the item sold.",
-        confirmLabel: "Confirm pickup",
-      },
-      secondary: [{
-        id: "release_stale_pickup", label: "No, release the item",
-        send: { action: { type: "release_stale_pickup" }, message: "The pickup didn't happen. The item can go back on sale." },
-        confirm: "This ends the reservation and makes the listing available again.",
-        confirmLabel: "Release reservation",
-      }],
-    };
-  }
+  if (day.pickupCheck)
+    return day.pickupCheck.expired ? { secondary: [] } : pickupCheckChoices(context);
   if (day.change && deal.proposal)
     return changeChoices(context, deal.proposal.terms);
   if (role === "seller" && day.buyerReportedPickup)

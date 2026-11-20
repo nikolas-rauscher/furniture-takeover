@@ -28,6 +28,7 @@ import { shownAnswerText, splitSearchAnswer } from "./agentAnswer";
 import { isPriceSuggestion } from "../listingQuestions";
 import {
   agentTurnPako,
+  busyGuide,
   settledSteps,
   workingLine,
   type StepVoice,
@@ -142,13 +143,15 @@ export default function AgentRunPanel({
         : "Starting your request"
       : stopped
         ? "Stopped"
-        : state.status === "error"
-          ? "Couldn't finish"
-          : steps.some((step) => step.state === "error")
-            ? "Some results are ready"
-            : steps.some((step) => step.state === "needs_input")
-              ? "Some changes need more details"
-              : "Finished";
+        : state.congested === "failed"
+          ? "Busy right now"
+          : state.status === "error"
+            ? "Couldn't finish"
+            : steps.some((step) => step.state === "error")
+              ? "Some results are ready"
+              : steps.some((step) => step.state === "needs_input")
+                ? "Some changes need more details"
+                : "Finished";
 
   // Without steps or reasoning, the activity line itself names the status.
   // Only the live turn moves; earlier turns keep a resting Pako beside them.
@@ -158,9 +161,11 @@ export default function AgentRunPanel({
   );
   // The tray says what Pako does and carries his mood, so the turn itself rests.
   const pakoLine = running
-    ? questionsInTray
-      ? "Working…"
-      : workingLine(state, place, voice)
+    ? state.congested === "retrying"
+      ? busyGuide(true, "search").line
+      : questionsInTray
+        ? "Working…"
+        : workingLine(state, place, voice)
     : undefined;
   const avatar = (
     <span className="agent-pako" aria-hidden="true">
@@ -460,8 +465,13 @@ export default function AgentRunPanel({
       {!textArriving && quickReplies}
       {state.error && !questionsInTray && (
         <div className="agent-run-recovery">
-          <p className="agent-run-error" role="alert">
-            {unfinished ? (
+          <p
+            className="agent-run-error"
+            role={state.congested === "failed" ? "status" : "alert"}
+          >
+            {state.congested === "failed" ? (
+              busyGuide(false, "search").line
+            ) : unfinished ? (
               <strong>{state.error}</strong>
             ) : (
               <>

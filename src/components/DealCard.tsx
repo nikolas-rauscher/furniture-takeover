@@ -134,12 +134,13 @@ function StripWords({ view }: { view: StripView }) {
 }
 
 /**
- * Open on pickup day, the pickup card's head carries the countdown, so the
- * line above it only names the day instead of repeating it.
+ * Open on pickup day, the pickup card's head carries the countdown or Pako's
+ * follow-up question, so the line above it only names the moment.
  */
 function openStripView(view: StripView, props: Props): StripView {
   const day =
     props.phase === "agreed" ? pickupDay(props.deal, props.role, props.now) : null;
+  if (day?.pickupCheck) return { ...view, lead: "Pickup follow-up", detail: "" };
   const countsDown = day && day.phase !== "booked" && day.change !== "received";
   return countsDown ? { ...view, lead: "Pickup day", detail: "" } : view;
 }

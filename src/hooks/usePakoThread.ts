@@ -3,6 +3,7 @@ import type { DealRole } from "../../shared/deal";
 import type { Product } from "../../shared/marketplace";
 import type { ThreadTurn, ThreadTurnRequest } from "../../shared/threadTurn";
 import { AgentApiError } from "../api/agent";
+import { retryOnceWhenBusy } from "../api/busyRetry";
 import { requestThreadTurn, threadTurnRequest } from "../api/threads";
 import { pakoReadDecision, type ThreadMessage } from "../pakoThread";
 import type { PakoTurnCache } from "../pakoTurnCache";
@@ -30,6 +31,8 @@ export type PakoTrayState =
   | { phase: "idle" }
   | { phase: "reading"; retrying?: boolean }
   | { phase: "asking"; retrying?: boolean }
+  /** The server stayed busy after the automatic retry; a tap tries again. */
+  | { phase: "busy" }
   | {
       phase: "ready";
       turn: ThreadTurn;
@@ -63,9 +66,10 @@ type Cached = { key: string } & (
 
 const UNREAD = "I couldn't read this reply. Try again or write your own.";
 
-/** A failed reading in the tray's words: out of readings, not set up here, or a plain failure. */
+/** A failed reading in the tray's words: out of readings, still busy after a retry, not set up here, or a plain failure. */
 function failedTray(attempt: Extract<Attempt, { status: "failed" }>): PakoTrayState {
   if (attempt.code === "THREAD_QUOTA_EXCEEDED") return { phase: "asleep" };
+  if (attempt.code === "TOO_MANY_REQUESTS") return { phase: "busy" };
   if (attempt.code === "AGENT_NOT_CONFIGURED")
     return { phase: "unavailable", reason: "unconfigured" };
   if (attempt.code === "THREAD_READING_UNAVAILABLE")
@@ -168,13 +172,14 @@ export function usePakoThread({
     try {
       const payload = threadTurnRequest({ role, listing, messages, deal, ask });
       const { signal } = controller;
-      const { turn, allowance } = await requestThreadTurn(payload, signal).catch(async (error: unknown) => {
-        if (!(error instanceof AgentApiError) || error.code !== "TOO_MANY_REQUESTS" || signal.aborted) throw error;
-        setAttempt({ key, forMessageId, asked, status: "running", retrying: true });
-        await new Promise((resolve) => setTimeout(resolve, 1_000));
-        signal.throwIfAborted();
-        return requestThreadTurn(payload, signal);
-      });
+      const { turn, allowance } = await retryOnceWhenBusy(
+        () => requestThreadTurn(payload, signal),
+        {
+          signal,
+          onRetry: () =>
+            setAttempt({ key, forMessageId, asked, status: "running", retrying: true }),
+        },
+      );
       if (controller.signal.aborted) return;
       if (allowance) onRemaining(allowance.remaining);
       setShown({ key, forMessageId, turn, asked, unsaved: false });

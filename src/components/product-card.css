@@ -136,6 +136,11 @@
   background: var(--sky);
   color: var(--blue-dark);
 }
+/* A sold item's photo steps back, so its sticker and note lead. */
+.product-card[data-status="sold"] .product-photo img {
+  opacity: 0.72;
+  filter: grayscale(0.55);
+}
 .product-card .product-sticker[data-tone="sold"] {
   background: var(--ink);
   color: var(--on-primary);
@@ -307,4 +312,34 @@
   .product-card .product-photo > img {
     transition: none;
   }
+}
+
+/* Saved items: a price drop since the save, or Pako's way on from a sold or reserved one. */
+.product-card .saved-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: var(--type-caption);
+  font-weight: 700;
+  line-height: 1.4;
+}
+.product-card .saved-note[data-kind="drop"] {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--selected);
+  color: var(--blue-dark);
+}
+.product-card .saved-note[data-kind="drop"] > svg {
+  flex: none;
+}
+.product-card .saved-note[data-kind="gone"] {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--canvas);
+  color: var(--ink);
 }

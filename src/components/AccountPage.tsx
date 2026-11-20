@@ -203,6 +203,19 @@ function SavedExample() {
   );
 }
 
+/** "4 saved items · 1 sold": how many are saved, and how many are gone for good. */
+function savedCount(items: SavedListing[]) {
+  const count = `${items.length} saved ${items.length === 1 ? "item" : "items"}`;
+  const gone = items.filter((item) => item.status === "sold").length;
+  return gone ? `${count} · ${gone} sold` : count;
+}
+
+/** Saved items still on sale lead; sold and reserved ones follow in their saved order. */
+const availableFirst = (items: SavedListing[]) =>
+  [...items].sort(
+    (a, b) => Number(a.status !== "active") - Number(b.status !== "active"),
+  );
+
 type AccountPageProps = {
   cloud?: boolean;
   /** Whether the listings are known; until then the page shows only its title. */
@@ -217,7 +230,8 @@ type AccountPageProps = {
   onOpen(item: Product): void;
   onEdit(item: Product): void;
   onStatusChange(id: string, status: Product["status"]): void;
-  renderProduct(item: Product, arriving: boolean): ReactNode;
+  /** A saved item's card, with its price drop or a way on once it's gone. */
+  renderSaved(item: SavedListing): ReactNode;
   /** The listings that were just published, celebrated for a few seconds. */
   publishedIds: string[];
   onCelebrationEnd(): void;
@@ -306,7 +320,7 @@ export default function AccountPage({
   onOpen,
   onEdit,
   onStatusChange,
-  renderProduct,
+  renderSaved,
   publishedIds,
   onCelebrationEnd,
   agreementFor,
@@ -499,7 +513,10 @@ export default function AccountPage({
   }
   const content = items.length ? (
     isSaved ? (
-      <ProductGrid items={items} renderProduct={renderProduct} />
+      <ProductGrid
+        items={availableFirst(savedListings.filter(matchesQuery))}
+        renderProduct={renderSaved}
+      />
     ) : (
       <div className="own-listings">
         {items.map((item) => {
@@ -645,7 +662,7 @@ export default function AccountPage({
           {(loaded || !isSaved) && (
             <p>
               {isSaved
-                ? `${savedListings.length} saved ${savedListings.length === 1 ? "item" : "items"}`
+                ? savedCount(savedListings)
                 : cloud
                   ? "Your items, availability and selling progress."
                   : "Listings saved in this browser."}

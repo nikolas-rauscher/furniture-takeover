@@ -674,6 +674,15 @@ button.deal-strip:hover {
   background: var(--canvas);
   color: var(--muted);
 }
+.chat-event[data-pako] > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 6px;
+  border: 2px solid var(--card-line);
+  background: var(--surface);
+  color: var(--ink);
+}
 
 /* After a released pickup: the next interested buyer, one tap to prepare the message. */
 .deal-next-buyer {
@@ -913,6 +922,44 @@ button.deal-strip:hover {
 .pickup-actions .pickup-reason {
   max-width: 22ch;
   margin-top: -6px;
+}
+/* A day after the pickup: Pako's question in a warm head, each answer with its message. */
+.pickup-head[data-check="open"] {
+  background: var(--butter);
+  color: var(--ink);
+}
+.pickup-head[data-check="open"] .pickup-head-icon {
+  background: var(--kraft-deep);
+}
+.pickup-head[data-check="expired"] {
+  background: var(--canvas);
+  color: var(--muted);
+}
+.pickup-head[data-check="expired"] .pickup-head-icon {
+  background: var(--lip);
+  color: var(--ink);
+}
+.pickup-answers {
+  display: grid;
+  gap: 12px;
+}
+.pickup-answer {
+  display: grid;
+  gap: 4px;
+}
+.pickup-answer > .button {
+  width: 100%;
+}
+.pickup-answer-effect {
+  display: block;
+  margin-top: 2px;
+  font-weight: 600;
+}
+@container (min-width: 640px) {
+  .pickup-answers {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 16px;
+  }
 }
 @container (min-width: 640px) {
   .pickup-card .deal-card-choices:has(> .pickup-choice[data-primary]) {

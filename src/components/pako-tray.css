@@ -227,3 +227,39 @@
     animation: none;
   }
 }
+
+/* One automatic retry while Pako is busy: a soft pulsing dot beside a short line. */
+.thread-tray-busy {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--butter);
+  color: var(--ink);
+  font-size: var(--type-caption);
+  font-weight: 700;
+}
+.thread-tray-busy-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--kraft-deep);
+  animation: thread-tray-busy 1s var(--ease-out) infinite alternate;
+}
+@keyframes thread-tray-busy {
+  from {
+    opacity: 0.35;
+    scale: 0.8;
+  }
+  to {
+    opacity: 1;
+    scale: 1.1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .thread-tray-busy-dot {
+    animation: none;
+  }
+}

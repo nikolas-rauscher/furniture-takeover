@@ -24,7 +24,7 @@ export function readAuthRedirect(url: URL) {
       : null;
   const error =
     failed || (invite && !invitation)
-      ? "This sign-in link is invalid or has expired. Ask for a new invitation or reset your password."
+      ? "This link is invalid or has expired. Sign in, reset your password, or create your account again for a new link."
       : "";
   if (invitation || error) {
     url.hash = "settings";

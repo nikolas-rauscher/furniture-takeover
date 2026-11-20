@@ -418,20 +418,27 @@ export function ChatCelebration({ moment }: { moment: ChatMoment }) {
 export function ChatEvent({
   text,
   system = false,
+  pako = false,
 }: {
   text: string;
   /** Nobody wrote it; the app noted it, such as another buyer's deal. */
   system?: boolean;
+  /** Pako asked it, so he sits beside the row. */
+  pako?: boolean;
 }) {
   return (
     <motion.p
       className="chat-event"
       data-system={system || undefined}
+      data-pako={pako || undefined}
       initial={{ opacity: 0, scale: 0.94 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={ARRIVAL}
     >
-      <span>{text}</span>
+      <span>
+        {pako && <Pako mood="think" size={22} still />}
+        {text}
+      </span>
     </motion.p>
   );
 }

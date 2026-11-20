@@ -168,7 +168,6 @@ const GONE_LEAD: Record<
 };
 
 function cancelledDetail(deal: Deal, role: DealRole, other: string) {
-  if (deal.outcome?.kind === "pickup_expired") return "Pickup unconfirmed · available again";
   if (deal.outcome?.kind === "listing_reopened")
     return "The listing is available again";
   return deal.outcome?.by === role ? "You cancelled" : `${other} cancelled`;
@@ -228,6 +227,13 @@ export function pickupCountdown({
   return `Pickup in ${stretchWords(Math.max(1, Math.ceil(minutesUntil)))}`;
 }
 
+/** Nobody answered Pako's pickup question in time, so the reservation ended. */
+const RELEASED_STRIP: StripView = {
+  lead: "Reservation released",
+  detail: "No one confirmed the pickup",
+  tone: "closed",
+};
+
 /** A booked pickup on its day, or with a new time on the table: the countdown leads. */
 function pickupStrip(
   deal: Deal,
@@ -238,6 +244,14 @@ function pickupStrip(
   const day = pickupDay(deal, role, now);
   if (!day) return null;
   const place = day.terms.pickupPoint && shortPlace(day.terms.pickupPoint);
+  if (day.pickupCheck)
+    return day.pickupCheck.expired
+      ? RELEASED_STRIP
+      : {
+          lead: "Did the pickup happen?",
+          detail: `Answer by ${formatPickup(day.pickupCheck.expiresAt)}`,
+          tone: "needs",
+        };
   if (day.change === "received" && deal.proposal?.terms.pickupAt)
     return {
       lead: `${other} suggests a new time`,
@@ -296,6 +310,7 @@ export function dealStrip({
         tone: "booked",
       };
     case "cancelled":
+      if (deal?.outcome?.kind === "pickup_expired") return RELEASED_STRIP;
       return deal
         ? {
             lead: "Deal cancelled",
@@ -452,9 +467,9 @@ export function eventChip(event: DealEvent): string {
     case "completed":
       return "Sold ✓";
     case "pickup_check_due":
-      return "Pako · Did the pickup happen?";
+      return "Pako asked: did the pickup happen?";
     case "pickup_expired":
-      return "Pickup unconfirmed · listing available again";
+      return "Reservation released · no one confirmed the pickup";
   }
 }
 

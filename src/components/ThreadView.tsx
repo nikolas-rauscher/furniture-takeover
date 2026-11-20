@@ -177,6 +177,7 @@ export function ThreadLog({
       key={event.id}
       text={threadNewsText(event, reader)}
       system={event.messageId === null || isPickupKind(event.kind)}
+      pako={event.kind === "pickup_check_due"}
     />
   );
   const toLatest = () => {

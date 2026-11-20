@@ -59,7 +59,9 @@ export type HomeDealNews =
   | { kind: "offer"; other: string; title: string }
   | { kind: "booked"; title: string; when: string }
   /** The pickup is within 2 h, now or overdue: "Pickup in 1 h 40 min". */
-  | { kind: "pickup_day"; title: string; countdown: string };
+  | { kind: "pickup_day"; title: string; countdown: string }
+  /** A day after an unclosed pickup, Pako's question waits for an answer. */
+  | { kind: "pickup_check"; other: string; title: string };
 
 /** What Pako tells on home about a deal: the other student's offer, or the booked pickup. */
 export function homeDealNews({
@@ -78,6 +80,8 @@ export function homeDealNews({
   if (deal.status === "open" && deal.proposal && deal.proposal.by !== role)
     return { kind: "offer", other, title };
   const day = pickupDay(deal, role, now);
+  if (day?.pickupCheck && !day.pickupCheck.expired)
+    return { kind: "pickup_check", other, title };
   if (day && day.phase !== "booked")
     return { kind: "pickup_day", title, countdown: pickupCountdown(day) };
   const pickupAt = deal.status === "agreed" && deal.agreed?.terms.pickupAt;
@@ -94,6 +98,8 @@ function dealNewsLine(deal: HomeDealNews) {
       return `Pickup booked: the ${deal.title}, ${deal.when}.`;
     case "pickup_day":
       return `${deal.countdown}: the ${deal.title}.`;
+    case "pickup_check":
+      return `Did the pickup of the ${deal.title} with ${deal.other} happen? Let me know in Messages.`;
   }
 }
 
@@ -135,7 +141,9 @@ export function homeGuide({
           ? "listen"
           : deal.kind === "offer"
             ? "happy"
-            : "wave",
+            : deal.kind === "pickup_check"
+              ? "think"
+              : "wave",
       line: dealNewsLine(deal),
       newMatches: false,
     };
@@ -163,6 +171,7 @@ const newMatchesLine = (count: number) =>
 type ToolStep = AgentRunStep & { task: AgentTaskKind };
 type TurnFacts = Pick<
   AgentRunState,
+  | "congested"
   | "status"
   | "steps"
   | "text"
@@ -243,6 +252,11 @@ export function agentTurnPako(
     typing: boolean;
   },
 ): { mood: PakoMood; talking: boolean } {
+  if (turn.congested)
+    return {
+      mood: busyGuide(turn.congested === "retrying", "search").mood,
+      talking: false,
+    };
   const running = turn.status === "running";
   const talking =
     turn.text !== "" &&
@@ -441,6 +455,8 @@ type OfferMoment = {
 /** A moment beside an open thread, in the tray above its composer. */
 export type ThreadMoment =
   | { phase: "reading" | "asking" | "asleep" | "offline" | "error" }
+  /** Too many students asked at once: one automatic retry, then a tap. */
+  | { phase: "busy"; retrying: boolean }
   | { phase: "ready"; summary: string }
   | { phase: "paused"; remaining: number | undefined }
   | { phase: "unavailable"; reason: "unconfigured" | "missing" }
@@ -452,7 +468,29 @@ export type ThreadMoment =
   /** The student's own offer waits for the other student's confirmation. */
   | { phase: "deal_waiting" }
   | { phase: "deal_agreed"; role: DealRole }
-  | { phase: "deal_cancelled"; by: "me" | "them" | "listing" };
+  | { phase: "deal_cancelled"; by: "me" | "them" | "listing" | "unconfirmed" };
+
+/**
+ * Pako when too many students ask at once: honest that nothing started,
+ * busy rather than broken while he tries once more, then a calm next step.
+ */
+export function busyGuide(
+  retrying: boolean,
+  where: "thread" | "search",
+): { mood: PakoMood; line: string } {
+  if (retrying)
+    return {
+      mood: "work",
+      line: "Lots of students are asking me at once. I'll try again in a second…",
+    };
+  return {
+    mood: "idle",
+    line:
+      where === "thread"
+        ? "I'm still busy. Try again in a moment, or write your own reply."
+        : "I'm still busy, so your request hasn't started. Try again in a moment.",
+  };
+}
 
 /** Pako cheers a deal both confirmed once, then rests. */
 const CHEER_MS = 2400;
@@ -473,6 +511,8 @@ const CANCELLED: Record<
   me: () => "You cancelled the deal.",
   them: (other) => `${other} cancelled the deal.`,
   listing: () => "The listing is available again, so this deal ended.",
+  unconfirmed: () =>
+    "No one confirmed the pickup in time, so I released the reservation.",
 };
 
 const GONE: Record<Extract<ThreadMoment, { phase: "gone" }>["status"], string> =
@@ -537,6 +577,8 @@ export function threadGuide(
       return { mood: "think", line: `Reading ${other}'s reply…` };
     case "asking":
       return { mood: "think", line: "Writing that for you…" };
+    case "busy":
+      return busyGuide(moment.retrying, "thread");
     case "ready":
       return { mood: "happy", line: moment.summary };
     case "paused":
@@ -617,6 +659,20 @@ export function threadGuide(
   }
 }
 
+/** A day after the pickup Pako asks whether it happened; after two he says he released the item. */
+function pickupCheckGuide(
+  check: NonNullable<PickupDay["pickupCheck"]>,
+  other: string,
+  title: string,
+): { mood: PakoMood; line: string } {
+  return check.expired
+    ? { mood: "idle", line: `Neither of you answered, so I released the ${title}.` }
+    : {
+        mood: "think",
+        line: `Did the pickup with ${other} happen? If no one answers by ${formatPickup(check.expiresAt)}, I'll release the ${title}.`,
+      };
+}
+
 /**
  * Pako's line on the pickup card, by how close the pickup is and what the
  * other student last said: a new time to answer first, then their signals,
@@ -636,6 +692,7 @@ export function pickupGuide({
   other: string;
   title: string;
 }): { mood: PakoMood; line: string } {
+  if (day.pickupCheck) return pickupCheckGuide(day.pickupCheck, other, title);
   const signals = deal.pickup;
   const theirs: DealRole = role === "buyer" ? "seller" : "buyer";
   const proposed = deal.proposal?.terms.pickupAt;

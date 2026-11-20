@@ -979,3 +979,136 @@
     padding: var(--space-group) 16px;
   }
 }
+
+/* Sign-up and sign-in: hints under fields, a rule that ticks itself, and calm errors. */
+.account-auth h1:focus {
+  outline: none;
+}
+.account-auth h1:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+.account-auth > .quiet-caption {
+  text-align: center;
+}
+.account-auth-hint,
+.account-auth-field-error,
+.account-auth-rule {
+  font-size: var(--type-caption);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.account-auth-hint {
+  color: var(--muted);
+}
+.account-auth-field-error {
+  color: var(--danger);
+}
+.account-auth input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+.account-auth-rule {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+.account-auth-rule-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--lip);
+  border-radius: 50%;
+  color: var(--on-primary);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+.account-auth-rule[data-met] {
+  color: var(--blue-dark);
+}
+.account-auth-rule[data-met] .account-auth-rule-mark {
+  border-color: var(--blue);
+  background: var(--blue);
+}
+.account-auth-error,
+.account-auth-notice {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: var(--type-label);
+  font-weight: 600;
+  line-height: 1.45;
+}
+.account-auth-error {
+  background: #fbeaec;
+  color: var(--danger-dark);
+}
+.account-auth-notice {
+  background: var(--selected);
+  color: var(--blue-dark);
+}
+/* Check your inbox: an envelope badge on Pako's box, then the resend. */
+.account-auth-mail {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin: 0 auto -18px;
+  position: relative;
+  z-index: 1;
+  translate: 30px 0;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--blue);
+  color: var(--on-primary);
+}
+.account-auth .quiet-caption strong {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.account-auth-tip {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--butter);
+  font-size: var(--type-support);
+  line-height: 1.45;
+  text-align: center;
+}
+/* Sign in: the way to a new account on its own quiet card. */
+.account-auth-new {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 16px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--canvas);
+}
+.account-auth-new > p {
+  display: grid;
+  gap: 2px;
+  font-size: var(--type-support);
+  line-height: 1.45;
+}
+.account-auth-new > p > strong {
+  font-size: var(--type-label);
+}
+.account-auth-new > .button {
+  width: 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .account-auth-rule-mark {
+    transition: none;
+  }
+}
+.account-auth-rule[data-missed] {
+  color: var(--danger);
+}
+.account-auth-rule[data-missed] .account-auth-rule-mark {
+  border-color: var(--danger);
+}

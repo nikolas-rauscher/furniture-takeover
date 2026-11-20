@@ -230,3 +230,31 @@ test("Pako's pickup line answers the other student's news before the clock", () 
     "Léa says they picked it up. Mark it sold to finish.",
   );
 });
+
+test("a day after the pickup both students get Pako's question, each answer previewed", () => {
+  const day = 24 * 60;
+  for (const role of ["buyer", "seller"] as const) {
+    const check = choicesAt(day + 5, role);
+    assert.deepEqual(ids(check), {
+      primary: "confirm_pickup_happened",
+      secondary: ["release_stale_pickup"],
+    });
+    assert.equal(check.primary?.confirm, undefined);
+    assert.match(check.primary!.send!.message, /happened/);
+    assert.match(check.secondary[0].send!.message, /released the desk/);
+  }
+  assert.deepEqual(ids(choicesAt(2 * day)), { primary: undefined, secondary: [] });
+  const deal = booked();
+  const strip = (offset: number) =>
+    dealStrip({
+      phase: "agreed",
+      deal,
+      role: "buyer",
+      other: "Léa",
+      listing: { price: 40, status: "reserved" },
+      now: minutes(offset),
+    });
+  assert.equal(strip(day + 5)?.lead, "Did the pickup happen?");
+  assert.equal(strip(day + 5)?.detail, "Answer by Sun 22 Nov, 18:00");
+  assert.equal(strip(2 * day)?.lead, "Reservation released");
+});

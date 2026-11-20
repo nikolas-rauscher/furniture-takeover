@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Button } from "./ui/button";
 import { cardImageFor, listingPhotos } from "../../shared/listingPhotos";
 import {
@@ -27,6 +28,8 @@ type ProductCardProps = {
   availability?: CardAvailability;
   /** The student's own deal reserved it for them. */
   reservedForYou?: boolean;
+  /** A note under the details, such as a saved item's price drop. */
+  footer?: ReactNode;
 };
 
 /** A sticker on the photo tells what matters before the details: sold, reserved or free. */
@@ -51,6 +54,7 @@ export default function ProductCard({
   onToggleCompare,
   availability,
   reservedForYou = false,
+  footer,
 }: ProductCardProps) {
   const itemTags = product.tags?.filter((tag) => tag !== "Demo") ?? [];
   const tags = [
@@ -74,6 +78,7 @@ export default function ProductCard({
         "product-card linked-card",
         entrance.entering && "arriving",
       )}
+      data-status={product.status}
       onAnimationEnd={entrance.onAnimationEnd}
     >
       <div className="product-photo">
@@ -156,6 +161,7 @@ export default function ProductCard({
         <p className={`pickup ${product.pickupBy === TODAY ? "today" : ""}`}>
           {product.available}
         </p>
+        {footer}
       </div>
     </article>
   );

@@ -138,3 +138,19 @@ test("a pickup due in 90 minutes is your turn and counts once in the badge", () 
   assert.equal(inboxBadge(threads, { c1: now.toISOString() }, new Set(["c1"])), 1);
   assert.deepEqual(pickupHomeDeals([offer, deal], () => "buyer", now), [deal, offer]);
 });
+
+test("Pako's open pickup question leads Home, ahead of a pickup due now", () => {
+  const terms = (pickupAt: string) => ({
+    fulfillment: "pickup" as const, amount: 30, pickupAt,
+    pickupTime: "", pickupPoint: "Vortex",
+  });
+  const booked = (conversationId: string, pickupAt: string): Deal => ({
+    conversationId, listingId: conversationId, status: "agreed", proposal: null,
+    agreed: { terms: terms(pickupAt), at: "2026-11-17T12:00:00Z" },
+    version: 2, updatedAt: "2026-11-17T12:00:00Z", outcome: null,
+  });
+  const now = new Date("2026-11-19T12:30:00Z");
+  const dueNow = booked("now", "2026-11-19T12:00:00Z");
+  const unclosed = booked("past", "2026-11-18T11:00:00Z");
+  assert.deepEqual(pickupHomeDeals([dueNow, unclosed], () => "seller", now), [unclosed, dueNow]);
+});

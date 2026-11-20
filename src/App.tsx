@@ -89,6 +89,7 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type ReactNode,
   type SetStateAction,
 } from "react";
 import {
@@ -181,7 +182,9 @@ import {
   shortDate,
   type Criteria,
   type Product,
+  type SavedListing,
 } from "../shared/marketplace";
+import SavedNote from "./components/SavedNote";
 import { transitionPage, type PageDirection } from "./pageTransition";
 import {
   PageTransition,
@@ -2026,7 +2029,7 @@ export default function App({
       onManual={fillInDetails}
     />
   );
-  const productCard = (item: Product, arriving = false) => (
+  const productCard = (item: Product, arriving = false, footer?: ReactNode) => (
     <ProductCard
       key={item.id}
       product={shownListing(item)}
@@ -2038,8 +2041,21 @@ export default function App({
       onToggleFavorite={() => toggleFavorite(item.id)}
       onToggleCompare={() => toggleCompare(item.id)}
       availability={availability?.cardAvailability(item)}
+      footer={footer}
     />
   );
+  const savedCard = (item: SavedListing) =>
+    productCard(
+      item,
+      false,
+      <SavedNote
+        item={item}
+        reservedForYou={myReservations.has(item.id)}
+        onFindSimilar={() =>
+          void runSearch(item.title, { ...criteria, category: item.category })
+        }
+      />,
+    );
 
   // Until the first connection check answers, the footnote says nothing rather
   // than "Connecting…" that disappears a moment later.
@@ -3150,7 +3166,7 @@ export default function App({
                 onOpen={openProduct}
                 onEdit={editListing}
                 onStatusChange={setStatus}
-                renderProduct={productCard}
+                renderSaved={savedCard}
                 publishedIds={publishedListings}
                 onCelebrationEnd={() => setPublishedListings([])}
                 agreementFor={(listingId) => {

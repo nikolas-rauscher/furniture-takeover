@@ -1,10 +1,10 @@
 import { useState, type ReactNode } from "react";
 import type { Product } from "../../shared/marketplace";
 
-type ProductGridProps = {
-  items: Product[];
+type ProductGridProps<Item extends Product> = {
+  items: Item[];
   /** Renders a card; `arriving` marks a listing that joined after the grid first showed. */
-  renderProduct: (item: Product, arriving: boolean) => ReactNode;
+  renderProduct: (item: Item, arriving: boolean) => ReactNode;
 };
 
 /**
@@ -12,10 +12,10 @@ type ProductGridProps = {
  * reload or a return to the page too; only a listing that joins later, such as
  * one just published, arrives.
  */
-export default function ProductGrid({
+export default function ProductGrid<Item extends Product>({
   items,
   renderProduct,
-}: ProductGridProps) {
+}: ProductGridProps<Item>) {
   const [firstShown] = useState(() => new Set(items.map((item) => item.id)));
   return (
     <div className="product-grid">

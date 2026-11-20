@@ -846,3 +846,24 @@ test("Pako mentions an offer waiting for the student, or a booked pickup, on hom
   );
   assert.equal(news({ ...base, status: "cancelled" }), null);
 });
+
+test("a busy server reads as Pako at work, then a calm next step", () => {
+  const retrying = threadGuide({ phase: "busy", retrying: true }, { other: "Léa", title: "desk" });
+  assert.equal(retrying.mood, "work");
+  assert.match(retrying.line, /try again in a second/);
+  const still = threadGuide({ phase: "busy", retrying: false }, { other: "Léa", title: "desk" });
+  assert.match(still.line, /write your own reply/);
+});
+
+test("on home Pako asks about an unclosed pickup a day later", () => {
+  const pickupAt = "2026-11-18T17:00:00.000Z";
+  const deal: Parameters<typeof homeDealNews>[0]["deal"] = {
+    conversationId: "c1", listingId: "l1", version: 2, status: "agreed", proposal: null, outcome: null,
+    agreed: { terms: { amount: 40, fulfillment: "pickup", pickupAt, pickupTime: "", pickupPoint: "Vortex" }, at: pickupAt },
+    updatedAt: pickupAt,
+  };
+  assert.deepEqual(
+    homeDealNews({ deal, role: "buyer", other: "Léa", title: "desk", now: new Date("2026-11-19T18:00:00.000Z") }),
+    { kind: "pickup_check", other: "Léa", title: "desk" },
+  );
+});

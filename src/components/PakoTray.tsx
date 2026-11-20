@@ -99,6 +99,13 @@ function trayMoment(
       return { phase: "paused", remaining };
     case "unavailable":
       return { phase: "unavailable", reason: state.reason };
+    case "busy":
+      return { phase: "busy", retrying: false };
+    case "reading":
+    case "asking":
+      return state.retrying
+        ? { phase: "busy", retrying: true }
+        : { phase: state.phase };
     default:
       return { phase: state.phase };
   }
@@ -265,6 +272,16 @@ function TrayLine({ text, folds }: { text: string; folds: boolean }) {
   );
 }
 
+/** The one automatic retry, waiting its second: a calm moving dot, not an error. */
+function BusyWait() {
+  return (
+    <p className="thread-tray-busy" role="status">
+      <span className="thread-tray-busy-dot" aria-hidden="true" />
+      Trying again…
+    </p>
+  );
+}
+
 function ReadingChips() {
   return (
     <div className="thread-tray-skeletons" aria-hidden="true">
@@ -329,9 +346,15 @@ export default function PakoTray({
       />
     );
   else if (state.phase === "reading" || state.phase === "asking")
-    actions = state.retrying
-      ? <small className="thread-tray-hint" role="status">Pako is busy. Trying again…</small>
-      : <ReadingChips />;
+    actions = state.retrying ? <BusyWait /> : <ReadingChips />;
+  else if (state.phase === "busy")
+    actions = (
+      <div className="thread-tray-actions">
+        <Button className="button secondary small" onClick={onRead}>
+          Try again
+        </Button>
+      </div>
+    );
   else if (state.phase === "paused")
     actions = (
       <div className="thread-tray-actions">

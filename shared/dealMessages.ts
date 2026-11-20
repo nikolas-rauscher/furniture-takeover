@@ -148,5 +148,9 @@ export const noShowReleaseMessage = (title: string, role: DealRole) =>
     : "We didn't manage to meet, so I'm cancelling our pickup.";
 export const pickedUpMessage = (role: DealRole, title: string) =>
   role === "seller" ? `Thanks, enjoy the ${title}!` : "Got it, thanks a lot!";
+export const pickupHappenedMessage = (title: string) =>
+  `The pickup of the ${title} happened, so I've closed our deal. Thanks!`;
+export const pickupDidntHappenMessage = (title: string) =>
+  `The pickup didn't happen, so I've released the ${title}. It's back on sale.`;
 export const availableAgainMessage = (title: string) =>
   `Hi! The ${title} is available again. Are you still interested?`;

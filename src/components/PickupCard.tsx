@@ -1,6 +1,13 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, CalendarCheck, MapPin, Package } from "@/components/icons";
+import {
+  ArrowRight,
+  CalendarCheck,
+  CircleHelp,
+  Clock,
+  MapPin,
+  Package,
+} from "@/components/icons";
 import type { Deal, DealRole, DealTerms, LateMinutes } from "../../shared/deal";
 import type { Product } from "../../shared/marketplace";
 import {
@@ -19,6 +26,7 @@ import {
   movedTerms,
   pickupChoices,
   type PickupChoice,
+  type PickupChoices,
   type PickupDay,
   type PickupSend,
 } from "../pickupOptions";
@@ -56,6 +64,33 @@ function Countdown({ day }: { day: PickupDay }) {
       <p className="pickup-head-words">
         <strong className="pickup-countdown">{pickupCountdown(day)}</strong>
         <span>{formatPickup(day.terms.pickupAt!)}</span>
+      </p>
+    </div>
+  );
+}
+
+/** A day after the pickup the head asks the question instead of counting down. */
+function CheckHead({
+  day,
+  check,
+}: {
+  day: PickupDay;
+  check: NonNullable<PickupDay["pickupCheck"]>;
+}) {
+  return (
+    <div className="pickup-head" data-check={check.expired ? "expired" : "open"}>
+      <span className="pickup-head-icon" aria-hidden="true">
+        {check.expired ? <Clock size={20} /> : <CircleHelp size={20} />}
+      </span>
+      <p className="pickup-head-words">
+        <strong className="pickup-countdown">
+          {check.expired ? "Reservation released" : "Did the pickup happen?"}
+        </strong>
+        <span>
+          {check.expired
+            ? `No answer by ${formatPickup(check.expiresAt)}`
+            : `Booked for ${formatPickup(day.terms.pickupAt!)} · answer by ${formatPickup(check.expiresAt)}`}
+        </span>
       </p>
     </div>
   );
@@ -383,6 +418,65 @@ function CheckStep({
   );
 }
 
+type CheckAnswer = PickupChoice & { send: PickupSend; effect?: string };
+
+/**
+ * Pako's question a day after the pickup: each answer shows the exact message
+ * and what it does to the deal, and sends on its own tap.
+ */
+function CheckAnswers({
+  answers,
+  other,
+  locked,
+  busy,
+  onSend,
+}: {
+  answers: CheckAnswer[];
+  other: string;
+  locked: boolean;
+  busy: boolean;
+  onSend: (send: PickupSend) => void;
+}) {
+  const [tapped, setTapped] = useState<CheckAnswer["id"]>();
+  return (
+    <motion.div className="pickup-answers" {...CARD_SWAP}>
+      {answers.map((answer, index) => (
+        <div
+          key={answer.id}
+          className="pickup-answer"
+          data-primary={index === 0 || undefined}
+        >
+          <Button
+            type="button"
+            animateIcon={index === 0}
+            className={index === 0 ? "button primary" : "button secondary"}
+            disabled={locked}
+            onClick={() => {
+              setTapped(answer.id);
+              onSend(answer.send);
+            }}
+          >
+            {busy && tapped === answer.id ? "Sending…" : answer.label}
+          </Button>
+          <p className="deal-card-sends">
+            Message to {other}: <q>{answer.send.message}</q>
+            {answer.effect && (
+              <span className="pickup-answer-effect">{answer.effect}</span>
+            )}
+          </p>
+        </div>
+      ))}
+    </motion.div>
+  );
+}
+
+const checkAnswers = ({ primary, secondary }: PickupChoices): CheckAnswer[] =>
+  [primary, ...secondary].map((choice) => {
+    if (!choice?.send)
+      throw new Error("A pickup follow-up answer has nothing to send.");
+    return { ...choice, send: choice.send };
+  });
+
 /** A choice that can't be tapped now keeps its reason right beside it. */
 function ChoiceButton({
   choice,
@@ -454,7 +548,9 @@ export default function PickupCard({
       });
   }, [step]);
   const context = { day, deal, role, other: otherName, title: listing.title };
-  const { primary, secondary } = pickupChoices(context);
+  const choices = pickupChoices(context);
+  const { primary, secondary } = choices;
+  const check = day.pickupCheck;
   const locked = busy || !pickup.available;
   const send = async (chosen: PickupSend) => {
     if (await pickup.onSend(chosen)) setStep(undefined);
@@ -478,9 +574,9 @@ export default function PickupCard({
   };
   return (
     <div className="deal-card-body pickup-card" data-phase={day.phase}>
-      <Countdown day={day} />
+      {check ? <CheckHead day={day} check={check} /> : <Countdown day={day} />}
       <Facts terms={day.terms} listing={listing} />
-      <Signals deal={deal} role={role} other={otherName} />
+      {!check && <Signals deal={deal} role={role} other={otherName} />}
       {day.change && proposed && (
         <TimeCompare
           current={day.terms.pickupAt!}
@@ -490,12 +586,21 @@ export default function PickupCard({
           }
         />
       )}
-      {day.pickupCheck && !day.pickupCheck.expired
-        ? <p role="status">Pako · Did the pickup happen?</p>
-        : <PakoLine {...pickupGuide(context)} />}
+      <PakoLine {...pickupGuide(context)} />
       <div ref={actions} className="pickup-steps">
         <AnimatePresence mode="wait" initial={false}>
-          {step?.kind === "late" ? (
+          {check ? (
+            !check.expired && (
+              <CheckAnswers
+                key="answers"
+                answers={checkAnswers(choices)}
+                other={otherName}
+                locked={locked}
+                busy={busy}
+                onSend={(chosen) => void send(chosen)}
+              />
+            )
+          ) : step?.kind === "late" ? (
             <LateStep key="late" {...stepProps} />
           ) : step?.kind === "change" ? (
             <ChangeStep

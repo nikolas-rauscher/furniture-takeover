@@ -11,6 +11,7 @@ import type {
   AgentActionEvent,
   AgentQuestionEvent,
 } from "../../shared/actions";
+import { isAgentBusy, retryOnceWhenBusy } from "../api/busyRetry.ts";
 import { streamAgentRun } from "../api/runs.ts";
 import { randomUuid } from "../randomUuid.ts";
 
@@ -34,6 +35,8 @@ export type AgentRunTurn = {
   watchSuggestion?: { query: string; maxPrice?: number };
 };
 export type AgentRunState = AgentRunTurn & {
+  /** The server was busy: Pako is retrying once, or it stayed busy and nothing started. */
+  congested?: "retrying" | "failed";
   offerListingIds?: string[];
   inventoryMatchIds: string[] | null;
   diagnostic?: AgentRunDiagnostic;
@@ -324,25 +327,33 @@ export function useAgentRun() {
         active.current === controller &&
         !controller.signal.aborted;
       try {
-        await streamAgentRun(input, {
-          signal: controller.signal,
-          onEvent: (event) => {
-            if (!isCurrent()) return;
-            if (event.type === "negotiation_update")
-              options.onNegotiation?.(event);
-            setState((previous) => applyAgentRunEvent(previous, event));
-            if (
-              event.type === "listing_patch" ||
-              event.type === "preferences_patch"
-            )
-              options.onAction?.(event);
+        const onEvent = (event: AgentRunEvent) => {
+          if (!isCurrent()) return;
+          if (event.type === "negotiation_update")
+            options.onNegotiation?.(event);
+          setState((previous) =>
+            applyAgentRunEvent({ ...previous, congested: undefined }, event),
+          );
+          if (
+            event.type === "listing_patch" ||
+            event.type === "preferences_patch"
+          )
+            options.onAction?.(event);
+        };
+        await retryOnceWhenBusy(
+          () => streamAgentRun(input, { signal: controller.signal, onEvent }),
+          {
+            signal: controller.signal,
+            onRetry: () =>
+              setState((previous) => ({ ...previous, congested: "retrying" })),
           },
-        });
+        );
       } catch (error) {
         if (isCurrent())
           setState((previous) => ({
             ...previous,
             status: "error",
+            congested: isAgentBusy(error) ? "failed" : undefined,
             reasoning: stopReasoning(previous.reasoning),
             error:
               error instanceof Error
