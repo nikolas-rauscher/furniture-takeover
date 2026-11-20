@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import type { ThreadReads } from "../api/inbox";
 import { nextReadMarker } from "../inboxActivity";
 import { useSaved } from "./useSaved";
 
@@ -10,10 +11,8 @@ const isReadMarkers = (value: unknown): value is Record<string, string> =>
     (at) => typeof at === "string" && Number.isFinite(Date.parse(at)),
   );
 
-export type ThreadReads = ReturnType<typeof useThreadReads>;
-
 /** How far the student has read each local thread, kept in this browser. */
-export function useThreadReads() {
+export function useThreadReads(): ThreadReads {
   const [reads, setReads] = useSaved<Record<string, string>>(
     "takeover-thread-reads",
     {},

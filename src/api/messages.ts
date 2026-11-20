@@ -4,8 +4,8 @@ import type {
   PickupAction,
   PickupStatusChange,
 } from "../../shared/deal";
-import type { Product } from "../../shared/marketplace";
 import type { SellerConversation } from "../../shared/messages";
+import type { DealListing, DealStatusChange } from "./deals.ts";
 import { randomUuid } from "../randomUuid.ts";
 
 const workspaceKey = "takeover-message-workspace";
@@ -78,10 +78,6 @@ export async function setConversationDeleted(
   ).conversation;
 }
 
-export type DealListing = Pick<
-  Product,
-  "id" | "title" | "seller" | "status"
-> & { image?: string; buyerKey?: string };
 export async function sendDemoDeal(
   listing: DealListing,
   sender: DealRole,
@@ -91,7 +87,7 @@ export async function sendDemoDeal(
   messageId = randomUuid(),
 ): Promise<{
   conversation: SellerConversation;
-  statusChange?: "active" | "reserved" | "sold";
+  statusChange?: DealStatusChange;
 }> {
   return request(
     {

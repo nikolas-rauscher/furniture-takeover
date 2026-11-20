@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import type { Deal } from "../../shared/deal";
 import type { Product } from "../../shared/marketplace";
-import type { useMarketplaceListings } from "../cloud/useMarketplaceListings";
+import type { useMarketplaceListings } from "./useMarketplaceListings";
 import type { DealStatusChange } from "../components/ThreadDeal";
 import { STATUS_NOTICES, statusFailure } from "../listingStatusWords";
 import { isListingStatuses } from "./savedState";
@@ -14,16 +14,11 @@ export type MyListings = ReturnType<typeof useMyListings>;
 
 /** Listings for the mode the app runs in, sorted by status, and the one path their status changes through. */
 export function useMyListings({
-  cloud,
-  accountSignedIn,
   database,
   deals,
   toast,
   onArchived,
 }: {
-  cloud: boolean;
-  /** An account is signed in, so its deals can change listings on the server. */
-  accountSignedIn: boolean;
   database: ReturnType<typeof useMarketplaceListings>;
   deals: Deal[];
   toast: Toasts;
@@ -32,16 +27,16 @@ export function useMyListings({
   const own = database.listings;
   const setOwn = database.setListings;
   const reloadListings = database.retry;
-  const accountDealStatuses = !accountSignedIn
+  const externalDealStatuses = !database.refreshOnDealChange
     ? null
     : deals
         .map(({ listingId, status }) => `${listingId}:${status}`)
         .sort()
         .join(",");
   useEffect(() => {
-    if (accountDealStatuses !== null && !database.pending)
+    if (externalDealStatuses !== null && !database.pending)
       void reloadListings();
-  }, [accountDealStatuses, database.pending, reloadListings]);
+  }, [externalDealStatuses, database.pending, reloadListings]);
   /** What demo deals reserved or made available again, as it was before; clearing the workspace puts it back. */
   const [statusBefore, setStatusBefore] = useSaved<
     Record<string, ListingStatus>
@@ -61,7 +56,7 @@ export function useMyListings({
       .map(({ listingId }) => listingId),
   );
   const releasePending =
-    !cloud &&
+    database.dealStatusOwner === "browser" &&
     own.some(
       (item) => item.status === "reserved" && expiredReleases.has(item.id),
     );
@@ -87,11 +82,7 @@ export function useMyListings({
         ? { ...item, status: "active" }
         : item,
     )
-    .filter((item) =>
-      cloud
-        ? true
-        : item.own && (item.demo || !item.image.startsWith("/images/")),
-    );
+    .filter(database.canShow);
 
   async function applyStatus(id: string, status: ListingStatus) {
     if (!own.some((item) => item.id === id))
@@ -136,7 +127,7 @@ export function useMyListings({
      * demo saves it here.
      */
     async followDealStatus(id: string, status: DealStatusChange) {
-      if (cloud) {
+      if (database.dealStatusOwner === "server") {
         database.retry();
         return;
       }

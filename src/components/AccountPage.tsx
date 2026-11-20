@@ -47,9 +47,9 @@ import type { ListingPickupChoice, PickupSend } from "../pickupOptions";
 import Modal from "./Modal";
 import {
   pickupConfirmation,
-  requireDemoListingEdit,
   useListingStatusConfirmation,
 } from "../hooks/useListingPickup";
+import { useMarketplaceListings } from "../hooks/useMarketplaceListings";
 
 /** How long Pako celebrates a listing that was just published. */
 const CELEBRATION_MS = 6000;
@@ -341,12 +341,13 @@ export default function AccountPage({
   }, [publishedKey]);
   const [pickupStep, setPickupStep] = useState<StatusConfirmation>();
   const [listingError, setListingError] = useState("");
-  const confirmations = useListingStatusConfirmation();
+  const confirmStatus = useListingStatusConfirmation();
+  const { verifyEdit } = useMarketplaceListings();
 
   async function edit(item: Product) {
     setListingError("");
     try {
-      if (!cloud) await requireDemoListingEdit();
+      await verifyEdit?.();
       onEdit(item);
     } catch (failure) {
       setListingError((failure as Error).message);
@@ -364,12 +365,13 @@ export default function AccountPage({
       if (pickup) {
         const choice = status === "sold" ? pickup.sold : pickup.reopen;
         confirmation = pickupConfirmation(pickup.other, choice, pickup.onSend);
-      } else if (agreement) {
-        confirmation = await confirmations.accountDeal(item.id);
-      } else if (!cloud) {
-        await requireDemoListingEdit();
-        confirmation = await confirmations.demoDeal(item, status, applyStatus);
-      }
+      } else
+        confirmation = await confirmStatus(
+          item,
+          status,
+          Boolean(agreement),
+          applyStatus,
+        );
 
       if (confirmation) {
         setPickupStep({

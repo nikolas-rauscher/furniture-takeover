@@ -35,7 +35,7 @@ export function workspaceClearer(parts: {
     parts.goHome();
     parts.search.setCriteria({ ...defaults });
     resetMessageWorkspace();
-    await parts.messages.demoInbox.reset();
+    await parts.messages.reset?.();
     parts.toast.say("Browser data cleared.");
   };
 }

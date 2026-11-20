@@ -1,6 +1,6 @@
 import type { Deal, DealRole } from "../shared/deal.ts";
 import type { SellerConversation } from "../shared/messages.ts";
-import type { InboxRows } from "./cloud/accountInbox.ts";
+import type { InboxRows } from "./api/inbox.ts";
 import { demoThreadMessage, type ThreadMessage } from "./pakoThread.ts";
 
 /** A deal in the student's inbox: the side they play, its listing, its thread and the other student. */

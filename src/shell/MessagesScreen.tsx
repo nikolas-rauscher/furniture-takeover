@@ -6,9 +6,7 @@ import {
   dealTermsFromNegotiation,
   markNegotiationSent,
 } from "../../shared/negotiation";
-import type { AccountConnection } from "../cloud/connection";
 import LazyBoundary from "../components/LazyBoundary";
-import type { MessagesInboxProps } from "../components/messagesProps";
 import {
   NamedOfferPriceContext,
   priceNamedInSearch,
@@ -37,7 +35,6 @@ type Actions = {
 
 /** Messages in the mode the app runs in, opening the thread and offer the app asked for. */
 export default function MessagesScreen({
-  account,
   messages,
   threads,
   negotiations,
@@ -48,7 +45,6 @@ export default function MessagesScreen({
   threadBanner,
   actions,
 }: {
-  account: AccountConnection | undefined;
   messages: ReturnType<typeof useMessagesInbox>;
   threads: ThreadRequests;
   negotiations: ReturnType<typeof useNegotiations>;
@@ -66,17 +62,6 @@ export default function MessagesScreen({
 }) {
   const { proposal } = threads;
   const listing = listings.own.find((item) => item.id === threads.listingId);
-  /** The inbox Messages shows, in the mode the app runs in. */
-  const inbox: MessagesInboxProps = account?.session
-    ? {
-        mode: "account",
-        account: { client: account.client, session: account.session },
-        inbox: messages.accountInbox,
-        threadRequest: threads.threadRequest,
-      }
-    : account
-      ? { mode: "signed-out" }
-      : { mode: "demo", inbox: messages.demoInbox, reads: messages.reads };
   /** The offer prepared with Pako is the one being sent from this buyer's thread. */
   const sendsProposal = (listingId: string, role: "buyer" | "seller") =>
     proposal !== undefined &&
@@ -133,7 +118,8 @@ export default function MessagesScreen({
           onDeleted={actions.onDeleted}
           threadBanner={threadBanner}
           listings={listings.own.map(listings.shown)}
-          {...inbox}
+          {...messages.screen}
+          threadRequest={threads.threadRequest}
           pako={{
             available: messages.available,
             autoRead: messages.autoRead,

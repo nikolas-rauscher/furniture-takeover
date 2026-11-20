@@ -7,7 +7,7 @@ import {
   type View,
 } from "./navigation";
 import type { AccountConnection } from "./cloud/connection";
-import { useMarketplaceListings } from "./cloud/useMarketplaceListings";
+import { useMarketplaceListings } from "./hooks/useMarketplaceListings";
 import { useAppViewport } from "./hooks/useAppViewport";
 import { useWindowScrolled } from "./hooks/useWindowScrolled";
 import AccountScreen from "./shell/AccountScreen";
@@ -114,7 +114,6 @@ export default function App({
     replaceRoute,
   });
   const messages = useMessagesInbox({
-    account,
     open: view === "messages",
     aiConfigured: pako.health?.configured,
   });
@@ -136,10 +135,8 @@ export default function App({
   );
   const location = searchArea.location;
   const [modal, setModal] = useState<Dialog>(null);
-  const database = useMarketplaceListings(account);
+  const database = useMarketplaceListings();
   const catalog = useMyListings({
-    cloud: Boolean(account),
-    accountSignedIn: Boolean(account?.session),
     database,
     deals: messages.deals,
     toast,
@@ -207,7 +204,6 @@ export default function App({
   });
   const { watches, saved: savedSearches } = savedSearchList;
   const savedItems = useSavedItems({
-    account,
     signedIn,
     listings: catalog.visible,
     toast,
@@ -216,7 +212,6 @@ export default function App({
   });
   const selected = catalog.listings.find((item) => item.id === selectedId);
   const deals = useInboxDeals({
-    account,
     messages,
     own,
     listingsReady: database.ready,
@@ -473,7 +468,6 @@ export default function App({
             )}
             <WorkspacePage active={view === "messages"}>
               <MessagesScreen
-                account={account}
                 messages={messages}
                 threads={threads}
                 negotiations={negotiations}

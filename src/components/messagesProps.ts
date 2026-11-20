@@ -1,11 +1,8 @@
 import type { ReactNode } from "react";
-import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import type { DealTerms } from "../../shared/deal";
 import type { SellerConversation } from "../../shared/messages";
 import type { Product } from "../../shared/marketplace";
-import type { AccountInbox } from "../cloud/useAccountInbox";
-import type { DemoInbox } from "../hooks/useDemoInbox";
-import type { ThreadReads } from "../hooks/useThreadReads";
+import type { InboxView } from "../api/inbox";
 import type { DealStatusChange } from "./ThreadDeal";
 import type { PakoReading } from "./ThreadPako";
 
@@ -62,14 +59,8 @@ export type OfferAgain = {
   draft: string;
 };
 /** The inbox the app runs: local, signed in, or waiting for a sign-in. */
-export type MessagesInboxProps =
-  | { mode: "demo"; inbox: DemoInbox; reads: ThreadReads }
-  | {
-      mode: "account";
-      account: { client: SupabaseClient; session: Session };
-      inbox: AccountInbox;
-      /** A conversation to open by itself, such as a seller's deal from Home. */
-      threadRequest?: ThreadRequest;
-    }
-  | { mode: "signed-out" };
-export type MessagesPageProps = MessagesProps & MessagesInboxProps;
+export type MessagesPageProps = MessagesProps &
+  InboxView & {
+    /** A conversation to open by itself, such as a seller's deal from Home. */
+    threadRequest?: ThreadRequest;
+  };

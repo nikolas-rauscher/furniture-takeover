@@ -3,59 +3,21 @@ import {
   useEffect,
   useRef,
   useState,
+  type PropsWithChildren,
   type SetStateAction,
 } from "react";
 import { AdminApiError, adminCatalogChanged } from "../api/admin";
-import { getMessageWorkspace } from "../api/messages";
+import { demoListings, postingCheckUnavailable } from "./demoListings";
+import { ListingsContext } from "../hooks/useMarketplaceListings";
 import { adminErrors } from "../../shared/admin";
 import type { Product } from "../../shared/marketplace";
-import { isProducts } from "./savedState";
-import { useSaved } from "./useSaved";
-import { ListingOutbox } from "./listingOutbox";
-import { readDemoCatalog } from "../demoCatalogRead";
+import { isProducts } from "../hooks/savedState";
+import { useSaved } from "../hooks/useSaved";
+import { ListingOutbox } from "../hooks/listingOutbox";
 import { withChangedCardImages } from "../cardPhotos";
 
-async function requestListings(
-  path: string,
-  init?: RequestInit,
-): Promise<Product[]> {
-  return listingsFrom(await fetch(path, init));
-}
-
-async function listingsFrom(response: Response): Promise<Product[]> {
-  if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    if (body?.error?.code === "admin_listing_hidden")
-      throw new AdminApiError("admin_listing_hidden");
-    throw new Error("Couldn't load listings. Try again.");
-  }
-  const body: unknown = await response.json();
-  const listings =
-    body && typeof body === "object"
-      ? (body as { listings?: unknown }).listings
-      : null;
-  if (!isProducts(listings) || listings.some((item) => item.demo !== true))
-    throw new Error("Couldn't load listings. Try again.");
-  return listings;
-}
-
-const postingCheckUnavailable =
-  "Couldn't check that you can publish. Try again.";
-
-async function verifyCanPost() {
-  const response = await fetch("/api/listings/permission", {
-    headers: { "X-Message-Workspace": getMessageWorkspace() },
-    signal: AbortSignal.timeout(8000),
-  });
-  const body = await response.json();
-  if (response.ok && body.allowed === true) return;
-  if (body.error?.code === "admin_student_blocked")
-    throw new AdminApiError("admin_student_blocked");
-  throw new Error(postingCheckUnavailable);
-}
-
 /** Demo catalog is server-owned; personal browser records are never uploaded. */
-export function useListings(enabled = true) {
+function useDemoListings() {
   const [saved, setSaved] = useSaved<Product[]>(
     "takeover-listings",
     [],
@@ -97,12 +59,7 @@ export function useListings(enabled = true) {
           // One listing gallery per request stays within the API's 3 MB payload limit.
           for (const listing of listings) {
             try {
-              await requestListings("/api/listings/demo/update", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ listings: [listing] }),
-                signal: AbortSignal.timeout(8000),
-              });
+              await demoListings.save(listing);
             } catch (error) {
               // A hidden or retired listing must leave the optimistic catalog.
               if (!(
@@ -148,8 +105,8 @@ export function useListings(enabled = true) {
           return false;
         const startedAt = revision.current;
         const listings = seed
-          ? await requestListings("/api/listings/demo/seed", { method: "POST" })
-          : await listingsFrom(await readDemoCatalog(writes.length > 0));
+          ? await demoListings.seed()
+          : await demoListings.read(writes.length > 0);
         if (!mounted.current || generation !== loadGeneration.current)
           return false;
         // Never replace or transmit personal browser records.
@@ -189,7 +146,6 @@ export function useListings(enabled = true) {
   );
 
   useEffect(() => {
-    if (!enabled) return;
     mounted.current = true;
     let cancelled = false;
     let retries = 0;
@@ -225,7 +181,7 @@ export function useListings(enabled = true) {
       window.removeEventListener("focus", recoverWhenAvailable);
       window.removeEventListener(adminCatalogChanged, recover);
     };
-  }, [load, journal, enabled]);
+  }, [load, journal]);
 
   const setListings = useCallback(
     async (update: SetStateAction<Product[]>) => {
@@ -239,7 +195,7 @@ export function useListings(enabled = true) {
         )
       ) {
         try {
-          await verifyCanPost();
+          await demoListings.verifyCanPost();
         } catch (error) {
           setError(
             error instanceof AdminApiError
@@ -320,5 +276,16 @@ export function useListings(enabled = true) {
     ready,
     retry,
     addDemo: () => load(true),
+    canShow: (item: Product) =>
+      Boolean(item.own && (item.demo || !item.image.startsWith("/images/"))),
+    dealStatusOwner: "browser" as const,
+    refreshOnDealChange: false,
+    verifyEdit: demoListings.verifyEdit,
   };
+}
+
+export function DemoListingsProvider({ children }: PropsWithChildren) {
+  return (
+    <ListingsContext value={useDemoListings()}>{children}</ListingsContext>
+  );
 }

@@ -1,20 +1,18 @@
 import type { Product } from "../../shared/marketplace";
-import type { AccountConnection } from "../cloud/connection";
-import { savedListing, useFavorites } from "../cloud/useFavorites";
+import { savedListing } from "../api/favorites";
+import { useFavorites } from "./useFavorites";
 import type { Toasts } from "./useToast";
 
 export type SavedItems = ReturnType<typeof useSavedItems>;
 
 /** Listings the student saved, with the price each had when saved. */
 export function useSavedItems({
-  account,
   signedIn,
   listings,
   toast,
   openSignIn,
   openSaved,
 }: {
-  account: AccountConnection | undefined;
   signedIn: boolean;
   /** Listings that can be saved and shown. */
   listings: Product[];
@@ -22,7 +20,7 @@ export function useSavedItems({
   openSignIn: () => void;
   openSaved: () => void;
 }) {
-  const { favorites, setFavorites, prices, error } = useFavorites(account);
+  const { favorites, setFavorites, prices, error } = useFavorites();
   return {
     ids: favorites,
     error,

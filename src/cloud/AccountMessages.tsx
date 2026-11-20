@@ -16,7 +16,7 @@ import {
   Ellipsis,
   ArrowLeft,
 } from "@/components/icons";
-import type { Session, SupabaseClient } from "@supabase/supabase-js";
+import type { InboxView } from "../api/inbox";
 import type {
   MessagesProps,
   OfferAgain,
@@ -53,13 +53,9 @@ import type { ThreadMessage } from "../pakoThread";
 import { NO_TERMS } from "../dealOptions";
 import { attachedTermsNote, threadDealNote } from "../dealWords";
 import type { Conversation, Message } from "./client";
-import { fail } from "./client";
-import { sendAccountDeal } from "./deals";
-import { sendCloudMessage } from "./messages";
-import { accountTurnCache } from "./pakoDrafts";
+import { useMarketplaceData } from "../marketplaceData";
 import { PendingMessage } from "../pendingMessage";
 import Report from "./Report";
-import type { AccountInbox } from "./useAccountInbox";
 import { useAccountDeal } from "./useAccountDeal";
 import { useAccountThread } from "./useAccountThread";
 import { nextPickupBuyer, threadDealSnapshot } from "../../shared/deal";
@@ -86,8 +82,9 @@ const fromSide = (message: Message, userId: string) =>
   message.sender_id === userId ? ("me" as const) : ("them" as const);
 
 export default function AccountMessages({
-  account,
+  client,
   inbox,
+  source,
   pako: reading,
   listingId,
   listing,
@@ -103,13 +100,12 @@ export default function AccountMessages({
   onSent,
   onDeleted,
   threadRequest,
-}: MessagesProps & {
-  account: { client: SupabaseClient; session: Session };
-  inbox: AccountInbox;
-  threadRequest?: ThreadRequest;
-}) {
-  const { client, session } = account,
-    userId = session.user.id;
+}: MessagesProps &
+  Extract<InboxView, { mode: "account" }> & {
+    threadRequest?: ThreadRequest;
+  }) {
+  const { userId } = source;
+  const dealApi = useMarketplaceData().deals;
   const rows = inbox.rows;
   const threads = rows?.threads ?? [],
     latest = rows?.latest ?? {},
@@ -226,8 +222,8 @@ export default function AccountMessages({
       ? initialTerms
       : undefined;
   const pakoDrafts = usePakoDrafts();
-  const thread = useAccountThread(client, current?.id);
-  const deal = useAccountDeal(client, inbox, current?.id);
+  const thread = useAccountThread(source, current?.id);
+  const deal = useAccountDeal(inbox, current?.id, role);
   const events: ThreadEvent[] = [
     ...deal.events.map(({ id, kind, terms, messageId, at }) => ({
       id,
@@ -284,7 +280,7 @@ export default function AccountMessages({
               deal.loaded &&
               (!deal.deal || deal.pickupEventsLoaded),
             deal: threadDealSnapshot(deal.deal, role),
-            cache: accountTurnCache(client, userId, current.id),
+            cache: source.draftCache(current.id),
           }
         : null,
     otherName,
@@ -347,13 +343,9 @@ export default function AccountMessages({
         ...deal,
         act: async (action, body, messageId) => {
           const conversation = await conversationFor(product!.id);
-          const result = await sendAccountDeal(
-            client,
-            conversation.id,
-            action,
-            body,
-            0,
-            messageId,
+          const result = await dealApi.submit(
+            { conversationId: conversation.id, role },
+            { action, text: body, expectedVersion: 0, messageId },
           );
           setSelected(conversation.id);
           void inbox.refresh();
@@ -418,16 +410,7 @@ export default function AccountMessages({
     setBusy(true);
     setError("");
     try {
-      const r = remove
-        ? await client
-            .from("conversation_archives")
-            .insert({ conversation_id: id, user_id: userId })
-        : await client
-            .from("conversation_archives")
-            .delete()
-            .eq("conversation_id", id)
-            .eq("user_id", userId);
-      if (r.error?.code !== "23505") fail(r.error);
+      await source.archive(id, remove);
       inbox.change((rows) => ({
         ...rows,
         archived: remove
@@ -453,17 +436,7 @@ export default function AccountMessages({
     setError("");
     const isBlocked = blocked.includes(other);
     try {
-      const r = isBlocked
-        ? await client
-            .from("blocked_users")
-            .delete()
-            .eq("user_id", userId)
-            .eq("blocked_id", other)
-        : await client.from("blocked_users").insert({
-            user_id: userId,
-            blocked_id: other,
-          });
-      if (r.error?.code !== "23505") fail(r.error);
+      await source.block(other, isBlocked);
       inbox.change((rows) => ({
         ...rows,
         blocked: isBlocked
@@ -484,15 +457,7 @@ export default function AccountMessages({
   async function conversationFor(itemId: string): Promise<Conversation> {
     if (current) return current;
     if (started.current?.listing_id === itemId) return started.current;
-    const r = await client.rpc("start_conversation", { item: itemId });
-    fail(r.error);
-    const cs = await client
-      .from("conversations")
-      .select("*")
-      .eq("id", r.data)
-      .single();
-    fail(cs.error);
-    const conversation = cs.data as Conversation;
+    const conversation = await source.start(itemId);
     started.current = conversation;
     inbox.change((rows) => ({
       ...rows,
@@ -506,7 +471,7 @@ export default function AccountMessages({
   /** A message without terms: the conversation's ordinary path. */
   async function sendPlain(conversation: Conversation) {
     const id = pending.current.idFor(conversation.id, role, text);
-    await sendCloudMessage(client, {
+    await source.send({
       id,
       conversation_id: conversation.id,
       sender_id: userId,
@@ -550,11 +515,7 @@ export default function AccountMessages({
       onSent?.(itemId, role, text.trim());
       setDrafts((xs) => ({ ...xs, [key]: "", [conversation.id]: "" }));
       setSelected(conversation.id);
-      await client
-        .from("conversation_archives")
-        .delete()
-        .eq("conversation_id", conversation.id)
-        .eq("user_id", userId);
+      await source.unarchiveAfterSend(conversation.id);
       const sentTo = conversation.id;
       inbox.change((rows) => ({
         ...rows,

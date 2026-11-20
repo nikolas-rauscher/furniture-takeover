@@ -1,21 +1,16 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
-import type { DealAction, PickupAction } from "../../shared/deal";
-import {
-  dealUpdateNeeded,
-  sendAccountDeal,
-  pickupUpdateNeeded,
-  sendAccountPickup,
-  loadThreadDealHistory,
-  type ThreadDealEvent,
-  type ThreadPickupEvent,
-} from "./deals";
-import type { AccountInbox } from "./useAccountInbox";
+import type { DealAction, DealRole, PickupAction } from "../../shared/deal";
+import type { ThreadDealEvent, ThreadPickupEvent } from "../api/deals";
+import { useMarketplaceData } from "../marketplaceData";
+import type { AccountInbox } from "../api/inbox";
 export function useAccountDeal(
-  client: SupabaseClient,
   inbox: AccountInbox,
   conversationId: string | undefined,
+  role: DealRole,
 ) {
+  const api = useMarketplaceData().deals;
+  const { history } = api;
+  if (!history) throw new Error("Deal history is not configured.");
   const available = inbox.rows?.deals != null;
   const deal = conversationId
     ? (inbox.rows?.deals?.[conversationId] ?? null)
@@ -35,9 +30,9 @@ export function useAccountDeal(
     const refresh = async () => {
       const current = ++sequence;
       try {
-        const history = await loadThreadDealHistory(client, id);
+        const events = await history.load(id);
         if (active && current === sequence)
-          setLog({ id, ...history, version: deal?.version, error: "" });
+          setLog({ id, ...events, version: deal?.version, error: "" });
       } catch (e) {
         if (active && current === sequence)
           setLog({
@@ -53,37 +48,25 @@ export function useAccountDeal(
       }
     };
     void refresh();
-    const channel = client
-      .channel("deal-log-" + id)
-      .on(
-        "postgres_changes",
-        {
-          schema: "public",
-          table: "deal_events",
-          event: "INSERT",
-          filter: "conversation_id=eq." + id,
-        },
-        () => void refresh(),
-      )
-      .subscribe();
+    const unsubscribe = history.subscribe(id, () => void refresh());
     const timer = setInterval(refresh, 5000);
     return () => {
       active = false;
       clearInterval(timer);
-      void client.removeChannel(channel);
+      unsubscribe();
     };
-  }, [client, conversationId, available, deal?.version]);
+  }, [history, conversationId, available, deal?.version]);
   const own = log?.id === conversationId ? log : undefined;
   const error =
     inbox.loadError ||
-    (inbox.rows?.deals === null ? dealUpdateNeeded : (own?.error ?? ""));
+    (inbox.rows?.deals === null ? history.unavailable : (own?.error ?? ""));
   // An empty target thread can receive an offer again when a different deal
   // in the same inbox shows the pickup columns.
   const pickupInstalled = Object.values(inbox.rows?.deals ?? {}).some(
     (row) => row.pickup !== undefined,
   );
   const pickupError =
-    error || (deal && !pickupInstalled ? pickupUpdateNeeded : "");
+    error || (deal && !pickupInstalled ? history.pickupUnavailable : "");
   return {
     deal,
     events: own?.events ?? [],
@@ -97,13 +80,14 @@ export function useAccountDeal(
       if (!available || !conversationId || error)
         throw new Error(error || "Open the conversation first.");
       try {
-        const result = await sendAccountDeal(
-          client,
-          conversationId,
-          action,
-          text,
-          deal?.version ?? 0,
-          messageId,
+        const result = await api.submit(
+          { conversationId, role },
+          {
+            action,
+            text,
+            expectedVersion: deal?.version ?? 0,
+            messageId,
+          },
         );
         inbox.change((rows) => ({
           ...rows,
@@ -119,13 +103,14 @@ export function useAccountDeal(
       if (!pickupInstalled || !available || !conversationId || pickupError)
         throw new Error(pickupError || "Open the conversation first.");
       try {
-        const result = await sendAccountPickup(
-          client,
-          conversationId,
-          action,
-          text,
-          deal?.version ?? 0,
-          messageId,
+        const result = await api.pickup(
+          { conversationId, role },
+          {
+            action,
+            text,
+            expectedVersion: deal?.version ?? 0,
+            messageId,
+          },
         );
         inbox.change((rows) => {
           if (

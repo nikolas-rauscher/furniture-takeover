@@ -1,5 +1,5 @@
 import DatabaseStatus from "../components/DatabaseStatus";
-import type { useMarketplaceListings } from "../cloud/useMarketplaceListings";
+import type { useMarketplaceListings } from "../hooks/useMarketplaceListings";
 import { useNoticeableWait } from "../hooks/useNoticeableWait";
 
 /** Says when listings or saved items failed, or take a noticeable while to load or save. */

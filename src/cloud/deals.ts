@@ -7,10 +7,7 @@ import {
   lateMinutesSchema,
   type DealAction,
   type DealTerms,
-  type DealEvent,
-  type DealRole,
   type PickupAction,
-  type PickupEvent,
   type PickupStatusChange,
 } from "../../shared/deal.ts";
 import { dealErrorMessage } from "../../shared/dealErrors.ts";
@@ -20,6 +17,7 @@ import {
   type StoredDealTerms,
 } from "./client.ts";
 import { randomUuid } from "../randomUuid.ts";
+import type { ThreadDealEvent, ThreadPickupEvent } from "../api/deals.ts";
 export const dealUpdateNeeded =
   "Offers are unavailable here. You can still send a message.";
 export const pickupUpdateNeeded =
@@ -167,14 +165,6 @@ export async function sendAccountPickup(
   return { deal };
 }
 
-type ThreadEventDetails = {
-  id: string;
-  messageId: string | null;
-  actorRole: DealRole | null;
-  at: string;
-};
-export type ThreadDealEvent = DealEvent & ThreadEventDetails;
-export type ThreadPickupEvent = PickupEvent & ThreadEventDetails;
 export async function loadThreadDealHistory(
   client: SupabaseClient,
   conversationId: string,

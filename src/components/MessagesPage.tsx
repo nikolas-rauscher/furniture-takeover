@@ -7,22 +7,19 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { nextPickupBuyer, threadDealSnapshot } from "../../shared/deal";
 import { availableAgainMessage } from "../../shared/dealMessages";
 import type { SellerConversation } from "../../shared/messages";
-import { sendMessage, setConversationDeleted } from "../api/messages";
+import type { InboxView } from "../api/inbox";
 import { PendingMessage } from "../pendingMessage";
 import type { Product } from "../../shared/marketplace";
 import { NO_TERMS } from "../dealOptions";
 import { attachedTermsNote, threadDealNote } from "../dealWords";
 import { useDemoDeal } from "../hooks/useDemoDeal";
-import type { DemoInbox } from "../hooks/useDemoInbox";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { useNow } from "../hooks/useNow";
 import { useOnline } from "../hooks/useOnline";
 import { usePageVisible } from "../hooks/usePageVisible";
-import type { ThreadReads } from "../hooks/useThreadReads";
 import { demoInboxThread, isUnread } from "../inboxActivity";
 import { newestAt } from "../inboxDeals";
 import { demoThreadMessage, type ThreadMessage } from "../pakoThread";
-import { demoTurnCache } from "../pakoTurnCache";
 import DemoPickupClock from "./DemoPickupClock";
 import InboxEmpty from "./InboxEmpty";
 import {
@@ -125,6 +122,7 @@ function DemoMessagesPage({
   developerMode = false,
   inbox,
   reads,
+  source,
   pako: reading,
   listingId,
   listing,
@@ -140,7 +138,7 @@ function DemoMessagesPage({
   onSent,
   onDeleted,
   threadBanner,
-}: MessagesProps & { inbox: DemoInbox; reads: ThreadReads }) {
+}: MessagesProps & Extract<InboxView, { mode: "demo" }>) {
   const { conversations, loaded } = inbox;
   const [selected, setSelected] = useState(listingId ?? "");
   const [showConversation, setShowConversation] = useState(Boolean(listingId));
@@ -199,7 +197,7 @@ function DemoMessagesPage({
     setBusy(true);
     setError("");
     try {
-      const updated = await setConversationDeleted(item.id, remove);
+      const updated = await source.archive(item.id, remove);
       if (remove) {
         inbox.remove(item.id);
         onDeleted?.(item.listingId);
@@ -326,7 +324,7 @@ function DemoMessagesPage({
             messages,
             loaded: (loaded || !saved) && deal.loaded,
             deal: threadDealSnapshot(deal.deal, role),
-            cache: demoTurnCache(threadKey),
+            cache: source.draftCache(threadKey),
           }
         : null,
     otherName,
@@ -409,7 +407,7 @@ function DemoMessagesPage({
       role,
       text,
     );
-    const updated = await sendMessage(
+    const updated = await source.send(
       {
         id: thread.listingId,
         title: thread.title,

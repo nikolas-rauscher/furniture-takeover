@@ -1,7 +1,6 @@
 import { pickupDay, type Deal } from "../../shared/deal";
 import type { Product } from "../../shared/marketplace";
 import type { ListingPickup } from "../components/AccountPage";
-import type { AccountConnection } from "../cloud/connection";
 import {
   agreedWords,
   awayPhase,
@@ -11,9 +10,7 @@ import {
 } from "../dealWords";
 import { effectiveStatus, pickupHomeDeals } from "../inboxActivity";
 import {
-  accountInboxDeals,
   buyerDealFor,
-  demoInboxDeals,
   reservedForMe,
   sellerAgreementFor,
   type InboxDeal,
@@ -32,7 +29,6 @@ export type InboxDeals = ReturnType<typeof useInboxDeals>;
  * reminders show them; Pako cheers an agreement and reminds of a pickup.
  */
 export function useInboxDeals({
-  account,
   messages,
   own,
   listingsReady,
@@ -41,7 +37,6 @@ export function useInboxDeals({
   reloadListings,
   openDeal,
 }: {
-  account: AccountConnection | undefined;
   messages: ReturnType<typeof useMessagesInbox>;
   own: Product[];
   listingsReady: boolean;
@@ -51,12 +46,7 @@ export function useInboxDeals({
   reloadListings: () => void;
   openDeal: (item: InboxDeal, message?: string) => void;
 }) {
-  const accountRows = messages.accountInbox.rows;
-  const deals = account
-    ? account.session && accountRows
-      ? accountInboxDeals(accountRows, account.session.user.id)
-      : []
-    : demoInboxDeals(messages.demoInbox.conversations);
+  const deals = messages.items;
   const byThread = new Map(
     deals.map((item) => [item.deal.conversationId, item]),
   );
@@ -66,9 +56,7 @@ export function useInboxDeals({
       throw new Error(`Deal ${deal.conversationId} is not in the inbox.`);
     return item;
   }
-  const loaded =
-    listingsReady &&
-    (account ? accountRows !== null : messages.demoInbox.loaded);
+  const loaded = listingsReady && messages.loaded;
   const listingOf = (item: InboxDeal) =>
     own.find((entry) => entry.id === item.listingId);
   /** The other student confirmed while this one was elsewhere in the app: Pako cheers, with a way to the chat. */
@@ -108,7 +96,7 @@ export function useInboxDeals({
   }
   // An agreement that arrives while the student is elsewhere in the app gets Pako's cheer.
   useDealCheers({
-    inbox: account ? (account.session?.user.id ?? "") : "local",
+    inbox: messages.scope,
     deals,
     loaded,
     elsewhere,
@@ -121,9 +109,9 @@ export function useInboxDeals({
     now: messages.now,
     onRemind: remindPickup,
   });
-  const sendListingPickup = useListingPickup(account?.client, () => {
+  const sendListingPickup = useListingPickup(() => {
     reloadListings();
-    void messages.accountInbox.refresh();
+    void messages.refresh();
   });
   /** Mark sold and Make active on a listing with a booked pickup send its pickup actions. */
   function listingPickup(item: InboxDeal): ListingPickup | undefined {

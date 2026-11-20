@@ -7,6 +7,7 @@ import LazyBoundary from "./components/LazyBoundary";
 import { lazyScreen } from "./lazyScreen";
 import { Onboarding } from "./screens";
 import { whenIdle } from "./whenIdle";
+import { useMarketplaceData } from "./marketplaceData";
 
 const App = lazyScreen(() => import("./App"));
 
@@ -46,6 +47,7 @@ export default function Marketplace({
   account,
   onboardingPaused,
 }: MarketplaceProps) {
+  const { ListingsProvider, InboxProvider } = useMarketplaceData();
   const [introOpen, setIntroOpen] = useState(
     () => !onboardingPaused && opensWithIntro(),
   );
@@ -58,11 +60,15 @@ export default function Marketplace({
     <>
       {(!introOpen || outcome) && (
         <LazyBoundary label="Loading takeover" placeholder={<BootStatus />}>
-          <App
-            account={account}
-            onboardingPaused={onboardingPaused}
-            introOutcome={outcome}
-          />
+          <ListingsProvider>
+            <InboxProvider>
+              <App
+                account={account}
+                onboardingPaused={onboardingPaused}
+                introOutcome={outcome}
+              />
+            </InboxProvider>
+          </ListingsProvider>
         </LazyBoundary>
       )}
       {introOpen && (

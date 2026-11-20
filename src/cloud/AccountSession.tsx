@@ -1,9 +1,14 @@
 import { Button } from "../components/ui/button";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, type PropsWithChildren } from "react";
 import type { Session } from "@supabase/supabase-js";
 import Marketplace from "../Marketplace";
 import Modal from "../components/Modal";
 import Auth from "./Auth";
+import { createAccountFavorites } from "./accountFavorites";
+import { AccountListingsProvider } from "./AccountListingsProvider";
+import { AccountInboxProvider } from "./AccountInboxProvider";
+import { createAccountDeals } from "./accountDealsApi";
+import { MarketplaceDataContext } from "../marketplaceData";
 import {
   getCloudClient,
   completePasswordSetup,
@@ -25,6 +30,25 @@ export default function AccountSession() {
     [ready, setReady] = useState(false),
     [recovery, setRecovery] = useState(false),
     [error, setError] = useState("");
+  const userId = session?.user.id;
+  const [deals] = useState(() => createAccountDeals(client));
+  const data = useMemo(
+    () => ({
+      favorites: createAccountFavorites(client, userId),
+      deals,
+      ListingsProvider: ({ children }: PropsWithChildren) => (
+        <AccountListingsProvider client={client} userId={userId}>
+          {children}
+        </AccountListingsProvider>
+      ),
+      InboxProvider: ({ children }: PropsWithChildren) => (
+        <AccountInboxProvider client={client} userId={userId}>
+          {children}
+        </AccountInboxProvider>
+      ),
+    }),
+    [client, userId, deals],
+  );
   useEffect(() => {
     let alive = true;
     function update(next: Session | null) {
@@ -72,11 +96,13 @@ export default function AccountSession() {
           <Button onClick={() => setError("")}>Dismiss</Button>
         </div>
       )}
-      <Marketplace
-        key={session?.user.id ?? "guest"}
-        account={{ client, session }}
-        onboardingPaused={recovery}
-      />
+      <MarketplaceDataContext value={data}>
+        <Marketplace
+          key={userId ?? "guest"}
+          account={{ client, session }}
+          onboardingPaused={recovery}
+        />
+      </MarketplaceDataContext>
       {recovery && (
         <Modal title="Set your password" onClose={() => setRecovery(false)}>
           <Auth

@@ -1,16 +1,13 @@
-import {
-  sendDemoDeal,
-  sendDemoPickup,
-  type DealListing,
-} from "../api/messages";
+import type { DealListing } from "../api/deals";
+import { useMarketplaceData } from "../marketplaceData";
 import type { DealRole, DealAction, PickupAction } from "../../shared/deal";
-import type { DemoInbox } from "./useDemoInbox";
-import { demoPickupNow } from "./useNow";
+import type { DemoInbox } from "../api/inbox";
 export function useDemoDeal(
   inbox: DemoInbox,
   listing: DealListing | undefined,
   role: DealRole,
 ) {
+  const api = useMarketplaceData().deals;
   const deal =
     inbox.conversations.find(
       (c) => c.listingId === listing?.id && c.buyerKey === listing?.buyerKey,
@@ -25,16 +22,17 @@ export function useDemoDeal(
       if (!listing || !inbox.loaded)
         throw new Error("Wait for the conversation to load.");
       try {
-        const { conversation, statusChange } = await sendDemoDeal(
-          listing,
-          role,
-          action,
-          text,
-          deal?.version ?? 0,
-          messageId,
+        const result = await api.submit(
+          { listing, role },
+          {
+            action,
+            text,
+            expectedVersion: deal?.version ?? 0,
+            messageId,
+          },
         );
-        inbox.put(conversation);
-        return { deal: conversation.deal!, statusChange };
+        if (result.conversation) inbox.put(result.conversation);
+        return result;
       } finally {
         void inbox.refresh();
       }
@@ -43,17 +41,17 @@ export function useDemoDeal(
       if (!listing || !inbox.loaded || inbox.error)
         throw new Error(inbox.error || "Wait for the conversation to load.");
       try {
-        const { conversation, statusChange } = await sendDemoPickup(
-          listing,
-          role,
-          action,
-          text,
-          deal?.version ?? 0,
-          messageId,
-          demoPickupNow(),
+        const result = await api.pickup(
+          { listing, role },
+          {
+            action,
+            text,
+            expectedVersion: deal?.version ?? 0,
+            messageId,
+          },
         );
-        inbox.put(conversation);
-        return { deal: conversation.deal!, statusChange };
+        if (result.conversation) inbox.put(result.conversation);
+        return result;
       } finally {
         void inbox.refresh();
       }

@@ -11,8 +11,8 @@ import {
   type LateMinutes,
   type PickupAction,
   type PickupEvent,
-  type PickupStatusChange,
 } from "../../shared/deal";
+import type { DealResult, DealStatusChange } from "../api/deals";
 import type { Product } from "../../shared/marketplace";
 import type { ThreadTurn } from "../../shared/threadTurn";
 import {
@@ -51,13 +51,7 @@ export type ThreadEvent = {
   minutes?: LateMinutes;
 };
 
-/** A listing status a deal change brought: reserved on agreement, back on sale, or sold. */
-export type DealStatusChange = "active" | "reserved" | PickupStatusChange;
-
-export type DealResult = {
-  deal: Deal;
-  statusChange?: DealStatusChange;
-};
+export type { DealStatusChange } from "../api/deals";
 
 /** One thread's deal from either inbox: the shared record and the ways to change it. */
 export type DealController = {

@@ -9,8 +9,25 @@ import { lazyScreen } from "./lazyScreen";
 import { configureCloud } from "./cloud/session";
 import type { CloudConfig } from "./cloud/client";
 import { isLocalDemo, requestServerConfig } from "./serverConfig";
+import { createDemoFavorites } from "./api/demoFavorites";
+import { DemoListingsProvider } from "./api/DemoListingsProvider";
+import { DemoInboxProvider } from "./api/DemoInboxProvider";
+import { demoDeals } from "./api/demoDeals";
+import { MarketplaceDataContext } from "./marketplaceData";
 
 const AccountSession = lazyScreen(() => import("./cloud/AccountSession"));
+const demoData = {
+  deals: demoDeals,
+  ListingsProvider: DemoListingsProvider,
+  InboxProvider: DemoInboxProvider,
+  favorites: createDemoFavorites(
+    () => localStorage,
+    () =>
+      queueMicrotask(() =>
+        window.dispatchEvent(new CustomEvent("storage-failure")),
+      ),
+  ),
+};
 
 function isCloudConfig(value: Record<string, unknown>): value is CloudConfig {
   return Boolean(value.supabaseUrl && value.supabaseKey);
@@ -59,7 +76,12 @@ function Bootstrap() {
       </main>
     );
   if (config === undefined) return <BootStatus />;
-  if (config === null) return <Marketplace onboardingPaused={false} />;
+  if (config === null)
+    return (
+      <MarketplaceDataContext value={demoData}>
+        <Marketplace onboardingPaused={false} />
+      </MarketplaceDataContext>
+    );
   return (
     <LazyBoundary label="Loading takeover" placeholder={<BootStatus />}>
       <AccountSession />

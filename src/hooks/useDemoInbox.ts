@@ -1,25 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SellerConversation } from "../../shared/messages";
-import { listMessages } from "../api/messages";
+import type { DemoInbox, DemoInboxApi } from "../api/inbox";
 
 /** Messages look for news often while open, and now and then elsewhere in the app. */
 const OPEN_POLL_MS = 4_000;
 const BACKGROUND_POLL_MS = 10_000;
 
-export type DemoInbox = ReturnType<typeof useDemoInbox>;
-
 /**
  * The local workspace's conversations for the whole app, so the Messages page
  * and its badge agree. A tab in the background does not ask for news.
  */
-export function useDemoInbox({
-  enabled,
-  open,
-}: {
-  enabled: boolean;
-  /** The Messages page is on screen. */
-  open: boolean;
-}) {
+export function useDemoInbox(api: DemoInboxApi, open: boolean): DemoInbox {
   const [conversations, setConversations] = useState<SellerConversation[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
@@ -28,7 +19,7 @@ export function useDemoInbox({
   const refresh = useCallback(async () => {
     const startedAt = revision.current;
     try {
-      const items = await listMessages();
+      const items = await api.load();
       if (startedAt !== revision.current) return;
       setConversations(items);
       setLoaded(true);
@@ -41,9 +32,8 @@ export function useDemoInbox({
           : "Messages are unavailable. Try again.",
       );
     }
-  }, []);
+  }, [api]);
   useEffect(() => {
-    if (!enabled) return;
     void refresh();
     const timer = setInterval(
       () => {
@@ -52,7 +42,7 @@ export function useDemoInbox({
       open ? OPEN_POLL_MS : BACKGROUND_POLL_MS,
     );
     return () => clearInterval(timer);
-  }, [enabled, open, refresh]);
+  }, [open, refresh]);
   return {
     conversations,
     refresh,
@@ -63,7 +53,7 @@ export function useDemoInbox({
       setConversations([]);
       setError("");
       setLoaded(false);
-      if (enabled) await refresh();
+      await refresh();
     },
     /** Shows a conversation the server returned after a change, on top. */
     put(conversation: SellerConversation) {

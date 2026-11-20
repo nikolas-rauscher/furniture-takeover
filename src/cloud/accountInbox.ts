@@ -1,25 +1,8 @@
 import { readDeal } from "./deals.ts";
-import type { Deal } from "../../shared/deal.ts";
+import type { InboxRows } from "../api/inbox.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Conversation, Message } from "./client.ts";
 import { fail, missingFromSchema } from "./client.ts";
-
-export type InboxRows = {
-  deals: Record<string, Deal> | null;
-  /** The newest message-less event per conversation, for visible read markers. */
-  systemLatest: Record<
-    string,
-    { sender_id: string | null; created_at: string }
-  >;
-  threads: Conversation[];
-  /** The newest message of each conversation. */
-  latest: Record<string, Message>;
-  archived: string[];
-  blocked: string[];
-  names: Record<string, string>;
-  /** How far the student has read each conversation; null while the server lacks the update that keeps read markers. */
-  reads: Record<string, string> | null;
-};
 
 export async function refreshPickupChecks(
   client: SupabaseClient,
