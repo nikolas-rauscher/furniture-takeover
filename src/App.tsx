@@ -17,17 +17,14 @@ import { useMarketplaceListings } from "./cloud/useMarketplaceListings";
 import { savedListing, useFavorites } from "./cloud/useFavorites";
 import { useAppViewport } from "./hooks/useAppViewport";
 import { useWindowScrolled } from "./hooks/useWindowScrolled";
-import AccountPage, { type ListingPickup } from "./components/AccountPage";
+import AccountPage from "./components/AccountPage";
 import ListingDetailPage from "./components/ListingDetailPage";
 import SavedSearchesPage from "./components/SavedSearchesPage";
 import { listingPhotos } from "../shared/listingPhotos";
-import { readListingPhoto } from "./listingPhotos";
-import { randomUuid } from "./randomUuid";
 import WorkspacePage from "./components/WorkspacePage";
 import WorkspaceHeader from "./components/WorkspaceHeader";
 import type {
   MessagesInboxProps,
-  ThreadRequest,
 } from "./components/messagesProps";
 import PakoReadingSetting from "./components/PakoReadingSetting";
 import {
@@ -35,7 +32,6 @@ import {
   priceNamedInSearch,
 } from "./components/namedOfferPrice";
 import { useMessagesInbox } from "./hooks/useMessagesInbox";
-import { useDealCheers } from "./hooks/useDealCheers";
 import { useNegotiations } from "./hooks/useNegotiations";
 import NegotiationSummary, {
   MessageDraftPreview,
@@ -47,27 +43,6 @@ import {
   type Negotiation,
 } from "../shared/negotiation";
 import { nearbyMeetingPoint } from "./dealOptions";
-import {
-  agreedWords,
-  awayPhase,
-  dealView,
-  pickupCountdown,
-  reservedForChip,
-} from "./dealWords";
-import { effectiveStatus, pickupHomeDeals } from "./inboxActivity";
-import { listingPickupChoices } from "./pickupOptions";
-import { useListingPickup } from "./hooks/useListingPickup";
-import { usePickupReminders } from "./hooks/usePickupReminders";
-import type { DealStatusChange } from "./components/ThreadDeal";
-import {
-  accountInboxDeals,
-  buyerDealFor,
-  demoInboxDeals,
-  reservedForMe,
-  sellerAgreementFor,
-  type InboxDeal,
-} from "./inboxDeals";
-import { pickupDay, type Deal } from "../shared/deal";
 import HomeDeals from "./components/HomeDeals";
 import { draftMessage, nudgeMessage } from "../shared/dealMessages";
 import { resetMessageWorkspace } from "./api/messages";
@@ -109,12 +84,16 @@ import { useToast } from "./hooks/useToast";
 import { useAppNavigation } from "./hooks/useAppNavigation";
 import { usePageScroll } from "./hooks/usePageScroll";
 import { useSellSession } from "./hooks/useSellSession";
+import { useSearchSession } from "./hooks/useSearchSession";
+import { useThreadRequests } from "./hooks/useThreadRequests";
+import { useInboxDeals } from "./hooks/useInboxDeals";
+import { useSavedSearches } from "./hooks/useSavedSearches";
+import { useMyListings } from "./hooks/useMyListings";
 import DatabaseStatus from "./components/DatabaseStatus";
 import Modal from "./components/Modal";
 import ProductCard from "./components/ProductCard";
 import ProductGrid from "./components/ProductGrid";
 import SearchPreferencesFields from "./components/SearchPreferencesFields";
-import { STATUS_NOTICES, statusFailure } from "./listingStatusWords";
 import {
   activePreferences as activePreferencesOf,
   compactPreferences as compactPreferencesOf,
@@ -123,11 +102,6 @@ import {
 import { saveActionLabel } from "./listingSaveWords";
 import AskPakoMenu, { LISTING_REQUESTS } from "./components/AskPakoMenu";
 import { useDeveloperMode } from "./availability/useDeveloperMode";
-import {
-  photoSearchFailure,
-  photoSearchClarification,
-  type PhotoSearchNotice,
-} from "./photoSearchFeedback";
 import PhotoSearchButton, { imageFrom } from "./components/PhotoSearchButton";
 import AgentSuggestions from "./components/AgentSuggestions";
 import AgentRunPanel from "./components/AgentRunPanel";
@@ -135,37 +109,18 @@ import { useAgentRun, type AgentRunState } from "./hooks/useAgentRun";
 import { useAgentAssist } from "./hooks/useAgentAssist";
 import type { PakoAbsence } from "./sellGuide";
 import { useSaved } from "./hooks/useSaved";
-import { isListingStatuses } from "./hooks/savedState";
 import { useSessionIds } from "./hooks/useSessionIds";
-import { useWatches } from "./alerts/useWatches";
-import type { WatchTarget } from "./alerts/watch";
 import { demandLadder, similarListings } from "./alerts/matching";
 import SellerInsight from "./alerts/SellerInsight";
 import {
-  agentSearchRequest,
-  isSavedSearches,
   isSearchArea,
-  newSearch,
-  preferenceSearch,
   refilterCatalog,
   restoreSearch,
-  sameCriteria,
-  type SavedSearch,
-  type SearchSnapshot,
 } from "./searchRequest";
-import { requestAgentAssist } from "./api/agent";
 import { listingPickupMinimum } from "./listingValidation";
 import { pendingPrice } from "./listingQuestions";
-import {
-  applyPreferenceAction,
-  undoPreferenceAction,
-  type PreferenceChanges,
-} from "./agentActions";
-import type { AgentPreferencesPatchEvent } from "../shared/actions";
-import { searchChangeSummary } from "./searchChanges";
 import { useAgentHealth } from "./hooks/useAgentHealth";
 import { useNoticeableWait } from "./hooks/useNoticeableWait";
-import { useFocused } from "./hooks/useFocused";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import {
   homeDealNews,
@@ -176,9 +131,7 @@ import { useAvailability } from "./availability/useAvailability";
 import {
   TODAY,
   defaults,
-  criteriaTitle,
   isMine,
-  type Criteria,
   type Product,
   type SavedListing,
 } from "../shared/marketplace";
@@ -264,28 +217,6 @@ export default function App({
   }, [account?.client, account?.session?.user.id]);
   const agentRun = useAgentRun();
   const negotiations = useNegotiations();
-  const activeDraftInChat = Boolean(
-    agentRun.state.id &&
-    negotiations.active &&
-    [...agentRun.state.history, agentRun.state].some(
-      (turn) =>
-        turn.proposal?.id === negotiations.active?.id &&
-        turn.proposal?.version === negotiations.active?.version &&
-        turn.proposal?.status === "draft" &&
-        turn.proposal.draft,
-    ),
-  );
-  const [localPreferences, setLocalPreferences] = useState("");
-  const searchRunToken = useRef(0);
-  const committedSearchRef = useRef<SearchSnapshot | null>(null);
-  const [searchChanges, setSearchChanges] = useState<
-    Record<string, PreferenceChanges>
-  >({});
-  const searchChangesRef = useRef<Record<string, PreferenceChanges>>({});
-  const [searchNotices, setSearchNotices] = useState<Record<string, string>>(
-    {},
-  );
-  const [searchUndone, setSearchUndone] = useState<string[]>([]);
   const {
     health: agentHealth,
     error: healthError,
@@ -296,10 +227,7 @@ export default function App({
     signedIn,
     onLeave: leavePage,
     onNavigate: () => setModal(null),
-    onHistoryRoute: (route) =>
-      setMessageListingId(
-        route.view === "messages" ? route.listingId : undefined,
-      ),
+    onHistoryRoute: (route) => threads.followRoute(route),
   });
   const {
     view,
@@ -311,6 +239,12 @@ export default function App({
     pushRoute,
     replaceRoute,
   } = nav;
+  const threads = useThreadRequests({
+    signedIn,
+    initialRoute: nav.initialRoute,
+    navigate,
+    replaceRoute,
+  });
   const messages = useMessagesInbox({
     account,
     open: view === "messages",
@@ -322,17 +256,7 @@ export default function App({
   useEffect(() => {
     if (view !== "settings") setReadingSettingsRequested(false);
   }, [view]);
-  const [searching, setSearching] = useState(false);
-  const [query, setQuery] = useState("");
-  const searchField = useRef<HTMLTextAreaElement>(null);
-  const searchFocused = useFocused(searchField);
-  /** "New search" leads to home ready to type: the search box takes focus once it is there. */
-  const focusSearchOnHome = useRef(false);
   const helpButton = useRef<HTMLButtonElement>(null);
-  const [followUp, setFollowUp] = useState("");
-
-  /** A search asked for in the step that also moved the search area; it runs once the area is in state. */
-  const [pendingSearch, setPendingSearch] = useState<string | null>(null);
   const [onboardingRecord] = useState(readOnboarding);
   const [onboarding, setOnboarding] = useState<OnboardingMode>(() =>
     introOutcome ? "closed" : firstVisitModeHere(onboardingRecord),
@@ -343,25 +267,10 @@ export default function App({
     isSearchArea,
   );
   const location = searchArea.location;
-  const [committedSearch, setCommittedSearch] = useState<SearchSnapshot | null>(
-    null,
-  );
-  const [criteria, setCriteria] = useState<Criteria>({
-    ...defaults,
-    radius: searchArea.radius,
-  });
-  const [filterDraft, setFilterDraft] = useState<Criteria>({ ...defaults });
   const [areaDraft, setAreaDraft] = useState({
     location,
     radius: searchArea.radius,
   });
-  const [messageListingId, setMessageListingId] = useState<string | undefined>(
-    nav.initialRoute.view === "messages" ? nav.initialRoute.listingId : undefined,
-  );
-  /** Changes on each "Draft an offer" tap, so its thread opens the offer card again. */
-  const [offerRequest, setOfferRequest] = useState<number>();
-  /** A conversation to open by itself, such as a seller's deal from Home. */
-  const [threadRequest, setThreadRequest] = useState<ThreadRequest>();
   const [modal, setModal] = useState<Dialog>(null);
   const {
     favorites,
@@ -369,24 +278,22 @@ export default function App({
     prices: savedPrices,
     error: favoriteError,
   } = useFavorites(account);
-  const [jobs, setJobs] = useSaved<SavedSearch[]>(
-    "takeover-jobs",
-    [],
-    isSavedSearches,
-  );
   const database = useMarketplaceListings(account);
-  const own = database.listings;
-  const setOwn = database.setListings;
-  const reloadListings = database.retry;
-  const accountDealStatuses = !account?.session ? null : messages.deals
-    .map(({ listingId, status }) => `${listingId}:${status}`).sort().join(",");
-  useEffect(() => {
-    if (accountDealStatuses !== null && !database.pending) void reloadListings();
-  }, [accountDealStatuses, database.pending, reloadListings]);
-  /** What demo deals reserved or made available again, as it was before; clearing the workspace puts it back. */
-  const [dealStatusBefore, setDealStatusBefore] = useSaved<
-    Record<string, Product["status"]>
-  >("takeover-deal-original-status", {}, isListingStatuses);
+  const [compared, setCompared] = useSessionIds("takeover-compare");
+  const catalog = useMyListings({
+    cloud: Boolean(account),
+    accountSignedIn: Boolean(account?.session),
+    database,
+    deals: messages.deals,
+    toast,
+    onArchived: (id) =>
+      setCompared((current) => current.filter((item) => item !== id)),
+  });
+  const { own, setOwn, setStatus } = catalog;
+  const localListings = catalog.listings;
+  const activeListings = catalog.active;
+  const visibleListings = catalog.visible;
+  const archivedListings = catalog.archived;
   /** Listings show once they have loaded, or once loading failed and the status says why. */
   const listingsSettled = database.ready || database.error !== "";
   const slowListings = useNoticeableWait(
@@ -407,7 +314,6 @@ export default function App({
     setToast: toast.say,
     onFindSimilar: (title) => void runSearch(title),
   });
-  const [compared, setCompared] = useSessionIds("takeover-compare");
   useIntentPrefetch(
     {
       sell: () =>
@@ -431,55 +337,6 @@ export default function App({
       ...(compared.length >= 2 ? (["compare"] as const) : []),
       ...(onboarding === "invite" ? (["intro"] as const) : []),
     ],
-  );
-  const [messageProposal, setMessageProposal] = useState<
-    Negotiation | undefined
-  >();
-  /** A message the app prepared for a buyer's thread without an offer, such as a follow-up. */
-  const [messageDraft, setMessageDraft] = useState<string>();
-  const [jobTitle, setJobTitle] = useState("");
-  const [editingJob, setEditingJob] = useState<string | null>(null);
-  /** Puts a deleted saved search back where it was. */
-  function restoreSavedSearch(job: SavedSearch, index: number) {
-    setJobs((current) => {
-      if (current.some((item) => item.id === job.id)) return current;
-      const at = Math.max(0, Math.min(index, current.length));
-      return [...current.slice(0, at), job, ...current.slice(at)];
-    });
-    toast.say("Saved search restored.");
-  }
-
-  // Preserve old browser records, but never show seeded inventory as real offers.
-  const expiredReleases = new Set(messages.deals
-    .filter((deal) => deal.outcome?.kind === "pickup_expired")
-    .filter((deal) => !messages.deals.some((other) =>
-      other.listingId === deal.listingId && other.status === "agreed"))
-    .map(({ listingId }) => listingId));
-  const releasePending = !account && own.some((item) =>
-    item.status === "reserved" && expiredReleases.has(item.id));
-  const releaseKey = releasePending ? [...expiredReleases].sort().join(",") : "";
-  useEffect(() => {
-    if (!releaseKey) return;
-    const ids = new Set(releaseKey.split(","));
-    void setOwn((items) => items.map((item) =>
-      item.status === "reserved" && ids.has(item.id) ? { ...item, status: "active" } : item));
-  }, [releaseKey, setOwn]);
-  const localListings = own.map((item): Product =>
-    releasePending && item.status === "reserved" && expiredReleases.has(item.id)
-      ? { ...item, status: "active" } : item
-  ).filter((item) =>
-    account
-      ? true
-      : item.own && (item.demo || !item.image.startsWith("/images/")),
-  );
-  const activeListings = localListings.filter(
-    (item) => item.status === "active",
-  );
-  const visibleListings = localListings.filter(
-    (item) => item.status !== "withdrawn",
-  );
-  const archivedListings = localListings.filter(
-    (item) => item.status === "withdrawn",
   );
   const quotaExhausted = agentHealth?.quota?.remaining === 0;
   const quotaResets = agentHealth?.quota
@@ -514,107 +371,87 @@ export default function App({
     },
   });
   const { draft, listing } = sell;
-  const savedSearches = jobs.filter((job) => job.id !== "seed-search");
-  const watches = useWatches({
-    jobs,
-    setJobs,
-    watched: savedSearches,
+  const search = useSearchSession({
+    agentRun,
+    negotiations,
+    location,
+    radius: searchArea.radius,
+    signedIn,
+    quotaExhausted,
+    activeListings,
+    toast,
+    openSignIn: () => navigate("settings"),
+    showResults: nav.showSearch,
+    closeDialog: () => setModal(null),
+    pauseSelling: sell.pause,
+    onDraftDiscarded: threads.forget,
+  });
+  const {
+    searching,
+    query,
+    setQuery,
+    followUp,
+    setFollowUp,
+    field: searchField,
+    fieldFocused: searchFocused,
+    criteria,
+    setCriteria,
+    filterDraft,
+    setFilterDraft,
+    committedSearch,
+    localPreferences,
+    changes: searchChanges,
+    notices: searchNotices,
+    undone: searchUndone,
+    running,
+    awaitingAnswer,
+    activeDraftInChat,
+    runSearch,
+    performSearch,
+    searchByPhoto,
+    continueOffer,
+    answerQuestion: answerSearchQuestion,
+    applyPatch: applySearchPatch,
+    undoPatch: undoSearchPatch,
+    applyFilterForm,
+  } = search;
+  const {
+    busy: photoSearchBusy,
+    dragging: photoDragging,
+    setDragging: setPhotoDragging,
+    hint: photoHint,
+    setHint: setPhotoHint,
+    notice: photoSearchNotice,
+    active: activePhotoSearch,
+  } = search.photo;
+  const savedSearchList = useSavedSearches({
+    search,
+    location,
     listings: visibleListings,
     ready: database.ready,
-    location,
+    toast,
+    onSearchesPage: view === "searches",
+    openSearches: () => openDestination("searches"),
+    closeDialog: () => setModal(null),
   });
+  const { watches, saved: savedSearches } = savedSearchList;
   const savedListings = visibleListings
     .filter((item) => favorites.includes(item.id))
     .map((item) => savedListing(item, savedPrices));
   const selected = localListings.find((item) => item.id === selectedId);
-  /** The student's deals in the inbox of the mode the app runs in, each from their side. */
-  const accountRows = messages.accountInbox.rows;
-  const inboxDeals = account
-    ? account.session && accountRows
-      ? accountInboxDeals(accountRows, account.session.user.id)
-      : []
-    : demoInboxDeals(messages.demoInbox.conversations);
-  const inboxDealByThread = new Map(
-    inboxDeals.map((item) => [item.deal.conversationId, item]),
-  );
-  function inboxDealOf(deal: Deal): InboxDeal {
-    const item = inboxDealByThread.get(deal.conversationId);
-    if (!item) throw new Error(`Deal ${deal.conversationId} is not in the inbox.`);
-    return item;
-  }
-  // An agreement that arrives while the student is elsewhere in the app gets Pako's cheer.
-  useDealCheers({
-    inbox: account ? (account.session?.user.id ?? "") : "local",
-    deals: inboxDeals,
-    loaded:
-      database.ready &&
-      (account ? accountRows !== null : messages.demoInbox.loaded),
+  const deals = useInboxDeals({
+    account,
+    messages,
+    own,
+    listingsReady: database.ready,
     elsewhere: view !== "messages",
-    onCheer: cheerAgreement,
+    toast,
+    reloadListings: database.retry,
+    openDeal: threads.openDeal,
   });
-  usePickupReminders({
-    deals: inboxDeals,
-    loaded:
-      database.ready &&
-      (account ? accountRows !== null : messages.demoInbox.loaded),
-    elsewhere: view !== "messages",
-    now: messages.now,
-    onRemind: remindPickup,
-  });
-  const sendListingPickup = useListingPickup(account?.client, () => {
-    database.retry();
-    void messages.accountInbox.refresh();
-  });
-  /** Mark sold and Make active on a listing with a booked pickup send its pickup actions. */
-  function listingPickup(item: InboxDeal): ListingPickup | undefined {
-    const listing = own.find((entry) => entry.id === item.listingId);
-    const day = pickupDay(item.deal, "seller", messages.now);
-    if (!listing || !day) return undefined;
-    const other = item.otherName;
-    return {
-      other,
-      ...listingPickupChoices({ day, deal: item.deal, other, title: listing.title }),
-      onSend: (send) => sendListingPickup(item, send),
-    };
-  }
-  /** A listing as students see it: an agreed deal reserves it while its own status catches up. */
-  const shownListing = (item: Product): Product => ({
-    ...item,
-    status: effectiveStatus(item, messages.deals),
-  });
-  const myReservations = reservedForMe(inboxDeals);
-  const selectedDeal = selected && buyerDealFor(inboxDeals, selected.id);
-  const selectedDealView =
-    selected && selectedDeal
-      ? dealView({
-          deal: selectedDeal.deal,
-          role: "buyer",
-          other: selectedDeal.otherName,
-          listing: shownListing(selected),
-          now: new Date(),
-        })
-      : null;
-  /** Home's live deals: a pickup within 2 h first, then what waits for the student. */
-  const homeDealItems = pickupHomeDeals(
-    inboxDeals.map((item) => item.deal),
-    (deal) => inboxDealOf(deal).role,
-    messages.now,
-  ).flatMap((deal) => {
-    const item = inboxDealOf(deal);
-    const listing = own.find((entry) => entry.id === item.listingId);
-    if (!listing) return [];
-    const away = {
-      deal,
-      role: item.role,
-      listing: shownListing(listing),
-      latest: item.latest,
-      now: messages.now,
-    };
-    const view = dealView({ ...away, other: item.otherName });
-    return view
-      ? [{ item, listing, view, waited: awayPhase(away) === "no_answer" }]
-      : [];
-  });
+  const { shownListing, homeDeals: homeDealItems } = deals;
+  const myReservations = deals.reservedForMe;
+  const selectedDeal = deals.buyerDeal(selected);
   const [firstHomeDeal] = homeDealItems;
   /** In the order they were picked, so Pako's best match leads when he compares the top two. */
   const comparison = compared.flatMap((id) =>
@@ -637,10 +474,8 @@ export default function App({
     selectedId,
   });
   const pageScroll = usePageScroll(pageKey, () => {
-    if (pageKey === "home" && focusSearchOnHome.current) {
-      focusSearchOnHome.current = false;
-      searchField.current?.focus({ preventScroll: true });
-    } else if (document.activeElement === document.body)
+    if (pageKey === "home" && search.takeHomeFocus()) return;
+    if (document.activeElement === document.body)
       mainContent.current?.focus({ preventScroll: true });
   });
   const reviewingListing =
@@ -655,28 +490,6 @@ export default function App({
     committedSearch && !reviewingListing
       ? activePreferencesOf(committedSearch)
       : "";
-  const running = agentRun.state.status === "running";
-  /** Pako asked something and waits; the composer can answer it too. */
-  const awaitingAnswer =
-    !running &&
-    agentRun.state.questions.some((item) => !agentRun.state.answers[item.id]);
-  // The inspiration photo stays attached to the search it started.
-  const [photoSearch, setPhotoSearch] = useState<{
-    image: string;
-    request: string;
-  } | null>(null);
-  const [photoSearchBusy, setPhotoSearchBusy] = useState(false);
-  /** A photo is dragged over the home search. */
-  const [photoDragging, setPhotoDragging] = useState(false);
-  /** The photo search button has keyboard focus, so Pako explains it. */
-  const [photoHint, setPhotoHint] = useState(false);
-  const [photoSearchNotice, setPhotoSearchNotice] =
-    useState<PhotoSearchNotice | null>(null);
-  const photoSearchRequest = useRef<AbortController | null>(null);
-  const activePhotoSearch =
-    photoSearch && committedSearch?.originalRequest === photoSearch.request
-      ? photoSearch
-      : null;
   const hasSearchDraft = query.trim().length > 0;
   const searchHeading = "Search with Pako";
   /** The page on screen as the browser tab names it; home keeps the app's own title. */
@@ -706,11 +519,6 @@ export default function App({
     }
   }
   useDocumentTitle(pageName());
-  const normalizedFilterDraft = {
-    ...filterDraft,
-    category: "All",
-    query: filterDraft.query.trim(),
-  };
   const searchAssist = useAgentAssist(
     configured && isHome && !running
       ? {
@@ -755,101 +563,21 @@ export default function App({
     const sideTrip = [from, to].every(
       (page) => page === "discover" || page === "detail",
     );
-    if (!sideTrip) {
-      searchRunToken.current += 1;
-      agentRun.cancel();
-    }
+    search.leave(sideTrip);
     sell.stop();
-    photoSearchRequest.current?.abort();
-    photoSearchRequest.current = null;
-    setPhotoSearchBusy(false);
     // A note belongs to the page it was raised on.
     toast.show(null);
   }
-  function openMessages(listingId?: string, proposal?: Negotiation) {
-    if (!signedIn) {
-      navigate("settings");
-      return;
-    }
-    if (listingId) {
-      setMessageProposal(proposal);
-      setMessageDraft(undefined);
-      setMessageListingId(listingId);
-    }
-    navigate("messages");
-    if (listingId) replaceRoute(`#messages/${encodeURIComponent(listingId)}`);
-  }
-  /** "Draft an offer": the listing's thread opens with the offer card, nothing sent yet. */
-  function openOfferCard(item: Product) {
-    openMessages(item.id);
-    setOfferRequest(Date.now());
-  }
-  /**
-   * Opens the conversation a deal is in, a buyer's by its listing and a
-   * seller's by itself, with a message prepared in its composer if given.
-   */
-  function openDealThread(item: InboxDeal, draft?: string) {
-    if (item.role === "buyer") {
-      openMessages(item.listingId);
-      setMessageDraft(draft);
-      return;
-    }
-    setThreadRequest({ id: item.threadId, draft });
-    navigate("messages");
-  }
-  /** The other student confirmed while this one was elsewhere in the app: Pako cheers, with a way to the chat. */
-  function cheerAgreement(item: InboxDeal) {
-    const listing = own.find((entry) => entry.id === item.listingId);
-    // A deal whose listing is gone has no reservation left to cheer about.
-    if (!listing) return;
-    const { cheer, meaning } = agreedWords(
-      item.role,
-      item.otherName,
-      listing.title,
-    );
-    toast.show({
-      message: `${cheer} ${meaning}`,
-      mood: "cheer",
-      action: {
-        label: "Open conversation",
-        description: `Open the conversation about ${listing.title}`,
-        onClick: () => openDealThread(item),
-      },
-    });
-  }
-  /** 2 h before a booked pickup: Pako reminds the student once, with a way to the chat. */
-  function remindPickup(item: InboxDeal) {
-    const listing = own.find((entry) => entry.id === item.listingId);
-    const day = pickupDay(item.deal, item.role, messages.now);
-    if (!listing || !day) return;
-    toast.show({
-      message: `${pickupCountdown(day)}: the ${listing.title} with ${item.otherName}.`,
-      mood: "wave",
-      action: {
-        label: "Open conversation",
-        description: `Open the conversation about ${listing.title}`,
-        onClick: () => openDealThread(item),
-      },
-    });
-  }
+  const openMessages = threads.open;
+  const openOfferCard = threads.openOffer;
+  const openDealThread = threads.openDeal;
+  const forgetMessageDraft = threads.forget;
   function goHome() {
     pageScroll.forget("home");
     navigate("discover");
-    agentRun.reset();
-    setPhotoSearch(null);
-    setPhotoSearchNotice(null);
-    setSearching(false);
-    setQuery("");
-    setFollowUp("");
-
-    setCriteria({ ...defaults, radius: searchArea.radius });
-    setCommittedSearch(null);
-    committedSearchRef.current = null;
-    searchChangesRef.current = {};
-    setSearchChanges({});
-    setSearchNotices({});
-    setSearchUndone([]);
+    search.reset();
   }
+
   function startSell() {
     sell.startAt(pickupRegion || location);
   }
@@ -864,7 +592,7 @@ export default function App({
       // The intro also opens from the header on other pages; the query belongs on home.
       goHome();
       setQuery(outcome.query);
-      setPendingSearch(outcome.query);
+      search.searchSoon(outcome.query);
     }
   }
   const applyIntroOutcome = useEffectEvent(completeOnboarding);
@@ -879,7 +607,7 @@ export default function App({
   }
   /** Clears the chat and leaves the search box ready for the next request. */
   function startNewSearch() {
-    focusSearchOnHome.current = true;
+    search.focusOnNextHome();
     transitionPage("nav-back", goHome, "fade");
   }
   function declineOnboarding() {
@@ -909,11 +637,6 @@ export default function App({
   function startSearchFromHome(text: string) {
     transitionPage("nav-forward", () => void runSearch(text), "fade");
   }
-  useEffect(() => {
-    if (pendingSearch === null) return;
-    setPendingSearch(null);
-    void runSearch(pendingSearch);
-  }, [pendingSearch]);
   function openBrowse() {
     navigate("discover");
   }
@@ -957,254 +680,6 @@ export default function App({
       }
       return [...current, id];
     });
-  }
-  function storeSearch(search: SearchSnapshot) {
-    committedSearchRef.current = search;
-    setCommittedSearch(search);
-    setCriteria(search.criteria);
-  }
-  function applySearchPatch(action: AgentPreferencesPatchEvent) {
-    const current = committedSearchRef.current;
-    if (!current) return;
-    const result = applyPreferenceAction(current, action);
-    storeSearch(result.next);
-    if (Object.keys(result.changes).length) {
-      searchChangesRef.current = {
-        ...searchChangesRef.current,
-        [action.id]: result.changes,
-      };
-      setSearchChanges(searchChangesRef.current);
-    }
-  }
-  function undoSearchPatch(id: string) {
-    const current = committedSearchRef.current;
-    const changes = searchChangesRef.current[id];
-    if (!current || !changes) return;
-    storeSearch(undoPreferenceAction(current, changes));
-    setSearchUndone((value) => [...value, id]);
-    setSearchNotices((value) => ({
-      ...value,
-      [id]: "Search again to refresh the results.",
-    }));
-  }
-  function applyFilterForm() {
-    const current = committedSearchRef.current;
-    const next = preferenceSearch(
-      normalizedFilterDraft, current?.location ?? location, current ?? undefined,
-    );
-    if (!current || next.criteria.query !== current.criteria.query) {
-      void performSearch(next);
-      return;
-    }
-    const { criteria: before } = current;
-    const { criteria: after } = next;
-    const change = searchChangeSummary({
-      ...(before.maxPrice === after.maxPrice ? {} : { maxPrice: after.maxPrice }),
-      ...(before.radius === after.radius ? {} : { radius: after.radius }),
-      ...(before.pickup === after.pickup ? {} : { pickupBy: after.pickup }),
-      ...(before.condition === after.condition ? {} : { condition: after.condition }),
-      ...(before.source === after.source ? {} : { source: after.source }),
-    });
-    setModal(null);
-    if (!change) return;
-    storeSearch({ ...current, criteria: { ...after, category: before.category } });
-    setLocalPreferences(change);
-  }
-  async function performSearch(
-    search: SearchSnapshot,
-    question?: string,
-    proposal?: Negotiation,
-    preserveConversation = false,
-  ) {
-    if (quotaExhausted) return;
-    if (!signedIn) {
-      navigate("settings");
-      return;
-    }
-    let currentProposal = proposal;
-    if (!currentProposal && (preserveConversation || search.originalRequest === committedSearchRef.current?.originalRequest)) {
-      try {
-        currentProposal = negotiations.current();
-      } catch (error) {
-        toast.say(error instanceof Error ? error.message : "Couldn't load your offer draft.");
-        return;
-      }
-    }
-    setLocalPreferences("");
-    const token = ++searchRunToken.current;
-    const previousSearch = committedSearchRef.current;
-    const preserveHistory =
-      preserveConversation ||
-      search.originalRequest === committedSearchRef.current?.originalRequest;
-    if (!preserveHistory) {
-      searchChangesRef.current = {};
-      setSearchChanges({});
-      setSearchNotices({});
-      setSearchUndone([]);
-    }
-    sell.pause();
-    nav.showSearch();
-    setModal(null);
-    setSearching(true);
-    if (!preserveHistory) setQuery(search.originalRequest);
-    setFollowUp((current) =>
-      !preserveHistory || current.trim() === search.text.trim() ? "" : current,
-    );
-    storeSearch(search);
-
-    const request = agentSearchRequest(
-      search,
-      activeListings,
-      Boolean(currentProposal),
-    );
-    if (question)
-      request.context = { ...request.context, previousQuestion: question };
-    request.context = {
-      ...request.context,
-      ...(currentProposal
-        ? { negotiation: currentProposal, intent: "negotiation" as const }
-        : {}),
-      previousMatchIds:
-        preserveHistory &&
-        previousSearch &&
-        sameCriteria(search.criteria, previousSearch.criteria)
-          ? (agentRun.state.inventoryMatchIds ?? [])
-          : [],
-      recentMessages: preserveHistory
-        ? [
-            ...agentRun.state.history.flatMap((turn) => [
-              { role: "user" as const, text: turn.request.slice(0, 4000) },
-              { role: "assistant" as const, text: turn.text.slice(0, 4000) },
-            ]),
-            {
-              role: "user" as const,
-              text: agentRun.state.request.slice(0, 4000),
-            },
-            {
-              role: "assistant" as const,
-              text: agentRun.state.text.slice(0, 4000),
-            },
-          ]
-            .filter((item) => item.text)
-            .slice(-12)
-        : [],
-    };
-    await agentRun.run(request, {
-      preserveHistory,
-      onNegotiation: (event) => {
-        if (token !== searchRunToken.current) return;
-        negotiations.commit(event);
-        if (event.negotiation.status === "discarded")
-          forgetMessageDraft(event.negotiation.listingId);
-      },
-      onAction: (action) => {
-        if (
-          token === searchRunToken.current &&
-          action.type === "preferences_patch"
-        )
-          applySearchPatch(action);
-      },
-    });
-  }
-  async function runSearch(
-    text: string,
-    base = criteria,
-    isFollowUp = false,
-    question?: string,
-  ) {
-    if (!text.trim() || running || quotaExhausted) return;
-    photoSearchRequest.current?.abort();
-    setPhotoSearchBusy(false);
-    setPhotoSearchNotice(null);
-    const unanswered =
-      isFollowUp && !question
-        ? agentRun.state.questions.find(
-            (item) => !agentRun.state.answers[item.id],
-          )
-        : undefined;
-    if (unanswered) {
-      question = unanswered.question;
-      agentRun.markQuestionAnswered(unanswered.id, text);
-    }
-    const previous = isFollowUp
-      ? (committedSearchRef.current ?? undefined)
-      : undefined;
-    if (!isFollowUp) {
-      negotiations.activate(null);
-      agentRun.reset();
-      searchChangesRef.current = {};
-      setSearchChanges({});
-      setSearchNotices({});
-      setSearchUndone([]);
-    }
-    await performSearch(
-      isFollowUp && negotiations.current() && previous
-        ? { ...previous, text, previousAnswer: agentRun.state.text }
-        : newSearch(
-            text,
-            previous?.criteria ?? base,
-            previous?.location ?? location,
-            previous,
-            isFollowUp ? agentRun.state.text : undefined,
-          ),
-      question,
-    );
-  }
-  /** Identify an item in an inspiration photo, then search for that description. */
-  async function searchByPhoto(file: File) {
-    if (running || photoSearchBusy) return;
-    photoSearchRequest.current?.abort();
-    const controller = new AbortController();
-    photoSearchRequest.current = controller;
-    setPhotoSearchBusy(true);
-    setPhotoSearchNotice(null);
-    setPhotoSearch(null);
-    try {
-      const image = await readListingPhoto(file, controller.signal);
-      const notes = query.trim();
-      const response = await requestAgentAssist(
-        {
-          intent: "search",
-          text: notes,
-          images: [image],
-          context: { location, radius: criteria.radius },
-        },
-        { signal: controller.signal },
-      );
-      const item = response.metadata.query?.trim();
-      if (controller.signal.aborted) return;
-      if (!item) {
-        setPhotoSearchNotice(photoSearchClarification());
-        searchField.current?.focus();
-        return;
-      }
-      const request = (notes ? `${item}. ${notes}` : item).slice(0, 4000);
-      setPhotoSearch({ image, request });
-      setPhotoSearchBusy(false);
-      await runSearch(request);
-    } catch (error) {
-      if (controller.signal.aborted) return;
-      setPhotoSearchNotice(photoSearchFailure(error));
-    } finally {
-      if (photoSearchRequest.current === controller) {
-        photoSearchRequest.current = null;
-        setPhotoSearchBusy(false);
-      }
-    }
-  }
-  function continueOffer(item: Product, existing?: Negotiation) {
-    const proposal = existing ?? negotiations.open(item.id);
-    if (!proposal) return;
-    negotiations.activate(proposal.id);
-    const search = newSearch(
-      `Help me prepare an offer for ${item.title} and arrange pickup or shipping. Ask me for any missing details. Keep everything as a draft for review.${!existing && committedSearchRef.current ? " My earlier request: " + committedSearchRef.current.originalRequest : ""}`.slice(
-        0,
-        4000,
-      ),
-      { ...criteria, query: item.title, source: "takeover" },
-      location,
-    );
-    void performSearch(search, undefined, proposal, Boolean(agentRun.state.id));
   }
   /** Shows exactly these listings side by side, replacing an earlier selection. */
   function compareListings(ids: string[]) {
@@ -1259,138 +734,15 @@ export default function App({
       />
     );
   }
-  /** A discarded offer leaves no unsent conversation waiting in Messages. */
-  function forgetMessageDraft(listingId: string) {
-    setMessageProposal((current) =>
-      current?.listingId === listingId ? undefined : current,
-    );
-    setMessageListingId((current) =>
-      current === listingId ? undefined : current,
-    );
-  }
-  function answerSearchQuestion(id: string, answer: string) {
-    if (running) return false;
-    const question = agentRun.state.questions.find((item) => item.id === id);
-    if (!question || agentRun.state.answers[id]) return false;
-    agentRun.markQuestionAnswered(id, answer);
-    void runSearch(answer, criteria, true, question.question);
-    return true;
-  }
-  /** Saves a search for an item, or says it is saved already. */
-  function keepWatch({ query, maxPrice, radius }: WatchTarget) {
-    if (!watches.watch({ query, maxPrice, radius })) {
-      toast.show({
-        message: `“${query}” is already a saved search.`,
-        mood: "search",
-      });
-      return;
-    }
-    toast.show({
-      message: "Search saved. New matches show up in Searches.",
-      mood: "search",
-      action:
-        view === "searches"
-          ? undefined
-          : {
-              label: "View",
-              description: "View your saved searches",
-              onClick: () => openDestination("searches"),
-            },
-    });
-  }
-  function saveSearch() {
-    const existing = editingJob
-      ? jobs.find((job) => job.id === editingJob)
-      : undefined;
-    const original = existing
-      ? restoreSearch(existing, location)
-      : committedSearch;
-    if (!original) return;
-    const search =
-      existing && !sameCriteria(filterDraft, existing.criteria)
-        ? preferenceSearch(normalizedFilterDraft, original.location, original)
-        : original;
-    const title = jobTitle.trim() || criteriaTitle(search.criteria);
-    setJobs((current) =>
-      existing
-        ? current.map((job) =>
-            job.id === existing.id
-              ? {
-                  ...job,
-                  title,
-                  criteria: search.criteria,
-                  location: search.location,
-                  request: search.text,
-                  search,
-                }
-              : job,
-          )
-        : [
-            ...current,
-            {
-              id: randomUuid(),
-              title,
-              criteria: search.criteria,
-              location: search.location,
-              request: search.text,
-              search,
-              paused: false,
-              seen: true,
-            },
-          ],
-    );
-    setEditingJob(null);
-    setModal(null);
-    toast.say("Search saved in this browser.");
-  }
-
-  /** The one path a listing's status changes through: My listings and deals alike. */
-  async function applyListingStatus(id: string, status: Product["status"]) {
-    if (!own.some((item) => item.id === id))
-      throw new Error(`Listing ${id} is not among the listings.`);
-    return setOwn((current) =>
-      current.map((item) => (item.id === id ? { ...item, status } : item)),
-    );
-  }
-  /**
-   * A deal reserved a listing or made it available again. With accounts the
-   * server saved it in the same step, so the listings only reload; the local
-   * demo saves it here.
-   */
-  async function followDealStatus(id: string, status: DealStatusChange) {
-    if (account) {
-      database.retry();
-      return;
-    }
-    const before = own.find((item) => item.id === id)?.status;
-    if (before && !Object.hasOwn(dealStatusBefore, id))
-      setDealStatusBefore((current) => ({ ...current, [id]: before }));
-    if (!(await applyListingStatus(id, status)))
-      toast.say(statusFailure(status));
-  }
   /**
    * Clears this browser's workspace: the student's listings and choices, then
    * the demo's conversations and deals, after giving the sample listings back
    * the statuses those deals changed.
    */
   async function clearWorkspace() {
-    const restored = own.flatMap((item) =>
-      item.demo && Object.hasOwn(dealStatusBefore, item.id)
-        ? [{ ...item, status: dealStatusBefore[item.id] }]
-        : [],
-    );
-    setOwn(restored);
-    // A sample listing that has not loaded yet keeps its record for the next clear.
-    setDealStatusBefore((current) =>
-      Object.fromEntries(
-        Object.entries(current).filter(
-          ([id]) => !restored.some((item) => item.id === id),
-        ),
-      ),
-    );
+    catalog.clear();
     setFavorites([]);
-    setJobs([]);
-    watches.clear();
+    savedSearchList.clear();
     setCompared([]);
     setSearchArea({
       location: "Lausanne",
@@ -1402,34 +754,13 @@ export default function App({
     await messages.demoInbox.reset();
     toast.say("Browser data cleared.");
   }
-  async function setStatus(id: string, status: Product["status"]) {
-    const listing = own.find((item) => item.id === id);
-    if (!listing) throw new Error(`Listing ${id} is not among your listings.`);
-    if (!(await applyListingStatus(id, status))) {
-      toast.say(statusFailure(status));
-      return;
-    }
-    if (status === "withdrawn")
-      setCompared((current) => current.filter((item) => item !== id));
-    toast.show({
-      message: STATUS_NOTICES[status],
-      action:
-        status === "withdrawn"
-          ? {
-              label: "Undo",
-              description: `Undo archiving ${listing.title}`,
-              onClick: () => void setStatus(id, listing.status),
-            }
-          : undefined,
-    });
-  }
   /** The inbox Messages shows, in the mode the app runs in. */
   const messagesInbox: MessagesInboxProps = account?.session
     ? {
         mode: "account",
         account: { client: account.client, session: account.session },
         inbox: messages.accountInbox,
-        threadRequest,
+        threadRequest: threads.threadRequest,
       }
     : account
       ? { mode: "signed-out" }
@@ -1717,40 +1048,40 @@ export default function App({
                 <LazyBoundary label="Loading Messages">
                   <MessagesPage
                     developerMode={developerMode}
-                    listingId={messageListingId}
+                    listingId={threads.listingId}
                     onBrowse={() => openDestination("browse")}
                     initialMessage={
-                      messageProposal
-                        ? (messageProposal.draft?.message ??
+                      threads.proposal
+                        ? (threads.proposal.draft?.message ??
                           draftMessage(
-                            own.find((item) => item.id === messageListingId)
+                            own.find((item) => item.id === threads.listingId)
                               ?.title ?? "Listing",
-                            messageProposal.terms,
+                            threads.proposal.terms,
                           ))
-                        : messageDraft
+                        : threads.draft
                     }
                     initialTerms={
-                      messageProposal &&
+                      threads.proposal &&
                       dealTermsFromNegotiation(
-                        messageProposal.terms,
+                        threads.proposal.terms,
                         new Date(),
                       )
                     }
-                    offerRequest={offerRequest}
+                    offerRequest={threads.offerRequest}
                     homePoint={nearbyMeetingPoint(location)}
-                    onListingStatus={followDealStatus}
+                    onListingStatus={catalog.followDealStatus}
                     onBeforeSend={(listingId, role) => {
                       if (
-                        !messageProposal ||
-                        listingId !== messageProposal.listingId ||
+                        !threads.proposal ||
+                        listingId !== threads.proposal.listingId ||
                         role !== "buyer"
                       )
                         return;
                       const current = negotiations.current();
                       if (
                         !current ||
-                        current.id !== messageProposal.id ||
-                        current.version !== messageProposal.version
+                        current.id !== threads.proposal.id ||
+                        current.version !== threads.proposal.version
                       )
                         throw new Error(
                           "This offer draft changed. Open the latest draft in your conversation with Pako.",
@@ -1758,26 +1089,26 @@ export default function App({
                     }}
                     onSent={(listingId, role, message) => {
                       if (
-                        !messageProposal ||
-                        listingId !== messageProposal.listingId ||
+                        !threads.proposal ||
+                        listingId !== threads.proposal.listingId ||
                         role !== "buyer"
                       )
                         return;
                       negotiations.commit({
                         type: "negotiation_update",
-                        previousVersion: messageProposal.version,
+                        previousVersion: threads.proposal.version,
                         negotiation: markNegotiationSent(
                           {
-                            ...messageProposal,
+                            ...threads.proposal,
                             draft: {
                               message,
-                              version: messageProposal.version,
+                              version: threads.proposal.version,
                             },
                           },
-                          messageProposal.version,
+                          threads.proposal.version,
                         ),
                       });
-                      setMessageProposal(undefined);
+                      threads.proposalSent();
                     }}
                     onDeleted={() => replaceRoute("#messages")}
                     threadBanner={availability?.threadBanner}
@@ -1794,7 +1125,7 @@ export default function App({
                       },
                       onFindSimilar: (title) => void runSearch(title),
                     }}
-                    listing={own.find((item) => item.id === messageListingId)}
+                    listing={own.find((item) => item.id === threads.listingId)}
                     onOpenListing={(id) => {
                       const item = own.find((item) => item.id === id);
                       if (item) openProduct(item);
@@ -2008,12 +1339,7 @@ export default function App({
                           ? {
                               disabled: running || !committedSearch,
                               onSave: () => {
-                                setEditingJob(null);
-                                setJobTitle(
-                                  (
-                                    committedSearch?.originalRequest || ""
-                                  ).slice(0, 90),
-                                );
+                                savedSearchList.startSaving();
                                 setModal("save");
                               },
                             }
@@ -2229,10 +1555,7 @@ export default function App({
                               ) : undefined
                             }
                             onCancel={agentRun.cancel}
-                            onRetry={() =>
-                              committedSearchRef.current &&
-                              void performSearch(committedSearchRef.current)
-                            }
+                            onRetry={search.retry}
                             onReset={goHome}
                             onAnswer={answerSearchQuestion}
                             onSkipQuestion={(id) =>
@@ -2334,7 +1657,7 @@ export default function App({
                   onMarkAllSeen={watches.markAllRead}
                   onTogglePause={watches.togglePause}
                   onWatch={(query, maxPrice) =>
-                    keepWatch({ query, maxPrice, radius: searchArea.radius })
+                    savedSearchList.keepWatch({ query, maxPrice, radius: searchArea.radius })
                   }
                   onFind={goHome}
                   onRun={(job) => {
@@ -2346,25 +1669,10 @@ export default function App({
                     void performSearch(search);
                   }}
                   onEdit={(job) => {
-                    setEditingJob(job.id);
-                    setJobTitle(job.title);
-                    setFilterDraft(job.criteria);
+                    savedSearchList.startEditing(job);
                     setModal("edit-search");
                   }}
-                  onDelete={(job) => {
-                    const index = jobs.findIndex((item) => item.id === job.id);
-                    setJobs((current) =>
-                      current.filter((item) => item.id !== job.id),
-                    );
-                    toast.show({
-                      message: "Saved search deleted.",
-                      action: {
-                        label: "Undo",
-                        description: "Undo saved search deletion",
-                        onClick: () => restoreSavedSearch(job, index),
-                      },
-                    });
-                  }}
+                  onDelete={savedSearchList.remove}
                 />
               </PageTransitionView>
             )}
@@ -2470,8 +1778,8 @@ export default function App({
                 {!selected && selectedId && availability?.notices(selectedId)}
                 <ListingDetailPage
                   selected={selected && shownListing(selected)}
-                  deal={selectedDealView ?? undefined}
-                  onOpenChat={() => selectedDeal && openDealThread(selectedDeal)}
+                  deal={selectedDeal?.view}
+                  onOpenChat={() => selectedDeal && openDealThread(selectedDeal.item)}
                   availabilityPanel={
                     selected &&
                     availability?.detailPanel(selected, () =>
@@ -2552,20 +1860,7 @@ export default function App({
                 renderSaved={savedCard}
                 publishedIds={sell.publishedListings}
                 onCelebrationEnd={sell.clearPublished}
-                agreementFor={(listingId) => {
-                  const agreement = sellerAgreementFor(inboxDeals, listingId);
-                  const agreed = agreement?.deal.agreed;
-                  return agreement && agreed
-                    ? {
-                        chip: reservedForChip(
-                          agreement.otherName,
-                          agreed.terms,
-                        ),
-                        onOpenChat: () => openDealThread(agreement),
-                        pickup: listingPickup(agreement),
-                      }
-                    : undefined;
-                }}
+                agreementFor={deals.agreementFor}
               />
             </WorkspacePage>
           </main>
@@ -2633,13 +1928,13 @@ export default function App({
           title={modal === "save" ? "Save search" : "Edit search"}
           onClose={() => {
             setModal(null);
-            setEditingJob(null);
+            savedSearchList.stopEditing();
           }}
         >
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              saveSearch();
+              savedSearchList.save();
             }}
           >
             <label>
@@ -2648,8 +1943,8 @@ export default function App({
                 required
                 maxLength={90}
                 pattern=".*\S.*"
-                value={jobTitle}
-                onChange={(event) => setJobTitle(event.target.value)}
+                value={savedSearchList.title}
+                onChange={(event) => savedSearchList.setTitle(event.target.value)}
               />
             </label>
             {modal === "edit-search" ? (
