@@ -1,0 +1,369 @@
+/* "Pako handles the back-and-forth": a drawn stage in the intro's style, phone-sized. */
+.baf-stage {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  /* A fixed width: the section's frame column takes the size of what it holds. */
+  width: 400px;
+  max-width: 100%;
+  height: 600px;
+  margin-inline: auto;
+}
+
+.baf-chapters {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.baf-chapters li {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 4px;
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 650;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+.baf-chapters li[data-current] {
+  background: var(--selected);
+  color: var(--blue);
+}
+.baf-chapter-number {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--surface);
+  font-size: 0.75rem;
+}
+
+.baf-body,
+.baf-view {
+  position: relative;
+  min-height: 0;
+  height: 100%;
+}
+.baf-guide .ob-guide {
+  margin: 0;
+}
+
+/* Search: posts scattered in many places, then Pako's short list. */
+.baf-post {
+  position: absolute;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 6px;
+  width: 44%;
+  padding: 8px 10px;
+  border: 2px solid var(--card-line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 3px 0 var(--lip);
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+.baf-post svg {
+  grid-row: span 2;
+  align-self: center;
+}
+.baf-post strong {
+  color: var(--ink);
+}
+.baf-list {
+  position: absolute;
+  inset: 8% 0 auto;
+  display: grid;
+  gap: 10px;
+}
+.baf-fit {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--lip);
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+.baf-fit > svg {
+  color: var(--blue);
+}
+.baf-fit-words {
+  display: grid;
+}
+.baf-fit-words strong {
+  color: var(--ink);
+  font-size: 1rem;
+}
+.baf-tile {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #e0f0e2;
+  color: #8e5b2d;
+}
+
+/* Messages: chat bubbles, from the other student on the left and the student's own on the right. */
+.baf-bubble {
+  position: absolute;
+  max-width: 70%;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 16px;
+  background: var(--background);
+  font-size: 0.9375rem;
+  line-height: 1.3;
+}
+.baf-bubble[data-side="me"] {
+  background: var(--blue);
+  color: var(--on-primary);
+}
+.baf-pile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.baf-pile .baf-bubble,
+.baf-bubble.baf-static {
+  position: static;
+  align-self: flex-start;
+}
+.baf-pile .baf-bubble[data-side="me"],
+.baf-bubble.baf-static[data-side="me"] {
+  align-self: flex-end;
+}
+.baf-bubble.baf-static {
+  margin-left: auto;
+  width: fit-content;
+}
+
+.baf-card {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 2px solid var(--blue);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--lip);
+}
+.baf-view > .baf-card:not(.baf-booked) {
+  position: absolute;
+  inset: 6% 0 auto;
+}
+.baf-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 0;
+  font-weight: 700;
+}
+.baf-label {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--selected);
+  color: var(--blue);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+.baf-terms {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+.baf-terms div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--background);
+}
+.baf-terms dt {
+  color: var(--muted);
+}
+.baf-terms dd {
+  margin: 0;
+  font-weight: 650;
+  text-align: right;
+}
+
+/* A control the student taps: the drawn finger presses it. */
+.baf-button,
+.baf-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 700;
+  transition:
+    translate 0.12s ease-out,
+    box-shadow 0.12s ease-out;
+}
+.baf-button {
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: 14px;
+  background: var(--blue);
+  box-shadow: 0 4px 0 var(--blue-dark);
+  color: var(--on-primary);
+}
+.baf-chip {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 2px solid var(--card-line);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: 0 3px 0 var(--lip);
+}
+.baf-button[data-pressed],
+.baf-chip[data-pressed] {
+  animation: baf-press 0.3s 0.95s ease-out both;
+}
+@keyframes baf-press {
+  50% {
+    translate: 0 3px;
+    box-shadow: 0 0 0 transparent;
+  }
+}
+.baf-finger {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border-radius: 50%;
+  background: rgb(41 41 41 / 0.2);
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 0.75);
+  pointer-events: none;
+  animation: baf-finger 1.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes baf-finger {
+  0% {
+    opacity: 0;
+    scale: 1.5;
+  }
+  55% {
+    opacity: 0;
+    scale: 1.3;
+  }
+  75% {
+    opacity: 1;
+    scale: 0.82;
+  }
+  100% {
+    opacity: 1;
+    scale: 0.92;
+  }
+}
+.baf-sent,
+.baf-done {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--selected);
+  color: var(--blue);
+  font-weight: 700;
+}
+.baf-done {
+  border: 2px solid var(--blue);
+  font-size: 1.0625rem;
+}
+
+/* Pickup: both seats, the booked card, a reminder, one-tap updates and Picked up. */
+.baf-pickup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.baf-seats {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+}
+.baf-seat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--selected);
+  color: var(--blue);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+.baf-booked {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  color: var(--blue);
+}
+.baf-booked span {
+  display: grid;
+  color: var(--ink);
+}
+.baf-reminder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--ink);
+  box-shadow: 0 8px 20px rgb(41 41 41 / 0.18);
+  color: var(--surface);
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+.baf-updates {
+  display: flex;
+  gap: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .baf-finger {
+    opacity: 1;
+  }
+}
+/* Phones: one column, so the stage takes its width. */
+@media (max-width: 760px) {
+  .baf-stage,
+  .baf-waiting {
+    width: 100%;
+  }
+}
+@media (max-width: 380px) {
+  .baf-stage {
+    height: 620px;
+  }
+}
+
+.baf-figure {
+  margin: 0;
+}
+.baf-waiting {
+  width: 400px;
+  max-width: 100%;
+  height: 600px;
+}

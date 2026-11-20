@@ -1,11 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { RotateCcw } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import Pako from "@/components/onboarding/Pako";
 import type { PakoMood } from "@/components/onboarding/storyTypes";
-import DeviceFrame from "../device/DeviceFrame";
-import type { TourScene } from "../device/sceneMessages";
-import { SCENE_COPY } from "../sceneCopy";
 
 /** Share of the frame that has to be on screen before its scene starts. */
 const START_VISIBLE = 0.3;
@@ -29,11 +26,22 @@ function useSeen<T extends HTMLElement>() {
   return { element, seen };
 }
 
+/** What a section's frame gets to play its example. */
+export type ScenePlay = {
+  /** Counts the visitor's replays; each one starts the example again. */
+  replay: number;
+  onMood: (mood: PakoMood) => void;
+  onDone: () => void;
+};
+
 export type PitchSceneProps = {
   id: string;
   title: string;
   sentences: [string, string];
-  scene: TourScene;
+  /** The example, mounted once the section is on screen. */
+  frame: (play: ScenePlay) => ReactNode;
+  /** Holds the example's place until then, so the page does not jump. */
+  waitingClass: string;
 };
 
 /** One part of the tour: two sentences beside the scene that shows them. */
@@ -41,7 +49,8 @@ export default function PitchScene({
   id,
   title,
   sentences,
-  scene,
+  frame,
+  waitingClass,
 }: PitchSceneProps) {
   const { element, seen } = useSeen<HTMLDivElement>();
   const [replays, setReplays] = useState(0);
@@ -87,15 +96,13 @@ export default function PitchScene({
         data-seen={seen || undefined}
       >
         {seen ? (
-          <DeviceFrame
-            scene={scene}
-            label={SCENE_COPY[scene].label}
-            replay={replays}
-            onMood={setMood}
-            onDone={() => setFinished(true)}
-          />
+          frame({
+            replay: replays,
+            onMood: setMood,
+            onDone: () => setFinished(true),
+          })
         ) : (
-          <div className="tour-device-slot" />
+          <div className={waitingClass} />
         )}
       </div>
     </section>

@@ -10,8 +10,11 @@ import type { PakoMood } from "@/components/onboarding/storyTypes";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { motionBehavior } from "../../uiMotion";
 import DeviceFrame from "../device/DeviceFrame";
+import type { TourScene } from "../device/sceneMessages";
 import { SCENE_COPY } from "../sceneCopy";
-import PitchScene, { type PitchSceneProps } from "./PitchScene";
+import BackAndForth from "./BackAndForth";
+import { BACK_AND_FORTH_LABEL } from "./backAndForthScript";
+import PitchScene, { type ScenePlay } from "./PitchScene";
 
 /** Channel tag of the study link on this page, so its visitors can be told apart. */
 const PITCH_STUDY_LINK = "/tour?s=pitch";
@@ -19,7 +22,14 @@ const HOW_ID = "how-it-works";
 /** From this width the hero shows the app in a phone frame beside the text. */
 const WIDE_SCREEN = "(min-width: 761px)";
 
-const SECTIONS: PitchSceneProps[] = [
+type TourSection = {
+  id: string;
+  title: string;
+  sentences: [string, string];
+  scene: TourScene;
+};
+
+const SECTIONS: TourSection[] = [
   {
     id: "find",
     title: "Find",
@@ -85,6 +95,47 @@ function HeroDevice() {
       />
       <Pako className="tour-hero-pako" mood={mood} size={148} />
     </div>
+  );
+}
+
+/** A section's example: the app's own screens in a phone. */
+function SectionFrame({
+  section,
+  play,
+}: {
+  section: TourSection;
+  play: ScenePlay;
+}) {
+  const { scene } = section;
+  return (
+    <DeviceFrame
+      scene={scene}
+      label={SCENE_COPY[scene].label}
+      replay={play.replay}
+      onMood={play.onMood}
+      onDone={play.onDone}
+    />
+  );
+}
+
+/** Pako's part in a deal, drawn: what is tedious without takeover and what he takes over. */
+function BackAndForthSection() {
+  return (
+    <PitchScene
+      id="back-and-forth"
+      title="Pako handles the back-and-forth"
+      sentences={[
+        "Without takeover, one desk means posts in many places, many messages and a pickup to arrange.",
+        "Pako sorts the listings and drafts the offer. Your tap sends it, both of you confirm, and updates on the day are one tap.",
+      ]}
+      waitingClass="baf-waiting"
+      frame={(play) => (
+        <figure className="baf-figure">
+          <BackAndForth key={play.replay} onEnd={play.onDone} />
+          <figcaption className="sr-only">{BACK_AND_FORTH_LABEL}</figcaption>
+        </figure>
+      )}
+    />
   );
 }
 
@@ -169,8 +220,16 @@ export default function Pitch({ studyOpen }: { studyOpen: boolean }) {
         <Hero />
         <main className="tour-main">
           <div id={HOW_ID} className="tour-sections">
+            <BackAndForthSection />
             {SECTIONS.map((section) => (
-              <PitchScene key={section.id} {...section} />
+              <PitchScene
+                key={section.id}
+                id={section.id}
+                title={section.title}
+                sentences={section.sentences}
+                waitingClass="tour-device-slot"
+                frame={(play) => <SectionFrame section={section} play={play} />}
+              />
             ))}
           </div>
           <Principles />
