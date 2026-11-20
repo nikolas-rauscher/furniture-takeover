@@ -313,7 +313,7 @@
 }
 .tour-study .tour-device-slot {
   align-self: center;
-  --tour-screen-height: min(58dvh, 540px);
+  --tour-screen-height: clamp(300px, 100dvh - 350px, 540px);
 }
 /* On wide screens a scene step widens the sheet: Pako narrates beside a full-height phone. */
 @media (min-width: 761px) {
@@ -330,7 +330,7 @@
   }
   .tour-study[data-arrangement="beside"] .tour-device-slot {
     /* The sheet's height less its header and footer. */
-    --tour-device-height: calc(min(800px, 100dvh - 48px) - 190px);
+    --tour-device-height: calc(min(800px, 100dvh - 48px) - 216px);
   }
 }
 .tour-study[data-layout="hero"] .ob-footer .button.primary {

@@ -5,6 +5,7 @@ import type { AgentListingPatchEvent } from "../../../shared/actions";
 import type { Product, SavedListing } from "../../../shared/marketplace";
 import type { AgentRunEvent } from "../../../shared/runs";
 import AccountPage from "../../components/AccountPage";
+import AskPakoMenu, { LISTING_REQUESTS } from "../../components/AskPakoMenu";
 import ListingConversation from "../../components/ListingConversation";
 import SellFlow from "../../components/SellFlow";
 import {
@@ -291,7 +292,13 @@ export default function SellScene({ onEnd }: SceneProps) {
                   onManual={INERT}
                 />
               ),
-              tools: null,
+              tools: (
+                <AskPakoMenu
+                  requests={LISTING_REQUESTS}
+                  disabled={working}
+                  onAsk={INERT}
+                />
+              ),
               working,
             }}
             onAccount={INERT}
@@ -310,6 +317,7 @@ export default function SellScene({ onEnd }: SceneProps) {
               }))
             }
             onFillIn={INERT}
+            onSellSeveral={INERT}
             onNotesDone={INERT}
             onPublish={(event) => {
               event.preventDefault();

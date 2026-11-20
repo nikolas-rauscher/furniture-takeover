@@ -306,6 +306,9 @@ function OfferThread({
 
 const unchanged = (state: FindState) => state;
 
+/** The app searches 5 km around the student's area unless they change it. */
+const AREA_CRITERIA = { ...defaults, radius: 5 };
+
 /** Find: a request typed on Home, Pako's search, the desk's page and the offer card. */
 export default function FindScene({ onEnd }: SceneProps) {
   const { state, setState, touch } = useSceneScript(initial, BEATS, onEnd);
@@ -328,7 +331,7 @@ export default function FindScene({ onEnd }: SceneProps) {
             onSearch={() =>
               go("chat", (current) => ({
                 ...current,
-                search: newSearch(current.query, defaults, AREA),
+                search: newSearch(current.query, AREA_CRITERIA, AREA),
                 run: beginAgentRun(
                   emptyAgentRunState(),
                   current.query,
