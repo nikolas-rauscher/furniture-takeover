@@ -427,7 +427,9 @@ test("the asking student's own listings never reach Pako's buyer search", async 
   assert.throws(() =>
     validateRunRequest({
       text: "Find a desk",
-      context: { ownListingIds: Array.from({ length: 201 }, (_, i) => `id-${i}`) },
+      context: {
+        ownListingIds: Array.from({ length: 201 }, (_, i) => `id-${i}`),
+      },
     }),
   );
 });
@@ -463,19 +465,30 @@ test("a free Takeover-only search overrides stale client filters and always offe
       answer("No matching piano."),
     ],
   });
-  const events = await eventsFor(createAgentRuntime({
-    apiKey: "test", braveApiKey: "test", modelImpl: model,
-  }), {
-    text: "Find a free piano, Takeover only.",
-    context: { source: "All", maxPrice: 500, currentQuery: "piano" },
-    inventory: [{ ...ownDesk, title: "Piano" }],
-  });
+  const events = await eventsFor(
+    createAgentRuntime({
+      apiKey: "test",
+      braveApiKey: "test",
+      modelImpl: model,
+    }),
+    {
+      text: "Find a free piano, Takeover only.",
+      context: { source: "All", maxPrice: 500, currentQuery: "piano" },
+      inventory: [{ ...ownDesk, title: "Piano" }],
+    },
+  );
   for (const step of model.doStreamCalls)
-    assert.ok(!step.tools?.some(tool => tool.name === "web_search"));
-  assert.ok(events.some(event => event.type === "complete"));
-  assert.ok(events.every(event => event.type !== "inventory_matches" || !event.ids.length));
-  assert.deepEqual(events.filter(event => event.type === "watch_suggestion"),
-    [{ type: "watch_suggestion", query: "piano", maxPrice: 0 }]);
+    assert.ok(!step.tools?.some((tool) => tool.name === "web_search"));
+  assert.ok(events.some((event) => event.type === "complete"));
+  assert.ok(
+    events.every(
+      (event) => event.type !== "inventory_matches" || !event.ids.length,
+    ),
+  );
+  assert.deepEqual(
+    events.filter((event) => event.type === "watch_suggestion"),
+    [{ type: "watch_suggestion", query: "piano", maxPrice: 0 }],
+  );
 });
 
 test("widening only the radius rechecks local inventory and retains the free-item watch when asking whether to widen again", async () => {
@@ -483,93 +496,182 @@ test("widening only the radius rechecks local inventory and retains the free-ite
     doStream: [
       toolCall("inventory_search", { query: "piano" }, "find"),
       toolCall("show_takeover_listings", { ids: [] }, "show"),
-      toolCall("ask_user", { question: "Search further away?", choices: ["Yes", "No"] }, "widen"),
+      toolCall(
+        "ask_user",
+        { question: "Search further away?", choices: ["Yes", "No"] },
+        "widen",
+      ),
     ],
   });
-  const events = await eventsFor(createAgentRuntime({
-    apiKey: "test", braveApiKey: "test", modelImpl: model,
-  }), {
-    text: "Search within 2 km",
-    context: {
-      currentQuery: "antique grand piano", maxPrice: 0, radius: 1,
-      source: "takeover", budgetSpecified: true, previousAnswer: "No matching piano.",
+  const events = await eventsFor(
+    createAgentRuntime({
+      apiKey: "test",
+      braveApiKey: "test",
+      modelImpl: model,
+    }),
+    {
+      text: "Search within 2 km",
+      context: {
+        currentQuery: "antique grand piano",
+        maxPrice: 0,
+        radius: 1,
+        source: "takeover",
+        budgetSpecified: true,
+        previousAnswer: "No matching piano.",
+      },
     },
-  });
-  assert.deepEqual(model.doStreamCalls[0].tools?.map(tool => tool.name), ["inventory_search"]);
-  assert.ok(events.some(event => event.type === "question"));
-  assert.deepEqual(events.filter(event => event.type === "watch_suggestion"),
-    [{ type: "watch_suggestion", query: "antique grand piano", maxPrice: 0 }]);
+  );
+  assert.deepEqual(
+    model.doStreamCalls[0].tools?.map((tool) => tool.name),
+    ["inventory_search"],
+  );
+  assert.ok(events.some((event) => event.type === "question"));
+  assert.deepEqual(
+    events.filter((event) => event.type === "watch_suggestion"),
+    [{ type: "watch_suggestion", query: "antique grand piano", maxPrice: 0 }],
+  );
 });
 
 test("a filter-only follow-up closes after curation and one external lookup", async () => {
   for (const [text, external] of [
-    ["only within 2 km please", true], ["under CHF 70", true],
-    ["free items only", true], ["only on Takeover", false],
-    ["cheaper please", true], ["closer to UNIL", true],
+    ["only within 2 km please", true],
+    ["under CHF 70", true],
+    ["free items only", true],
+    ["only on Takeover", false],
+    ["cheaper please", true],
+    ["closer to UNIL", true],
   ] as const) {
     const steps = [
       toolCall("inventory_search", { query: "desk" }, "find"),
       toolCall("show_takeover_listings", { ids: [] }, "select"),
     ];
-    if (external) steps.push(toolCall("web_search", { query: "bureau Lausanne" }, "web"));
-    const model = new MockLanguageModelV4({ doStream: [...steps, toolCall("finish_search", { text: "No matches." }, "finish")] });
-    const events = await eventsFor(createAgentRuntime({
-      apiKey: "test", braveApiKey: "test", modelImpl: model,
-      fetchImpl: async () => Response.json({ web: { results: [] } }),
-    }), { text, context: {
-      previousAnswer: "I found a desk.", source: "All", currentQuery: "desk",
-      maxPrice: 80, location: "EPFL", budgetSpecified: true,
-    } });
-    assert.deepEqual(model.doStreamCalls.map(call => call.tools?.map(tool => tool.name)),
-      [["inventory_search"], ["show_takeover_listings"], ...(external ? [["web_search"]] : []), ["ask_user", "finish_search"]], text);
+    if (external)
+      steps.push(toolCall("web_search", { query: "bureau Lausanne" }, "web"));
+    const model = new MockLanguageModelV4({
+      doStream: [
+        ...steps,
+        toolCall("finish_search", { text: "No matches." }, "finish"),
+      ],
+    });
+    const events = await eventsFor(
+      createAgentRuntime({
+        apiKey: "test",
+        braveApiKey: "test",
+        modelImpl: model,
+        fetchImpl: async () => Response.json({ web: { results: [] } }),
+      }),
+      {
+        text,
+        context: {
+          previousAnswer: "I found a desk.",
+          source: "All",
+          currentQuery: "desk",
+          maxPrice: 80,
+          location: "EPFL",
+          budgetSpecified: true,
+        },
+      },
+    );
+    assert.deepEqual(
+      model.doStreamCalls.map((call) => call.tools?.map((tool) => tool.name)),
+      [
+        ["inventory_search"],
+        ["show_takeover_listings"],
+        ...(external ? [["web_search"]] : []),
+        ["ask_user", "finish_search"],
+      ],
+      text,
+    );
     assert.equal(events.at(-1)?.type, "complete", text);
-    assert.ok(events.some(event => event.type === "watch_suggestion"));
+    assert.ok(events.some((event) => event.type === "watch_suggestion"));
   }
 });
 
 test("repeating the current query and budget preserves the selected cards", async () => {
-  const model = new MockLanguageModelV4({ doStream: [
-    toolCall("inventory_search", { query: "desk" }, "find"),
-    toolCall("show_takeover_listings", { ids: [ownDesk.id] }, "select"),
-    toolCall("update_search_preferences", { patch: { query: "desk", maxPrice: 80 },
-      reason: "Keep your filters.", evidence: [{ kind: "seller", quote: "desk" }] }, "filters"),
-    answer("One desk fits."),
-  ] });
-  const events = await eventsFor(createAgentRuntime({ apiKey: "test", modelImpl: model }), {
-    text: "desk under CHF 80", context: { currentQuery: "desk", source: "takeover" }, inventory: [ownDesk],
+  const model = new MockLanguageModelV4({
+    doStream: [
+      toolCall("inventory_search", { query: "desk" }, "find"),
+      toolCall("show_takeover_listings", { ids: [ownDesk.id] }, "select"),
+      toolCall(
+        "update_search_preferences",
+        {
+          patch: { query: "desk", maxPrice: 80 },
+          reason: "Keep your filters.",
+          evidence: [{ kind: "seller", quote: "desk" }],
+        },
+        "filters",
+      ),
+      answer("One desk fits."),
+    ],
   });
-  assert.deepEqual(events.filter(event => event.type === "inventory_matches").at(-1),
-    { type: "inventory_matches", ids: [ownDesk.id] });
+  const events = await eventsFor(
+    createAgentRuntime({ apiKey: "test", modelImpl: model }),
+    {
+      text: "desk under CHF 80",
+      context: { currentQuery: "desk", source: "takeover" },
+      inventory: [ownDesk],
+    },
+  );
+  assert.deepEqual(
+    events.filter((event) => event.type === "inventory_matches").at(-1),
+    { type: "inventory_matches", ids: [ownDesk.id] },
+  );
   assert.equal(events.at(-1)?.type, "complete");
 });
 
 test("a Takeover-only refinement closes with a comparison and an offer action", async () => {
   const closing = "## Takeover\nThe white desk fits.";
-  const model = new MockLanguageModelV4({ doStream: [
-    toolCall("inventory_search", { query: "desk" }, "find"),
-    toolCall("show_takeover_listings", { ids: [ownDesk.id] }, "select"),
-    toolCall("finish_search", { text: closing }, "finish"),
-  ] });
-  const events = await eventsFor(createAgentRuntime({ apiKey: "test", modelImpl: model }), {
-    text: "only on Takeover", context: { currentQuery: "desk", previousAnswer: "Here are desks." },
-    inventory: [ownDesk],
+  const model = new MockLanguageModelV4({
+    doStream: [
+      toolCall("inventory_search", { query: "desk" }, "find"),
+      toolCall("show_takeover_listings", { ids: [ownDesk.id] }, "select"),
+      toolCall("finish_search", { text: closing }, "finish"),
+    ],
   });
-  assert.deepEqual(model.doStreamCalls[2].tools?.map(tool => tool.name), ["finish_search"]);
+  const events = await eventsFor(
+    createAgentRuntime({ apiKey: "test", modelImpl: model }),
+    {
+      text: "only on Takeover",
+      context: { currentQuery: "desk", previousAnswer: "Here are desks." },
+      inventory: [ownDesk],
+    },
+  );
+  assert.deepEqual(
+    model.doStreamCalls[2].tools?.map((tool) => tool.name),
+    ["finish_search"],
+  );
   assert.equal(model.doStreamCalls.length, 3);
-  assert.ok(events.some(event => event.type === "offer_suggestion" && event.listingId === ownDesk.id));
-  assert.ok(events.some(event => event.type === "complete" && event.text === closing));
+  assert.ok(
+    events.some(
+      (event) =>
+        event.type === "offer_suggestion" && event.listingId === ownDesk.id,
+    ),
+  );
+  assert.ok(
+    events.some((event) => event.type === "complete" && event.text === closing),
+  );
 });
 
 test("provider tool markup in ordinary text never becomes a buyer reply", async () => {
-  const model = new MockLanguageModelV4({ doStream: [
-    toolCall("inventory_search", { query: "desk" }, "find"),
-    toolCall("show_takeover_listings", { ids: [ownDesk.id] }, "select"),
-    answer('<｜｜DSML｜｜ invoke name="suggest_takeover_offer">'),
-  ] });
-  const events = await eventsFor(createAgentRuntime({ apiKey: "test", modelImpl: model }), {
-    text: "only on Takeover", context: { currentQuery: "desk", previousAnswer: "A desk." },
-    inventory: [ownDesk],
+  const model = new MockLanguageModelV4({
+    doStream: [
+      toolCall("inventory_search", { query: "desk" }, "find"),
+      toolCall("show_takeover_listings", { ids: [ownDesk.id] }, "select"),
+      answer('<｜｜DSML｜｜ invoke name="suggest_takeover_offer">'),
+    ],
   });
+  const events = await eventsFor(
+    createAgentRuntime({ apiKey: "test", modelImpl: model }),
+    {
+      text: "only on Takeover",
+      context: { currentQuery: "desk", previousAnswer: "A desk." },
+      inventory: [ownDesk],
+    },
+  );
   assert.equal(events.at(-1)?.type, "error");
-  assert.ok(events.every(event => event.type !== "text_delta" && event.type !== "complete"));
+  assert.ok(
+    events.every(
+      (event) => event.type !== "text_delta" && event.type !== "complete",
+    ),
+  );
 });

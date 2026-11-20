@@ -49,7 +49,8 @@ export type PakoTrayState =
 
 type Ask = { instruction: string; draft: string };
 type Attempt = { key: string; forMessageId: string | null; asked: boolean } & (
-  { status: "running"; retrying?: boolean } | { status: "failed"; code: string; message: string }
+  | { status: "running"; retrying?: boolean }
+  | { status: "failed"; code: string; message: string }
 );
 type Reading = {
   key: string;
@@ -67,7 +68,9 @@ type Cached = { key: string } & (
 const UNREAD = "I couldn't read this reply. Try again or write your own.";
 
 /** A failed reading in the tray's words: out of readings, still busy after a retry, not set up here, or a plain failure. */
-function failedTray(attempt: Extract<Attempt, { status: "failed" }>): PakoTrayState {
+function failedTray(
+  attempt: Extract<Attempt, { status: "failed" }>,
+): PakoTrayState {
   if (attempt.code === "THREAD_QUOTA_EXCEEDED") return { phase: "asleep" };
   if (attempt.code === "TOO_MANY_REQUESTS") return { phase: "busy" };
   if (attempt.code === "AGENT_NOT_CONFIGURED")
@@ -160,7 +163,7 @@ export function usePakoThread({
     [key],
   );
 
-  const start = useEffectEvent(async (ask?: Ask) => {
+  async function start(ask?: Ask) {
     if (!thread) return;
     const { key, role, listing, messages, deal, cache } = thread;
     const forMessageId = messages.at(-1)?.id ?? null;
@@ -177,7 +180,13 @@ export function usePakoThread({
         {
           signal,
           onRetry: () =>
-            setAttempt({ key, forMessageId, asked, status: "running", retrying: true }),
+            setAttempt({
+              key,
+              forMessageId,
+              asked,
+              status: "running",
+              retrying: true,
+            }),
         },
       );
       if (controller.signal.aborted) return;
@@ -210,7 +219,8 @@ export function usePakoThread({
     } finally {
       if (request.current === controller) request.current = null;
     }
-  });
+  }
+  const startReading = useEffectEvent(() => void start());
 
   const handled =
     ownReading?.forMessageId === latestId ||
@@ -233,7 +243,10 @@ export function usePakoThread({
         ? { phase: "unavailable", reason: available }
         : { phase: "idle" };
   else if (ownAttempt?.status === "running")
-    tray = { phase: ownAttempt.asked ? "asking" : "reading", retrying: ownAttempt.retrying };
+    tray = {
+      phase: ownAttempt.asked ? "asking" : "reading",
+      retrying: ownAttempt.retrying,
+    };
   else if (
     ownAttempt?.status === "failed" &&
     ownAttempt.forMessageId === latestId
@@ -254,7 +267,8 @@ export function usePakoThread({
 
   const reading = ownAttempt?.status === "running";
   useEffect(() => {
-    if (decision === "read" && available === "ready" && !reading) void start();
+    if (decision === "read" && available === "ready" && !reading)
+      startReading();
   }, [decision, available, reading]);
 
   return {

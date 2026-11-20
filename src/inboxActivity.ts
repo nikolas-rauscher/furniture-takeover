@@ -112,14 +112,25 @@ function dealActivity(deal: Deal | undefined | null, role: DealRole) {
     return deal.proposal.by === role ? "Waiting" : "Your turn";
 }
 
-export function pickupActivity(deal: Deal | undefined | null, role: DealRole, now: Date) {
+export function pickupActivity(
+  deal: Deal | undefined | null,
+  role: DealRole,
+  now: Date,
+) {
   const day = pickupDay(deal, role, now);
   const pickupSoon = day?.phase === "pickup_soon";
   const due = !!day && day.phase !== "booked";
-  const needsYou = !day?.pickupCheck?.expired && (
-    due || day?.change === "received" || (role === "seller" && !!day?.buyerReportedPickup)
-  );
-  return { pickupSoon, due, needsYou, label: needsYou ? "Your turn" as const : dealActivity(deal, role) };
+  const needsYou =
+    !day?.pickupCheck?.expired &&
+    (due ||
+      day?.change === "received" ||
+      (role === "seller" && !!day?.buyerReportedPickup));
+  return {
+    pickupSoon,
+    due,
+    needsYou,
+    label: needsYou ? ("Your turn" as const) : dealActivity(deal, role),
+  };
 }
 
 /** Count an actionable pickup once, even if its thread also has an unread message. */
@@ -128,11 +139,17 @@ export function inboxBadge(
   reads: Readonly<Record<string, string>>,
   pickupReadKeys: ReadonlySet<string>,
 ): number {
-  return threads.filter((thread) => isUnread(thread, reads) || pickupReadKeys.has(thread.readKey)).length;
+  return threads.filter(
+    (thread) => isUnread(thread, reads) || pickupReadKeys.has(thread.readKey),
+  ).length;
 }
 
 /** The three live deals for Home: Pako's open pickup question first, then a pickup within 2 h, a response, an upcoming handover. */
-export function pickupHomeDeals(deals: readonly Deal[], roleFor: (deal: Deal) => DealRole, now: Date) {
+export function pickupHomeDeals(
+  deals: readonly Deal[],
+  roleFor: (deal: Deal) => DealRole,
+  now: Date,
+) {
   const scheduled = (deal: Deal) => pickupDay(deal, roleFor(deal), now);
   const isCurrent = (deal: Deal) => {
     const day = scheduled(deal);
@@ -143,12 +160,16 @@ export function pickupHomeDeals(deals: readonly Deal[], roleFor: (deal: Deal) =>
     return check && !check.expired;
   };
   const priority = (deal: Deal) =>
-    asksAboutPickup(deal) ? -1
-      : isCurrent(deal) ? 0
-      : pickupActivity(deal, roleFor(deal), now).needsYou ||
-          (deal.proposal && deal.proposal.by !== roleFor(deal)) ? 1
-        : deal.status === "agreed" ? 2
-          : 3;
+    asksAboutPickup(deal)
+      ? -1
+      : isCurrent(deal)
+        ? 0
+        : pickupActivity(deal, roleFor(deal), now).needsYou ||
+            (deal.proposal && deal.proposal.by !== roleFor(deal))
+          ? 1
+          : deal.status === "agreed"
+            ? 2
+            : 3;
   return deals
     .filter(
       (deal) =>

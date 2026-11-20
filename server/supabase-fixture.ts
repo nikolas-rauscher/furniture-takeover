@@ -16,9 +16,12 @@ export const buyer = "11111111-1111-4111-8111-111111111111",
 
 export async function applyMigrations(db: PGlite, migrations: string[]) {
   for (const migration of migrations)
-    await db.exec(await readFile(
-      new URL(`../supabase/migrations/${migration}`, import.meta.url), "utf8",
-    ));
+    await db.exec(
+      await readFile(
+        new URL(`../supabase/migrations/${migration}`, import.meta.url),
+        "utf8",
+      ),
+    );
 }
 
 export const adminMigration = "202611190004_admin.sql";

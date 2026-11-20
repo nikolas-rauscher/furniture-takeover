@@ -103,13 +103,19 @@ test("a seller who agreed with another buyer is reminded to tell this one, once"
       canNudge: true,
       ...changes,
     });
-  assert.deepEqual(notice({}), { kind: "agreed_elsewhere", agreedWith: "Arjun" });
+  assert.deepEqual(notice({}), {
+    kind: "agreed_elsewhere",
+    agreedWith: "Arjun",
+  });
   const told = {
     ...mine(1),
     id: "m2",
     text: "Sorry, the White study desk is now reserved for someone else. I'll let you know if that changes.",
   };
-  assert.equal(notice({ messages: [{ ...mine(30), from: "them" }, told] }), null);
+  assert.equal(
+    notice({ messages: [{ ...mine(30), from: "them" }, told] }),
+    null,
+  );
   assert.equal(notice({ agreedWith: undefined }), null);
   assert.equal(notice({ role: "buyer" })?.kind, "gone");
 });

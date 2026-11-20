@@ -132,7 +132,12 @@ test("account deals are seen from the student's side, named like the inbox", () 
           at: "2026-11-19T12:00:00.000Z",
         },
       },
-      { role: "seller", otherName: "Buyer", threadId: "c-l2", latest: undefined },
+      {
+        role: "seller",
+        otherName: "Buyer",
+        threadId: "c-l2",
+        latest: undefined,
+      },
     ],
   );
   assert.deepEqual(accountInboxDeals({ ...rows, deals: null }, "me"), []);

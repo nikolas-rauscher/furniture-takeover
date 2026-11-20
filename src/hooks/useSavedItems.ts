@@ -54,7 +54,8 @@ export function useSavedItems({
             onClick: openSaved,
           },
         });
-      else toast.show((notice) => (notice?.savedFavorite === id ? null : notice));
+      else
+        toast.show((notice) => (notice?.savedFavorite === id ? null : notice));
     },
     clear: () => setFavorites([]),
   };

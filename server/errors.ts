@@ -2,7 +2,12 @@ export class AgentError extends Error {
   status: number;
   code: string;
 
-  constructor(status: number, code: string, message: string, options?: ErrorOptions) {
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    options?: ErrorOptions,
+  ) {
     super(message, options);
     this.name = "AgentError";
     this.status = status;

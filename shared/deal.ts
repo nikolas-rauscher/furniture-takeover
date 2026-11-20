@@ -13,7 +13,11 @@ import { z } from "zod";
 import { zurichClockTime } from "./pickupTime.ts";
 import { dealTermsSchema, type DealTerms } from "./dealTerms.ts";
 
-export { dealTermsSchema, isoInstantSchema, type DealTerms } from "./dealTerms.ts";
+export {
+  dealTermsSchema,
+  isoInstantSchema,
+  type DealTerms,
+} from "./dealTerms.ts";
 
 export type DealRole = "buyer" | "seller";
 export type DealTermField =
@@ -33,15 +37,20 @@ export function missingTerms(terms: DealTerms): DealTermField[] {
 
 /** A standalone price or wording that offers the item at no charge. */
 const FREE_PRICE = /^(?:free|gratuite?|gratis|kostenlos)[.!]?$/i;
-const FREE_OFFER = /\b(?:(?:for|it's|it’s) free|free (?:pickup|it is)|c['’]est gratuite?|(?:pour|c['’]est) gratis|ist kostenlos)\b/i;
-const NEGATED_FREE_OFFER = /\b(?:not|never|cannot|can['’]t|won['’]t)\b[^.!?;]*\bfor free\b/i;
+const FREE_OFFER =
+  /\b(?:(?:for|it's|it’s) free|free (?:pickup|it is)|c['’]est gratuite?|(?:pour|c['’]est) gratis|ist kostenlos)\b/i;
+const NEGATED_FREE_OFFER =
+  /\b(?:not|never|cannot|can['’]t|won['’]t)\b[^.!?;]*\bfor free\b/i;
 
 /** "CHF 1'200", "CHF 1,200", "chf1200": the amount's digits after CHF, and no digit after them. */
 function statesAmount(body: string, amount: number): boolean {
   const digits = String(amount).replace(/(\d)(?=(\d{3})+$)/g, "$1[,' ]?");
   if (new RegExp(`chf ?${digits}(?![0-9])`, "i").test(body)) return true;
-  return amount === 0 && (FREE_PRICE.test(body.trim()) ||
-    (FREE_OFFER.test(body) && !NEGATED_FREE_OFFER.test(body)));
+  return (
+    amount === 0 &&
+    (FREE_PRICE.test(body.trim()) ||
+      (FREE_OFFER.test(body) && !NEGATED_FREE_OFFER.test(body)))
+  );
 }
 
 const containsWords = (body: string, words: string) =>
@@ -71,15 +80,26 @@ export function messageStatesTerms(
 }
 
 const roleSchema = z.enum(["buyer", "seller"]);
-export const lateMinutesSchema = z.union([z.literal(10), z.literal(20), z.literal(30)]);
+export const lateMinutesSchema = z.union([
+  z.literal(10),
+  z.literal(20),
+  z.literal(30),
+]);
 export type LateMinutes = z.infer<typeof lateMinutesSchema>;
-const pickupSignalsSchema = z.object({
-  onWay: z.object({ buyer: z.string().nullable(), seller: z.string().nullable() }).strict(),
-  late: z.object({ minutes: lateMinutesSchema, by: roleSchema, at: z.string() }).strict().nullable(),
-  noShow: z.object({ by: roleSchema, at: z.string() }).strict().nullable(),
-  buyerPickedUpAt: z.string().nullable(),
-  cancelReason: z.enum(["cant_make_it", "no_show"]).nullable(),
-}).strict();
+const pickupSignalsSchema = z
+  .object({
+    onWay: z
+      .object({ buyer: z.string().nullable(), seller: z.string().nullable() })
+      .strict(),
+    late: z
+      .object({ minutes: lateMinutesSchema, by: roleSchema, at: z.string() })
+      .strict()
+      .nullable(),
+    noShow: z.object({ by: roleSchema, at: z.string() }).strict().nullable(),
+    buyerPickedUpAt: z.string().nullable(),
+    cancelReason: z.enum(["cant_make_it", "no_show"]).nullable(),
+  })
+  .strict();
 export type PickupSignals = z.infer<typeof pickupSignalsSchema>;
 
 export const emptyPickupSignals = (): PickupSignals => ({
@@ -106,7 +126,14 @@ export const dealSchema = z
     agreed: z.object({ terms: dealTermsSchema, at: z.string() }).nullable(),
     outcome: z
       .object({
-        kind: z.enum(["picked_up", "cancelled", "no_show", "listing_reopened", "shipped", "pickup_expired"]),
+        kind: z.enum([
+          "picked_up",
+          "cancelled",
+          "no_show",
+          "listing_reopened",
+          "shipped",
+          "pickup_expired",
+        ]),
         by: roleSchema.nullable(),
         at: z.string(),
       })
@@ -151,7 +178,9 @@ export type DealEventKind =
 export type DealEvent = { kind: DealEventKind; terms: DealTerms | null };
 
 export const pickupActionSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("suggest_time"), terms: dealTermsSchema }).strict(),
+  z
+    .object({ type: z.literal("suggest_time"), terms: dealTermsSchema })
+    .strict(),
   z.object({ type: z.literal("accept_time"), terms: dealTermsSchema }).strict(),
   z.object({ type: z.literal("keep_time") }).strict(),
   z.object({ type: z.literal("withdraw_time") }).strict(),
@@ -159,16 +188,35 @@ export const pickupActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("late"), minutes: lateMinutesSchema }).strict(),
   z.object({ type: z.literal("no_show") }).strict(),
   z.object({ type: z.literal("release_no_show") }).strict(),
-  z.object({ type: z.literal("cancel_pickup"), reason: z.literal("cant_make_it") }).strict(),
+  z
+    .object({
+      type: z.literal("cancel_pickup"),
+      reason: z.literal("cant_make_it"),
+    })
+    .strict(),
   z.object({ type: z.literal("picked_up") }).strict(),
   z.object({ type: z.literal("confirm_pickup_happened") }).strict(),
   z.object({ type: z.literal("release_stale_pickup") }).strict(),
-  z.object({ type: z.literal("offer_again"), releasedConversationId: z.string().uuid() }).strict(),
+  z
+    .object({
+      type: z.literal("offer_again"),
+      releasedConversationId: z.string().uuid(),
+    })
+    .strict(),
 ]);
 export type PickupAction = z.infer<typeof pickupActionSchema>;
 export const pickupEventKindSchema = z.enum([
-  "time_suggested", "time_accepted", "time_kept", "time_withdrawn",
-  "on_my_way", "late", "no_show", "no_show_released", "pickup_cancelled", "picked_up", "offered_again",
+  "time_suggested",
+  "time_accepted",
+  "time_kept",
+  "time_withdrawn",
+  "on_my_way",
+  "late",
+  "no_show",
+  "no_show_released",
+  "pickup_cancelled",
+  "picked_up",
+  "offered_again",
 ]);
 export type PickupEvent = {
   kind: z.infer<typeof pickupEventKindSchema>;
@@ -182,38 +230,65 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** Follow-up opens 24 hours after pickup and closes 24 hours later. */
 export function pickupCheck(deal: Deal | null | undefined, now: Date) {
   const terms = deal?.agreed?.terms;
-  if (deal?.status !== "agreed" || terms?.fulfillment !== "pickup" || !terms.pickupAt)
+  if (
+    deal?.status !== "agreed" ||
+    terms?.fulfillment !== "pickup" ||
+    !terms.pickupAt
+  )
     return null;
   const opens = Date.parse(terms.pickupAt) + DAY_MS;
   const expires = opens + DAY_MS;
   if (now.getTime() < opens) return null;
-  return { opensAt: new Date(opens).toISOString(), expiresAt: new Date(expires).toISOString(),
-    expired: now.getTime() >= expires };
+  return {
+    opensAt: new Date(opens).toISOString(),
+    expiresAt: new Date(expires).toISOString(),
+    expired: now.getTime() >= expires,
+  };
 }
 
 export const expirePickup = (deal: Deal, at: string): Deal => ({
-  ...deal, status: "cancelled", proposal: null, version: deal.version + 1,
-  outcome: { kind: "pickup_expired", by: null, at }, updatedAt: at,
+  ...deal,
+  status: "cancelled",
+  proposal: null,
+  version: deal.version + 1,
+  outcome: { kind: "pickup_expired", by: null, at },
+  updatedAt: at,
 });
 
 export type PickupPhase = "booked" | "pickup_soon" | "pickup_now" | "overdue";
-export function pickupDay(deal: Deal | null | undefined, role: DealRole, now: Date) {
+export function pickupDay(
+  deal: Deal | null | undefined,
+  role: DealRole,
+  now: Date,
+) {
   const terms = deal?.agreed?.terms;
-  if (deal?.status !== "agreed" || terms?.fulfillment !== "pickup" || !terms.pickupAt)
+  if (
+    deal?.status !== "agreed" ||
+    terms?.fulfillment !== "pickup" ||
+    !terms.pickupAt
+  )
     return null;
   const minutesUntil = (Date.parse(terms.pickupAt) - now.getTime()) / 60000;
   const delay = deal.pickup?.late?.minutes ?? 0;
   const overdue = minutesUntil <= -(delay + NO_SHOW_AFTER_MINUTES);
   const buyerReportedPickup = !!deal.pickup?.buyerPickedUpAt;
-  const phase: PickupPhase = overdue ? "overdue"
-    : minutesUntil <= 0 ? "pickup_now"
-    : minutesUntil <= REMINDER_BEFORE_MINUTES ? "pickup_soon" : "booked";
+  const phase: PickupPhase = overdue
+    ? "overdue"
+    : minutesUntil <= 0
+      ? "pickup_now"
+      : minutesUntil <= REMINDER_BEFORE_MINUTES
+        ? "pickup_soon"
+        : "booked";
   return {
     phase,
     terms,
     minutesUntil,
-    change: deal.proposal && (deal.proposal.by === role ? "sent" as const : "received" as const),
-    canSignal: minutesUntil <= SIGNAL_WINDOW.beforeMinutes && minutesUntil >= -SIGNAL_WINDOW.afterMinutes,
+    change:
+      deal.proposal &&
+      (deal.proposal.by === role ? ("sent" as const) : ("received" as const)),
+    canSignal:
+      minutesUntil <= SIGNAL_WINDOW.beforeMinutes &&
+      minutesUntil >= -SIGNAL_WINDOW.afterMinutes,
     canReportNoShow: overdue,
     canMarkSold: minutesUntil <= 0 || buyerReportedPickup,
     buyerReportedPickup,
@@ -222,41 +297,63 @@ export function pickupDay(deal: Deal | null | undefined, role: DealRole, now: Da
 }
 
 function isPickupReleased(deal: Deal | null | undefined): boolean {
-  return deal?.status === "cancelled" &&
+  return (
+    deal?.status === "cancelled" &&
     deal.agreed?.terms.fulfillment === "pickup" &&
-    (deal.outcome?.kind === "no_show" || deal.outcome?.kind === "cancelled" || deal.outcome?.kind === "pickup_expired");
+    (deal.outcome?.kind === "no_show" ||
+      deal.outcome?.kind === "cancelled" ||
+      deal.outcome?.kind === "pickup_expired")
+  );
 }
 
-export function nextPickupBuyer<T extends { id: string; listingId: string; deal?: Deal | null }>(
-  released: Deal,
-  candidates: readonly T[],
-): T | undefined {
+export function nextPickupBuyer<
+  T extends { id: string; listingId: string; deal?: Deal | null },
+>(released: Deal, candidates: readonly T[]): T | undefined {
   if (!isPickupReleased(released)) return undefined;
-  return candidates.find((candidate) =>
-    candidate.listingId === released.listingId && candidate.id !== released.conversationId &&
-    (!candidate.deal || candidate.deal.status === "open"));
+  return candidates.find(
+    (candidate) =>
+      candidate.listingId === released.listingId &&
+      candidate.id !== released.conversationId &&
+      (!candidate.deal || candidate.deal.status === "open"),
+  );
 }
 
 /** The target is the next student's existing conversation for offer_again. */
-export function applyPickupAction(input: Omit<Parameters<typeof applyDealAction>[0], "action"> & {
-  action: PickupAction;
-  releasedDeal?: Deal | null;
-}): { deal: Deal; event: PickupEvent; statusChange?: PickupStatusChange } {
-  const { actor, action, listingStatus, body, now, conversationId, listingId } = input;
-  if (!body.trim() || body.trim().length > 4000) throw new DealError("message_invalid");
+export function applyPickupAction(
+  input: Omit<Parameters<typeof applyDealAction>[0], "action"> & {
+    action: PickupAction;
+    releasedDeal?: Deal | null;
+  },
+): { deal: Deal; event: PickupEvent; statusChange?: PickupStatusChange } {
+  const { actor, action, listingStatus, body, now, conversationId, listingId } =
+    input;
+  if (!body.trim() || body.trim().length > 4000)
+    throw new DealError("message_invalid");
   const current = input.deal && reopenUnagreedDeal(input.deal);
   const at = now.toISOString();
   const deal: Deal = {
-    conversationId, listingId, status: "open", proposal: null, agreed: null, outcome: null,
-    ...current, pickup: current?.pickup ?? emptyPickupSignals(),
-    updatedAt: at, version: (current?.version ?? 0) + 1,
+    conversationId,
+    listingId,
+    status: "open",
+    proposal: null,
+    agreed: null,
+    outcome: null,
+    ...current,
+    pickup: current?.pickup ?? emptyPickupSignals(),
+    updatedAt: at,
+    version: (current?.version ?? 0) + 1,
   };
   if (action.type === "offer_again") {
     const released = input.releasedDeal;
-    if (actor !== "seller" || !released || !isPickupReleased(released) ||
-        released.conversationId !== action.releasedConversationId ||
-        released.conversationId === conversationId || released.listingId !== listingId ||
-        deal.status !== "open")
+    if (
+      actor !== "seller" ||
+      !released ||
+      !isPickupReleased(released) ||
+      released.conversationId !== action.releasedConversationId ||
+      released.conversationId === conversationId ||
+      released.listingId !== listingId ||
+      deal.status !== "open"
+    )
       throw new DealError("next_buyer_unavailable");
     if (listingStatus !== "active") throw new DealError("listing_unavailable");
     return { deal, event: { kind: "offered_again", terms: null } };
@@ -265,79 +362,158 @@ export function applyPickupAction(input: Omit<Parameters<typeof applyDealAction>
   if (!day) throw new DealError("pickup_unavailable");
   if (listingStatus !== "reserved") throw new DealError("listing_unavailable");
   if (day.pickupCheck?.expired) throw new DealError("pickup_unavailable");
-  if (action.type === "confirm_pickup_happened" || action.type === "release_stale_pickup") {
+  if (
+    action.type === "confirm_pickup_happened" ||
+    action.type === "release_stale_pickup"
+  ) {
     if (!day.pickupCheck) throw new DealError("pickup_check_not_due");
-    if (action.type === "confirm_pickup_happened") return {
-      deal: { ...deal, proposal: null, status: "completed", outcome: { kind: "picked_up", by: actor, at } },
-      event: { kind: "picked_up", terms: null }, statusChange: "sold",
-    };
+    if (action.type === "confirm_pickup_happened")
+      return {
+        deal: {
+          ...deal,
+          proposal: null,
+          status: "completed",
+          outcome: { kind: "picked_up", by: actor, at },
+        },
+        event: { kind: "picked_up", terms: null },
+        statusChange: "sold",
+      };
     return {
-      deal: { ...deal, proposal: null, status: "cancelled", outcome: { kind: "cancelled", by: actor, at } },
-      event: { kind: "pickup_cancelled", terms: null }, statusChange: "active",
+      deal: {
+        ...deal,
+        proposal: null,
+        status: "cancelled",
+        outcome: { kind: "cancelled", by: actor, at },
+      },
+      event: { kind: "pickup_cancelled", terms: null },
+      statusChange: "active",
     };
   }
   if (action.type === "suggest_time" || action.type === "accept_time") {
     const { terms } = action;
     if (!termsComplete(terms)) throw new DealError("terms_incomplete");
-    if (terms.fulfillment !== "pickup" || terms.amount !== day.terms.amount ||
-        terms.pickupPoint !== day.terms.pickupPoint ||
-        Date.parse(terms.pickupAt!) === Date.parse(day.terms.pickupAt!))
+    if (
+      terms.fulfillment !== "pickup" ||
+      terms.amount !== day.terms.amount ||
+      terms.pickupPoint !== day.terms.pickupPoint ||
+      Date.parse(terms.pickupAt!) === Date.parse(day.terms.pickupAt!)
+    )
       throw new DealError("pickup_terms_changed");
-    if (Date.parse(terms.pickupAt!) <= now.getTime()) throw new DealError("pickup_time_past");
-    if (!messageStatesTerms(body, terms).ok) throw new DealError("terms_not_stated");
-    const matches = deal.proposal && deal.proposal.by !== actor && sameTerms(deal.proposal.terms, terms);
-    if (matches) return {
-      deal: { ...deal, agreed: { terms, at }, proposal: null, pickup: emptyPickupSignals() },
-      event: { kind: "time_accepted", terms },
-    };
+    if (Date.parse(terms.pickupAt!) <= now.getTime())
+      throw new DealError("pickup_time_past");
+    if (!messageStatesTerms(body, terms).ok)
+      throw new DealError("terms_not_stated");
+    const matches =
+      deal.proposal &&
+      deal.proposal.by !== actor &&
+      sameTerms(deal.proposal.terms, terms);
+    if (matches)
+      return {
+        deal: {
+          ...deal,
+          agreed: { terms, at },
+          proposal: null,
+          pickup: emptyPickupSignals(),
+        },
+        event: { kind: "time_accepted", terms },
+      };
     if (action.type === "accept_time") throw new DealError("deal_changed");
     return {
-      deal: { ...deal, proposal: { terms, by: actor, messageId: input.messageId ?? null } },
+      deal: {
+        ...deal,
+        proposal: { terms, by: actor, messageId: input.messageId ?? null },
+      },
       event: { kind: "time_suggested", terms },
     };
   }
   if (action.type === "keep_time" || action.type === "withdraw_time") {
-    if (!deal.proposal || (deal.proposal.by === actor) !== (action.type === "withdraw_time"))
+    if (
+      !deal.proposal ||
+      (deal.proposal.by === actor) !== (action.type === "withdraw_time")
+    )
       throw new DealError("deal_changed");
-    return { deal: { ...deal, proposal: null }, event: {
-      kind: action.type === "keep_time" ? "time_kept" : "time_withdrawn", terms: null,
-    } };
+    return {
+      deal: { ...deal, proposal: null },
+      event: {
+        kind: action.type === "keep_time" ? "time_kept" : "time_withdrawn",
+        terms: null,
+      },
+    };
   }
   if ((action.type === "on_my_way" || action.type === "late") && !day.canSignal)
-    throw new DealError(day.minutesUntil > 0 ? "too_early" : "pickup_window_ended");
-  if ((action.type === "no_show" || action.type === "release_no_show") && !day.canReportNoShow)
+    throw new DealError(
+      day.minutesUntil > 0 ? "too_early" : "pickup_window_ended",
+    );
+  if (
+    (action.type === "no_show" || action.type === "release_no_show") &&
+    !day.canReportNoShow
+  )
     throw new DealError("too_early");
   const pickup = deal.pickup!;
   switch (action.type) {
     case "on_my_way":
-      return { deal: { ...deal, pickup: { ...pickup, onWay: { ...pickup.onWay, [actor]: at } } },
-        event: { kind: "on_my_way", terms: null } };
+      return {
+        deal: {
+          ...deal,
+          pickup: { ...pickup, onWay: { ...pickup.onWay, [actor]: at } },
+        },
+        event: { kind: "on_my_way", terms: null },
+      };
     case "late":
-      return { deal: { ...deal, pickup: { ...pickup, late: { minutes: action.minutes, by: actor, at } } },
-        event: { kind: "late", terms: null, minutes: action.minutes } };
+      return {
+        deal: {
+          ...deal,
+          pickup: {
+            ...pickup,
+            late: { minutes: action.minutes, by: actor, at },
+          },
+        },
+        event: { kind: "late", terms: null, minutes: action.minutes },
+      };
     case "no_show":
-      return { deal: { ...deal, pickup: { ...pickup, noShow: { by: actor, at } } },
-        event: { kind: "no_show", terms: null } };
+      return {
+        deal: { ...deal, pickup: { ...pickup, noShow: { by: actor, at } } },
+        event: { kind: "no_show", terms: null },
+      };
     case "release_no_show":
     case "cancel_pickup": {
       const noShow = action.type === "release_no_show";
       return {
         deal: {
-          ...deal, proposal: null, status: "cancelled",
+          ...deal,
+          proposal: null,
+          status: "cancelled",
           outcome: { kind: noShow ? "no_show" : "cancelled", by: actor, at },
-          pickup: { ...pickup, cancelReason: noShow ? "no_show" : action.reason },
+          pickup: {
+            ...pickup,
+            cancelReason: noShow ? "no_show" : action.reason,
+          },
         },
-        event: { kind: noShow ? "no_show_released" : "pickup_cancelled", terms: null },
+        event: {
+          kind: noShow ? "no_show_released" : "pickup_cancelled",
+          terms: null,
+        },
         statusChange: "active",
       };
     }
     case "picked_up":
-      if (actor === "seller" && !day.canMarkSold) throw new DealError("too_early");
+      if (actor === "seller" && !day.canMarkSold)
+        throw new DealError("too_early");
       return actor === "buyer"
-        ? { deal: { ...deal, pickup: { ...pickup, buyerPickedUpAt: at } },
-          event: { kind: "picked_up", terms: null } }
-        : { deal: { ...deal, proposal: null, status: "completed", outcome: { kind: "picked_up", by: actor, at } },
-          event: { kind: "picked_up", terms: null }, statusChange: "sold" };
+        ? {
+            deal: { ...deal, pickup: { ...pickup, buyerPickedUpAt: at } },
+            event: { kind: "picked_up", terms: null },
+          }
+        : {
+            deal: {
+              ...deal,
+              proposal: null,
+              status: "completed",
+              outcome: { kind: "picked_up", by: actor, at },
+            },
+            event: { kind: "picked_up", terms: null },
+            statusChange: "sold",
+          };
   }
 }
 export class DealError extends Error {
@@ -347,8 +523,7 @@ export class DealError extends Error {
     this.key = key;
   }
 }
-const termsComplete = (terms: DealTerms) =>
-  missingTerms(terms).length === 0;
+const termsComplete = (terms: DealTerms) => missingTerms(terms).length === 0;
 const sameTerms = (a: DealTerms, b: DealTerms) =>
   (Object.keys(a) as (keyof DealTerms)[]).every((k) => a[k] === b[k]);
 export function applyDealAction(input: {
@@ -361,7 +536,11 @@ export function applyDealAction(input: {
   conversationId: string;
   listingId: string;
   messageId?: string;
-}): { deal: Deal; event: DealEvent; statusChange?: "active" | "reserved" | "sold" } {
+}): {
+  deal: Deal;
+  event: DealEvent;
+  statusChange?: "active" | "reserved" | "sold";
+} {
   const { action, actor, body, conversationId, listingId } = input;
   if (!body.trim() || body.trim().length > 4000)
     throw new DealError("message_invalid");
@@ -378,20 +557,36 @@ export function applyDealAction(input: {
     updatedAt: at,
   };
   if (deal.status === "cancelled" && action.type === "propose") {
-    if (input.listingStatus !== "active") throw new DealError("listing_unavailable");
+    if (input.listingStatus !== "active")
+      throw new DealError("listing_unavailable");
     Object.assign(deal, {
-      status: "open", proposal: null, agreed: null, outcome: null, pickup: emptyPickupSignals(),
+      status: "open",
+      proposal: null,
+      agreed: null,
+      outcome: null,
+      pickup: emptyPickupSignals(),
     });
   }
   if (deal.status === "completed" || deal.status === "cancelled")
     throw new DealError("deal_closed");
   if (action.type === "complete_shipping") {
-    if (actor !== "seller" || deal.status !== "agreed" || deal.agreed?.terms.fulfillment !== "shipping")
+    if (
+      actor !== "seller" ||
+      deal.status !== "agreed" ||
+      deal.agreed?.terms.fulfillment !== "shipping"
+    )
       throw new DealError("shipping_unavailable");
-    if (input.listingStatus !== "reserved") throw new DealError("listing_unavailable");
+    if (input.listingStatus !== "reserved")
+      throw new DealError("listing_unavailable");
     return {
-      deal: { ...deal, status: "completed", proposal: null, outcome: { kind: "shipped", by: actor, at } },
-      event: { kind: "completed", terms: null }, statusChange: "sold",
+      deal: {
+        ...deal,
+        status: "completed",
+        proposal: null,
+        outcome: { kind: "shipped", by: actor, at },
+      },
+      event: { kind: "completed", terms: null },
+      statusChange: "sold",
     };
   }
   const proposal = deal.proposal;

@@ -131,7 +131,10 @@ export function newSearch(
     text: request,
     originalRequest: previous?.originalRequest || request,
     criteria,
-    location: request.match(/\b(?:around|near|within [\d.,]+ km of) (EPFL|UNIL)\b/i)?.[1].toUpperCase() ?? location,
+    location:
+      request
+        .match(/\b(?:around|near|within [\d.,]+ km of) (EPFL|UNIL)\b/i)?.[1]
+        .toUpperCase() ?? location,
     ...(previous?.intent ? { intent: previous.intent } : {}),
     ...(previous ? { previousQuery: previous.text.slice(0, 500) } : {}),
     ...(previousAnswer
@@ -160,9 +163,15 @@ export function preferenceSearch(
 }
 
 /** Reuse the existing ranking, plus catalog items a relaxed filter may bring back. */
-export function refilterCatalog(inventory: Product[], ranked: Product[], criteria: Criteria) {
+export function refilterCatalog(
+  inventory: Product[],
+  ranked: Product[],
+  criteria: Criteria,
+) {
   const rankedIds = new Set(ranked.map(({ id }) => id));
-  const remaining = inventory.filter((item) => !isMine(item) && !rankedIds.has(item.id));
+  const remaining = inventory.filter(
+    (item) => !isMine(item) && !rankedIds.has(item.id),
+  );
   return [
     ...filterProducts(ranked, { ...criteria, query: "", category: "All" }),
     ...filterProducts(remaining, criteria),
@@ -229,7 +238,8 @@ export function agentSearchRequest(
   const ownListingIds = inventory
     .filter((item) => isMine(item) && item.status === "active")
     .map((item) => item.id);
-  const budgetSpecified = search.criteria.maxPrice !== defaults.maxPrice ||
+  const budgetSpecified =
+    search.criteria.maxPrice !== defaults.maxPrice ||
     [search.originalRequest, search.text].some(
       (text) => extractSearchConstraints(text).maxPrice !== undefined,
     );
@@ -250,7 +260,8 @@ export function agentSearchRequest(
         ? {}
         : {
             ...(budgetSpecified && search.criteria.maxPrice < 1_000_000
-              ? { maxPrice: search.criteria.maxPrice } : {}),
+              ? { maxPrice: search.criteria.maxPrice }
+              : {}),
             budgetSpecified,
             radius: search.criteria.radius,
             pickupBy: search.criteria.pickup,

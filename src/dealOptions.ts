@@ -99,7 +99,9 @@ const COMPLETE_LABELS: Record<string, string> = {
 
 /** Names what an incomplete offer still needs from the student. */
 function completeLabel(terms: DealTerms) {
-  const missing = missingTerms(terms).filter((field) => field !== "fulfillment");
+  const missing = missingTerms(terms).filter(
+    (field) => field !== "fulfillment",
+  );
   return COMPLETE_LABELS[missing.join(",")] ?? "Complete the offer";
 }
 
@@ -231,14 +233,18 @@ export function dealOptions({
     }
     case "agreed":
       return {
-        ...(role === "seller" && deal?.agreed?.terms.fulfillment === "shipping" ? {
-          primary: {
-            kind: "act", id: "complete-shipping", label: "Mark shipped",
-            action: { type: "complete_shipping" },
-            message: "I've shipped the item.",
-            confirm: "This completes the deal and marks the listing sold.",
-          },
-        } : {}),
+        ...(role === "seller" && deal?.agreed?.terms.fulfillment === "shipping"
+          ? {
+              primary: {
+                kind: "act",
+                id: "complete-shipping",
+                label: "Mark shipped",
+                action: { type: "complete_shipping" },
+                message: "I've shipped the item.",
+                confirm: "This completes the deal and marks the listing sold.",
+              },
+            }
+          : {}),
         secondary: [cancelDeal(role, otherName, listing.title)],
       };
     case "cancelled":
@@ -348,7 +354,8 @@ export function counterPrices({
   mineBefore: number | null;
   asking: number;
 }): CounterRange {
-  if (mineBefore !== null) return { theirs, mine: mineBefore, mineFrom: "offer" };
+  if (mineBefore !== null)
+    return { theirs, mine: mineBefore, mineFrom: "offer" };
   return role === "seller"
     ? { theirs, mine: asking, mineFrom: "asking" }
     : {

@@ -136,10 +136,7 @@ test("a visual search sends one inspiration photo and rejects a photo set", asyn
     { intent: "search", text: "", images: [png, otherPng] },
     { intent: "search", text: "", image: png, images: [otherPng] },
   ])
-    await assert.rejects(
-      service.assist(request),
-      rejectsCode("INVALID_IMAGE"),
-    );
+    await assert.rejects(service.assist(request), rejectsCode("INVALID_IMAGE"));
 });
 
 test("live search metadata cannot erase explicit constraints and suggestions cannot relax them", async () => {
@@ -548,12 +545,17 @@ test("typing cancellation prevents a second provider call after invalid output",
   assert.equal(calls, 1);
 });
 
+type ImagePart = { image_url: { url: string; detail: string } };
+type PhotoRequest = {
+  messages: [{ content: string }, { content: ImagePart[] }];
+};
+
 test("photo observations provide clickable facts without turning missing fields into questions", async () => {
-  let sent: any;
+  const requests: PhotoRequest[] = [];
   const service = createAgentService({
     ...fakeConfig,
     fetchImpl: fakeFetch(async (_url, init) => {
-      sent = JSON.parse(String(init?.body));
+      requests.push(JSON.parse(String(init?.body)));
       return completion({
         suggestions: [
           "Two books",
@@ -582,6 +584,7 @@ test("photo observations provide clickable facts without turning missing fields 
   assert.equal(result.metadata.price, null);
   assert.equal(result.metadata.condition, null);
   assert.equal(result.metadata.dimensions, null);
+  const [sent] = requests;
   assert.match(sent.messages[0].content, /Read clearly legible product text/);
   assert.equal(sent.messages[1].content[1].image_url.detail, "auto");
 });
@@ -657,11 +660,13 @@ test("initial listing retains exact seller-grounded custom condition and natural
 
 test("all listing photos reach the model in order, with a single cover copy", async () => {
   const jpeg = `data:image/jpeg;base64,${Buffer.from([0xff, 0xd8, 0xff, 0x01]).toString("base64")}`;
-  let content: any;
+  const contents: ImagePart[][] = [];
+  const latestUrls = () =>
+    contents[contents.length - 1].slice(1).map((part) => part.image_url.url);
   const service = createAgentService({
     ...fakeConfig,
     fetchImpl: fakeFetch(async (_url, init) => {
-      content = JSON.parse(String(init?.body)).messages[1].content;
+      contents.push(JSON.parse(String(init?.body)).messages[1].content);
       return completion({
         suggestions: [],
         missingDetails: [],
@@ -675,15 +680,9 @@ test("all listing photos reach the model in order, with a single cover copy", as
     image: png,
     images: [png, jpeg],
   });
-  assert.deepEqual(
-    content.slice(1).map((part: any) => part.image_url.url),
-    [png, jpeg],
-  );
+  assert.deepEqual(latestUrls(), [png, jpeg]);
   await service.assist({ intent: "listing", text: "", images: [jpeg, png] });
-  assert.deepEqual(
-    content.slice(1).map((part: any) => part.image_url.url),
-    [jpeg, png],
-  );
+  assert.deepEqual(latestUrls(), [jpeg, png]);
   for (const request of [
     { intent: "search", text: "desk", images: [png, png, png] },
     { intent: "listing", text: "", images: Array(7).fill(png) },
@@ -750,9 +749,14 @@ test("photo sorting labels each preview and assigns every photo exactly once", a
     { photos: [1], label: "" },
     { photos: [3], label: "Blue armchair" },
   ]);
-  const content = sent!.messages[1].content as { type: string; text?: string }[];
+  const content = sent!.messages[1].content as {
+    type: string;
+    text?: string;
+  }[];
   assert.deepEqual(
-    content.filter((part) => part.text?.startsWith("Photo ")).map((part) => part.text),
+    content
+      .filter((part) => part.text?.startsWith("Photo "))
+      .map((part) => part.text),
     ["Photo 0", "Photo 1", "Photo 2", "Photo 3"],
   );
   assert.equal(content.filter((part) => part.type === "image_url").length, 4);
@@ -767,7 +771,11 @@ test("photo sorting validates the photo set before any provider call", async () 
       return completion({ groups: [] });
     }),
   });
-  for (const images of [[], Array(13).fill(png), ["data:text/plain;base64,AAAA"]])
+  for (const images of [
+    [],
+    Array(13).fill(png),
+    ["data:text/plain;base64,AAAA"],
+  ])
     await assert.rejects(
       service.groupPhotos({ images }),
       rejectsCode("INVALID_IMAGE"),
@@ -782,7 +790,11 @@ test("photo sorting validates the photo set before any provider call", async () 
 });
 
 test("photo sorting rejects a malformed provider answer", async () => {
-  for (const answer of ["not json", { groups: "desk" }, { groups: [{ photos: 1 }] }])
+  for (const answer of [
+    "not json",
+    { groups: "desk" },
+    { groups: [{ photos: 1 }] },
+  ])
     await assert.rejects(
       serviceWithResponse(answer).groupPhotos({ images: [png] }),
       rejectsCode("INVALID_AGENT_RESPONSE"),

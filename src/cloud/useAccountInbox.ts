@@ -17,7 +17,10 @@ export type AccountInbox = ReturnType<typeof useAccountInbox>;
  * backstop that runs more often while Messages is open.
  */
 export function useAccountInbox(connection: AccountUser | null, open: boolean) {
-  const [snapshot, setSnapshot] = useState<{ userId: string; rows: InboxRows } | null>(null);
+  const [snapshot, setSnapshot] = useState<{
+    userId: string;
+    rows: InboxRows;
+  } | null>(null);
   const [loadError, setLoadError] = useState("");
   const [readError, setReadError] = useState("");
   const inFlight = useRef<symbol | null>(null);
@@ -87,12 +90,17 @@ export function useAccountInbox(connection: AccountUser | null, open: boolean) {
     return () => clearInterval(timer);
   }, [client, open, refresh]);
   /** Applies a local change at once; refreshes that started before it are ignored. */
-  const change = useCallback((update: (rows: InboxRows) => InboxRows) => {
-    generation.current++;
-    setSnapshot(current => current && current.userId === userId
-      ? { userId, rows: update(current.rows) }
-      : current);
-  }, [userId]);
+  const change = useCallback(
+    (update: (rows: InboxRows) => InboxRows) => {
+      generation.current++;
+      setSnapshot((current) =>
+        current && current.userId === userId
+          ? { userId, rows: update(current.rows) }
+          : current,
+      );
+    },
+    [userId],
+  );
   const markRead = useCallback(
     async (conversationId: string, seenUpTo: string) => {
       if (!client || !userId || !rows?.reads) return;

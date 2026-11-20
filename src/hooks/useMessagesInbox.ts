@@ -61,12 +61,23 @@ export function useMessagesInbox({
       : account && missing
         ? "missing"
         : "ready";
-  const threads = !account ? demoInbox.conversations.map(demoInboxThread)
-    : rows?.reads && userId ? rows.threads.map((thread) =>
-      accountInboxThread(thread.id, rows.latest[thread.id], userId, rows.systemLatest[thread.id]),
-    ) : [];
-  const markers = account ? rows?.reads ?? {} : reads.reads;
-  const activityByConversation: Record<string, ReturnType<typeof pickupActivity>> = {};
+  const threads = !account
+    ? demoInbox.conversations.map(demoInboxThread)
+    : rows?.reads && userId
+      ? rows.threads.map((thread) =>
+          accountInboxThread(
+            thread.id,
+            rows.latest[thread.id],
+            userId,
+            rows.systemLatest[thread.id],
+          ),
+        )
+      : [];
+  const markers = account ? (rows?.reads ?? {}) : reads.reads;
+  const activityByConversation: Record<
+    string,
+    ReturnType<typeof pickupActivity>
+  > = {};
   const pickupReadKeys = new Set<string>();
   if (!account) {
     for (const { id, deal } of demoInbox.conversations) {
@@ -77,10 +88,19 @@ export function useMessagesInbox({
   } else if (rows && userId) {
     for (const thread of rows.threads) {
       const deal = rows.deals?.[thread.id];
-      const other = thread.buyer_id === userId ? thread.seller_id : thread.buyer_id;
-      if (!deal?.pickup || rows.archived.includes(thread.id) || rows.blocked.includes(other))
+      const other =
+        thread.buyer_id === userId ? thread.seller_id : thread.buyer_id;
+      if (
+        !deal?.pickup ||
+        rows.archived.includes(thread.id) ||
+        rows.blocked.includes(other)
+      )
         continue;
-      const activity = pickupActivity(deal, thread.buyer_id === userId ? "buyer" : "seller", now);
+      const activity = pickupActivity(
+        deal,
+        thread.buyer_id === userId ? "buyer" : "seller",
+        now,
+      );
       activityByConversation[thread.id] = activity;
       if (activity.needsYou) pickupReadKeys.add(thread.id);
     }
@@ -88,7 +108,9 @@ export function useMessagesInbox({
   return {
     deals: account
       ? Object.values(rows?.deals ?? {})
-      : demoInbox.conversations.flatMap(thread => thread.deal ? [thread.deal] : []),
+      : demoInbox.conversations.flatMap((thread) =>
+          thread.deal ? [thread.deal] : [],
+        ),
     demoInbox,
     reads,
     accountInbox,

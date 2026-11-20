@@ -55,7 +55,10 @@ export function needsSignIn(view: View) {
 }
 
 /** The destination the header and mobile bar highlight for a page. */
-export function destinationFor(view: View, accountTab: AccountTab): Destination {
+export function destinationFor(
+  view: View,
+  accountTab: AccountTab,
+): Destination {
   switch (view) {
     case "sell":
     case "messages":

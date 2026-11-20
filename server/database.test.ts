@@ -146,7 +146,8 @@ test("stock photo migration swaps in the illustration and keeps listing edits", 
     status: "reserved",
     seller: "Demo seller",
     initials: "D",
-    description: "Fictional demo listing for testing. Photo referenced from an actual marketplace listing.",
+    description:
+      "Fictional demo listing for testing. Photo referenced from an actual marketplace listing.",
     image: "https://img.ricardostatic.ch/images/old/t_1000x750/fahrrad",
     photoSourceUrl: "https://www.ricardo.ch/de/a/fahrrad-1/",
   };

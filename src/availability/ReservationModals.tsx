@@ -43,7 +43,9 @@ export function RequestModal({
             <Clock size={18} />
           </span>
           <span>
-            <strong>The seller can confirm within {SELLER_REPLY_HOURS} h.</strong>
+            <strong>
+              The seller can confirm within {SELLER_REPLY_HOURS} h.
+            </strong>
           </span>
         </li>
         <li>

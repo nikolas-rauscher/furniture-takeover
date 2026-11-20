@@ -35,7 +35,10 @@ export type MessagesProps = {
   /** The campus meeting point near where the student searches from. */
   homePoint?: string;
   /** Applies a listing status a deal change brought, through the app's one status path. */
-  onListingStatus: (listingId: string, status: DealStatusChange) => Promise<void>;
+  onListingStatus: (
+    listingId: string,
+    status: DealStatusChange,
+  ) => Promise<void>;
   onBeforeSend?: (listingId: string, role: "buyer" | "seller") => void;
   onSent?: (
     listingId: string,

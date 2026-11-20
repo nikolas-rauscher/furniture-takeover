@@ -7,7 +7,17 @@ import {
   type AdminAction,
   type AdminOutput,
 } from "../shared/admin.ts";
-import { adminMigration, applyMigrations, buyer, dealRulesMigration, marketplace, pickupMigration, reviewMigration, seller, stranger } from "./supabase-fixture.ts";
+import {
+  adminMigration,
+  applyMigrations,
+  buyer,
+  dealRulesMigration,
+  marketplace,
+  pickupMigration,
+  reviewMigration,
+  seller,
+  stranger,
+} from "./supabase-fixture.ts";
 
 const why = { reason: "Reviewed with the marketplace team" };
 const draft = {
@@ -36,7 +46,12 @@ async function setup(t: TestContext) {
     "insert into public.reports(reporter_id,message_id,reason) values($1,$2,'Message problem')",
     [seller, fixture.message],
   );
-  await applyMigrations(db, [pickupMigration, adminMigration, reviewMigration, dealRulesMigration]);
+  await applyMigrations(db, [
+    pickupMigration,
+    adminMigration,
+    reviewMigration,
+    dealRulesMigration,
+  ]);
   await db.query("insert into public.admins(user_id) values($1)", [stranger]);
   return {
     ...fixture,
@@ -198,25 +213,44 @@ test("admins provision inert sellers, edit demo listings, and restore the shippe
 test("reports on simulated seller replies show the listing without a student to block", async (t) => {
   const { as, db, rpc } = await setup(t);
   await as(stranger);
-  const demo = await rpc("save_demo_seller", { name: "Camille", styleNote: "" });
-  const listing = await rpc("save_demo_listing", { ...draft, sellerId: demo.id });
+  const demo = await rpc("save_demo_seller", {
+    name: "Camille",
+    styleNote: "",
+  });
+  const listing = await rpc("save_demo_listing", {
+    ...draft,
+    sellerId: demo.id,
+  });
 
   await as(buyer);
-  const { rows: [{ id: conversation }] } = await db.query<{ id: string }>(
-    "select public.start_conversation($1) as id", [listing.id],
+  const {
+    rows: [{ id: conversation }],
+  } = await db.query<{ id: string }>(
+    "select public.start_conversation($1) as id",
+    [listing.id],
   );
   await as(demo.id);
-  const { rows: [{ id: message }] } = await db.query<{ id: string }>(
+  const {
+    rows: [{ id: message }],
+  } = await db.query<{ id: string }>(
     "insert into public.messages(conversation_id,body) values($1,'Pickup today works.') returning id",
     [conversation],
   );
   await as(buyer);
-  await db.query("insert into public.reports(message_id,reason) values($1,'Review reply')", [message]);
+  await db.query(
+    "insert into public.reports(message_id,reason) values($1,'Review reply')",
+    [message],
+  );
 
   await as(stranger);
-  const report = (await rpc("list_reports")).find(({ target }) => target.id === message);
+  const report = (await rpc("list_reports")).find(
+    ({ target }) => target.id === message,
+  );
   assert.equal(report?.studentId, null);
-  assert.equal(report?.target.kind === "message" && report.target.listingTitle, draft.title);
+  assert.equal(
+    report?.target.kind === "message" && report.target.listingTitle,
+    draft.title,
+  );
 });
 
 test("hide, block and report moderation preserve privacy and write a reasoned audit trail", async (t) => {
@@ -371,8 +405,14 @@ test("an agreed pickup survives a refused hide and a block, with atomic deal wri
   );
   await rpc("set_student_blocked", { studentId: buyer, blocked: true, ...why });
   await as(buyer);
-  await assert.rejects(act("cancel", 2, "cant_make_it"), /admin_student_blocked/);
-  await assert.rejects(db.query("select public.delete_account()"), /admin_student_blocked/);
+  await assert.rejects(
+    act("cancel", 2, "cant_make_it"),
+    /admin_student_blocked/,
+  );
+  await assert.rejects(
+    db.query("select public.delete_account()"),
+    /admin_student_blocked/,
+  );
   await assert.rejects(
     db.query(
       "select public.pickup_action($1,$2,'I cannot make it','cancel_pickup',2,null,null,'cant_make_it')",
@@ -384,19 +424,37 @@ test("an agreed pickup survives a refused hide and a block, with atomic deal wri
     .rows[0];
   assert.deepEqual(deal, { status: "agreed", version: 2 });
   await as(stranger);
-  await rpc("set_student_blocked", { studentId: buyer, blocked: false, ...why });
-  await rpc("set_student_blocked", { studentId: seller, blocked: true, ...why });
+  await rpc("set_student_blocked", {
+    studentId: buyer,
+    blocked: false,
+    ...why,
+  });
+  await rpc("set_student_blocked", {
+    studentId: seller,
+    blocked: true,
+    ...why,
+  });
   await as(seller);
   for (const update of ["title='New title'", "status='withdrawn'"])
-    await assert.rejects(db.query(`update public.listings set ${update} where id=$1`, [listing]), /admin_student_blocked/);
-  await assert.rejects(db.query("select public.delete_account()"), /admin_student_blocked/);
+    await assert.rejects(
+      db.query(`update public.listings set ${update} where id=$1`, [listing]),
+      /admin_student_blocked/,
+    );
+  await assert.rejects(
+    db.query("select public.delete_account()"),
+    /admin_student_blocked/,
+  );
   await as(buyer);
   await act("cancel", 2, "cant_make_it");
   await as(stranger);
   await rpc("set_listing_hidden", { id: listing, hidden: true, ...why });
   await db.exec("reset role");
   assert.equal((await db.query("select * from public.reports")).rows.length, 2);
-  assert.deepEqual((await db.query("select student_id from takeover_admin.student_blocks")).rows, [{ student_id: seller }]);
+  assert.deepEqual(
+    (await db.query("select student_id from takeover_admin.student_blocks"))
+      .rows,
+    [{ student_id: seller }],
+  );
   await db.exec(
     "insert into public.ai_daily_totals values ((now() at time zone 'UTC')::date,4); insert into public.ai_thread_totals values ((now() at time zone 'UTC')::date,7)",
   );

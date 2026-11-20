@@ -18,12 +18,7 @@ import SearchChat from "./shell/SearchChat";
 import { type OfferCards } from "./shell/ProposalCard";
 import { useMessagesInbox } from "./hooks/useMessagesInbox";
 import { useNegotiations } from "./hooks/useNegotiations";
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import AppFooter from "./shell/AppFooter";
 import { useToast } from "./hooks/useToast";
 import { useAppNavigation } from "./hooks/useAppNavigation";
@@ -52,16 +47,10 @@ import { useDeveloperMode } from "./availability/useDeveloperMode";
 import { useAgentRun } from "./hooks/useAgentRun";
 import { useHomeGuide } from "./hooks/useHomeGuide";
 import { useSaved } from "./hooks/useSaved";
-import {
-  isSearchArea,
-  restoreSearch,
-} from "./searchRequest";
+import { isSearchArea, restoreSearch } from "./searchRequest";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import { useAvailability } from "./availability/useAvailability";
-import {
-  type Product,
-  type SavedListing,
-} from "../shared/marketplace";
+import { type Product, type SavedListing } from "../shared/marketplace";
 import SavedNote from "./components/SavedNote";
 import { transitionPage } from "./pageTransition";
 import {
@@ -69,16 +58,11 @@ import {
   PageTransitionView,
 } from "./components/animate-ui/components/page-transition";
 import type { OnboardingOutcome } from "./components/onboarding/Onboarding";
-import {
-  rememberOnboarding,
-} from "./components/onboarding/onboardingStorage";
+import { rememberOnboarding } from "./components/onboarding/onboardingStorage";
 import { introFocusTarget } from "./components/onboarding/introFocus";
 import AdminEntry from "./components/admin/AdminEntry";
 import { useAdmin } from "./api/admin";
-import {
-  AdminArea,
-  ComparePage,
-} from "./screens";
+import { AdminArea, ComparePage } from "./screens";
 import Report from "./cloud/Report";
 import LazyBoundary from "./components/LazyBoundary";
 import { useScreenPrefetch } from "./hooks/useScreenPrefetch";
@@ -141,7 +125,10 @@ export default function App({
     if (view !== "settings") setReadingSettingsRequested(false);
   }, [view]);
   const helpButton = useRef<HTMLButtonElement>(null);
-  const intro = useIntro({ outcome: introOutcome, onComplete: completeOnboarding });
+  const intro = useIntro({
+    outcome: introOutcome,
+    onComplete: completeOnboarding,
+  });
   const [searchArea, setSearchArea] = useSaved(
     "takeover-search-area",
     { location: intro.record?.location ?? "EPFL, Ecublens", radius: 5 },
@@ -364,7 +351,10 @@ export default function App({
     compared: compare.ids,
     open: openProduct,
     toggleSaved: (id) =>
-      void savedItems.toggle(id, catalog.listings.find((item) => item.id === id)),
+      void savedItems.toggle(
+        id,
+        catalog.listings.find((item) => item.id === id),
+      ),
     toggleCompared: compare.toggle,
     availability: availability?.cardAvailability,
   };
@@ -385,7 +375,10 @@ export default function App({
         item={item}
         reservedForYou={deals.reservedForMe.has(item.id)}
         onFindSimilar={() =>
-          void search.runSearch(item.title, { ...search.criteria, category: item.category })
+          void search.runSearch(item.title, {
+            ...search.criteria,
+            category: item.category,
+          })
         }
       />,
     );
@@ -662,13 +655,21 @@ export default function App({
                       openMessages(selected.id),
                     )
                   }
-                  backLabel={detailBackLabel(detailOrigin, search.searching, accountTab)}
+                  backLabel={detailBackLabel(
+                    detailOrigin,
+                    search.searching,
+                    accountTab,
+                  )}
                   actions={{
                     onBack: () =>
                       transitionPage("nav-back", () => navigate(detailOrigin)),
                     onMessage: (item) => openMessages(item.id),
                     onOffer: (item) =>
-                      transitionPage("nav-forward", () => openOfferCard(item), "fade"),
+                      transitionPage(
+                        "nav-forward",
+                        () => openOfferCard(item),
+                        "fade",
+                      ),
                     onEdit: sell.editListing,
                     onAskAgent: (item) => {
                       sell.editListing(item);
@@ -747,7 +748,10 @@ export default function App({
         area={{ location, radius: search.criteria.radius }}
         onArea={(area) => {
           setSearchArea(area);
-          search.setCriteria((current) => ({ ...current, radius: area.radius }));
+          search.setCriteria((current) => ({
+            ...current,
+            radius: area.radius,
+          }));
           setModal(null);
         }}
         onClear={() => void clearWorkspace()}

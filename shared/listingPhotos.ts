@@ -12,7 +12,8 @@ export const CARD_PHOTO_SIDE = 640;
 export const MAX_CARD_PHOTO_BYTES = 96 * 1024;
 
 /** The demo listings are drawn, not photographed: their illustrations are served by the app itself. */
-export const isDemoIllustration = (path: string) => path.startsWith("/samples/");
+export const isDemoIllustration = (path: string) =>
+  path.startsWith("/samples/");
 
 /** The legacy image remains the cover; old single-photo listings need no migration. */
 export function listingPhotos(listing: {
@@ -40,6 +41,9 @@ export function cardImagePairs(listing: CardPhotos): Map<string, string> {
 }
 
 /** Listings saved before card copies existed have none; their grid shows the full cover photo. */
-export function cardImageFor(listing: { image: string; cardImages?: string[] }) {
+export function cardImageFor(listing: {
+  image: string;
+  cardImages?: string[];
+}) {
   return listing.cardImages?.[0] ?? listing.image;
 }

@@ -4,14 +4,22 @@ import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 import { demoListings } from "../shared/demoListings.ts";
 import { demoSellers } from "../shared/demoSellers.ts";
-import { adminMigration, applyMigrations, marketplace, pickupMigration, reviewMigration } from "./supabase-fixture.ts";
+import {
+  adminMigration,
+  applyMigrations,
+  marketplace,
+  pickupMigration,
+  reviewMigration,
+} from "./supabase-fixture.ts";
 
 test("AI quotas persist, isolate users, enforce the project cap and cannot be refunded by deleting an account", async () => {
   const { db, as } = await marketplace();
   try {
     await db.exec("reset role");
     await applyMigrations(db, [pickupMigration, adminMigration]);
-    await db.query("insert into public.ai_daily_totals values ((now() at time zone 'UTC')::date,1)");
+    await db.query(
+      "insert into public.ai_daily_totals values ((now() at time zone 'UTC')::date,1)",
+    );
     await applyMigrations(db, [reviewMigration]);
     const users = Array.from(
       { length: 11 },
@@ -31,14 +39,21 @@ test("AI quotas persist, isolate users, enforce the project cap and cannot be re
     async function quota(id: string, spend = false) {
       return (
         await db.query<{ quota: Budget }>(
-          "select public.ai_quota_spend($1,'marketplace',$2) as quota", [id, spend],
+          "select public.ai_quota_spend($1,'marketplace',$2) as quota",
+          [id, spend],
         )
       ).rows[0].quota;
     }
     for (const caller of [null, users[0]]) {
       await as(caller);
-      await assert.rejects(db.query("select public.ai_quota(true)"), /permission denied/);
-      await assert.rejects(db.query("select public.ai_thread_quota(true)"), /permission denied/);
+      await assert.rejects(
+        db.query("select public.ai_quota(true)"),
+        /permission denied/,
+      );
+      await assert.rejects(
+        db.query("select public.ai_thread_quota(true)"),
+        /permission denied/,
+      );
       await assert.rejects(quota(users[0], true), /permission denied/);
     }
     await asService();
@@ -72,9 +87,15 @@ test("AI quotas persist, isolate users, enforce the project cap and cannot be re
     await asService();
     assert.equal((await quota(users[1])).remaining, 50);
     for (const id of users.slice(1, 9))
-      await db.query("select public.ai_quota_spend($1,'marketplace',true) from generate_series(1,50)", [id]);
+      await db.query(
+        "select public.ai_quota_spend($1,'marketplace',true) from generate_series(1,50)",
+        [id],
+      );
     assert.equal((await quota(users[9])).remaining, 49);
-    await db.query("select public.ai_quota_spend($1,'marketplace',true) from generate_series(1,50)", [users[9]]);
+    await db.query(
+      "select public.ai_quota_spend($1,'marketplace',true) from generate_series(1,50)",
+      [users[9]],
+    );
     assert.equal((await quota(users[10], true)).allowed, false);
     await db.exec("reset role");
     await db.query("delete from auth.users where id=$1", [users[0]]);
@@ -85,12 +106,19 @@ test("AI quotas persist, isolate users, enforce the project cap and cannot be re
     await db.exec(
       "update public.ai_daily_usage set day=day-1; update public.ai_daily_totals set day=day-1; set timezone='Pacific/Honolulu'",
     );
-    await db.query("insert into takeover_admin.student_blocks(student_id,reason) values($1,'Blocked')", [users[9]]);
+    await db.query(
+      "insert into takeover_admin.student_blocks(student_id,reason) values($1,'Blocked')",
+      [users[9]],
+    );
     await asService();
     for (const kind of ["marketplace", "thread"])
       for (const spend of [true, false])
         await assert.rejects(
-          db.query("select public.ai_quota_spend($1,$2,$3)", [users[9], kind, spend]),
+          db.query("select public.ai_quota_spend($1,$2,$3)", [
+            users[9],
+            kind,
+            spend,
+          ]),
           /admin_student_blocked/,
         );
     const next = await quota(users[10], true);

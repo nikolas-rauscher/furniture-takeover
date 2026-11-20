@@ -1,4 +1,9 @@
-import type { DealAction, DealRole, PickupAction, PickupStatusChange } from "../../shared/deal";
+import type {
+  DealAction,
+  DealRole,
+  PickupAction,
+  PickupStatusChange,
+} from "../../shared/deal";
 import type { Product } from "../../shared/marketplace";
 import type { SellerConversation } from "../../shared/messages";
 import { randomUuid } from "../randomUuid.ts";
@@ -116,13 +121,27 @@ export async function sendDemoPickup(
   expectedVersion: number,
   messageId = randomUuid(),
   demoNow?: Date,
-): Promise<{ conversation: SellerConversation; statusChange?: PickupStatusChange }> {
-  return request({
-    method: "POST",
-    body: JSON.stringify({
-      listingId: listing.id, title: listing.title, seller: listing.seller,
-      buyerKey: listing.buyerKey, listingStatus: listing.status,
-      sender, action, text, expectedVersion, messageId, demoNow: demoNow?.toISOString(),
-    }),
-  }, "/api/messages/pickup");
+): Promise<{
+  conversation: SellerConversation;
+  statusChange?: PickupStatusChange;
+}> {
+  return request(
+    {
+      method: "POST",
+      body: JSON.stringify({
+        listingId: listing.id,
+        title: listing.title,
+        seller: listing.seller,
+        buyerKey: listing.buyerKey,
+        listingStatus: listing.status,
+        sender,
+        action,
+        text,
+        expectedVersion,
+        messageId,
+        demoNow: demoNow?.toISOString(),
+      }),
+    },
+    "/api/messages/pickup",
+  );
 }

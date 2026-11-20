@@ -52,11 +52,13 @@ const sourceEvidenceSchema = z
   .strict();
 const reasonSchema = z.string().trim().min(1).max(500);
 const answerLabel = z.string().trim().min(1).max(120);
-const tapAnswer = z.object({
-  label: answerLabel,
-  patch: z.object(listingFields).partial().strict().optional(),
-  appendDescription: z.string().trim().min(1).max(160).optional(),
-}).strict();
+const tapAnswer = z
+  .object({
+    label: answerLabel,
+    patch: z.object(listingFields).partial().strict().optional(),
+    appendDescription: z.string().trim().min(1).max(160).optional(),
+  })
+  .strict();
 const questionFields = z
   .object({
     question: z.string().trim().min(1).max(500),
@@ -102,12 +104,17 @@ const questionFields = z
       .array(z.union([answerLabel, tapAnswer]))
       .min(1)
       .max(5)
-      .describe("For measurements, use listingField dimensions and offer relevant exact sizes with units and a matching dimensions patch. The seller can also type their own measurements.")
+      .describe(
+        "For measurements, use listingField dimensions and offer relevant exact sizes with units and a matching dimensions patch. The seller can also type their own measurements.",
+      )
       .optional(),
   })
   .strict();
 export const questionSchema = questionFields.extend({
-  followUps: z.array(questionFields.omit({ input: true })).max(2).optional(),
+  followUps: z
+    .array(questionFields.omit({ input: true }))
+    .max(2)
+    .optional(),
 });
 export const listingUpdateSchema = z
   .object({
@@ -255,8 +262,7 @@ function sellerAnswers(request: AgentRunRequest): SellerAnswer[] {
   ].filter(({ answer }) => !isSkippedAnswer(answer));
 }
 
-const words = (text: string) =>
-  normalized(text).match(/[\p{L}\p{N}]+/gu) ?? [];
+const words = (text: string) => normalized(text).match(/[\p{L}\p{N}]+/gu) ?? [];
 
 /**
  * "Storage: 512 GB" restates the answer "512 GB" to "How much storage does it
@@ -300,43 +306,60 @@ function chfAmounts(text: string) {
     "gi",
   );
   return [...text.matchAll(currency)].map((match) => ({
-    price: Number((match[1] ?? match[2])
-      .replace(/[’' ]|[.,](?=\d{3}(?:\D|$))/g, "")
-      .replace(",", ".")),
+    price: Number(
+      (match[1] ?? match[2])
+        .replace(/[’' ]|[.,](?=\d{3}(?:\D|$))/g, "")
+        .replace(",", "."),
+    ),
     index: match.index,
     length: match[0].length,
   }));
 }
 
 function chfPrices(text: string): number[] {
-  return chfAmounts(text).map(({ price }) => price)
+  return chfAmounts(text)
+    .map(({ price }) => price)
     .filter((price) => Number.isFinite(price) && price >= 0 && price <= 10_000);
 }
 
-export const priceProposalSchema = z.object({
-  price: z.number().finite().positive().max(10_000).multipleOf(0.01),
-  sourceIds: z.array(z.string().min(1).max(160)).min(2).max(4),
-}).strict();
+export const priceProposalSchema = z
+  .object({
+    price: z.number().finite().positive().max(10_000).multipleOf(0.01),
+    sourceIds: z.array(z.string().min(1).max(160)).min(2).max(4),
+  })
+  .strict();
 
 function comparableQuote(source: AgentRunSource) {
   const text = source.title + " " + source.snippet;
-  if (/\b(?:sold|retail|original price|originally|new price|previous price|starting (?:bid|price)|start(?:ing)? at|auction start|startpreis|startgebot|neupreis|verkauft|vendu|prix neuf|mise à prix)\b/i.test(text))
-    fail("Use fixed asking prices, excluding auction starts, retail and sold prices.");
+  if (
+    /\b(?:sold|retail|original price|originally|new price|previous price|starting (?:bid|price)|start(?:ing)? at|auction start|startpreis|startgebot|neupreis|verkauft|vendu|prix neuf|mise à prix)\b/i.test(
+      text,
+    )
+  )
+    fail(
+      "Use fixed asking prices, excluding auction starts, retail and sold prices.",
+    );
 
   const amounts = [source.title, source.snippet].flatMap((part) =>
     chfAmounts(part).map((amount) => ({ ...amount, part })),
   );
   const first = amounts[0];
-  if (!first || first.price <= 0 || first.price > 10_000 ||
-      amounts.some(({ price }) => price !== first.price))
+  if (
+    !first ||
+    first.price <= 0 ||
+    first.price > 10_000 ||
+    amounts.some(({ price }) => price !== first.price)
+  )
     fail("Choose an offer with one unambiguous positive CHF asking price.");
-  const incidentalCost = /\b(?:shipping|postage|deposit|delivery|versand(?:kosten)?|port|livraison)\s*[:=]?\s*$/i;
-  if (amounts.some(({ part, index }) => incidentalCost.test(part.slice(0, index))))
+  const incidentalCost =
+    /\b(?:shipping|postage|deposit|delivery|versand(?:kosten)?|port|livraison)\s*[:=]?\s*$/i;
+  if (
+    amounts.some(({ part, index }) => incidentalCost.test(part.slice(0, index)))
+  )
     fail("Use the asking price of the item itself.");
-  const quote = first.part.slice(
-    Math.max(0, first.index - 100),
-    first.index + first.length + 100,
-  ).trim();
+  const quote = first.part
+    .slice(Math.max(0, first.index - 100), first.index + first.length + 100)
+    .trim();
   return { price: first.price, quote };
 }
 
@@ -365,7 +388,11 @@ export function proposePrice(
     fail("Suggest a price within the observed asking-price range.");
   const citations = sourceIds.map((sourceId) => `[${sourceId}]`).join(" ");
   return {
-    type: "listing_patch", id, patch: { price }, requiresAcceptance: true, evidence,
+    type: "listing_patch",
+    id,
+    patch: { price },
+    requiresAcceptance: true,
+    evidence,
     reason: `Suggested CHF ${price} based on ${prices.length} offers asking CHF ${low}–${high}. ${citations}`,
   };
 }
@@ -556,11 +583,15 @@ export function listingAction(
       // The carried-forward photo narrative is already in the draft. Check the
       // addition against the full reply, even if the tool quoted only one fact.
       const typedAddition =
-        field === "description" && typeof value === "string" &&
-        (!draft.description || value.startsWith(draft.description + " ") ||
+        field === "description" &&
+        typeof value === "string" &&
+        (!draft.description ||
+          value.startsWith(draft.description + " ") ||
           value.startsWith(draft.description + "\n")) &&
-        normalized(value.slice(draft.description.length)).replace(/[.!?]+$/, "") ===
-          normalized(request.text).replace(/[.!?]+$/, "");
+        normalized(value.slice(draft.description.length)).replace(
+          /[.!?]+$/,
+          "",
+        ) === normalized(request.text).replace(/[.!?]+$/, "");
       if (field === "price") {
         const priceAnswer = /(?:price|asking|sell.*for)/i.test(
           request.context.previousQuestion ?? "",
@@ -771,7 +802,11 @@ export function preferencesAction(
   // A preference update must come from the latest request, never a stale draft or prior answer.
   if (evidence.some((item) => !contains(request.text, item.quote)))
     fail("Search changes need evidence in the latest user message.");
-  if (patch.source && patch.source !== "takeover" && takeoverOnlyPattern.test(request.text))
+  if (
+    patch.source &&
+    patch.source !== "takeover" &&
+    takeoverOnlyPattern.test(request.text)
+  )
     fail("The buyer limited this search to Takeover.");
   const constraints = extractSearchConstraints(request.text);
   const shortNumber = /^\s*\d+(?:[.,]\d{1,2})?\s*$/.test(request.text)

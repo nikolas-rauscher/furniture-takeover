@@ -87,10 +87,7 @@ export function validateRequest(value: unknown): AssistRequest {
       "INVALID_REQUEST",
       "Provide an intent, text of up to 4,000 characters, and valid optional details.",
     );
-  if (
-    !record(value) ||
-    !["search", "listing"].includes(String(value.intent))
-  )
+  if (!record(value) || !["search", "listing"].includes(String(value.intent)))
     throw fail();
   const result: AssistRequest = {
     intent: value.intent as AssistRequest["intent"],

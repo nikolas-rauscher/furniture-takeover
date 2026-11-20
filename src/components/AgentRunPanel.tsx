@@ -102,6 +102,8 @@ export default function AgentRunPanel({
     state.status === "running" || state.status === "complete",
   );
   const textArriving = state.status === "running" || displayText !== answerText;
+  // Run IDs and provider codes help a developer, not a student.
+  const { developerMode } = useDeveloperMode();
   if (!state.id && state.status === "idle") return null;
   const running = state.status === "running";
   const stopped = state.status === "idle";
@@ -121,8 +123,6 @@ export default function AgentRunPanel({
   const steps = settledSteps(state.steps);
   // Pako ran out of activities mid-comparison: the student taps to let him go on.
   const unfinished = state.diagnostic?.code === "STEP_LIMIT";
-  // Run IDs and provider codes help a developer, not a student.
-  const { developerMode } = useDeveloperMode();
   // Queued questions wait their turn: only the next one shows beside the answered ones.
   const nextQuestion = state.questions.find(
     (question) => !state.answers[question.id],
@@ -475,8 +475,7 @@ export default function AgentRunPanel({
               <strong>{state.error}</strong>
             ) : (
               <>
-                <strong>I couldn't finish this request.</strong>{" "}
-                {state.error}
+                <strong>I couldn't finish this request.</strong> {state.error}
               </>
             )}
           </p>
@@ -487,32 +486,35 @@ export default function AgentRunPanel({
           )}
         </div>
       )}
-      {developerMode && !running && state.status !== "idle" && state.diagnostic && (
-        <details className="agent-run-debug">
-          <summary>Error details</summary>
-          <p>{state.diagnostic.hint}</p>
-          <dl>
-            <dt>Run ID</dt>
-            <dd>{state.diagnostic.runId}</dd>
-            <dt>Error</dt>
-            <dd>
-              {state.diagnostic.code} · {state.diagnostic.errorType}
-            </dd>
-            <dt>Model</dt>
-            <dd>{state.diagnostic.model}</dd>
-            <dt>Stage</dt>
-            <dd>{state.diagnostic.stage}</dd>
-            <dt>Duration</dt>
-            <dd>{(state.diagnostic.elapsedMs / 1000).toFixed(1)} s</dd>
-            {state.diagnostic.providerStatus && (
-              <>
-                <dt>Provider HTTP</dt>
-                <dd>{state.diagnostic.providerStatus}</dd>
-              </>
-            )}
-          </dl>
-        </details>
-      )}
+      {developerMode &&
+        !running &&
+        state.status !== "idle" &&
+        state.diagnostic && (
+          <details className="agent-run-debug">
+            <summary>Error details</summary>
+            <p>{state.diagnostic.hint}</p>
+            <dl>
+              <dt>Run ID</dt>
+              <dd>{state.diagnostic.runId}</dd>
+              <dt>Error</dt>
+              <dd>
+                {state.diagnostic.code} · {state.diagnostic.errorType}
+              </dd>
+              <dt>Model</dt>
+              <dd>{state.diagnostic.model}</dd>
+              <dt>Stage</dt>
+              <dd>{state.diagnostic.stage}</dd>
+              <dt>Duration</dt>
+              <dd>{(state.diagnostic.elapsedMs / 1000).toFixed(1)} s</dd>
+              {state.diagnostic.providerStatus && (
+                <>
+                  <dt>Provider HTTP</dt>
+                  <dd>{state.diagnostic.providerStatus}</dd>
+                </>
+              )}
+            </dl>
+          </details>
+        )}
       {stopped && !state.text && (
         <p className="agent-run-empty">
           Stopped. You can run this request again when you are ready.

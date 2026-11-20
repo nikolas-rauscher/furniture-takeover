@@ -7,7 +7,10 @@ import { withCardImages } from "./cardPhotos.ts";
 const photo = (name: string) => `data:image/jpeg;base64,${btoa(name)}`;
 
 /** A canvas whose JPEG names the photo it was drawn from, sized like a phone picture. */
-function fakeCanvas(t: TestContext, encoded = (source: string) => `card:${source}`) {
+function fakeCanvas(
+  t: TestContext,
+  encoded = (source: string) => `card:${source}`,
+) {
   const drawn: { source: string; width: number; height: number }[] = [];
   const globals = globalThis as unknown as Record<string, unknown>;
   t.after(() => {
@@ -42,16 +45,27 @@ function fakeCanvas(t: TestContext, encoded = (source: string) => `card:${source
 
 test("new photos get a 640 px card copy; kept photos reuse theirs in the new order", async (t) => {
   const drawn = fakeCanvas(t);
-  const listing = { ...demoListings[0], image: photo("a"), images: [photo("a"), photo("b")] };
+  const listing = {
+    ...demoListings[0],
+    image: photo("a"),
+    images: [photo("a"), photo("b")],
+  };
   const saved = await withCardImages(listing);
-  assert.deepEqual(drawn.map(({ width, height }) => [width, height]), [
-    [640, 480],
-    [640, 480],
-  ]);
+  assert.deepEqual(
+    drawn.map(({ width, height }) => [width, height]),
+    [
+      [640, 480],
+      [640, 480],
+    ],
+  );
   assert.equal(saved.cardImages?.length, 2);
   assert.equal(cardImageFor(saved), saved.cardImages?.[0]);
 
-  const reordered = { ...saved, image: photo("b"), images: [photo("b"), photo("a")] };
+  const reordered = {
+    ...saved,
+    image: photo("b"),
+    images: [photo("b"), photo("a")],
+  };
   delete reordered.cardImages;
   const edited = await withCardImages(reordered, saved);
   assert.equal(drawn.length, 2);
@@ -74,6 +88,10 @@ test("drawings and photos saved before card copies keep the full cover", async (
 
 test("a card copy that cannot be made fails the save with a clear message", async (t) => {
   fakeCanvas(t, () => "x".repeat(200 * 1024));
-  const listing = { ...demoListings[0], image: photo("a"), images: [photo("a")] };
+  const listing = {
+    ...demoListings[0],
+    image: photo("a"),
+    images: [photo("a")],
+  };
   await assert.rejects(withCardImages(listing), /small version of a photo/);
 });

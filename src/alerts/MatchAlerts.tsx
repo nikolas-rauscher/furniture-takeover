@@ -75,7 +75,12 @@ function MatchCard({
     >
       <span className="match-alert-photo">
         {listing.image ? (
-          <img src={cardImageFor(listing)} alt="" loading="lazy" decoding="async" />
+          <img
+            src={cardImageFor(listing)}
+            alt=""
+            loading="lazy"
+            decoding="async"
+          />
         ) : (
           <ImageIcon size={20} aria-hidden="true" />
         )}

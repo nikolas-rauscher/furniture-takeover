@@ -126,13 +126,18 @@ export function validateThreadTurnRequest(input: unknown): ThreadTurnRequest {
 const isText = (text: string | undefined): text is string => Boolean(text);
 const messageTexts = (request: ThreadTurnRequest) =>
   request.messages.map((message) => message.text);
-const ownTexts = (request: ThreadTurnRequest) => [
-  request.draft,
-  request.instruction,
-  ...request.messages.filter((message) => message.from === "me").map((message) => message.text),
-].filter(isText);
+const ownTexts = (request: ThreadTurnRequest) =>
+  [
+    request.draft,
+    request.instruction,
+    ...request.messages
+      .filter((message) => message.from === "me")
+      .map((message) => message.text),
+  ].filter(isText);
 const cardTerms = (request: ThreadTurnRequest) =>
-  [request.deal?.agreed, request.deal?.proposal?.terms].filter((terms) => terms != null);
+  [request.deal?.agreed, request.deal?.proposal?.terms].filter(
+    (terms) => terms != null,
+  );
 const listingTexts = ({ listing }: ThreadTurnRequest) =>
   [
     listing.title,
@@ -158,9 +163,16 @@ function checkSafeText(text: string, where: string) {
       `${where}: remove links, email addresses and phone numbers.`,
     );
   if (
-    /\b(?:twint|paypal|iban|revolut|bank transfer|wire transfer|gift cards?|crypto)\b/i.test(text) ||
-    /\b(?:prepay\w*|upfront payment|advance payment|paiement d'avance|vorkasse)\b|\b(?:pay\w*|send|transfer|deposit)\b[^.!?;]*\b(?:in advance|up ?front|ahead of time|before (?:pickup|collect\w*|meeting|delivery|shipping))\b/i.test(text)
-  ) throw new Error(`${where}: leave payment methods and advance payment out of the reply.`);
+    /\b(?:twint|paypal|iban|revolut|bank transfer|wire transfer|gift cards?|crypto)\b/i.test(
+      text,
+    ) ||
+    /\b(?:prepay\w*|upfront payment|advance payment|paiement d'avance|vorkasse)\b|\b(?:pay\w*|send|transfer|deposit)\b[^.!?;]*\b(?:in advance|up ?front|ahead of time|before (?:pickup|collect\w*|meeting|delivery|shipping))\b/i.test(
+      text,
+    )
+  )
+    throw new Error(
+      `${where}: leave payment methods and advance payment out of the reply.`,
+    );
   if (/[{}]/.test(text.replaceAll(OTHER_TOKEN, "")))
     throw new Error(
       `${where}: the only placeholder allowed is ${OTHER_TOKEN}.`,
@@ -248,15 +260,26 @@ function amountAllowed(
 ) {
   const { listing } = request;
   if (listing.price === 0) return amount === 0;
-  const named = [listing.price, ...ownTexts(request).flatMap(messageAmounts),
-    ...cardTerms(request).map((terms) => terms.amount)];
+  const named = [
+    listing.price,
+    ...ownTexts(request).flatMap(messageAmounts),
+    ...cardTerms(request).map((terms) => terms.amount),
+  ];
   if (named.includes(amount)) return true;
   if (kind !== "counter") return false;
-  const mine = latestAmount(request, "me") ?? (request.role === "seller" ? listing.price : undefined);
-  const theirs = latestAmount(request, "them") ?? (request.role === "buyer" ? listing.price : undefined);
-  return mine !== undefined && theirs !== undefined &&
+  const mine =
+    latestAmount(request, "me") ??
+    (request.role === "seller" ? listing.price : undefined);
+  const theirs =
+    latestAmount(request, "them") ??
+    (request.role === "buyer" ? listing.price : undefined);
+  return (
+    mine !== undefined &&
+    theirs !== undefined &&
     amount <= Math.max(listing.price, mine) &&
-    amount > Math.min(mine, theirs) && amount < Math.max(mine, theirs);
+    amount > Math.min(mine, theirs) &&
+    amount < Math.max(mine, theirs)
+  );
 }
 
 const campusPointNames = campusPickupPoints.map((point) =>
@@ -304,11 +327,15 @@ function namesPlace(quote: string, point: string, request: ThreadTurnRequest) {
 }
 
 function pointAllowed(point: string, request: ThreadTurnRequest) {
-  return ownTexts(request).some((text) => namesPlace(text, point, request)) ||
-    cardTerms(request).some((terms) => terms.pickupPoint?.toLowerCase() === point.toLowerCase()) ||
+  return (
+    ownTexts(request).some((text) => namesPlace(text, point, request)) ||
+    cardTerms(request).some(
+      (terms) => terms.pickupPoint?.toLowerCase() === point.toLowerCase(),
+    ) ||
     namesPlace(request.listing.pickupPoint ?? "", point, request) ||
     containsQuote(request.listing.location ?? "", point) ||
-    campusPointNames.includes(point.toLowerCase());
+    campusPointNames.includes(point.toLowerCase())
+  );
 }
 
 function resolveWrittenPickup(
@@ -317,27 +344,39 @@ function resolveWrittenPickup(
   now: Date,
   fact?: NonNullable<ThreadFacts["pickupTime"]>,
 ) {
-  const source = [...request.messages].reverse().find((message) =>
-    fact
-      ? message.from === fact.from && containsQuote(message.text, fact.quote)
-      : message.from === "me" && namesTime([message.text], words),
-  );
+  const source = [...request.messages]
+    .reverse()
+    .find((message) =>
+      fact
+        ? message.from === fact.from && containsQuote(message.text, fact.quote)
+        : message.from === "me" && namesTime([message.text], words),
+    );
   if (source) return resolvePickupAt(words, new Date(source.at));
-  if (!fact && /\b(?:today|tomorrow|tonight|demain|heute|morgen)\b/i.test(words) &&
-      !namesTime([request.draft ?? "", request.instruction ?? ""], words))
+  if (
+    !fact &&
+    /\b(?:today|tomorrow|tonight|demain|heute|morgen)\b/i.test(words) &&
+    !namesTime([request.draft ?? "", request.instruction ?? ""], words)
+  )
     return null;
   return resolvePickupAt(words, now);
 }
 
 function timeAllowed(words: string, request: ThreadTurnRequest) {
-  return namesTime(ownTexts(request), words) ||
-    cardTerms(request).some((terms) => terms.pickupTime && namesTime([terms.pickupTime], words)) ||
-    (request.role === "seller" && namesTime([request.listing.pickup ?? ""], words));
+  return (
+    namesTime(ownTexts(request), words) ||
+    cardTerms(request).some(
+      (terms) => terms.pickupTime && namesTime([terms.pickupTime], words),
+    ) ||
+    (request.role === "seller" &&
+      namesTime([request.listing.pickup ?? ""], words))
+  );
 }
 
 function shippingAllowed(request: ThreadTurnRequest) {
-  return ownTexts(request).some((text) => quoteSupportsHandover(text, "shipping")) ||
-    cardTerms(request).some((terms) => terms.fulfillment === "shipping");
+  return (
+    ownTexts(request).some((text) => quoteSupportsHandover(text, "shipping")) ||
+    cardTerms(request).some((terms) => terms.fulfillment === "shipping")
+  );
 }
 
 /** Accepting takes the price as it stands: the one last named, or else the asking price. */
@@ -375,10 +414,7 @@ function optionTerms(
       `${where}.terms.amount: nobody named that amount. Use one from the conversation or the listing${option.kind === "counter" ? ", or a whole number between the two sides' latest amounts" : ""}, or leave the amount out.`,
     );
   const pickupTime = proposed.pickupTime;
-  if (
-    pickupTime &&
-    !timeAllowed(pickupTime, request)
-  )
+  if (pickupTime && !timeAllowed(pickupTime, request))
     throw new Error(
       `${where}.terms.pickupTime: nobody named that time. Copy time words from a message or the listing, or leave the time out and ask for one.`,
     );
@@ -387,7 +423,9 @@ function optionTerms(
       `${where}.terms.pickupPoint: nobody named that place. Use a meeting point from the conversation, the listing or campusMeetingPoints, or leave it out.`,
     );
   if (proposed.fulfillment === "shipping" && !shippingAllowed(request))
-    throw new Error(`${where}.terms.fulfillment: shipping needs the student's own words or the deal card.`);
+    throw new Error(
+      `${where}.terms.fulfillment: shipping needs the student's own words or the deal card.`,
+    );
   const meeting =
     pickupTime !== undefined || proposed.pickupPoint !== undefined;
   if (proposed.fulfillment === "shipping" && meeting)
@@ -399,8 +437,8 @@ function optionTerms(
     // A time or place to meet means the item is picked up.
     fulfillment: proposed.fulfillment ?? (meeting ? "pickup" : null),
     pickupAt: pickupTime
-      ? cardTerms(request).find((terms) => terms.pickupTime === pickupTime)?.pickupAt ??
-        resolveWrittenPickup(pickupTime, request, now)
+      ? (cardTerms(request).find((terms) => terms.pickupTime === pickupTime)
+          ?.pickupAt ?? resolveWrittenPickup(pickupTime, request, now))
       : null,
     pickupTime: pickupTime ?? null,
     pickupPoint: proposed.pickupPoint ?? null,
@@ -458,8 +496,12 @@ function checkOptionLabel(
 
   checkDraftPrices(option, request);
   checkDraftPickup(option, request, facts);
-  if (/\b(?:i|we)(?:['’]ll| will| can| could| would)\s+(?:ship|post|mail)\b/i.test(message) &&
-      !shippingAllowed(request))
+  if (
+    /\b(?:i|we)(?:['’]ll| will| can| could| would)\s+(?:ship|post|mail)\b/i.test(
+      message,
+    ) &&
+    !shippingAllowed(request)
+  )
     throw new Error("Leave shipping out until the student offers it.");
 }
 
@@ -490,9 +532,15 @@ function checkDraftPrices(option: ProposedOption, request: ThreadTurnRequest) {
   )
     amounts.add(terms.amount);
   for (const amount of amounts) {
-    const discussesTheirOffer = (option.kind === "ask" || option.kind === "answer") &&
-      /^(?:could|can|may|would) (?:we|i) (?:talk|discuss|ask)\b[^.!?;]*\byour\b[^.!?;]*\boffer\b[^.!?;]*[?？]$/i.test(message) &&
-      request.messages.some((entry) => entry.from === "them" && messageAmounts(entry.text).includes(amount));
+    const discussesTheirOffer =
+      (option.kind === "ask" || option.kind === "answer") &&
+      /^(?:could|can|may|would) (?:we|i) (?:talk|discuss|ask)\b[^.!?;]*\byour\b[^.!?;]*\boffer\b[^.!?;]*[?？]$/i.test(
+        message,
+      ) &&
+      request.messages.some(
+        (entry) =>
+          entry.from === "them" && messageAmounts(entry.text).includes(amount),
+      );
     if (!discussesTheirOffer && !amountAllowed(amount, option.kind, request))
       throw new Error(
         "Use a price from the conversation, listing or allowed counter range.",
@@ -527,9 +575,15 @@ function checkDraftPickup(
 ) {
   const { message, label, terms } = option;
   const conversation = messageTexts(request);
-  const asksForTime = option.kind === "ask" && /\b(?:what|which)\b[^.!?]*\b(?:time|window|day)\b[^.!?]*[?？]/i.test(message);
-  const times = (message.match(PICKUP_TIMES) ?? []).filter((time) =>
-    !asksForTime || !/^(?:morning|afternoon|evening|weekend)$/i.test(time));
+  const asksForTime =
+    option.kind === "ask" &&
+    /\b(?:what|which)\b[^.!?]*\b(?:time|window|day)\b[^.!?]*[?？]/i.test(
+      message,
+    );
+  const times = (message.match(PICKUP_TIMES) ?? []).filter(
+    (time) =>
+      !asksForTime || !/^(?:morning|afternoon|evening|weekend)$/i.test(time),
+  );
   const places = [
     request.listing.location,
     request.listing.pickupPoint,
@@ -560,12 +614,17 @@ function checkDraftPickup(
       );
     const clock = /\d/.test(detail) && times.includes(detail);
     const place = placePhrases.includes(detail) || places.includes(detail);
-    const asksAboutExistingTime = /[?？]$/.test(message) &&
+    const asksAboutExistingTime =
+      /[?？]$/.test(message) &&
       (option.kind === "ask" || /\bwhich day\b/i.test(message)) &&
       conversation.some((text) => containsQuote(text, detail));
-    if ((clock && !timeAllowed(detail, request) && !asksAboutExistingTime) ||
-      (place && !pointAllowed(detail, request)))
-      throw new Error("Use concrete pickup terms from the student's words or the deal card.");
+    if (
+      (clock && !timeAllowed(detail, request) && !asksAboutExistingTime) ||
+      (place && !pointAllowed(detail, request))
+    )
+      throw new Error(
+        "Use concrete pickup terms from the student's words or the deal card.",
+      );
     if (
       !conversation.some((text) => containsQuote(text, detail)) &&
       !PROPOSAL_LABEL.test(label)
@@ -673,21 +732,36 @@ function agreementOf(
   );
   const { amount, fulfillment, pickupTime, pickupPoint } = terms;
   const opening = request.messages.at(-1);
-  const ownsPickupAt = pickupTime && request.messages.some((message) =>
-    message.from === "me" && namesTime([message.text], pickupTime) &&
-    resolvePickupAt(pickupTime, new Date(message.at)) === pickupAt,
-  );
-  const matchingCardTime = cardTerms(request).some((card) =>
-    card.pickupAt === pickupAt && (pickupAt !== null || card.pickupTime === pickupTime),
+  const ownsPickupAt =
+    pickupTime &&
+    request.messages.some(
+      (message) =>
+        message.from === "me" &&
+        namesTime([message.text], pickupTime) &&
+        resolvePickupAt(pickupTime, new Date(message.at)) === pickupAt,
+    );
+  const matchingCardTime = cardTerms(request).some(
+    (card) =>
+      card.pickupAt === pickupAt &&
+      (pickupAt !== null || card.pickupTime === pickupTime),
   );
   if (
-    (amount !== null && !ownTexts(request).some((text) => messageAmounts(text).includes(amount)) &&
+    (amount !== null &&
+      !ownTexts(request).some((text) =>
+        messageAmounts(text).includes(amount),
+      ) &&
       !cardTerms(request).some((card) => card.amount === amount)) ||
     (fulfillment === "shipping" && !shippingAllowed(request)) ||
     (pickupTime && !ownsPickupAt && !matchingCardTime) ||
-    (pickupPoint && !ownTexts(request).some((text) => namesPlace(text, pickupPoint, request)) &&
+    (pickupPoint &&
+      !ownTexts(request).some((text) =>
+        namesPlace(text, pickupPoint, request),
+      ) &&
       !cardTerms(request).some((card) => card.pickupPoint === pickupPoint))
-  ) throw new Error("Do not treat terms as agreed if they came only from the other student's message.");
+  )
+    throw new Error(
+      "Do not treat terms as agreed if they came only from the other student's message.",
+    );
   if (opening?.from !== "them")
     throw new Error("Only a reply from the other student can accept.");
   const missing = missingTerms(terms);
@@ -712,7 +786,12 @@ function groundProposal(
   checkSafeText(proposal.summary, "summary");
   checkFacts(proposal.facts, request);
   const pickupAt = proposal.facts.pickupTime
-    ? resolveWrittenPickup(proposal.facts.pickupTime.value, request, now, proposal.facts.pickupTime)
+    ? resolveWrittenPickup(
+        proposal.facts.pickupTime.value,
+        request,
+        now,
+        proposal.facts.pickupTime,
+      )
     : null;
   return threadTurnSchema.parse({
     forMessageId: request.messages.at(-1)?.id ?? null,

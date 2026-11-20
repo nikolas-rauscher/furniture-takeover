@@ -1,8 +1,15 @@
 import type { DealAction, DealRole, DealTerms, DealEventKind } from "./deal.ts";
 import type { PickupAction, PickupEvent, PickupStatusChange } from "./deal.ts";
 import {
-  acceptNewTimeMessage, availableAgainMessage, changeTimeMessage, keepTimeMessage,
-  lateMessage, noShowCheckMessage, noShowReleaseMessage, onMyWayMessage, pickedUpMessage,
+  acceptNewTimeMessage,
+  availableAgainMessage,
+  changeTimeMessage,
+  keepTimeMessage,
+  lateMessage,
+  noShowCheckMessage,
+  noShowReleaseMessage,
+  onMyWayMessage,
+  pickedUpMessage,
 } from "./dealMessages.ts";
 import { formatPickup } from "./pickupTime.ts";
 const terms: DealTerms = {
@@ -62,9 +69,25 @@ export const dealScenarios: { name: string; steps: Step[] }[] = [
     steps: [
       offer,
       { ...offer, actor: "seller" },
-      { ...offer, action: { type: "accept", terms }, kind: "accepted", statusChange: "reserved" },
-      { actor: "buyer", action: { type: "complete_shipping" }, body: "It shipped.", error: "shipping_unavailable" },
-      { actor: "seller", action: { type: "complete_shipping" }, body: "It shipped.", kind: "completed", statusChange: "sold" },
+      {
+        ...offer,
+        action: { type: "accept", terms },
+        kind: "accepted",
+        statusChange: "reserved",
+      },
+      {
+        actor: "buyer",
+        action: { type: "complete_shipping" },
+        body: "It shipped.",
+        error: "shipping_unavailable",
+      },
+      {
+        actor: "seller",
+        action: { type: "complete_shipping" },
+        body: "It shipped.",
+        kind: "completed",
+        statusChange: "sold",
+      },
     ],
   },
   {
@@ -134,7 +157,10 @@ export const dealScenarios: { name: string; steps: Step[] }[] = [
           : []),
         {
           ...step,
-          actor: example.error === "terms_incomplete" ? "buyer" as const : "seller" as const,
+          actor:
+            example.error === "terms_incomplete"
+              ? ("buyer" as const)
+              : ("seller" as const),
           action: { type: "accept" as const, terms: example.terms },
           error: example.error,
         },
@@ -152,39 +178,95 @@ export type PickupStep = {
   statusChange?: PickupStatusChange;
 };
 
-export function pickupScenarios(terms: DealTerms, later: string, releasedConversationId: string) {
+export function pickupScenarios(
+  terms: DealTerms,
+  later: string,
+  releasedConversationId: string,
+) {
   const next = { ...terms, pickupAt: later, pickupTime: formatPickup(later) };
   const suggest: PickupStep = {
-    actor: "buyer", action: { type: "suggest_time", terms: next },
-    body: changeTimeMessage(next), kind: "time_suggested",
+    actor: "buyer",
+    action: { type: "suggest_time", terms: next },
+    body: changeTimeMessage(next),
+    kind: "time_suggested",
   };
   const accept: PickupStep = {
-    actor: "seller", action: { type: "accept_time", terms: next },
-    body: acceptNewTimeMessage(next), kind: "time_accepted",
+    actor: "seller",
+    action: { type: "accept_time", terms: next },
+    body: acceptNewTimeMessage(next),
+    kind: "time_accepted",
   };
   return {
     handling: [
-      { actor: "buyer", action: { type: "on_my_way" }, body: onMyWayMessage(terms), kind: "on_my_way" },
-      { actor: "seller", action: { type: "late", minutes: 10 }, body: lateMessage(10), kind: "late" },
-      suggest, { ...accept, actor: "buyer", error: "deal_changed" },
-      { actor: "seller", action: { type: "keep_time" }, body: keepTimeMessage(terms), kind: "time_kept" },
+      {
+        actor: "buyer",
+        action: { type: "on_my_way" },
+        body: onMyWayMessage(terms),
+        kind: "on_my_way",
+      },
+      {
+        actor: "seller",
+        action: { type: "late", minutes: 10 },
+        body: lateMessage(10),
+        kind: "late",
+      },
+      suggest,
+      { ...accept, actor: "buyer", error: "deal_changed" },
+      {
+        actor: "seller",
+        action: { type: "keep_time" },
+        body: keepTimeMessage(terms),
+        kind: "time_kept",
+      },
       { ...suggest, body: "Can we talk?", error: "terms_not_stated" },
-      suggest, accept,
-      { actor: "buyer", action: { type: "picked_up" }, body: pickedUpMessage("buyer", "desk"), kind: "picked_up" },
-      { actor: "seller", action: { type: "picked_up" }, body: pickedUpMessage("seller", "desk"), kind: "picked_up", statusChange: "sold" },
+      suggest,
+      accept,
+      {
+        actor: "buyer",
+        action: { type: "picked_up" },
+        body: pickedUpMessage("buyer", "desk"),
+        kind: "picked_up",
+      },
+      {
+        actor: "seller",
+        action: { type: "picked_up" },
+        body: pickedUpMessage("seller", "desk"),
+        kind: "picked_up",
+        statusChange: "sold",
+      },
     ] satisfies PickupStep[],
     earlyNoShow: {
-      actor: "seller", action: { type: "no_show" }, body: noShowCheckMessage(terms), error: "too_early",
+      actor: "seller",
+      action: { type: "no_show" },
+      body: noShowCheckMessage(terms),
+      error: "too_early",
     } satisfies PickupStep,
     overdue: [
-      { actor: "buyer", action: { type: "no_show" }, body: noShowCheckMessage(terms), kind: "no_show" },
-      { actor: "seller", action: { type: "no_show" }, body: noShowCheckMessage(terms), kind: "no_show" },
-      { actor: "seller", action: { type: "release_no_show" }, body: noShowReleaseMessage("desk", "seller"),
-        kind: "no_show_released", statusChange: "active" },
+      {
+        actor: "buyer",
+        action: { type: "no_show" },
+        body: noShowCheckMessage(terms),
+        kind: "no_show",
+      },
+      {
+        actor: "seller",
+        action: { type: "no_show" },
+        body: noShowCheckMessage(terms),
+        kind: "no_show",
+      },
+      {
+        actor: "seller",
+        action: { type: "release_no_show" },
+        body: noShowReleaseMessage("desk", "seller"),
+        kind: "no_show_released",
+        statusChange: "active",
+      },
     ] satisfies PickupStep[],
     nextBuyer: {
-      actor: "seller", action: { type: "offer_again", releasedConversationId },
-      body: availableAgainMessage("desk"), kind: "offered_again",
+      actor: "seller",
+      action: { type: "offer_again", releasedConversationId },
+      body: availableAgainMessage("desk"),
+      kind: "offered_again",
     } satisfies PickupStep,
   };
 }

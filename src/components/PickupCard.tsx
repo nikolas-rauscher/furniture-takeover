@@ -78,7 +78,10 @@ function CheckHead({
   check: NonNullable<PickupDay["pickupCheck"]>;
 }) {
   return (
-    <div className="pickup-head" data-check={check.expired ? "expired" : "open"}>
+    <div
+      className="pickup-head"
+      data-check={check.expired ? "expired" : "open"}
+    >
       <span className="pickup-head-icon" aria-hidden="true">
         {check.expired ? <Clock size={20} /> : <CircleHelp size={20} />}
       </span>

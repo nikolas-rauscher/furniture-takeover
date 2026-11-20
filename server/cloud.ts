@@ -86,7 +86,9 @@ export function createCloud(
   }
   const secretKey = env.SUPABASE_SECRET_KEY?.trim();
   if (!secretKey)
-    throw new Error("Set SUPABASE_SECRET_KEY when Supabase accounts are configured.");
+    throw new Error(
+      "Set SUPABASE_SECRET_KEY when Supabase accounts are configured.",
+    );
   if (!secretKey.startsWith("sb_secret_"))
     throw new Error("SUPABASE_SECRET_KEY must be a Supabase secret API key.");
   const client = createClient(url, key, {
@@ -133,7 +135,11 @@ export function createCloud(
         apikey: secretKey,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ p_user: userId, p_kind: kind, p_spend: spend && !testing }),
+      body: JSON.stringify({
+        p_user: userId,
+        p_kind: kind,
+        p_spend: spend && !testing,
+      }),
       redirect: "error",
       signal: AbortSignal.timeout(10_000),
     }).catch((cause: unknown) => {
@@ -185,8 +191,7 @@ export function createCloud(
     internalUrl: url,
     quota: (userId: string, spend = false) =>
       allowance("marketplace", userId, spend),
-    spendReplyReading: (userId: string) =>
-      allowance("thread", userId, true),
+    spendReplyReading: (userId: string) => allowance("thread", userId, true),
     async authorize(header: string | undefined, charge = true) {
       const token = header?.match(/^Bearer (.+)$/)?.[1];
       if (!token)
@@ -204,8 +209,7 @@ export function createCloud(
         );
       if (testEnabled && data.user.email?.toLowerCase() === testEmail)
         testUserId = data.user.id;
-      else if (data.user.id === testUserId)
-        testUserId = undefined;
+      else if (data.user.id === testUserId) testUserId = undefined;
       if (!charge) return data.user.id;
       const now = Date.now();
       for (const [id, entry] of requests)

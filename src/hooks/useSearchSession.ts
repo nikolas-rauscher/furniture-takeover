@@ -1,6 +1,10 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { AgentPreferencesPatchEvent } from "../../shared/actions";
-import { defaults, type Criteria, type Product } from "../../shared/marketplace";
+import {
+  defaults,
+  type Criteria,
+  type Product,
+} from "../../shared/marketplace";
 import { discardNegotiation, type Negotiation } from "../../shared/negotiation";
 import {
   applyPreferenceAction,
@@ -178,15 +182,22 @@ export function useSearchSession({
     const { criteria: before } = current;
     const { criteria: after } = next;
     const change = searchChangeSummary({
-      ...(before.maxPrice === after.maxPrice ? {} : { maxPrice: after.maxPrice }),
+      ...(before.maxPrice === after.maxPrice
+        ? {}
+        : { maxPrice: after.maxPrice }),
       ...(before.radius === after.radius ? {} : { radius: after.radius }),
       ...(before.pickup === after.pickup ? {} : { pickupBy: after.pickup }),
-      ...(before.condition === after.condition ? {} : { condition: after.condition }),
+      ...(before.condition === after.condition
+        ? {}
+        : { condition: after.condition }),
       ...(before.source === after.source ? {} : { source: after.source }),
     });
     closeDialog();
     if (!change) return;
-    storeSearch({ ...current, criteria: { ...after, category: before.category } });
+    storeSearch({
+      ...current,
+      criteria: { ...after, category: before.category },
+    });
     setLocalPreferences(change);
   }
   /** What Pako was told earlier in this conversation, newest last. */
@@ -214,11 +225,19 @@ export function useSearchSession({
       return;
     }
     let currentProposal = proposal;
-    if (!currentProposal && (preserveConversation || search.originalRequest === committedSearchRef.current?.originalRequest)) {
+    if (
+      !currentProposal &&
+      (preserveConversation ||
+        search.originalRequest === committedSearchRef.current?.originalRequest)
+    ) {
       try {
         currentProposal = negotiations.current();
       } catch (error) {
-        toast.say(error instanceof Error ? error.message : "Couldn't load your offer draft.");
+        toast.say(
+          error instanceof Error
+            ? error.message
+            : "Couldn't load your offer draft.",
+        );
         return;
       }
     }
@@ -381,7 +400,11 @@ export function useSearchSession({
       });
       onDraftDiscarded(proposal.listingId);
     } catch (error) {
-      toast.say(error instanceof Error ? error.message : "Couldn't discard the offer draft.");
+      toast.say(
+        error instanceof Error
+          ? error.message
+          : "Couldn't discard the offer draft.",
+      );
     }
   }
   function answerQuestion(id: string, answer: string) {
@@ -393,7 +416,9 @@ export function useSearchSession({
     return true;
   }
 
-  const runPendingSearch = useEffectEvent((text: string) => void runSearch(text));
+  const runPendingSearch = useEffectEvent(
+    (text: string) => void runSearch(text),
+  );
   useEffect(() => {
     if (pendingSearch === null) return;
     setPendingSearch(null);

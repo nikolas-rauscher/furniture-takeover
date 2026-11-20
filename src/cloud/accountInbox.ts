@@ -21,8 +21,13 @@ export type InboxRows = {
   reads: Record<string, string> | null;
 };
 
-export async function refreshPickupChecks(client: SupabaseClient, catalog = false) {
-  const { error } = await client.rpc("refresh_pickup_checks", { p_catalog: catalog });
+export async function refreshPickupChecks(
+  client: SupabaseClient,
+  catalog = false,
+) {
+  const { error } = await client.rpc("refresh_pickup_checks", {
+    p_catalog: catalog,
+  });
   if (!missingFromSchema(error)) fail(error);
 }
 

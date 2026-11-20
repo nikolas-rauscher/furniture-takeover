@@ -52,9 +52,15 @@ export function explicitPrice(text: string): number | null {
   ];
   // Prefer an explicitly stated per-item amount when the seller also gives a bundle total.
   // Do not calculate a unit price from a total or choose between unlabelled amounts.
-  const perItem = text.match(new RegExp(String.raw`(${amount})\s*(?:CHF|francs|franken)\s*(?:per\s+(?:book|item|piece|unit)|each|je\s+(?:Buch|Stück))\b`, "i"));
+  const perItem = text.match(
+    new RegExp(
+      String.raw`(${amount})\s*(?:CHF|francs|franken)\s*(?:per\s+(?:book|item|piece|unit)|each|je\s+(?:Buch|Stück))\b`,
+      "i",
+    ),
+  );
   const candidate =
-    asking?.[1] ?? perItem?.[1] ??
+    asking?.[1] ??
+    perItem?.[1] ??
     (monetary.length === 1 &&
     !/\b(?:bought|paid|original(?:ly)?|cost|purchase|retail|gekauft|neupreis)\b/i.test(
       text.slice(0, monetary[0].index),

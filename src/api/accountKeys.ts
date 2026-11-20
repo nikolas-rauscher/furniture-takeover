@@ -46,7 +46,9 @@ async function requestKeys(
     });
   } catch (error) {
     if (signal?.aborted) throw error;
-    throw new Error("Couldn't connect. Check your connection and try again.");
+    throw new Error("Couldn't connect. Check your connection and try again.", {
+      cause: error,
+    });
   }
   // Never display an arbitrary server response that could contain a credential.
   if (!response.ok) {

@@ -1,4 +1,8 @@
-import { sendDemoDeal, sendDemoPickup, type DealListing } from "../api/messages";
+import {
+  sendDemoDeal,
+  sendDemoPickup,
+  type DealListing,
+} from "../api/messages";
 import type { DealRole, DealAction, PickupAction } from "../../shared/deal";
 import type { DemoInbox } from "./useDemoInbox";
 import { demoPickupNow } from "./useNow";
@@ -40,7 +44,13 @@ export function useDemoDeal(
         throw new Error(inbox.error || "Wait for the conversation to load.");
       try {
         const { conversation, statusChange } = await sendDemoPickup(
-          listing, role, action, text, deal?.version ?? 0, messageId, demoPickupNow(),
+          listing,
+          role,
+          action,
+          text,
+          deal?.version ?? 0,
+          messageId,
+          demoPickupNow(),
         );
         inbox.put(conversation);
         return { deal: conversation.deal!, statusChange };

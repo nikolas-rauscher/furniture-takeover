@@ -419,7 +419,9 @@ export default function BatchSellFlow({
     <>
       <WorkspaceHeader
         title="Sell several items"
-        subtitle={stage === "photos" ? "1 of 2 · Photos" : "2 of 2 · Photo groups"}
+        subtitle={
+          stage === "photos" ? "1 of 2 · Photos" : "2 of 2 · Photo groups"
+        }
         titleRef={headingRef}
         backLabel={stage === "photos" ? "Sell one item" : "Back to photos"}
         onBack={back}

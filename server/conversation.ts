@@ -27,7 +27,12 @@ export function questionTopic(text: string): string | undefined {
     )
       return "fulfillment";
   }
-  if (/\b(?:charger|charging (?:brick|cable|adapter)|power (?:adapter|supply|brick))\b/.test(question)) return "charger";
+  if (
+    /\b(?:charger|charging (?:brick|cable|adapter)|power (?:adapter|supply|brick))\b/.test(
+      question,
+    )
+  )
+    return "charger";
   if (/\b(?:budget|spend|price limit|ausgeben)\b/.test(question))
     return "budget";
   if (/\b(?:condition|zustand|etat)\b/.test(question)) return "condition";
@@ -150,12 +155,17 @@ export function repeatedQuestion(
   if (request.context?.intent !== "listing_assist") return undefined;
   const topic = questionTopic(question);
   const name = nameWords(request.context.currentDraft?.title ?? "");
-  const skipped = request.context.skippedQuestions?.find((item) =>
-    asksSame(question, item.question, name) ||
-    (choices && item.choices && offersSameAnswers(item.choices, choices, name)) ||
-    (topic && topic === questionTopic(item.question)) ||
-    (listingField && listingField !== "other" && listingField !== "description" &&
-      listingField === item.listingField),
+  const skipped = request.context.skippedQuestions?.find(
+    (item) =>
+      asksSame(question, item.question, name) ||
+      (choices &&
+        item.choices &&
+        offersSameAnswers(item.choices, choices, name)) ||
+      (topic && topic === questionTopic(item.question)) ||
+      (listingField &&
+        listingField !== "other" &&
+        listingField !== "description" &&
+        listingField === item.listingField),
   );
   if (skipped) return { question: skipped.question, answer: "Skipped" };
   // A user may deliberately revise a fact; allow clarification in that case.

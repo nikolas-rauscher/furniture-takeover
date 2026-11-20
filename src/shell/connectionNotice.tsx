@@ -51,7 +51,10 @@ export function connectionNotice({
           </Button>
         )}
         {configured && health?.webSearchConfigured === false && (
-          <span>I can't check other sites right now. I can still check takeover listings.</span>
+          <span>
+            I can't check other sites right now. I can still check takeover
+            listings.
+          </span>
         )}
       </div>
     );

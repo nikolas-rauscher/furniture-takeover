@@ -17,11 +17,7 @@ import {
 import type { ThreadOption, ThreadTurn } from "../../shared/threadTurn";
 import { useMomentPassed } from "../hooks/useMomentPassed";
 import type { PakoTrayState } from "../hooks/usePakoThread";
-import {
-  threadGuide,
-  threadReactionMs,
-  type ThreadMoment,
-} from "../pakoMoods";
+import { threadGuide, threadReactionMs, type ThreadMoment } from "../pakoMoods";
 import { theirQuotes, withName, type ThreadNotice } from "../pakoThread";
 import Pako from "./onboarding/Pako";
 import { Button } from "./ui/button";

@@ -75,8 +75,7 @@ export async function requireDemoListingEdit() {
   const body = await response.json();
   if (!response.ok || body.allowed !== true)
     throw new Error(
-      body.error?.message ??
-        "Couldn't check that you can publish. Try again.",
+      body.error?.message ?? "Couldn't check that you can publish. Try again.",
     );
 }
 

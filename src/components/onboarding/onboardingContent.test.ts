@@ -119,7 +119,10 @@ test("the intro promises what Pako does in Messages: he suggests, the student se
   for (const intent of ["find", "sell"] as const) {
     const { text } = actCopy("chat", intent);
     assert.match(text, /You choose what to send\./);
-    assert.match(text, /A deal needs both\u00a0students\u00a0to\u00a0confirm\.$/);
+    assert.match(
+      text,
+      /A deal needs both\u00a0students\u00a0to\u00a0confirm\.$/,
+    );
     assert.doesNotMatch(text, /sort it out|agree on a price|write your answer/);
   }
 });

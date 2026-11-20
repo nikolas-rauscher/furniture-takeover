@@ -77,10 +77,7 @@ test("Pako reads the deal as the student sees it and which messages carry their 
   const request = threadTurnRequest({
     role: "buyer",
     listing: desk,
-    messages: [
-      { ...message(1, "them"), structured: true },
-      message(2, "them"),
-    ],
+    messages: [{ ...message(1, "them"), structured: true }, message(2, "them")],
     deal,
   });
   assert.deepEqual(request.deal, deal);

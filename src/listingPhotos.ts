@@ -88,6 +88,7 @@ export async function readListingPhoto(
       error instanceof Error && error.message.includes("photo")
         ? error.message
         : "This photo could not be opened. Choose a valid JPG, PNG or WebP.",
+      { cause: error },
     );
   } finally {
     URL.revokeObjectURL(url);

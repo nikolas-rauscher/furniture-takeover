@@ -71,7 +71,8 @@ const zurichCalendar = new Intl.DateTimeFormat("en-CA", {
   month: "2-digit",
   day: "2-digit",
 });
-export const marketplaceToday = (now = new Date()) => zurichCalendar.format(now);
+export const marketplaceToday = (now = new Date()) =>
+  zurichCalendar.format(now);
 export const TODAY = marketplaceToday();
 
 const normalize = (value: string) =>
@@ -90,8 +91,10 @@ const pickupPattern = String.raw`(?:(?:ready to\s+)?(?:pickup|pick up|collection
 const flexiblePickupPattern = String.raw`(?:pickup(?: date)?|collection|date|abholung)\s*(?:is\s*)?flexible|flexible(?:\s+(?:pickup|collection|date))?|any\s+(?:pickup\s+)?date|no\s+(?:pickup\s+)?deadline`;
 const anyBudgetPattern = String.raw`any budget|any price|no\s+(?:budget|price)\s+limit|budget doesn't matter`;
 
-const freeItemPattern = /(?<![-\w])(?<!feel )(?<!not )(?<!smoke )(?<!pet )(?:free(?![-\s]+(?:standing|delivery|shipping|pickup|collection|of|space|to)\b)|gratis|kostenlos)\b/i;
-export const takeoverOnlyPattern = /\b(?:(?:use\s+)?takeover[-\s]+only|(?:use\s+)?only\s+(?:on\s+)?takeover|only (?:my|local|your|our)(?: active)? listings|(?:do not|don't|don’t) search (?:the )?web)\b/i;
+const freeItemPattern =
+  /(?<![-\w])(?<!feel )(?<!not )(?<!smoke )(?<!pet )(?:free(?![-\s]+(?:standing|delivery|shipping|pickup|collection|of|space|to)\b)|gratis|kostenlos)\b/i;
+export const takeoverOnlyPattern =
+  /\b(?:(?:use\s+)?takeover[-\s]+only|(?:use\s+)?only\s+(?:on\s+)?takeover|only (?:my|local|your|our)(?: active)? listings|(?:do not|don't|don’t) search (?:the )?web)\b/i;
 
 export function parsePickupDate(
   text: string,
@@ -180,7 +183,8 @@ export function extractSearchConstraints(
     "i",
   ).test(q)
     ? 1_000_000
-    : validAmount(match?.[1], 1_000_000) ?? (freeItemPattern.test(q) ? 0 : undefined);
+    : (validAmount(match?.[1], 1_000_000) ??
+      (freeItemPattern.test(q) ? 0 : undefined));
   const radius = validAmount(radiusMatch?.[1], 500);
   const pickup = parsePickupDate(text, today);
   return {
@@ -215,13 +219,18 @@ export function parseSearch(
     kleinanzeigen: "Kleinanzeigen",
     ebay: "eBay",
   };
-  const source = takeoverOnlyPattern.test(text) ? "takeover" : sourceMatch
-    ? sourceNames[sourceMatch[1].toLowerCase()]
-    : base.source;
+  const source = takeoverOnlyPattern.test(text)
+    ? "takeover"
+    : sourceMatch
+      ? sourceNames[sourceMatch[1].toLowerCase()]
+      : base.source;
   const itemQuery = text
     .replace(takeoverOnlyPattern, "")
     .replace(freeItemPattern, "")
-    .replace(/\b(?:all local takeover|(?:around|near|of) (?:EPFL|UNIL)|show all matches|(?:please )?run the search now(?: without asking questions)?)\b/gi, "")
+    .replace(
+      /\b(?:all local takeover|(?:around|near|of) (?:EPFL|UNIL)|show all matches|(?:please )?run the search now(?: without asking questions)?)\b/gi,
+      "",
+    )
     .replace(
       /\b(?:i am looking for|i need|i want|looking for|search for|find me|find|show me|ich suche|ich brauche|suche nach|suche|finde mir|einen|eine|ein|a|an)\b/gi,
       "",
@@ -307,7 +316,10 @@ export function listingTitle(notes: string): string {
 export const isMine = (item: Pick<Product, "own" | "demo">) =>
   Boolean(item.own) && !item.demo;
 
-export function withinSearchRadius(distance: number | undefined, radius?: number): boolean {
+export function withinSearchRadius(
+  distance: number | undefined,
+  radius?: number,
+): boolean {
   // New and cloud listings use zero when no distance has been recorded.
   return radius === undefined || distance === undefined || distance <= radius;
 }
@@ -319,7 +331,9 @@ export function matchesPickupWindow(
 ): boolean {
   if (!buyerDeadline) return true;
   const lastDay =
-    item.pickupBy && item.pickupBy < buyerDeadline ? item.pickupBy : buyerDeadline;
+    item.pickupBy && item.pickupBy < buyerDeadline
+      ? item.pickupBy
+      : buyerDeadline;
   if (lastDay < today) return false;
 
   const arrangement = item.available?.trim() ?? "";

@@ -69,7 +69,7 @@ test("storage restores proposals and rejects stale, cross-item, discarded and fo
     },
   };
   const repo = createNegotiationRepository(storage, "proposals");
-  let value = newNegotiation("a", "desk");
+  const value = newNegotiation("a", "desk");
   repo.save(value, 0);
   const next = reviseNegotiation(value, { amount: 70 }, 1);
   repo.save(next, 1);
@@ -128,10 +128,14 @@ test("continuing an unchanged proposal preserves the manually reviewed message",
   assert.match(prepareNegotiation(changed, "Desk", 3).draft!.message, /CHF 30/);
 });
 
-
 test("successful delivery closes a proposal durably and a stale agent cannot reopen it", () => {
   const data = new Map<string, string>();
-  const storage = { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => { data.set(key, value); } };
+  const storage = {
+    getItem: (key: string) => data.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      data.set(key, value);
+    },
+  };
   const repo = createNegotiationRepository(storage, "proposals");
   const initial = newNegotiation("sent-offer", "chair");
   repo.save(initial, 0);
@@ -143,12 +147,25 @@ test("successful delivery closes a proposal durably and a stale agent cannot reo
   const restored = createNegotiationRepository(storage, "proposals").list();
   assert.equal(restored.filter((item) => item.status === "draft").length, 0);
   assert.equal(restored[0].draft?.message, draft.draft?.message);
-  assert.throws(() => repo.save({ ...sent, status: "draft", version: sent.version + 1, draft: undefined }, sent.version));
+  assert.throws(() =>
+    repo.save(
+      { ...sent, status: "draft", version: sent.version + 1, draft: undefined },
+      sent.version,
+    ),
+  );
 });
 
 test("legacy repair requires matching buyer delivery and preserves edited or unsent drafts", () => {
   const data = new Map<string, string>();
-  const repo = createNegotiationRepository({ getItem: (key) => data.get(key) ?? null, setItem: (key, value) => { data.set(key, value); } }, "proposals");
+  const repo = createNegotiationRepository(
+    {
+      getItem: (key) => data.get(key) ?? null,
+      setItem: (key, value) => {
+        data.set(key, value);
+      },
+    },
+    "proposals",
+  );
   for (const id of ["delivered", "seller-only", "unsent", "edited"]) {
     const initial = newNegotiation(id, id);
     repo.save(initial, 0);
@@ -157,7 +174,35 @@ test("legacy repair requires matching buyer delivery and preserves edited or uns
   const snapshot = repo.list();
   const edited = snapshot.find((item) => item.id === "edited")!;
   repo.save(prepareNegotiation(edited, "Chair", 2, "Different message"), 2);
-  reconcileDeliveredDrafts(repo, snapshot, ["delivered", "seller-only", "edited"].map((id) => ({ id, listingId: id, title: "Chair", seller: "Seller", messages: [{ id: "msg-1", sender: id === "seller-only" ? "seller" as const : "buyer" as const, text: "Hello seller", createdAt: "2026-10-13T12:00:00Z" }] })));
-  assert.equal(repo.list().find((item) => item.id === "delivered")?.status, "sent");
-  assert.deepEqual(repo.list().filter((item) => item.status === "draft").map((item) => item.id).sort(), ["edited", "seller-only", "unsent"]);
+  reconcileDeliveredDrafts(
+    repo,
+    snapshot,
+    ["delivered", "seller-only", "edited"].map((id) => ({
+      id,
+      listingId: id,
+      title: "Chair",
+      seller: "Seller",
+      messages: [
+        {
+          id: "msg-1",
+          sender:
+            id === "seller-only" ? ("seller" as const) : ("buyer" as const),
+          text: "Hello seller",
+          createdAt: "2026-10-13T12:00:00Z",
+        },
+      ],
+    })),
+  );
+  assert.equal(
+    repo.list().find((item) => item.id === "delivered")?.status,
+    "sent",
+  );
+  assert.deepEqual(
+    repo
+      .list()
+      .filter((item) => item.status === "draft")
+      .map((item) => item.id)
+      .sort(),
+    ["edited", "seller-only", "unsent"],
+  );
 });

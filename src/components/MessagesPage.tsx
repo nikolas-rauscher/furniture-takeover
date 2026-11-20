@@ -3,16 +3,8 @@ import { Button } from "./ui/button";
 import { lazyScreen } from "../lazyScreen";
 import { ArrowLeft, Trash2, X } from "@/components/icons";
 import { AnimatePresence } from "motion/react";
-import {
-  useEffect,
-  useEffectEvent,
-  useRef,
-  useState,
-} from "react";
-import {
-  nextPickupBuyer,
-  threadDealSnapshot,
-} from "../../shared/deal";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { nextPickupBuyer, threadDealSnapshot } from "../../shared/deal";
 import { availableAgainMessage } from "../../shared/dealMessages";
 import type { SellerConversation } from "../../shared/messages";
 import { sendMessage, setConversationDeleted } from "../api/messages";
@@ -40,10 +32,7 @@ import {
   InboxLoading,
   usePakoDrafts,
 } from "./ChatParts";
-import {
-  useThreadDeal,
-  type ThreadEvent,
-} from "./ThreadDeal";
+import { useThreadDeal, type ThreadEvent } from "./ThreadDeal";
 import { useThreadPako } from "./ThreadPako";
 import {
   CARD_IN_CONVERSATION,
@@ -294,30 +283,38 @@ function DemoMessagesPage({
   const visible = Boolean(current) && (!phone || showConversation);
   const [offerAgain, setOfferAgain] = useState<OfferAgain>();
   /** After a released pickup, the next buyer in the inbox who wrote about the listing. */
-  const released = role === "seller" && product?.status === "active" ? saved : undefined;
+  const released =
+    role === "seller" && product?.status === "active" ? saved : undefined;
   const nextThread =
     released?.deal &&
     nextPickupBuyer(
       released.deal,
       conversations.filter((item) => item.messages.length > 0),
     );
-  const nextBuyer = released && nextThread && {
-    name: buyerName(nextThread.buyerKey),
-    onOffer: () => {
-      const key = threadKeyOf(nextThread);
-      const draft = availableAgainMessage(nextThread.title);
-      setOfferAgain({ threadKey: key, releasedConversationId: released.id, draft });
-      setSelected(key);
-      setShowConversation(true);
-      setDrafts((items) => ({ ...items, [`${key}:seller`]: draft }));
-    },
-  };
+  const nextBuyer = released &&
+    nextThread && {
+      name: buyerName(nextThread.buyerKey),
+      onOffer: () => {
+        const key = threadKeyOf(nextThread);
+        const draft = availableAgainMessage(nextThread.title);
+        setOfferAgain({
+          threadKey: key,
+          releasedConversationId: released.id,
+          draft,
+        });
+        setSelected(key);
+        setShowConversation(true);
+        setDrafts((items) => ({ ...items, [`${key}:seller`]: draft }));
+      },
+    };
   /** The thread's booked pickup, which the developer's demo clock jumps around. */
   const bookedPickup =
     deal.deal?.status === "agreed" ? deal.deal.agreed?.terms.pickupAt : null;
   /** The composer holds the offer of a released item to this thread's buyer. */
   const offeringAgain =
-    offerAgain?.threadKey === selected && role === "seller" ? offerAgain : undefined;
+    offerAgain?.threadKey === selected && role === "seller"
+      ? offerAgain
+      : undefined;
   const assistant = useThreadPako({
     reading,
     thread:
@@ -517,9 +514,7 @@ function DemoMessagesPage({
           ))}
           {listing &&
             dismissedListing !== listing.id &&
-            !conversations.some(
-              (item) => threadKeyOf(item) === listing.id,
-            ) && (
+            !conversations.some((item) => threadKeyOf(item) === listing.id) && (
               <ChatThreadCard
                 order={conversations.length}
                 active
@@ -539,7 +534,9 @@ function DemoMessagesPage({
         </nav>
         <section
           className="seller-chat"
-          aria-label={current ? `Conversation with ${otherName}` : "Conversation"}
+          aria-label={
+            current ? `Conversation with ${otherName}` : "Conversation"
+          }
         >
           {current ? (
             <>
@@ -627,7 +624,9 @@ function DemoMessagesPage({
                 busy={busy}
                 disabled={false}
                 error={sendError || error}
-                pakoDrafted={appDraft || offerAgainDraft || assistant.draftedByPako}
+                pakoDrafted={
+                  appDraft || offerAgainDraft || assistant.draftedByPako
+                }
                 tools={assistant.askMenu}
                 terms={termsNote}
                 onTextChange={setText}

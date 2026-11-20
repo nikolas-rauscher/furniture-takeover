@@ -2,11 +2,17 @@ import type { ReactNode } from "react";
 import type { SellerConversation } from "../../shared/messages";
 import { draftMessage } from "../../shared/dealMessages";
 import type { Product } from "../../shared/marketplace";
-import { dealTermsFromNegotiation, markNegotiationSent } from "../../shared/negotiation";
+import {
+  dealTermsFromNegotiation,
+  markNegotiationSent,
+} from "../../shared/negotiation";
 import type { AccountConnection } from "../cloud/connection";
 import LazyBoundary from "../components/LazyBoundary";
 import type { MessagesInboxProps } from "../components/messagesProps";
-import { NamedOfferPriceContext, priceNamedInSearch } from "../components/namedOfferPrice";
+import {
+  NamedOfferPriceContext,
+  priceNamedInSearch,
+} from "../components/namedOfferPrice";
 import type { DealStatusChange } from "../components/ThreadDeal";
 import { nearbyMeetingPoint } from "../dealOptions";
 import type { useMessagesInbox } from "../hooks/useMessagesInbox";
@@ -51,7 +57,10 @@ export default function MessagesScreen({
   developerMode: boolean;
   /** Where the student searches from; the meeting point near it is proposed. */
   location: string;
-  onListingStatus: (listingId: string, status: DealStatusChange) => Promise<void>;
+  onListingStatus: (
+    listingId: string,
+    status: DealStatusChange,
+  ) => Promise<void>;
   threadBanner: ThreadBanner | undefined;
   actions: Actions;
 }) {
@@ -70,7 +79,9 @@ export default function MessagesScreen({
       : { mode: "demo", inbox: messages.demoInbox, reads: messages.reads };
   /** The offer prepared with Pako is the one being sent from this buyer's thread. */
   const sendsProposal = (listingId: string, role: "buyer" | "seller") =>
-    proposal !== undefined && listingId === proposal.listingId && role === "buyer";
+    proposal !== undefined &&
+    listingId === proposal.listingId &&
+    role === "buyer";
   return (
     <NamedOfferPriceContext.Provider
       value={(listingId) => priceNamedInSearch(negotiations.items, listingId)}

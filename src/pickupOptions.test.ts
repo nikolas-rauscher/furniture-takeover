@@ -243,7 +243,10 @@ test("a day after the pickup both students get Pako's question, each answer prev
     assert.match(check.primary!.send!.message, /happened/);
     assert.match(check.secondary[0].send!.message, /released the desk/);
   }
-  assert.deepEqual(ids(choicesAt(2 * day)), { primary: undefined, secondary: [] });
+  assert.deepEqual(ids(choicesAt(2 * day)), {
+    primary: undefined,
+    secondary: [],
+  });
   const deal = booked();
   const strip = (offset: number) =>
     dealStrip({

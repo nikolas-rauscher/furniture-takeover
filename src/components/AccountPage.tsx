@@ -31,7 +31,11 @@ import {
   Image as ImageIcon,
 } from "@/components/icons";
 import { cn } from "@/lib/utils";
-import { money, type Product, type SavedListing } from "../../shared/marketplace";
+import {
+  money,
+  type Product,
+  type SavedListing,
+} from "../../shared/marketplace";
 import { useMomentPassed } from "../hooks/useMomentPassed";
 import Confetti from "./onboarding/Confetti";
 import Pako, { PAKO_FLIGHT_MS } from "./onboarding/Pako";
@@ -46,7 +50,6 @@ import {
   requireDemoListingEdit,
   useListingStatusConfirmation,
 } from "../hooks/useListingPickup";
-
 
 /** How long Pako celebrates a listing that was just published. */
 const CELEBRATION_MS = 6000;
@@ -355,7 +358,8 @@ export default function AccountPage({
     try {
       const agreement = agreementFor?.(item.id);
       const pickup = agreement?.pickup;
-      const applyStatus = (next: Product["status"]) => onStatusChange(item.id, next);
+      const applyStatus = (next: Product["status"]) =>
+        onStatusChange(item.id, next);
       let confirmation: StatusConfirmation | undefined;
       if (pickup) {
         const choice = status === "sold" ? pickup.sold : pickup.reopen;
@@ -370,9 +374,10 @@ export default function AccountPage({
       if (confirmation) {
         setPickupStep({
           ...confirmation,
-          followUp: status === "withdrawn"
-            ? "The buyer will get this message. You can then archive the listing."
-            : undefined,
+          followUp:
+            status === "withdrawn"
+              ? "The buyer will get this message. You can then archive the listing."
+              : undefined,
         });
       } else {
         applyStatus(status);
@@ -422,8 +427,7 @@ export default function AccountPage({
           item.status === status),
     )
     .sort(
-      (a, b) =>
-        Number(leading.includes(b.id)) - Number(leading.includes(a.id)),
+      (a, b) => Number(leading.includes(b.id)) - Number(leading.includes(a.id)),
     );
   const filtered = Boolean(
     query.trim() || (accountTab === "listings" && status !== "all"),
@@ -718,10 +722,15 @@ export default function AccountPage({
           </Tabs>
         )}
         {listingError && (
-          <p className="form-error" role="alert">{listingError}</p>
+          <p className="form-error" role="alert">
+            {listingError}
+          </p>
         )}
         {pickupStep && (
-          <PickupStep confirmation={pickupStep} onClose={() => setPickupStep(undefined)} />
+          <PickupStep
+            confirmation={pickupStep}
+            onClose={() => setPickupStep(undefined)}
+          />
         )}
       </section>
     </MotionConfig>

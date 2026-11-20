@@ -57,10 +57,13 @@ export function useInboxDeals({
       ? accountInboxDeals(accountRows, account.session.user.id)
       : []
     : demoInboxDeals(messages.demoInbox.conversations);
-  const byThread = new Map(deals.map((item) => [item.deal.conversationId, item]));
+  const byThread = new Map(
+    deals.map((item) => [item.deal.conversationId, item]),
+  );
   function inboxDealOf(deal: Deal): InboxDeal {
     const item = byThread.get(deal.conversationId);
-    if (!item) throw new Error(`Deal ${deal.conversationId} is not in the inbox.`);
+    if (!item)
+      throw new Error(`Deal ${deal.conversationId} is not in the inbox.`);
     return item;
   }
   const loaded =
@@ -73,7 +76,11 @@ export function useInboxDeals({
     const listing = listingOf(item);
     // A deal whose listing is gone has no reservation left to cheer about.
     if (!listing) return;
-    const { cheer, meaning } = agreedWords(item.role, item.otherName, listing.title);
+    const { cheer, meaning } = agreedWords(
+      item.role,
+      item.otherName,
+      listing.title,
+    );
     toast.show({
       message: `${cheer} ${meaning}`,
       mood: "cheer",
@@ -126,7 +133,12 @@ export function useInboxDeals({
     const other = item.otherName;
     return {
       other,
-      ...listingPickupChoices({ day, deal: item.deal, other, title: listing.title }),
+      ...listingPickupChoices({
+        day,
+        deal: item.deal,
+        other,
+        title: listing.title,
+      }),
       onSend: (send) => sendListingPickup(item, send),
     };
   }

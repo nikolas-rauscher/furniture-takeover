@@ -73,9 +73,18 @@ test("each page keeps its own scroll position key", () => {
   assert.equal(pageKey(page), "home");
   assert.equal(pageKey({ ...page, home: false }), "search");
   assert.equal(pageKey({ ...page, view: "sell", sellStep: 2 }), "sell-2");
-  assert.equal(pageKey({ ...page, view: "sell", sellMode: "batch" }), "sell-batch");
-  assert.equal(pageKey({ ...page, view: "detail", selectedId: "a" }), "listing-a");
-  assert.equal(pageKey({ ...page, view: "account", accountTab: "archive" }), "account-archive");
+  assert.equal(
+    pageKey({ ...page, view: "sell", sellMode: "batch" }),
+    "sell-batch",
+  );
+  assert.equal(
+    pageKey({ ...page, view: "detail", selectedId: "a" }),
+    "listing-a",
+  );
+  assert.equal(
+    pageKey({ ...page, view: "account", accountTab: "archive" }),
+    "account-archive",
+  );
 });
 
 test("only signed-in pages ask for a sign-in", () => {
@@ -85,7 +94,10 @@ test("only signed-in pages ask for a sign-in", () => {
 
 test("the way back from a listing names where it was opened", () => {
   assert.equal(detailBackLabel("discover", true, "listings"), "Back to search");
-  assert.equal(detailBackLabel("account", false, "favorites"), "Back to saved items");
+  assert.equal(
+    detailBackLabel("account", false, "favorites"),
+    "Back to saved items",
+  );
   assert.equal(detailBackLabel("settings", false, "listings"), "Back");
 });
 
@@ -102,18 +114,38 @@ test("the browser tab names the page on screen, home keeps the app's title", () 
   };
   assert.equal(pageTitle(page), null);
   assert.equal(pageTitle({ ...page, home: false }), "Search with Pako");
-  assert.equal(pageTitle({ ...page, home: false, reviewing: true }), "Listing review");
+  assert.equal(
+    pageTitle({ ...page, home: false, reviewing: true }),
+    "Listing review",
+  );
   assert.equal(pageTitle({ ...page, view: "detail" }), "Listing unavailable");
-  assert.equal(pageTitle({ ...page, view: "detail", listingTitle: "Desk" }), "Desk");
+  assert.equal(
+    pageTitle({ ...page, view: "detail", listingTitle: "Desk" }),
+    "Desk",
+  );
   assert.equal(pageTitle({ ...page, view: "settings" }), "Browser settings");
-  assert.equal(pageTitle({ ...page, view: "settings", accounts: "signed-out" }), "Sign in");
-  assert.equal(pageTitle({ ...page, view: "sell", sellMode: "batch" }), "Sell several items");
+  assert.equal(
+    pageTitle({ ...page, view: "settings", accounts: "signed-out" }),
+    "Sign in",
+  );
+  assert.equal(
+    pageTitle({ ...page, view: "sell", sellMode: "batch" }),
+    "Sell several items",
+  );
 });
 
 test("each page gets its layout", () => {
-  const page = { view: "discover" as const, home: true, sellMode: "single" as const, sellStep: 1 };
+  const page = {
+    view: "discover" as const,
+    home: true,
+    sellMode: "single" as const,
+    sellStep: 1,
+  };
   assert.equal(layoutClassName(page), "app-layout home-layout");
-  assert.equal(layoutClassName({ ...page, home: false }), "app-layout focused-layout chat-layout");
+  assert.equal(
+    layoutClassName({ ...page, home: false }),
+    "app-layout focused-layout chat-layout",
+  );
   assert.equal(
     layoutClassName({ ...page, home: false, view: "sell", sellStep: 2 }),
     "app-layout focused-layout selling-chat-layout",

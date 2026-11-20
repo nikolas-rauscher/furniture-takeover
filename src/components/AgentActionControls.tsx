@@ -258,8 +258,7 @@ const fieldLabels: Record<string, string> = {
 function changedValue(field: string, value: unknown) {
   if (value === null) return "Not set";
   if (value === "") return "Clear this field";
-  if (field === "price" || field === "maxPrice")
-    return money(Number(value));
+  if (field === "price" || field === "maxPrice") return money(Number(value));
   if (field === "radius") return `${value} km`;
   return String(value);
 }

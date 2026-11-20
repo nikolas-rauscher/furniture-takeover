@@ -125,4 +125,8 @@ export type AgentRuntimeHealth = {
   model: string;
   webSearchConfigured: boolean;
 };
-import type { AgentActionEvent, AgentListingDraft, AgentListingQuestion } from "./actions.ts";
+import type {
+  AgentActionEvent,
+  AgentListingDraft,
+  AgentListingQuestion,
+} from "./actions.ts";

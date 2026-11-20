@@ -157,7 +157,12 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
               "This is the current seller-approved asking price, including any accepted price suggestion. Preserve it. Ignore older claims that the price is missing. Continue with a different useful missing detail or finish.",
           };
         }
-        const repeated = repeatedQuestion(parsedQuestion.question, request, parsedQuestion.listingField, parsedQuestion.choices);
+        const repeated = repeatedQuestion(
+          parsedQuestion.question,
+          request,
+          parsedQuestion.listingField,
+          parsedQuestion.choices,
+        );
         if (repeated) {
           state.listingNeedsInput = false;
           return {
@@ -182,30 +187,62 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
           : asksPrice;
         if (!priceQuestion) delete parsedQuestion.input;
         if (parsedQuestion.input && parsedQuestion.input.value === undefined)
-          throw new Error("Supply a grounded slider value, or omit the price control.");
-        if (listingAssist && priceQuestion && parsedQuestion.input &&
-            parsedQuestion.input.value !== (state.proposedPrice ?? savedPrice))
+          throw new Error(
+            "Supply a grounded slider value, or omit the price control.",
+          );
+        if (
+          listingAssist &&
+          priceQuestion &&
+          parsedQuestion.input &&
+          parsedQuestion.input.value !== (state.proposedPrice ?? savedPrice)
+        )
           delete parsedQuestion.input;
         const { followUps = [], ...main } = parsedQuestion;
         const needsPrice = state.firstDraft && savedPrice == null;
-        const title = listingAssist ? request.context?.currentDraft?.title : undefined;
+        const title = listingAssist
+          ? request.context?.currentDraft?.title
+          : undefined;
         const formattedMain = formatQuestion(main, title);
-        const queued = followUps.filter((followUp) => {
-          if (!listingAssist || repeatedQuestion(followUp.question, request, followUp.listingField, followUp.choices)) return false;
-          const field = followUp.listingField;
-          if (field === "price") return false;
-          return !field || field === "other" || field === "description" ||
-            !request.context?.currentDraft?.[field];
-        }).map((question) => formatQuestion(question, title));
+        const queued = followUps
+          .filter((followUp) => {
+            if (
+              !listingAssist ||
+              repeatedQuestion(
+                followUp.question,
+                request,
+                followUp.listingField,
+                followUp.choices,
+              )
+            )
+              return false;
+            const field = followUp.listingField;
+            if (field === "price") return false;
+            return (
+              !field ||
+              field === "other" ||
+              field === "description" ||
+              !request.context?.currentDraft?.[field]
+            );
+          })
+          .map((question) => formatQuestion(question, title));
         let question: AgentQuestionEvent = {
-          type: "question", id: toolCallId, ...formattedMain,
+          type: "question",
+          id: toolCallId,
+          ...formattedMain,
         };
-        if (needsPrice || (priceQuestion && state.proposedPrice !== undefined)) {
+        if (
+          needsPrice ||
+          (priceQuestion && state.proposedPrice !== undefined)
+        ) {
           if (!priceQuestion) queued.unshift(formattedMain);
           question = askingPriceQuestion(toolCallId, state.proposedPrice);
           if (priceQuestion) question.question = main.question;
         }
-        if (queued.length) question.followUps = queued.slice(0, question.listingField === "price" ? 2 : 1);
+        if (queued.length)
+          question.followUps = queued.slice(
+            0,
+            question.listingField === "price" ? 2 : 1,
+          );
         state.pendingQuestion = question;
         questionController.abort();
         await send(state.pendingQuestion);
@@ -215,13 +252,21 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
     ...(listingAssist
       ? {
           propose_price: tool({
-            description: "Suggest a positive CHF price for acceptance. Select two to four comparable fixed-price offers from this search. The server quotes them.",
+            description:
+              "Suggest a positive CHF price for acceptance. Select two to four comparable fixed-price offers from this search. The server quotes them.",
             inputSchema: priceProposalSchema,
             execute: async (input, { toolCallId }) => {
               claimTool();
               if (state.proposedPrice !== undefined)
-                throw new Error("A price has already been proposed. Ask for the seller’s decision.");
-              const action = proposePrice(input, sources, offerSourceIds, toolCallId);
+                throw new Error(
+                  "A price has already been proposed. Ask for the seller’s decision.",
+                );
+              const action = proposePrice(
+                input,
+                sources,
+                offerSourceIds,
+                toolCallId,
+              );
               state.proposedPrice = input.price;
               state.priceReason = action.reason;
               await send(action);
@@ -235,7 +280,9 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
             execute: async (input, { toolCallId }) => {
               claimTool();
               if (input.evidence.some((item) => item.kind === "source"))
-                throw new Error("Use propose_price with comparable offer IDs for a researched price.");
+                throw new Error(
+                  "Use propose_price with comparable offer IDs for a researched price.",
+                );
               const prepared = prepareListingAction(
                 input,
                 request,
@@ -297,9 +344,14 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                 claimTool();
                 const action = preferencesAction(input, request, toolCallId);
                 const previousSource = request.context?.source;
-                const filtersChanged = Object.entries(action.patch).some(([field, value]) =>
-                  value !== (field === "query" ? request.context?.currentQuery :
-                    request.context?.[field as keyof NonNullable<AgentRunRequest["context"]>]),
+                const filtersChanged = Object.entries(action.patch).some(
+                  ([field, value]) =>
+                    value !==
+                    (field === "query"
+                      ? request.context?.currentQuery
+                      : request.context?.[
+                          field as keyof NonNullable<AgentRunRequest["context"]>
+                        ]),
                 );
                 request.context = { ...request.context, ...action.patch };
                 if (action.patch.query !== undefined)
@@ -477,8 +529,14 @@ export function createAgentTools(context: AgentToolContext): ToolSet {
                   "INVALID_RESEARCH_SCOPE",
                   "Similar-item research is only available when preparing a listing.",
                 );
-              if (state.firstDraft && !state.webSearched && purpose === "product_info")
-                throw new Error("Start with comparable offers using purpose offers.");
+              if (
+                state.firstDraft &&
+                !state.webSearched &&
+                purpose === "product_info"
+              )
+                throw new Error(
+                  "Start with comparable offers using purpose offers.",
+                );
               state.responseLanguage ??= selectedLanguage;
               state.webSearched = true;
               const requestedSource = request.context?.source;

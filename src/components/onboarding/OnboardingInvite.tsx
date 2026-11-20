@@ -67,9 +67,7 @@ export default function OnboardingInvite({
               <h2 id={titleId} className="ob-invite-title">
                 Meet Pako
               </h2>
-              <p className="ob-invite-note">
-                See how buying and selling work.
-              </p>
+              <p className="ob-invite-note">See how buying and selling work.</p>
             </div>
             <Button
               className="button primary small"

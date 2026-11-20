@@ -120,7 +120,11 @@ test("a skipped question asked again with the same answers stays skipped, in any
         {
           question: "Does the sale include the charger?",
           listingField: "other",
-          choices: ["Yes, charger included", "No, charger not included", "Not sure yet"],
+          choices: [
+            "Yes, charger included",
+            "No, charger not included",
+            "Not sure yet",
+          ],
         },
       ],
     },
@@ -130,7 +134,12 @@ test("a skipped question asked again with the same answers stays skipped, in any
       "Which MacBook Pro model is it (e.g. 13-inch, 14-inch or 16-inch, and the year)?",
       request,
       "other",
-      ["MacBook Pro 13-inch", "MacBook Pro 14-inch", "MacBook Pro 16-inch", "Not sure"],
+      [
+        "MacBook Pro 13-inch",
+        "MacBook Pro 14-inch",
+        "MacBook Pro 16-inch",
+        "Not sure",
+      ],
     )?.answer,
     "Skipped",
   );
@@ -144,7 +153,11 @@ test("a skipped question asked again with the same answers stays skipped, in any
     "yes, no and not sure are no evidence of the same question",
   );
   assert.equal(
-    repeatedQuestion("How much RAM does it have?", request, "other", ["8 GB", "16 GB", "32 GB"]),
+    repeatedQuestion("How much RAM does it have?", request, "other", [
+      "8 GB",
+      "16 GB",
+      "32 GB",
+    ]),
     undefined,
   );
 });

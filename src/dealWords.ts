@@ -391,7 +391,8 @@ export function threadDealNote(
   if (!deal) return undefined;
   if (deal.status === "agreed" && deal.agreed) {
     const check = pickupDay(deal, role, now)?.pickupCheck;
-    if (check) return check.expired ? RELEASED_STRIP.lead : "Did the pickup happen?";
+    if (check)
+      return check.expired ? RELEASED_STRIP.lead : "Did the pickup happen?";
     const { pickupAt } = deal.agreed.terms;
     return pickupAt ? `Agreed · ${shortPickup(pickupAt)}` : "Agreed";
   }
@@ -402,7 +403,9 @@ export function threadDealNote(
   const { proposal } = deal;
   if (!proposal) return undefined;
   const price =
-    proposal.terms.amount === null ? "" : ` · ${termPrice(proposal.terms.amount)}`;
+    proposal.terms.amount === null
+      ? ""
+      : ` · ${termPrice(proposal.terms.amount)}`;
   return proposal.by === role ? `Your offer${price}` : `Offer${price}`;
 }
 

@@ -79,7 +79,6 @@ export type DealController = {
   ) => Promise<DealResult>;
 };
 
-
 /** Phases in which the other student's move waits for this one: the card opens for them. */
 const NEEDS_YOU: readonly DealPhase[] = [
   "offer_received",
@@ -162,8 +161,8 @@ function dealMoment(
           : deal.outcome.kind === "listing_reopened"
             ? "listing"
             : deal.outcome.by === role
-            ? "me"
-            : "them",
+              ? "me"
+              : "them",
     };
   return null;
 }
@@ -233,7 +232,10 @@ export function useThreadDeal({
   /** After a released pickup, the seller's next interested buyer for this listing. */
   nextBuyer: NextBuyer | undefined;
   /** Applies the listing status a deal change brought, in the app's one status path. */
-  onStatusChange: (listingId: string, status: DealStatusChange) => Promise<void>;
+  onStatusChange: (
+    listingId: string,
+    status: DealStatusChange,
+  ) => Promise<void>;
   /** Puts a message in the composer, for the student to send with a second tap. */
   onWrite: (text: string) => void;
 }) {
@@ -244,7 +246,8 @@ export function useThreadDeal({
     : "talking";
   const day = pickupDay(deal, role, now);
   /** A pickup on its day, or a new time to answer, opens its card on phones too. */
-  const pickupNeedsYou = !!day && (day.phase !== "booked" || day.change === "received");
+  const pickupNeedsYou =
+    !!day && (day.phase !== "booked" || day.change === "received");
   const phone = useMediaQuery("(max-width: 760px)");
   // A card opens by itself where the student has something to do; whether the
   // student opened or folded it is kept per thread and phase, on desktop
@@ -254,9 +257,7 @@ export function useThreadDeal({
     {},
     isCardChoices,
   );
-  const [phoneChoices, setPhoneChoices] = useState<Record<string, boolean>>(
-    {},
-  );
+  const [phoneChoices, setPhoneChoices] = useState<Record<string, boolean>>({});
   const cardKey = day
     ? `${threadKey}:${phase}:${day.phase}:${day.change ?? ""}`
     : `${threadKey}:${phase}`;
@@ -282,8 +283,7 @@ export function useThreadDeal({
   /** A celebration belongs to the thread and side it happened in. */
   const celebrate = (moment: ChatMoment) =>
     setCelebration({ ...moment, threadKey });
-  const moment =
-    celebration?.threadKey === threadKey ? celebration : undefined;
+  const moment = celebration?.threadKey === threadKey ? celebration : undefined;
   const celebrations = useCelebrated();
   const [editing, setEditing] = useState<{
     key: string;
@@ -326,7 +326,7 @@ export function useThreadDeal({
       await follow(result);
       return id;
     } catch (error) {
-      throw new Error(dealFailure(error, otherName, title));
+      throw new Error(dealFailure(error, otherName, title), { cause: error });
     } finally {
       setBusy(false);
     }
@@ -341,7 +341,11 @@ export function useThreadDeal({
   async function reportPickup(result: DealResult, action: PickupAction) {
     if (result.statusChange)
       await onStatusChange(result.deal.listingId, result.statusChange);
-    if ((action.type === "picked_up" || action.type === "confirm_pickup_happened") && listing)
+    if (
+      (action.type === "picked_up" ||
+        action.type === "confirm_pickup_happened") &&
+      listing
+    )
       celebrate({ kind: "handed_over", role, title: listing.title });
   }
   /** A failure stays on the card, where the same tap tries again. */
@@ -375,7 +379,11 @@ export function useThreadDeal({
     if (option.kind === "edit") openEditor(option.entry);
     else if (option.kind === "write") onWrite(option.message);
     else
-      void act(option.action, option.message, option.id === "confirm" && option.action.type === "propose");
+      void act(
+        option.action,
+        option.message,
+        option.id === "confirm" && option.action.type === "propose",
+      );
   };
 
   const agreedId =
@@ -386,14 +394,21 @@ export function useThreadDeal({
     if (celebrations.celebrated(id)) return;
     celebrations.remember(id);
     if (listing)
-      celebrate({ kind: "agreed", role, other: otherName, title: listing.title });
+      celebrate({
+        kind: "agreed",
+        role,
+        other: otherName,
+        title: listing.title,
+      });
   });
   useEffect(() => {
     if (agreedId && visible) celebrateAgreement(agreedId);
   }, [agreedId, visible]);
 
-  const ready = Boolean(listing) && controller.loaded && !controller.error && enabled;
-  const theirs = deal?.proposal && deal.proposal.by !== role ? deal.proposal.terms : null;
+  const ready =
+    Boolean(listing) && controller.loaded && !controller.error && enabled;
+  const theirs =
+    deal?.proposal && deal.proposal.by !== role ? deal.proposal.terms : null;
   const mineBefore = myLatestAmount(events, messages);
   const counter =
     listing &&

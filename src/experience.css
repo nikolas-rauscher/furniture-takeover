@@ -635,7 +635,9 @@ label > textarea {
 .listing-conversation {
   min-width: 0;
 }
-.listing-conversation .search-conversation { margin: 12px 0; }
+.listing-conversation .search-conversation {
+  margin: 12px 0;
+}
 .listing-conversation .agent-run-panel.conversation-agent {
   margin: 12px 0;
   padding: 0;
@@ -645,8 +647,13 @@ label > textarea {
 .listing-conversation .agent-run-changes {
   margin: 12px 0;
 }
-.listing-conversation .agent-run-changes h3 { font-size: 15px; }
-.listing-conversation .agent-run-changes p { font-size: 14px; line-height: 1.5; }
+.listing-conversation .agent-run-changes h3 {
+  font-size: 15px;
+}
+.listing-conversation .agent-run-changes p {
+  font-size: 14px;
+  line-height: 1.5;
+}
 .listing-save-form {
   margin-top: 40px;
   padding-top: 28px;
@@ -684,18 +691,32 @@ label > textarea {
     border-radius: 12px;
     background: #fff;
   }
-  .agent-review-layout .listing-preview > div { padding: 0; min-width: 0; }
+  .agent-review-layout .listing-preview > div {
+    padding: 0;
+    min-width: 0;
+  }
   .agent-review-layout .listing-preview h2 {
     font-size: 15px;
     line-height: 1.35;
     margin: 4px 0;
   }
-  .agent-review-layout .listing-preview strong { font-size: 16px; margin-bottom: 4px; }
-  .agent-review-layout .listing-preview p { font-size: 11px; margin-top: 4px; }
-  .agent-review-layout .listing-preview .listing-preview-description { display: none; }
-  .review-layout.agent-review-layout { gap: 12px; }
-  .view-sell .page-title + .steps { margin-bottom: 12px; }
-
+  .agent-review-layout .listing-preview strong {
+    font-size: 16px;
+    margin-bottom: 4px;
+  }
+  .agent-review-layout .listing-preview p {
+    font-size: 11px;
+    margin-top: 4px;
+  }
+  .agent-review-layout .listing-preview .listing-preview-description {
+    display: none;
+  }
+  .review-layout.agent-review-layout {
+    gap: 12px;
+  }
+  .view-sell .page-title + .steps {
+    margin-bottom: 12px;
+  }
 }
 .review-layout {
   grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
@@ -897,7 +918,8 @@ label > textarea {
   }
   .focused-layout .main-content,
   .main-content {
-    padding: var(--space-section) var(--space-page) calc(2 * var(--space-section));
+    padding: var(--space-section) var(--space-page)
+      calc(2 * var(--space-section));
   }
   .agent-footnote {
     gap: 16px;
@@ -941,7 +963,8 @@ label > textarea {
   }
   .focused-layout .main-content,
   .main-content {
-    padding: var(--space-section) var(--space-page) calc(2 * var(--space-section));
+    padding: var(--space-section) var(--space-page)
+      calc(2 * var(--space-section));
   }
   .agent-footnote {
     align-items: flex-start;
@@ -1068,44 +1091,118 @@ label > textarea {
 
 /* The mobile listing workspace puts the next question within reach. */
 @media (max-width: 760px) {
-  .view-sell > .back-link { margin-bottom: 12px; }
-  .view-sell > .page-title { margin-bottom: 18px; }
-  .view-sell > .page-title h1 { font-size: 26px; line-height: 1.2; margin-bottom: 10px; }
-  .view-sell > .page-title p { font-size: 13px; line-height: 1.5; }
-  .view-sell > .steps { margin-bottom: 20px; font-size: 12px; gap: 12px; }
-  .listing-save-form { margin-top: 24px; padding-top: 20px; }
+  .view-sell > .back-link {
+    margin-bottom: 12px;
+  }
+  .view-sell > .page-title {
+    margin-bottom: 18px;
+  }
+  .view-sell > .page-title h1 {
+    font-size: 26px;
+    line-height: 1.2;
+    margin-bottom: 10px;
+  }
+  .view-sell > .page-title p {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .view-sell > .steps {
+    margin-bottom: 20px;
+    font-size: 12px;
+    gap: 12px;
+  }
+  .listing-save-form {
+    margin-top: 24px;
+    padding-top: 20px;
+  }
 }
 
 /* Keep related copy together while preserving generous control targets. */
-.page-title { margin-bottom: var(--space-group); }
-.page-title h1 { margin-bottom: var(--space-label); min-height: var(--control-size); display: flex; align-items: center; }
-.page-title > .button { margin: 0; }
+.page-title {
+  margin-bottom: var(--space-group);
+}
+.page-title h1 {
+  margin-bottom: var(--space-label);
+  min-height: var(--control-size);
+  display: flex;
+  align-items: center;
+}
+.page-title > .button {
+  margin: 0;
+}
 
-.listing-save-form { margin-top: 24px; padding-top: 20px; }
-.sell-inputs { gap: 20px; }
-.review-form > label, .form-section-title { margin-bottom: 18px; }
-.collection-title { margin-top: 28px; padding-top: 20px; }
-.form-grid, .modal .form-grid { gap: 20px; margin: 20px 0; }
-.account-tabs { margin: 24px 0; gap: 24px; }
-.account-tabs button { min-height: 44px; padding-bottom: 12px; }
-.own-listing { padding: 20px; gap: 20px; }
-.listing-preview h2 { margin: 12px 0; }
-.listing-preview p { margin-top: 10px; }
+.listing-save-form {
+  margin-top: 24px;
+  padding-top: 20px;
+}
+.sell-inputs {
+  gap: 20px;
+}
+.review-form > label,
+.form-section-title {
+  margin-bottom: 18px;
+}
+.collection-title {
+  margin-top: 28px;
+  padding-top: 20px;
+}
+.form-grid,
+.modal .form-grid {
+  gap: 20px;
+  margin: 20px 0;
+}
+.account-tabs {
+  margin: 24px 0;
+  gap: 24px;
+}
+.account-tabs button {
+  min-height: 44px;
+  padding-bottom: 12px;
+}
+.own-listing {
+  padding: 20px;
+  gap: 20px;
+}
+.listing-preview h2 {
+  margin: 12px 0;
+}
+.listing-preview p {
+  margin-top: 10px;
+}
 @media (max-width: 560px) {
-  .review-layout.agent-review-layout { gap: 12px; }
-  .form-grid, .modal .form-grid { gap: 16px; }
-  .account-tabs { margin: 20px 0; gap: 20px; }
-  .own-listing { padding: 16px; gap: 16px; }
+  .review-layout.agent-review-layout {
+    gap: 12px;
+  }
+  .form-grid,
+  .modal .form-grid {
+    gap: 16px;
+  }
+  .account-tabs {
+    margin: 20px 0;
+    gap: 20px;
+  }
+  .own-listing {
+    padding: 16px;
+    gap: 16px;
+  }
 }
 
 /* Keep modal scrollbar changes from shifting the whole workspace sideways. */
-html { scrollbar-gutter: stable; }
-.main-content:focus { outline: none; }
+html {
+  scrollbar-gutter: stable;
+}
+.main-content:focus {
+  outline: none;
+}
 
 /* Keep routine draft updates small so the conversation stays in place. */
-.agent-run-change-content { padding-top: 8px; }
+.agent-run-change-content {
+  padding-top: 8px;
+}
 @supports (interpolate-size: allow-keywords) {
-  .agent-run-change { interpolate-size: allow-keywords; }
+  .agent-run-change {
+    interpolate-size: allow-keywords;
+  }
 }
 @media (max-width: 760px) {
   .agent-review-layout .listing-preview {
@@ -1123,21 +1220,44 @@ html { scrollbar-gutter: stable; }
 .listing-conversation .agent-run-change {
   max-width: none;
 }
-.agent-run-change-content > p { font-size: 14px; }
+.agent-run-change-content > p {
+  font-size: 14px;
+}
 
 /* In a conversation, the viewport belongs to the app; only messages scroll. */
-html:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-layout),
-body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-layout) {
+html:has(
+  .chat-layout,
+  .messages-layout,
+  .selling-chat-layout,
+  .selling-photo-layout
+),
+body:has(
+  .chat-layout,
+  .messages-layout,
+  .selling-chat-layout,
+  .selling-photo-layout
+) {
   overflow: hidden;
   overscroll-behavior: none;
 }
-#root:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-layout) {
+#root:has(
+  .chat-layout,
+  .messages-layout,
+  .selling-chat-layout,
+  .selling-photo-layout
+) {
   height: var(--app-viewport-height, 100dvh);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
-#root:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-layout) > .app-header {
+#root:has(
+    .chat-layout,
+    .messages-layout,
+    .selling-chat-layout,
+    .selling-photo-layout
+  )
+  > .app-header {
   position: static;
 }
 .app-layout.chat-layout,
@@ -1156,7 +1276,9 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
   margin: 0 auto;
   overflow: hidden;
 }
-.chat-layout .view-discover > * { flex-shrink: 0; }
+.chat-layout .view-discover > * {
+  flex-shrink: 0;
+}
 .chat-layout .view-discover > .quiet-caption {
   margin: 0 0 6px;
   font-size: 11px;
@@ -1171,22 +1293,44 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
   max-width: none;
   margin: 8px 0 0;
 }
-.chat-layout .chat-composer-dock { min-height: 0; padding-top: 8px; }
-.chat-layout .chat-composer-dock textarea { max-height: 100px; overflow-y: auto; }
-.chat-layout .agent-footnote { margin: 4px 0 0; }
+.chat-layout .chat-composer-dock {
+  min-height: 0;
+  padding-top: 8px;
+}
+.chat-layout .chat-composer-dock textarea {
+  max-height: 100px;
+  overflow-y: auto;
+}
+.chat-layout .agent-footnote {
+  margin: 4px 0 0;
+}
 @media (max-width: 760px) {
   /* Below a conversation the tab bar keeps a clean gap to the composer above it. */
-  #root:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-layout) > .mobile-nav {
+  #root:has(
+      .chat-layout,
+      .messages-layout,
+      .selling-chat-layout,
+      .selling-photo-layout
+    )
+    > .mobile-nav {
     position: static;
     flex: 0 0 auto;
     padding-top: 12px;
   }
-  .chat-layout .main-content.view-discover { padding: var(--space-label) var(--space-page); }
-  .chat-layout .view-discover > .quiet-caption { display: none; }
-  .chat-layout .chat-workspace { margin-top: 4px; }
+  .chat-layout .main-content.view-discover {
+    padding: var(--space-label) var(--space-page);
+  }
+  .chat-layout .view-discover > .quiet-caption {
+    display: none;
+  }
+  .chat-layout .chat-workspace {
+    margin-top: 4px;
+  }
 }
 @media (max-height: 600px) {
-  .chat-layout .view-discover > .quiet-caption { display: none; }
+  .chat-layout .view-discover > .quiet-caption {
+    display: none;
+  }
 }
 
 /* Seller conversations use the same fixed shell as the agent chat. */
@@ -1202,97 +1346,395 @@ body:has(.chat-layout, .messages-layout, .selling-chat-layout, .selling-photo-la
   display: flex;
   flex-direction: column;
 }
-.messages-layout .messages-page .page-title { margin: 0 0 4px; }
-.messages-layout .messages-page .page-title h1 { font-size: var(--type-title); margin: 0; }
-.messages-layout .messages-page .page-title p { display: none; }
-.messages-layout .messages-page > .quiet-caption { font-size: 11px; margin: 0; text-align: left; }
-.messages-layout .seller-chat-layout { flex: 1; min-height: 0; margin-top: 8px; }
-.messages-layout .seller-chat-layout nav { overflow-y: auto; min-height: 0; }
-.messages-layout .seller-chat { min-height: 0; }
-.messages-layout .seller-chat-messages { min-height: 0; max-height: none; overscroll-behavior: contain; }
-.messages-layout .seller-chat form { flex-shrink: 0; }
+.messages-layout .messages-page .page-title {
+  margin: 0 0 4px;
+}
+.messages-layout .messages-page .page-title h1 {
+  font-size: var(--type-title);
+  margin: 0;
+}
+.messages-layout .messages-page .page-title p {
+  display: none;
+}
+.messages-layout .messages-page > .quiet-caption {
+  font-size: 11px;
+  margin: 0;
+  text-align: left;
+}
+.messages-layout .seller-chat-layout {
+  flex: 1;
+  min-height: 0;
+  margin-top: 8px;
+}
+.messages-layout .seller-chat-layout nav {
+  overflow-y: auto;
+  min-height: 0;
+}
+.messages-layout .seller-chat {
+  min-height: 0;
+}
+.messages-layout .seller-chat-messages {
+  min-height: 0;
+  max-height: none;
+  overscroll-behavior: contain;
+}
+.messages-layout .seller-chat form {
+  flex-shrink: 0;
+}
 @media (max-width: 760px) {
-  .messages-layout:has(.messages-page.has-conversation) .main-content.view-messages { padding-top: var(--space-label); }
+  .messages-layout:has(.messages-page.has-conversation)
+    .main-content.view-messages {
+    padding-top: var(--space-label);
+  }
 }
 
 /* The listing editor shares the stationary chat shell. Details open on demand. */
-.app-layout.selling-chat-layout { flex: 1 1 0; min-height: 0; width: 100%; overflow: hidden; }
-.selling-chat-layout .view-sell { height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: var(--space-group) var(--space-page); margin: 0 auto; }
-.selling-chat-layout .view-sell > .back-link { margin: 0; min-height: 28px; align-self: flex-start; font-size: 12px; flex-shrink: 0; }
-.selling-chat-layout .page-title { margin: 0 0 6px; flex-shrink: 0; }
-.selling-chat-layout .page-title h1 { font-size: 22px; margin: 0; }
-.selling-chat-layout .page-title p, .selling-chat-layout .steps { display: none; }
-.selling-chat-layout .agent-review-layout { flex: 1 1 0; min-height: 0; margin: 0; align-items: stretch; gap: 20px; }
-.selling-chat-layout .listing-workspace, .selling-chat-layout .listing-conversation { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }
-.selling-chat-layout .chat-workspace { flex: 1 1 0; min-height: 0; height: auto; max-width: none; margin: 6px 0; }
-.selling-chat-layout .chat-composer-dock { min-height: 0; padding-top: 8px; }
-.selling-chat-layout .chat-composer-dock textarea { max-height: 100px; overflow-y: auto; }
-.selling-chat-layout .listing-save-form { flex-shrink: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; margin: 0; padding: 8px 0 0; container-type: inline-size; }
-.selling-chat-layout .listing-save-form > .button { width: auto; margin: 0; }
+.app-layout.selling-chat-layout {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+}
+.selling-chat-layout .view-sell {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: var(--space-group) var(--space-page);
+  margin: 0 auto;
+}
+.selling-chat-layout .view-sell > .back-link {
+  margin: 0;
+  min-height: 28px;
+  align-self: flex-start;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.selling-chat-layout .page-title {
+  margin: 0 0 6px;
+  flex-shrink: 0;
+}
+.selling-chat-layout .page-title h1 {
+  font-size: 22px;
+  margin: 0;
+}
+.selling-chat-layout .page-title p,
+.selling-chat-layout .steps {
+  display: none;
+}
+.selling-chat-layout .agent-review-layout {
+  flex: 1 1 0;
+  min-height: 0;
+  margin: 0;
+  align-items: stretch;
+  gap: 20px;
+}
+.selling-chat-layout .listing-workspace,
+.selling-chat-layout .listing-conversation {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+}
+.selling-chat-layout .chat-workspace {
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+  max-width: none;
+  margin: 6px 0;
+}
+.selling-chat-layout .chat-composer-dock {
+  min-height: 0;
+  padding-top: 8px;
+}
+.selling-chat-layout .chat-composer-dock textarea {
+  max-height: 100px;
+  overflow-y: auto;
+}
+.selling-chat-layout .listing-save-form {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin: 0;
+  padding: 8px 0 0;
+  container-type: inline-size;
+}
+.selling-chat-layout .listing-save-form > .button {
+  width: auto;
+  margin: 0;
+}
 /* Who will see the listing: under the save button, or between the buttons where the row has room.
    Phones leave it to the button's words. */
-.selling-chat-layout .listing-save-form > .quiet-caption { order: 1; flex: 1 0 100%; margin: 0; text-align: right; }
-@container (min-width: 44rem) {
-  .selling-chat-layout .listing-save-form > .quiet-caption { order: 0; flex: 1 1 0; }
+.selling-chat-layout .listing-save-form > .quiet-caption {
+  order: 1;
+  flex: 1 0 100%;
+  margin: 0;
+  text-align: right;
 }
-.selling-chat-layout .listing-preview { position: static; align-self: start; max-height: 100%; overflow: hidden; }
-.selling-chat-layout .listing-preview > div { padding: 16px; }
-.selling-chat-layout .listing-preview h2 { font-size: 20px; margin: 0 0 8px; }
-.selling-chat-layout .listing-preview-description { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
+@container (min-width: 44rem) {
+  .selling-chat-layout .listing-save-form > .quiet-caption {
+    order: 0;
+    flex: 1 1 0;
+  }
+}
+.selling-chat-layout .listing-preview {
+  position: static;
+  align-self: start;
+  max-height: 100%;
+  overflow: hidden;
+}
+.selling-chat-layout .listing-preview > div {
+  padding: 16px;
+}
+.selling-chat-layout .listing-preview h2 {
+  font-size: 20px;
+  margin: 0 0 8px;
+}
+.selling-chat-layout .listing-preview-description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
 @media (max-width: 760px) {
-  .selling-chat-layout .view-sell { padding: 8px var(--space-page); }
-  .selling-chat-layout .page-title h1 { font-size: 18px; }
-  .selling-chat-layout .agent-review-layout { gap: 6px; }
-  .selling-chat-layout .listing-preview { height: 58px; min-height: 58px; flex-shrink: 0; grid-template-columns: 44px minmax(0, 1fr); padding: 6px 10px; gap: 10px; border-radius: var(--radius-card); }
-  .selling-chat-layout .listing-preview > div { padding: 0; }
-  .selling-chat-layout .listing-preview h2 { font-size: 13px; white-space: nowrap; display: block; text-overflow: ellipsis; overflow: hidden; margin: 0; }
-  .selling-chat-layout .listing-preview strong { font-size: 13px; margin: 0; }
-  .selling-chat-layout .listing-preview p, .selling-chat-layout .listing-preview .source-label { display: none; }
-  .selling-chat-layout .listing-save-form > .button { padding: 8px 12px; font-size: 12px; }
-  .selling-chat-layout .listing-save-form > .quiet-caption { display: none; }
+  .selling-chat-layout .view-sell {
+    padding: 8px var(--space-page);
+  }
+  .selling-chat-layout .page-title h1 {
+    font-size: 18px;
+  }
+  .selling-chat-layout .agent-review-layout {
+    gap: 6px;
+  }
+  .selling-chat-layout .listing-preview {
+    height: 58px;
+    min-height: 58px;
+    flex-shrink: 0;
+    grid-template-columns: 44px minmax(0, 1fr);
+    padding: 6px 10px;
+    gap: 10px;
+    border-radius: var(--radius-card);
+  }
+  .selling-chat-layout .listing-preview > div {
+    padding: 0;
+  }
+  .selling-chat-layout .listing-preview h2 {
+    font-size: 13px;
+    white-space: nowrap;
+    display: block;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    margin: 0;
+  }
+  .selling-chat-layout .listing-preview strong {
+    font-size: 13px;
+    margin: 0;
+  }
+  .selling-chat-layout .listing-preview p,
+  .selling-chat-layout .listing-preview .source-label {
+    display: none;
+  }
+  .selling-chat-layout .listing-save-form > .button {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  .selling-chat-layout .listing-save-form > .quiet-caption {
+    display: none;
+  }
 }
 @media (max-height: 600px) {
-  .selling-chat-layout .page-title { display: none; }
+  .selling-chat-layout .page-title {
+    display: none;
+  }
 }
 
 /* Listing preparation keeps the action visible while the form can scroll; on wider
    screens the action follows the fields, beside a camera card that keeps a 4:3 frame. */
-.app-layout.selling-photo-layout { flex: 1 1 0; min-height: 0; width: 100%; overflow: hidden; }
-.selling-photo-layout .view-sell { height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: var(--space-section) var(--space-page); margin: 0 auto; }
-.selling-photo-layout .workspace-header { margin-bottom: 16px; }
-.selling-photo-layout .sell-layout { flex: 1 1 0; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "photos guide" "photos fields" "photos actions"; gap: 16px 24px; align-items: start; }
-.sell-photo-content { display: contents; }
-.selling-photo-layout .photo-upload-panel { grid-area: photos; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
-.selling-photo-layout .upload-zone { height: auto; flex: 1 1 0; min-height: 0; padding: 16px; }
-.selling-photo-layout .upload-zone.has-image { padding: 0; border-style: solid; border-color: var(--card-line); }
-.selling-photo-layout .upload-zone img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
-.selling-photo-layout .sell-inputs { grid-area: fields; min-height: 0; min-width: 0; align-self: start; gap: 16px; }
-.selling-photo-layout .sell-inputs [data-slot="field"] { gap: 6px; }
-.selling-photo-layout .sell-inputs [data-slot="field-label"] { margin: 0; width: 100%; flex-direction: row; color: var(--ink); font-size: var(--type-label); font-weight: 500; line-height: 1.4; }
-.sell-field-optional { margin-left: auto; color: var(--muted); font-size: var(--type-caption); font-weight: 400; }
-.selling-photo-layout .sell-inputs textarea { min-height: 80px; height: 6.25rem; resize: none; padding: 10px 12px; overflow-y: auto; }
-.selling-photo-layout .pickup-location-heading { gap: 4px 8px; }
-.selling-photo-layout .pickup-location-heading [data-slot="field-label"] { width: auto; }
-.selling-photo-layout .pickup-location-heading button { min-height: 44px; }
-.selling-photo-layout .pickup-location-field input { min-height: 44px; padding: 10px 12px; }
-.selling-photo-layout .pickup-location-help { display: block; }
-.sell-photo-footer { grid-area: actions; display: flex; flex-direction: column; gap: 6px; min-width: 0; padding-top: 4px; }
-.sell-photo-footer > .button { margin: 0; }
-.sell-photo-help { margin: 0; color: var(--muted); font-size: var(--type-caption); line-height: 1.4; }
-.selling-photo-layout .form-error { margin: 4px 0; font-size: 12px; }
-.selling-photo-layout .agent-footnote { margin-top: 8px; }
+.app-layout.selling-photo-layout {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+}
+.selling-photo-layout .view-sell {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: var(--space-section) var(--space-page);
+  margin: 0 auto;
+}
+.selling-photo-layout .workspace-header {
+  margin-bottom: 16px;
+}
+.selling-photo-layout .sell-layout {
+  flex: 1 1 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-areas: "photos guide" "photos fields" "photos actions";
+  gap: 16px 24px;
+  align-items: start;
+}
+.sell-photo-content {
+  display: contents;
+}
+.selling-photo-layout .photo-upload-panel {
+  grid-area: photos;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.selling-photo-layout .upload-zone {
+  height: auto;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 16px;
+}
+.selling-photo-layout .upload-zone.has-image {
+  padding: 0;
+  border-style: solid;
+  border-color: var(--card-line);
+}
+.selling-photo-layout .upload-zone img {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+.selling-photo-layout .sell-inputs {
+  grid-area: fields;
+  min-height: 0;
+  min-width: 0;
+  align-self: start;
+  gap: 16px;
+}
+.selling-photo-layout .sell-inputs [data-slot="field"] {
+  gap: 6px;
+}
+.selling-photo-layout .sell-inputs [data-slot="field-label"] {
+  margin: 0;
+  width: 100%;
+  flex-direction: row;
+  color: var(--ink);
+  font-size: var(--type-label);
+  font-weight: 500;
+  line-height: 1.4;
+}
+.sell-field-optional {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 400;
+}
+.selling-photo-layout .sell-inputs textarea {
+  min-height: 80px;
+  height: 6.25rem;
+  resize: none;
+  padding: 10px 12px;
+  overflow-y: auto;
+}
+.selling-photo-layout .pickup-location-heading {
+  gap: 4px 8px;
+}
+.selling-photo-layout .pickup-location-heading [data-slot="field-label"] {
+  width: auto;
+}
+.selling-photo-layout .pickup-location-heading button {
+  min-height: 44px;
+}
+.selling-photo-layout .pickup-location-field input {
+  min-height: 44px;
+  padding: 10px 12px;
+}
+.selling-photo-layout .pickup-location-help {
+  display: block;
+}
+.sell-photo-footer {
+  grid-area: actions;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding-top: 4px;
+}
+.sell-photo-footer > .button {
+  margin: 0;
+}
+.sell-photo-help {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  line-height: 1.4;
+}
+.selling-photo-layout .form-error {
+  margin: 4px 0;
+  font-size: 12px;
+}
+.selling-photo-layout .agent-footnote {
+  margin-top: 8px;
+}
 @media (max-width: 760px) {
-  .selling-photo-layout .view-sell { padding: env(safe-area-inset-top, 0px) 12px 4px; }
-  .selling-photo-layout .workspace-header { margin-bottom: 4px; }
-  .selling-photo-layout .sell-layout { display: flex; flex-direction: column; align-items: stretch; gap: 0; }
+  .selling-photo-layout .view-sell {
+    padding: env(safe-area-inset-top, 0px) 12px 4px;
+  }
+  .selling-photo-layout .workspace-header {
+    margin-bottom: 4px;
+  }
+  .selling-photo-layout .sell-layout {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
   /* A full input height stays free under the last field, so it can always scroll clear of the
      pinned button and the fade above it. */
-  .selling-photo-layout .sell-photo-content { flex: 1 1 0; min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 4px 0 var(--control-size); }
-  .selling-photo-layout .photo-upload-panel { flex: 0 0 auto; }
-  .selling-photo-layout .photo-upload-panel > .photo-gallery { flex: 0 0 auto; }
-  .selling-photo-layout .photo-gallery.is-editable .upload-zone { flex: 0 0 auto; min-height: 160px; padding: 12px; }
-  .selling-photo-layout .photo-gallery.is-editable .upload-zone.has-image { height: 160px; min-height: 160px; padding: 0; }
-  .selling-photo-layout .sell-inputs { flex: 0 0 auto; width: 100%; align-self: stretch; }
-  .selling-photo-layout .sell-inputs textarea { height: 5rem; }
-  .selling-photo-layout .sell-photo-footer { flex: 0 0 auto; padding: 10px 0 4px; border-top: 2px solid var(--card-line); }
+  .selling-photo-layout .sell-photo-content {
+    flex: 1 1 0;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    padding: 4px 0 var(--control-size);
+  }
+  .selling-photo-layout .photo-upload-panel {
+    flex: 0 0 auto;
+  }
+  .selling-photo-layout .photo-upload-panel > .photo-gallery {
+    flex: 0 0 auto;
+  }
+  .selling-photo-layout .photo-gallery.is-editable .upload-zone {
+    flex: 0 0 auto;
+    min-height: 160px;
+    padding: 12px;
+  }
+  .selling-photo-layout .photo-gallery.is-editable .upload-zone.has-image {
+    height: 160px;
+    min-height: 160px;
+    padding: 0;
+  }
+  .selling-photo-layout .sell-inputs {
+    flex: 0 0 auto;
+    width: 100%;
+    align-self: stretch;
+  }
+  .selling-photo-layout .sell-inputs textarea {
+    height: 5rem;
+  }
+  .selling-photo-layout .sell-photo-footer {
+    flex: 0 0 auto;
+    padding: 10px 0 4px;
+    border-top: 2px solid var(--card-line);
+  }
 }

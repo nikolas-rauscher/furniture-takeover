@@ -40,10 +40,7 @@ class AgentRunError extends Error {
 }
 
 function invalidStream(): AgentRunError {
-  return new AgentRunError(
-    "I couldn't finish. Try again.",
-    "INVALID_STREAM",
-  );
+  return new AgentRunError("I couldn't finish. Try again.", "INVALID_STREAM");
 }
 
 function record(value: unknown): value is Record<string, unknown> {

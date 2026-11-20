@@ -60,11 +60,7 @@ function seats(phase: DealPhase, otherName: string): [Seat, Seat] | null {
   const them = (done: boolean) => ({ name: otherName, done });
   if (phase === "offer_received" || phase === "partial_received")
     return [them(true), you(false)];
-  if (
-    phase === "you_confirmed" ||
-    phase === "waiting" ||
-    phase === "no_answer"
-  )
+  if (phase === "you_confirmed" || phase === "waiting" || phase === "no_answer")
     return [you(true), them(false)];
   return null;
 }
@@ -141,8 +137,11 @@ function StripWords({ view }: { view: StripView }) {
  */
 function openStripView(view: StripView, props: Props): StripView {
   const day =
-    props.phase === "agreed" ? pickupDay(props.deal, props.role, props.now) : null;
-  if (day?.pickupCheck) return { ...view, lead: "Pickup follow-up", detail: "" };
+    props.phase === "agreed"
+      ? pickupDay(props.deal, props.role, props.now)
+      : null;
+  if (day?.pickupCheck)
+    return { ...view, lead: "Pickup follow-up", detail: "" };
   const countsDown = day && day.phase !== "booked" && day.change !== "received";
   return countsDown ? { ...view, lead: "Pickup day", detail: "" } : view;
 }
@@ -159,7 +158,10 @@ function termNotes(
   if ((phase === "agreed" || phase === "completed") && terms.pickupPoint)
     return {
       pickupPoint: (
-        <PlaceNote name={terms.pickupPoint} listingPoint={listing.pickupPoint} />
+        <PlaceNote
+          name={terms.pickupPoint}
+          listingPoint={listing.pickupPoint}
+        />
       ),
     };
   return {};
@@ -301,7 +303,11 @@ function CardBody({
             onBack={() => setAsking(undefined)}
           />
         ) : (
-          <motion.div key="actions" className="deal-card-choices" {...CARD_SWAP}>
+          <motion.div
+            key="actions"
+            className="deal-card-choices"
+            {...CARD_SWAP}
+          >
             {primary && (
               <Button
                 type="button"
@@ -343,7 +349,11 @@ function CardBody({
 }
 
 /** What the card tells a screen reader when the deal changes; a countdown's ticking stays quiet. */
-function announcement(deal: Deal | null, view: StripView, terms: DealTerms | null) {
+function announcement(
+  deal: Deal | null,
+  view: StripView,
+  terms: DealTerms | null,
+) {
   const agreed = deal?.status === "agreed" && deal.agreed;
   if (agreed && !deal.proposal)
     return `Deal agreed. ${termsSummary(agreed.terms, "full")}.`;
@@ -409,7 +419,9 @@ export default function DealCard(props: Props) {
     props;
   const bodyId = useId();
   const agreedTerms =
-    phase === "looks_agreed" && turn ? lookedAgreedTerms(turn, deal) : undefined;
+    phase === "looks_agreed" && turn
+      ? lookedAgreedTerms(turn, deal)
+      : undefined;
   const view = dealStrip({
     phase,
     deal,
@@ -461,8 +473,8 @@ export default function DealCard(props: Props) {
         {phase === "cancelled" && nextBuyer && (
           <div className="deal-next-buyer">
             <p>
-              {nextBuyer.name} also asked about the {listing.title}. The
-              message waits for your Send.
+              {nextBuyer.name} also asked about the {listing.title}. The message
+              waits for your Send.
             </p>
             <Button
               type="button"
@@ -497,7 +509,9 @@ export default function DealCard(props: Props) {
       >
         <DealTile image={cardImageFor(listing)} />
         <StripWords view={expanded ? openStripView(view, props) : view} />
-        {view.status && <span className="deal-strip-status">{view.status}</span>}
+        {view.status && (
+          <span className="deal-strip-status">{view.status}</span>
+        )}
         <ChevronDown
           size={18}
           className="deal-strip-chevron"

@@ -16,8 +16,15 @@ test("prices read the way students write them and show as the app writes them", 
 
 test("a saved item names its price drop only when the saved price is known", () => {
   const saved = (price: number, priceAtSave: number | null) =>
-    ({ price, priceAtSave, priceDropped: priceAtSave !== null && price < priceAtSave }) as SavedListing;
-  assert.equal(priceDropWords(saved(30, 40)), "CHF 10 less than when you saved it");
+    ({
+      price,
+      priceAtSave,
+      priceDropped: priceAtSave !== null && price < priceAtSave,
+    }) as SavedListing;
+  assert.equal(
+    priceDropWords(saved(30, 40)),
+    "CHF 10 less than when you saved it",
+  );
   assert.equal(priceDropWords(saved(0, 40)), "Now free, down from CHF 40");
   assert.equal(priceDropWords(saved(30, null)), null);
   assert.equal(priceDropWords(saved(45, 40)), null);

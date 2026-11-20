@@ -49,7 +49,10 @@ export function threadRequests(role: DealRole): PakoRequest[] {
       request:
         "Suggest a message proposing a pickup time and meeting point from the listing or the conversation.",
     },
-    { label: "Make my draft friendlier", request: "Make my message friendlier." },
+    {
+      label: "Make my draft friendlier",
+      request: "Make my message friendlier.",
+    },
     { label: "Write it in French", request: "Write my message in French." },
   ];
 }

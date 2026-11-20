@@ -49,17 +49,28 @@ test("a message states an amount as CHF and its digits, with Swiss thousands sep
 test("a free item is stated as CHF 0 or in words", () => {
   const free = { ...none, amount: 0 };
   for (const body of [
-    "It's free!", "C'est gratuit.", "Kostenlos", "CHF 0",
-    "Could I have it for free?", "Free pickup at Vortex.",
+    "It's free!",
+    "C'est gratuit.",
+    "Kostenlos",
+    "CHF 0",
+    "Could I have it for free?",
+    "Free pickup at Vortex.",
   ])
     assert.deepEqual(messageStatesTerms(body, free), { ok: true }, body);
   for (const body of [
-    "CHF 05", "I'm free after 18:00.", "This is not free.", "I can't do it for free.",
+    "CHF 05",
+    "I'm free after 18:00.",
+    "This is not free.",
+    "I can't do it for free.",
   ])
-    assert.deepEqual(messageStatesTerms(body, free), {
-      ok: false,
-      missing: ["amount"],
-    }, body);
+    assert.deepEqual(
+      messageStatesTerms(body, free),
+      {
+        ok: false,
+        missing: ["amount"],
+      },
+      body,
+    );
 });
 
 test("a pickup is stated by its Zurich clock time, or by its words without one", () => {

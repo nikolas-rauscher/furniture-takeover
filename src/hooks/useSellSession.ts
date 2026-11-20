@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type FormEvent, type SetStateAction } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type SetStateAction,
+} from "react";
 import type { PhotoGroup } from "../../shared/agent";
 import { listingPhotos, MAX_LISTING_PHOTOS } from "../../shared/listingPhotos";
 import { isMine, type Product } from "../../shared/marketplace";

@@ -158,8 +158,7 @@ export default function ListingDetailPage({
           {!cloud && !selected.demo && (
             <div className="listing-detail-provenance">
               <p>
-                Saved in this browser. Not published to an external
-                marketplace.
+                Saved in this browser. Not published to an external marketplace.
               </p>
             </div>
           )}

@@ -38,7 +38,11 @@ export function useSavedSearches({
   openSearches: () => void;
   closeDialog: () => void;
 }) {
-  const [jobs, setJobs] = useSaved<SavedSearch[]>("takeover-jobs", [], isSavedSearches);
+  const [jobs, setJobs] = useSaved<SavedSearch[]>(
+    "takeover-jobs",
+    [],
+    isSavedSearches,
+  );
   const [title, setTitle] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const saved = jobs.filter((job) => job.id !== "seed-search");
@@ -82,7 +86,11 @@ export function useSavedSearches({
     if (!original) return;
     const next =
       existing && !sameCriteria(search.filterDraft, existing.criteria)
-        ? preferenceSearch(search.normalizedFilterDraft, original.location, original)
+        ? preferenceSearch(
+            search.normalizedFilterDraft,
+            original.location,
+            original,
+          )
         : original;
     const name = title.trim() || criteriaTitle(next.criteria);
     setJobs((current) =>

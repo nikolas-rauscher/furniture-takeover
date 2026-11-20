@@ -462,10 +462,7 @@ test("listing runs send the conversation so far and search runs their matches an
     { onEvent() {} },
   );
   const search = { previousMatchIds: ["desk-1"], ownListingIds: ["mine-1"] };
-  await streamAgentRun(
-    { text: "A desk", context: search },
-    { onEvent() {} },
-  );
+  await streamAgentRun({ text: "A desk", context: search }, { onEvent() {} });
   assert.deepEqual(sent, [history, search]);
   for (const invalid of [
     { listingStart: "yes" },

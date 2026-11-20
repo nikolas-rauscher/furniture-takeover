@@ -83,7 +83,11 @@ export function readServerConfig(env: Environment = process.env) {
   return {
     port,
     host,
-    maxConcurrent: readPort(env.API_AGENT_CONCURRENCY, DEFAULT_AGENT_CONCURRENCY, "API_AGENT_CONCURRENCY"),
+    maxConcurrent: readPort(
+      env.API_AGENT_CONCURRENCY,
+      DEFAULT_AGENT_CONCURRENCY,
+      "API_AGENT_CONCURRENCY",
+    ),
     baseUrl,
     apiKey: env.DEEPSEEK_API_KEY?.trim() ?? "",
     model: env.DEEPSEEK_MODEL?.trim() || "deepseek-flash",

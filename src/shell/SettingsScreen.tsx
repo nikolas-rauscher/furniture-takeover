@@ -2,7 +2,12 @@ import type { ReactNode } from "react";
 import type { AccountConnection } from "../cloud/connection";
 import LazyBoundary from "../components/LazyBoundary";
 import PakoReadingSetting from "../components/PakoReadingSetting";
-import { AccountSettings, Auth, DeveloperSettings, LocalSettings } from "../screens";
+import {
+  AccountSettings,
+  Auth,
+  DeveloperSettings,
+  LocalSettings,
+} from "../screens";
 
 type Reading = {
   enabled: boolean;

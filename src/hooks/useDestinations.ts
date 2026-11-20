@@ -1,11 +1,13 @@
-import { destinationDirection, destinationFor, type Destination } from "../navigation";
+import {
+  destinationDirection,
+  destinationFor,
+  type Destination,
+} from "../navigation";
 import { transitionPage } from "../pageTransition";
 import type { AppNavigation } from "./useAppNavigation";
 import type { SearchSession } from "./useSearchSession";
 import type { SellSession } from "./useSellSession";
 import type { ThreadRequests } from "./useThreadRequests";
-
-export type Destinations = ReturnType<typeof useDestinations>;
 
 /** The app's main ways around: its destinations, home, a new search and selling. */
 export function useDestinations({
@@ -57,9 +59,12 @@ export function useDestinations({
         else if (destination === "searches") navigate("searches");
         else if (destination === "settings") navigate("settings");
         else {
-          nav.setAccountTab(destination === "favorites" ? "favorites" : "listings");
+          nav.setAccountTab(
+            destination === "favorites" ? "favorites" : "listings",
+          );
           navigate("account");
-          if (destination === "favorites" && signedIn) nav.replaceRoute("#saved");
+          if (destination === "favorites" && signedIn)
+            nav.replaceRoute("#saved");
         }
       });
     },

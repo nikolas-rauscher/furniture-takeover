@@ -66,16 +66,23 @@ test("card photos must pair with the photos and follow the upload rules", async 
     [upload(seller), `${seller}/card-photo.jpg`],
     [upload(seller), "/samples/desk.svg"],
   ])
-    await assert.rejects(insertListing(images, cardImages), /Invalid card photo/);
-  await assert.rejects(insertListing([], [upload(seller)]), /Invalid card photo list/);
+    await assert.rejects(
+      insertListing(images, cardImages),
+      /Invalid card photo/,
+    );
+  await assert.rejects(
+    insertListing([], [upload(seller)]),
+    /Invalid card photo list/,
+  );
 });
 
 test("listings saved before card photos keep working without them", async (t) => {
   const { db, as, listing } = await setup(t);
   await as(seller);
-  await db.query("update public.listings set title='Office chair' where id=$1", [
-    listing,
-  ]);
+  await db.query(
+    "update public.listings set title='Office chair' where id=$1",
+    [listing],
+  );
   const { rows } = await db.query<{ card_images: string[] }>(
     "select card_images from public.listings where id=$1",
     [listing],
@@ -96,7 +103,10 @@ test("seeding and admin edits keep demo drawings without card photos", async (t)
       )
     ).rows[0].value;
   assert.deepEqual(await rpc("reset_demo", why), { listings: 40, sellers: 6 });
-  const demo = await rpc("save_demo_seller", { name: "Alix", styleNote: "Brief" });
+  const demo = await rpc("save_demo_seller", {
+    name: "Alix",
+    styleNote: "Brief",
+  });
   const draft = {
     title: "Desk",
     description: "Solid wood",

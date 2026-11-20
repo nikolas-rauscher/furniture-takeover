@@ -273,11 +273,16 @@ test("a buyer can start an offer and either side can reopen a cancelled deal whi
     { secondary: [] },
   );
   assert.equal(
-    options({ phase: "cancelled", deal: deal({ status: "cancelled" }) }).primary?.label,
+    options({ phase: "cancelled", deal: deal({ status: "cancelled" }) }).primary
+      ?.label,
     "Make a new offer",
   );
   assert.deepEqual(
-    options({ phase: "cancelled", listing: { ...listing, status: "sold" }, deal: deal({ status: "cancelled" }) }),
+    options({
+      phase: "cancelled",
+      listing: { ...listing, status: "sold" },
+      deal: deal({ status: "cancelled" }),
+    }),
     { secondary: [] },
   );
 });

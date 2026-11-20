@@ -462,7 +462,9 @@ export default function OfferEditor({
   /** False closes the card with its animation, such as once the offer went out. */
   open: boolean;
   entry: OfferEntry;
-  listing: Pick<Product, "title" | "price" | "available" | "pickupPoint"> & { pickupBy?: string };
+  listing: Pick<Product, "title" | "price" | "available" | "pickupPoint"> & {
+    pickupBy?: string;
+  };
   role: DealRole;
   otherName: string;
   /** The campus meeting point near where the student searches from. */

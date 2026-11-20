@@ -39,7 +39,13 @@ export type AgentListingQuestion = {
   choiceActions?: AgentTapAnswer[];
   question: string;
   choices?: string[];
-  input?: { type: "price"; min: number; max: number; step: number; value?: number };
+  input?: {
+    type: "price";
+    min: number;
+    max: number;
+    step: number;
+    value?: number;
+  };
 };
 export type AgentQuestionEvent = AgentListingQuestion & {
   type: "question";

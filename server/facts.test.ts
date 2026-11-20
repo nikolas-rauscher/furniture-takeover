@@ -17,6 +17,12 @@ test("listing text writes CHF amounts the way the app shows prices", () => {
     appPrices("Asking CHF 1250. Bought for 2400 CHF, so CHF 450 is firm."),
     "Asking CHF 1,250. Bought for 2,400 CHF, so CHF 450 is firm.",
   );
-  assert.equal(appPrices("CHF 1,250 or CHF 1250.50"), "CHF 1,250 or CHF 1250.50");
-  assert.equal(appPrices("A 2019 model, 1440 x 900"), "A 2019 model, 1440 x 900");
+  assert.equal(
+    appPrices("CHF 1,250 or CHF 1250.50"),
+    "CHF 1,250 or CHF 1250.50",
+  );
+  assert.equal(
+    appPrices("A 2019 model, 1440 x 900"),
+    "A 2019 model, 1440 x 900",
+  );
 });

@@ -97,12 +97,18 @@ const SEE_SEARCHES: QuickReply = { kind: "searches", text: "See Searches" };
  */
 export function quickReplies(input: QuickRepliesInput): QuickReplies {
   const { turn, search } = input;
-  if (!search || search.intent === "listing_review" || !input.latest ||
-      turn.status !== "complete" || input.negotiating || turn.proposal)
+  if (
+    !search ||
+    search.intent === "listing_review" ||
+    !input.latest ||
+    turn.status !== "complete" ||
+    input.negotiating ||
+    turn.proposal
+  )
     return NO_REPLIES;
   const budget = chosenBudget(search);
   const watch = watchReply(input);
-  if (turn.questions.some(question => !turn.answers[question.id]))
+  if (turn.questions.some((question) => !turn.answers[question.id]))
     return watch ? { line: null, replies: withRoute(watch) } : NO_REPLIES;
   if (foundNothing(turn)) {
     const broader = broaderSearches(search.criteria, budget);
@@ -147,8 +153,7 @@ function watchReply({
 }: QuickRepliesInput): QuickReply | undefined {
   const suggestion = turn.watchSuggestion;
   if (!suggestion || !search) return;
-  if (watching)
-    return { kind: "watching", text: "Search saved" };
+  if (watching) return { kind: "watching", text: "Search saved" };
   return {
     kind: "watch",
     text: foundNothing(turn) ? "Save search" : "Save search for new listings",

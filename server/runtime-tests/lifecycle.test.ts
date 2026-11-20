@@ -58,11 +58,17 @@ test("eight-step tool limit stops real loop execution instead of reporting compl
   assert.equal(count, 8);
   const [prefix, diagnostic] = log.mock.calls[0].arguments;
   assert.equal(prefix, "[agent-run]");
-  assert.deepEqual(JSON.parse(diagnostic).stepSequence,
+  assert.deepEqual(
+    JSON.parse(diagnostic).stepSequence,
     Array.from({ length: 8 }, (_, i) => ({
       step: i + 1,
-      outcomes: [i % 2 ? "show_takeover_listings: 0 displayedIds" : "inventory_search: 1 items"],
-    })));
+      outcomes: [
+        i % 2
+          ? "show_takeover_listings: 0 displayedIds"
+          : "inventory_search: 1 items",
+      ],
+    })),
+  );
   assert.ok(
     events.some(
       (event) => event.type === "error" && event.code === "STEP_LIMIT",

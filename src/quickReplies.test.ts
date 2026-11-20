@@ -370,7 +370,10 @@ test("once the watch is on, its reply turns into a confirmation", () => {
     listings: [],
     watching: true,
   });
-  assert.equal(result.line, "This search is saved. New matches show up in Searches.");
+  assert.equal(
+    result.line,
+    "This search is saved. New matches show up in Searches.",
+  );
   assert.deepEqual(result.replies.slice(0, 2), [
     { kind: "watching", text: "Search saved" },
     { kind: "searches", text: "See Searches" },
@@ -387,7 +390,21 @@ test("keeping watch needs no daily allowance", () => {
 });
 
 test("an empty search can offer a watch alongside a question about widening", () => {
-  assert.deepEqual(texts({ turn: { ...emptySearch, watchSuggestion: watchFor,
-    questions: [{ type: "question", id: "widen", question: "Widen the area?", choices: [] }],
-  } }), ["Save search"]);
+  assert.deepEqual(
+    texts({
+      turn: {
+        ...emptySearch,
+        watchSuggestion: watchFor,
+        questions: [
+          {
+            type: "question",
+            id: "widen",
+            question: "Widen the area?",
+            choices: [],
+          },
+        ],
+      },
+    }),
+    ["Save search"],
+  );
 });

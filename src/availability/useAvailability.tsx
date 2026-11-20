@@ -184,7 +184,9 @@ export function useAvailability(options: Options) {
       const conversation = await sendMessage(thread(item), text(t), sender);
       onConversation?.(conversation);
       if (stateRef.current !== before)
-        throw new Error("This reservation changed. Check the details and try again.");
+        throw new Error(
+          "This reservation changed. Check the details and try again.",
+        );
       const next =
         sender === "buyer" && conversation.messages.length === 1
           ? rememberThread(t.state, listingId)

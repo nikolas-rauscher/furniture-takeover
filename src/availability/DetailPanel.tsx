@@ -199,7 +199,9 @@ function PanelContent({
       </Button>
       {messageSeller(true)}
       <ul className="availability-rules" aria-label="How reserving works">
-        <li className="chip">The seller has {SELLER_REPLY_HOURS} h to respond</li>
+        <li className="chip">
+          The seller has {SELLER_REPLY_HOURS} h to respond
+        </li>
         <li className="chip">Reserved for {HOLD_HOURS} h</li>
       </ul>
       <p className="availability-open-questions">{OPEN_QUESTIONS}</p>

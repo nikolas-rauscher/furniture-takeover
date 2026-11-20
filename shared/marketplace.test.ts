@@ -22,8 +22,14 @@ const filterProducts = (items: Product[], criteria: typeof defaults) =>
 
 test("radius includes the boundary and keeps listings without a recorded distance", () => {
   const items = [0, 1, 1.1].map((distance) => ({ ...products[0], distance }));
-  assert.deepEqual(filterProducts(items, { ...defaults, radius: 1 }), items.slice(0, 2));
-  assert.deepEqual(filterProducts(items, { ...defaults, radius: 0 }), items.slice(0, 1));
+  assert.deepEqual(
+    filterProducts(items, { ...defaults, radius: 1 }),
+    items.slice(0, 2),
+  );
+  assert.deepEqual(
+    filterProducts(items, { ...defaults, radius: 0 }),
+    items.slice(0, 1),
+  );
 });
 for (const text of [
   "Ich suche einen Schreibtisch bis 80 CHF, maximal 5 km entfernt, bis Friday",
@@ -361,12 +367,22 @@ test("a buyer can collect through Friday while both pickup windows overlap", () 
     ["Saturday start", "Weekend pickup", ""],
     ["moving in next week", "Available from 2026-10-19", ""],
   ];
-  const items = dates.map(([id, available, pickupBy]) => ({ ...products[0], id, available, pickupBy }));
+  const items = dates.map(([id, available, pickupBy]) => ({
+    ...products[0],
+    id,
+    available,
+    pickupBy,
+  }));
   const criteria = parseSearch("pickup by Friday");
   const expected = dates.slice(0, 4).map(([id]) => id);
-  assert.deepEqual(filterProducts(items, criteria).map((item) => item.id), expected);
   assert.deepEqual(
-    listingInventory(items, { pickupBy: criteria.pickup }, "2026-10-12").map((item) => item.id),
+    filterProducts(items, criteria).map((item) => item.id),
+    expected,
+  );
+  assert.deepEqual(
+    listingInventory(items, { pickupBy: criteria.pickup }, "2026-10-12").map(
+      (item) => item.id,
+    ),
     expected,
   );
 });

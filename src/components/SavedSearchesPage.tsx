@@ -105,8 +105,8 @@ export default function SavedSearchesPage({
       <div className="page-title">
         <h1>Saved searches</h1>
         <p>
-          This browser checks listings while takeover is open. Matches
-          appear here.
+          This browser checks listings while takeover is open. Matches appear
+          here.
         </p>
       </div>
       {loaded && (

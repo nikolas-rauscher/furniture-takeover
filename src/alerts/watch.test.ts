@@ -85,10 +85,16 @@ test("a legacy saved search uses the current location and seed records are ignor
 });
 
 test("a watch looks as far out as the search that offered it", () => {
-  const near = watchSearch({ query: "Grand piano", maxPrice: 15, radius: 5 }, "EPFL, Ecublens")!;
+  const near = watchSearch(
+    { query: "Grand piano", maxPrice: 15, radius: 5 },
+    "EPFL, Ecublens",
+  )!;
   assert.equal(near.criteria.radius, 5);
   assert.equal(near.criteria.maxPrice, 15);
   assert.match(near.text, /within 5 km of EPFL, Ecublens/);
-  const wider = watchSearch({ query: "Grand piano", maxPrice: 15, radius: 20 }, "EPFL, Ecublens")!;
+  const wider = watchSearch(
+    { query: "Grand piano", maxPrice: 15, radius: 20 },
+    "EPFL, Ecublens",
+  )!;
   assert.equal(findWatch(activateWatch([], near, "near"), wider), undefined);
 });

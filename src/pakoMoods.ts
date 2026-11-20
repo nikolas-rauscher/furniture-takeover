@@ -1,4 +1,9 @@
-import { pickupDay, type Deal, type DealRole, type DealTerms } from "../shared/deal.ts";
+import {
+  pickupDay,
+  type Deal,
+  type DealRole,
+  type DealTerms,
+} from "../shared/deal.ts";
 import { money } from "../shared/marketplace.ts";
 import { formatPickup, zurichClockTime } from "../shared/pickupTime.ts";
 import type { AgentTaskKind } from "../shared/runs";
@@ -666,7 +671,10 @@ function pickupCheckGuide(
   title: string,
 ): { mood: PakoMood; line: string } {
   return check.expired
-    ? { mood: "idle", line: `Neither of you answered, so I released the ${title}.` }
+    ? {
+        mood: "idle",
+        line: `Neither of you answered, so I released the ${title}.`,
+      }
     : {
         mood: "think",
         line: `Did the pickup with ${other} happen? If no one answers by ${formatPickup(check.expiresAt)}, I'll release the ${title}.`,
@@ -702,11 +710,20 @@ export function pickupGuide({
       line: `${other} suggests ${formatPickup(proposed)} instead. Accept it, or keep ${shortPickup(day.terms.pickupAt!)}.`,
     };
   if (day.change === "sent")
-    return { mood: "listen", line: `Waiting for ${other} to answer your new time.` };
+    return {
+      mood: "listen",
+      line: `Waiting for ${other} to answer your new time.`,
+    };
   if (day.buyerReportedPickup)
     return role === "seller"
-      ? { mood: "happy", line: `${other} says they picked it up. Mark it sold to finish.` }
-      : { mood: "idle", line: `Enjoy the ${title}! ${other} marks it sold next.` };
+      ? {
+          mood: "happy",
+          line: `${other} says they picked it up. Mark it sold to finish.`,
+        }
+      : {
+          mood: "idle",
+          line: `Enjoy the ${title}! ${other} marks it sold next.`,
+        };
   if (signals?.noShow?.by === role)
     return {
       mood: "think",
@@ -716,7 +733,8 @@ export function pickupGuide({
           : `If ${other} still doesn't come, you can cancel the pickup.`,
     };
   if (signals?.late && signals.late.by === theirs) {
-    const around = Date.parse(day.terms.pickupAt!) + signals.late.minutes * 60_000;
+    const around =
+      Date.parse(day.terms.pickupAt!) + signals.late.minutes * 60_000;
     return {
       mood: "listen",
       line: `${other} is running late, so expect them around ${zurichClockTime(new Date(around).toISOString())}.`,
@@ -725,7 +743,10 @@ export function pickupGuide({
   if (signals?.onWay[theirs])
     return signals.onWay[role]
       ? { mood: "happy", line: "You're both on the way. See you there!" }
-      : { mood: "happy", line: `${other} is on the way. Tap On my way when you leave too.` };
+      : {
+          mood: "happy",
+          line: `${other} is on the way. Tap On my way when you leave too.`,
+        };
   switch (day.phase) {
     case "booked":
       return {

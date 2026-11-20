@@ -144,54 +144,103 @@ test("demo pickup updates are atomic, versioned and idempotent by message", () =
   const pickup = Date.now() + 4 * 3600000;
   const pickupAt = new Date(pickup).toISOString();
   const terms: DealTerms = {
-    amount: 30, fulfillment: "pickup", pickupAt, pickupTime: formatPickup(pickupAt),
+    amount: 30,
+    fulfillment: "pickup",
+    pickupAt,
+    pickupTime: formatPickup(pickupAt),
     pickupPoint: "Atrium",
   };
   const buyerKey = randomUUID();
   try {
     const other = store.send(workspace, {
-      ...base, buyerKey, text: "Still interested if it becomes available.",
-      sender: "buyer", messageId: randomUUID(),
+      ...base,
+      buyerKey,
+      text: "Still interested if it becomes available.",
+      sender: "buyer",
+      messageId: randomUUID(),
     });
     const { conversation } = store.act(workspace, {
-      ...base, action: { type: "propose", terms }, sender: "buyer",
-      text: offerMessage(base.title, terms), listingStatus: "active", expectedVersion: 0,
+      ...base,
+      action: { type: "propose", terms },
+      sender: "buyer",
+      text: offerMessage(base.title, terms),
+      listingStatus: "active",
+      expectedVersion: 0,
       messageId: randomUUID(),
     });
     store.act(workspace, {
-      ...base, action: { type: "accept", terms }, sender: "seller",
-      text: acceptMessage("seller", terms), listingStatus: "active", expectedVersion: 1,
+      ...base,
+      action: { type: "accept", terms },
+      sender: "seller",
+      text: acceptMessage("seller", terms),
+      listingStatus: "active",
+      expectedVersion: 1,
       messageId: randomUUID(),
     });
 
-    const scenarios = pickupScenarios(terms, new Date(pickup + 86400000).toISOString(), conversation.id);
+    const scenarios = pickupScenarios(
+      terms,
+      new Date(pickup + 86400000).toISOString(),
+      conversation.id,
+    );
     const command = (step: PickupStep, version: number, time: number) => ({
-      ...base, sender: step.actor, text: step.body, action: step.action,
-      expectedVersion: version, demoNow: new Date(time).toISOString(),
-      listingStatus: "reserved", messageId: randomUUID(),
+      ...base,
+      sender: step.actor,
+      text: step.body,
+      action: step.action,
+      expectedVersion: version,
+      demoNow: new Date(time).toISOString(),
+      listingStatus: "reserved",
+      messageId: randomUUID(),
     });
     let version = 2;
     const late = command(scenarios.handling[1], version, pickup - 181 * 60000);
-    assert.throws(() => store.actPickup(workspace, late), { code: "too_early" });
-    assert.throws(() => store.actPickup(workspace, { ...late, action: { type: "late", minutes: 11 } }), { code: "minutes_invalid" });
-    const snapshot = () => store.list(workspace).find((thread) => thread.id === conversation.id)!;
+    assert.throws(() => store.actPickup(workspace, late), {
+      code: "too_early",
+    });
+    assert.throws(
+      () =>
+        store.actPickup(workspace, {
+          ...late,
+          action: { type: "late", minutes: 11 },
+        }),
+      { code: "minutes_invalid" },
+    );
+    const snapshot = () =>
+      store.list(workspace).find((thread) => thread.id === conversation.id)!;
     assert.equal(snapshot().messages.length, version);
     for (const step of scenarios.overdue) {
       const input = command(step, version, pickup + 20 * 60000);
       const result = store.actPickup(workspace, input);
       assert.equal(result.conversation.deal?.version, ++version);
-      assert.equal(result.conversation.messages.at(-1)?.pickupEvent?.kind, step.kind);
+      assert.equal(
+        result.conversation.messages.at(-1)?.pickupEvent?.kind,
+        step.kind,
+      );
       assert.deepEqual(store.actPickup(workspace, input), result);
-      assert.throws(() => store.actPickup(workspace, { ...input, text: "Something else." }), { code: "message_conflict" });
+      assert.throws(
+        () => store.actPickup(workspace, { ...input, text: "Something else." }),
+        { code: "message_conflict" },
+      );
     }
     assert.equal(snapshot().messages.length, version);
     assert.equal(snapshot().deal?.outcome?.kind, "no_show");
     const followUp = {
-      ...command(scenarios.nextBuyer, 0, pickup + 20 * 60000), buyerKey, listingStatus: "active",
+      ...command(scenarios.nextBuyer, 0, pickup + 20 * 60000),
+      buyerKey,
+      listingStatus: "active",
     };
-    assert.throws(() => store.actPickup(randomUUID(), followUp), { code: "NO_CONVERSATION" });
-    assert.throws(() => store.actPickup(workspace, { ...followUp, expectedVersion: 1 }), { code: "deal_changed" });
-    assert.equal(store.actPickup(workspace, followUp).conversation.id, other.id);
+    assert.throws(() => store.actPickup(randomUUID(), followUp), {
+      code: "NO_CONVERSATION",
+    });
+    assert.throws(
+      () => store.actPickup(workspace, { ...followUp, expectedVersion: 1 }),
+      { code: "deal_changed" },
+    );
+    assert.equal(
+      store.actPickup(workspace, followUp).conversation.id,
+      other.id,
+    );
     assert.equal(snapshot().messages.length, version);
   } finally {
     store.close();

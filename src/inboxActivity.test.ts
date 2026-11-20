@@ -105,52 +105,97 @@ test("each inbox reads its threads from the student's side", () => {
   });
 });
 
-test("a system event counts as new activity until the viewer reads it",()=>{
- const at="2026-11-19T13:00:00Z";
- const thread=demoInboxThread({id:"c",title:"Desk",listingId:"desk",seller:"Seller",messages:[],systemEvents:[{kind:"superseded",at}]});
- assert.ok(isUnread(thread,{}));
- assert.equal(isUnread(thread,{[thread.readKey]:at}),false);
- assert.deepEqual(accountInboxThread("c",undefined,"buyer",{sender_id:null,created_at:at}).latest,thread.latest);
+test("a system event counts as new activity until the viewer reads it", () => {
+  const at = "2026-11-19T13:00:00Z";
+  const thread = demoInboxThread({
+    id: "c",
+    title: "Desk",
+    listingId: "desk",
+    seller: "Seller",
+    messages: [],
+    systemEvents: [{ kind: "superseded", at }],
+  });
+  assert.ok(isUnread(thread, {}));
+  assert.equal(isUnread(thread, { [thread.readKey]: at }), false);
+  assert.deepEqual(
+    accountInboxThread("c", undefined, "buyer", {
+      sender_id: null,
+      created_at: at,
+    }).latest,
+    thread.latest,
+  );
 });
 
 test("a pickup due in 90 minutes is your turn and counts once in the badge", () => {
   const now = new Date("2026-11-19T10:30:00Z");
   const agreed = {
     terms: {
-      fulfillment: "pickup" as const, amount: 30, pickupAt: "2026-11-19T12:00:00Z",
-      pickupTime: "Thu 19 Nov, 13:00", pickupPoint: "Vortex",
+      fulfillment: "pickup" as const,
+      amount: 30,
+      pickupAt: "2026-11-19T12:00:00Z",
+      pickupTime: "Thu 19 Nov, 13:00",
+      pickupPoint: "Vortex",
     },
     at: "2026-11-18T12:00:00Z",
   };
   const deal: Deal = {
-    conversationId: "c1", listingId: "desk", status: "agreed",
-    agreed, version: 2, updatedAt: agreed.at, outcome: null, proposal: null,
+    conversationId: "c1",
+    listingId: "desk",
+    status: "agreed",
+    agreed,
+    version: 2,
+    updatedAt: agreed.at,
+    outcome: null,
+    proposal: null,
   };
   const offer: Deal = {
-    ...deal, conversationId: "c2", status: "open", agreed: null,
+    ...deal,
+    conversationId: "c2",
+    status: "open",
+    agreed: null,
     proposal: { by: "seller", terms: agreed.terms, messageId: null },
   };
   assert.deepEqual(pickupActivity(deal, "buyer", now), {
-    pickupSoon: true, due: true, needsYou: true, label: "Your turn",
+    pickupSoon: true,
+    due: true,
+    needsYou: true,
+    label: "Your turn",
   });
   const threads = [reply("2026-11-19T10:00:00Z"), { readKey: "c2" }];
   assert.equal(inboxBadge(threads, {}, new Set(["c1"])), 1);
-  assert.equal(inboxBadge(threads, { c1: now.toISOString() }, new Set(["c1"])), 1);
-  assert.deepEqual(pickupHomeDeals([offer, deal], () => "buyer", now), [deal, offer]);
+  assert.equal(
+    inboxBadge(threads, { c1: now.toISOString() }, new Set(["c1"])),
+    1,
+  );
+  assert.deepEqual(
+    pickupHomeDeals([offer, deal], () => "buyer", now),
+    [deal, offer],
+  );
 });
 
 test("Pako's open pickup question leads Home, ahead of a pickup due now", () => {
   const terms = (pickupAt: string) => ({
-    fulfillment: "pickup" as const, amount: 30, pickupAt,
-    pickupTime: "", pickupPoint: "Vortex",
+    fulfillment: "pickup" as const,
+    amount: 30,
+    pickupAt,
+    pickupTime: "",
+    pickupPoint: "Vortex",
   });
   const booked = (conversationId: string, pickupAt: string): Deal => ({
-    conversationId, listingId: conversationId, status: "agreed", proposal: null,
+    conversationId,
+    listingId: conversationId,
+    status: "agreed",
+    proposal: null,
     agreed: { terms: terms(pickupAt), at: "2026-11-17T12:00:00Z" },
-    version: 2, updatedAt: "2026-11-17T12:00:00Z", outcome: null,
+    version: 2,
+    updatedAt: "2026-11-17T12:00:00Z",
+    outcome: null,
   });
   const now = new Date("2026-11-19T12:30:00Z");
   const dueNow = booked("now", "2026-11-19T12:00:00Z");
   const unclosed = booked("past", "2026-11-18T11:00:00Z");
-  assert.deepEqual(pickupHomeDeals([dueNow, unclosed], () => "seller", now), [unclosed, dueNow]);
+  assert.deepEqual(
+    pickupHomeDeals([dueNow, unclosed], () => "seller", now),
+    [unclosed, dueNow],
+  );
 });

@@ -19,7 +19,10 @@ export function useToast() {
   const [notice, setNotice] = useState<ToastNotice | null>(null);
   useEffect(() => {
     if (!notice) return;
-    const timer = setTimeout(() => setNotice(null), notice.action ? 10000 : 5000);
+    const timer = setTimeout(
+      () => setNotice(null),
+      notice.action ? 10000 : 5000,
+    );
     return () => clearTimeout(timer);
   }, [notice]);
   useEffect(() => {

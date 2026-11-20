@@ -494,8 +494,12 @@ test(
 test("HTTP gives a queued agent request the next available slot", async (t) => {
   let finished!: () => void;
   let entered!: () => void;
-  const firstStarted = new Promise<void>((resolve) => { entered = resolve; });
-  const firstGate = new Promise<void>((resolve) => { finished = resolve; });
+  const firstStarted = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const firstGate = new Promise<void>((resolve) => {
+    finished = resolve;
+  });
   let starts = 0;
   const service = createAgentService({
     ...fakeConfig,
@@ -509,11 +513,12 @@ test("HTTP gives a queued agent request the next available slot", async (t) => {
   });
   t.after(finished);
   const { url } = await startServer(t, service, { maxConcurrent: 1 });
-  const assist = () => fetch(url + "/api/agent/assist", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ intent: "search", text: "desk" }),
-  });
+  const assist = () =>
+    fetch(url + "/api/agent/assist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ intent: "search", text: "desk" }),
+    });
   const first = assist();
   await firstStarted;
   const second = assist();
@@ -898,59 +903,116 @@ test("an account server without the reply reading update says so instead of read
   assert.equal(readings, 0);
 });
 
-test("deal messages keep one version and one receipt across HTTP retries",async(t)=>{
- const { createMessagesStore }=await import("./messages.ts");
- const messages=createMessagesStore(":memory:");
- t.after(()=>messages.close());
- const {url}=await startServer(t,undefined,{messages});
- const workspace=crypto.randomUUID();
- const send=(workspace:string,body:object)=>fetch(url+"/api/messages/deal",{method:"POST",headers:{"Content-Type":"application/json","X-Message-Workspace":workspace},body:JSON.stringify(body)});
- const terms={amount:25,fulfillment:"shipping",pickupTime:null,pickupAt:null,pickupPoint:null};
- const input={title:"Lamp",listingId:"lamp",seller:"Seller",sender:"buyer",messageId:crypto.randomUUID(),text:"CHF 25 shipped?",action:{type:"propose",terms},listingStatus:"active",expectedVersion:0};
- const first=await (await send(workspace,input)).json();
- assert.equal(first.conversation.deal.version,1);
- assert.deepEqual(await (await send(workspace,input)).json(),first);
- for(const [patch,key] of [[{text:"Another message"},"message_conflict"],[{messageId:crypto.randomUUID()},"deal_changed"]] as const){
- assert.equal((await (await send(workspace,{...input,...patch})).json()).error.code,key);
- }
- assert.equal(messages.list(workspace)[0].messages.length,1);
- assert.equal((await (await send(crypto.randomUUID(),{...input,sender:"seller"})).json()).error.code,"NO_CONVERSATION");
- assert.equal((await send(workspace,{...input,text:"x".repeat(65536)})).status,413);
+test("deal messages keep one version and one receipt across HTTP retries", async (t) => {
+  const { createMessagesStore } = await import("./messages.ts");
+  const messages = createMessagesStore(":memory:");
+  t.after(() => messages.close());
+  const { url } = await startServer(t, undefined, { messages });
+  const workspace = crypto.randomUUID();
+  const send = (workspace: string, body: object) =>
+    fetch(url + "/api/messages/deal", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Message-Workspace": workspace,
+      },
+      body: JSON.stringify(body),
+    });
+  const terms = {
+    amount: 25,
+    fulfillment: "shipping",
+    pickupTime: null,
+    pickupAt: null,
+    pickupPoint: null,
+  };
+  const input = {
+    title: "Lamp",
+    listingId: "lamp",
+    seller: "Seller",
+    sender: "buyer",
+    messageId: crypto.randomUUID(),
+    text: "CHF 25 shipped?",
+    action: { type: "propose", terms },
+    listingStatus: "active",
+    expectedVersion: 0,
+  };
+  const first = await (await send(workspace, input)).json();
+  assert.equal(first.conversation.deal.version, 1);
+  assert.deepEqual(await (await send(workspace, input)).json(), first);
+  for (const [patch, key] of [
+    [{ text: "Another message" }, "message_conflict"],
+    [{ messageId: crypto.randomUUID() }, "deal_changed"],
+  ] as const) {
+    assert.equal(
+      (await (await send(workspace, { ...input, ...patch })).json()).error.code,
+      key,
+    );
+  }
+  assert.equal(messages.list(workspace)[0].messages.length, 1);
+  assert.equal(
+    (
+      await (
+        await send(crypto.randomUUID(), { ...input, sender: "seller" })
+      ).json()
+    ).error.code,
+    "NO_CONVERSATION",
+  );
+  assert.equal(
+    (await send(workspace, { ...input, text: "x".repeat(65536) })).status,
+    413,
+  );
 });
 
 test("reverse location validates its method, forwards rounded coordinates and throttles repeats", async (t) => {
   const originalFetch = globalThis.fetch;
   let lookups = 0;
   globalThis.fetch = (input, init) => {
-    if (!(input instanceof URL) || input.hostname !== "nominatim.openstreetmap.org")
+    if (
+      !(input instanceof URL) ||
+      input.hostname !== "nominatim.openstreetmap.org"
+    )
       return originalFetch(input, init);
     lookups++;
     assert.equal(input.pathname, "/reverse");
     assert.equal(input.searchParams.get("lat"), "46.520");
     assert.equal(input.searchParams.get("lon"), "6.567");
     assert.ok(init?.signal);
-    return Promise.resolve(Response.json({
-      address: { road: "Route Cantonale", postcode: "1015", town: "Lausanne" },
-    }));
+    return Promise.resolve(
+      Response.json({
+        address: {
+          road: "Route Cantonale",
+          postcode: "1015",
+          town: "Lausanne",
+        },
+      }),
+    );
   };
-  t.after(() => { globalThis.fetch = originalFetch; });
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
   const { url } = await startServer(t);
   const endpoint = url + "/api/location/reverse";
   const wrongMethod = await fetch(endpoint);
   assert.equal(wrongMethod.status, 405);
   assert.deepEqual(await wrongMethod.json(), {
-    error: { code: "METHOD_NOT_ALLOWED", message: "Use POST for location lookups." },
+    error: {
+      code: "METHOD_NOT_ALLOWED",
+      message: "Use POST for location lookups.",
+    },
   });
   const unsupported = await fetch(endpoint, { method: "POST", body: "{}" });
   assert.equal(unsupported.status, 415);
-  const lookup = () => fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ latitude: 46.5198, longitude: 6.5672 }),
-  });
+  const lookup = () =>
+    fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ latitude: 46.5198, longitude: 6.5672 }),
+    });
   const found = await lookup();
   assert.equal(found.status, 200);
-  assert.deepEqual(await found.json(), { location: "Route Cantonale, 1015 Lausanne" });
+  assert.deepEqual(await found.json(), {
+    location: "Route Cantonale, 1015 Lausanne",
+  });
   const busy = await lookup();
   assert.equal(busy.status, 429);
   assert.equal(busy.headers.get("retry-after"), "2");
@@ -964,7 +1026,10 @@ test("cloud guards and preflight keep their precedence over route matching", asy
   };
   const { url } = await startServer(t, undefined, {
     cloud: {
-      config: { supabaseUrl: "https://example.supabase.co", supabaseKey: "public-test-key" },
+      config: {
+        supabaseUrl: "https://example.supabase.co",
+        supabaseKey: "public-test-key",
+      },
       authorize: async (header) => {
         authChecks++;
         if (!header) throw new AgentError(401, "AUTH_REQUIRED", "Sign in.");
@@ -977,10 +1042,17 @@ test("cloud guards and preflight keep their precedence over route matching", asy
   const unknownAgent = url + "/api/agent/unknown";
   const preflight = await fetch(unknownAgent, { method: "OPTIONS" });
   assert.equal(preflight.status, 204);
-  assert.equal(preflight.headers.get("access-control-allow-methods"), "GET, POST, PUT, DELETE, OPTIONS");
+  assert.equal(
+    preflight.headers.get("access-control-allow-methods"),
+    "GET, POST, PUT, DELETE, OPTIONS",
+  );
   assert.equal(authChecks, 0);
   assert.equal((await fetch(unknownAgent)).status, 401);
-  assert.equal((await fetch(unknownAgent, { headers: { Authorization: "Bearer valid" } })).status, 404);
+  assert.equal(
+    (await fetch(unknownAgent, { headers: { Authorization: "Bearer valid" } }))
+      .status,
+    404,
+  );
   assert.equal(authChecks, 2);
   assert.equal((await fetch(url + "/api/listings/unknown")).status, 410);
   const postingCheck = await fetch(url + "/api/listings/permission");

@@ -92,8 +92,7 @@ function phaseOf(
 }
 
 function statusText(phase: Phase, thing: string) {
-  if (phase === "camera")
-    return `Try the example photo of the ${thing}.`;
+  if (phase === "camera") return `Try the example photo of the ${thing}.`;
   if (phase === "review") return "Example draft ready. Check it, then publish.";
   if (phase === "live") return "Example listing published.";
   return `Example photo added. ${GUIDE_NAME} is drafting the listing…`;

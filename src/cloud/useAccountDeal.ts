@@ -79,8 +79,11 @@ export function useAccountDeal(
     (inbox.rows?.deals === null ? dealUpdateNeeded : (own?.error ?? ""));
   // An empty target thread can receive an offer again when a different deal
   // in the same inbox shows the pickup columns.
-  const pickupInstalled = Object.values(inbox.rows?.deals ?? {}).some((row) => row.pickup !== undefined);
-  const pickupError = error || (deal && !pickupInstalled ? pickupUpdateNeeded : "");
+  const pickupInstalled = Object.values(inbox.rows?.deals ?? {}).some(
+    (row) => row.pickup !== undefined,
+  );
+  const pickupError =
+    error || (deal && !pickupInstalled ? pickupUpdateNeeded : "");
   return {
     deal,
     events: own?.events ?? [],
@@ -117,12 +120,23 @@ export function useAccountDeal(
         throw new Error(pickupError || "Open the conversation first.");
       try {
         const result = await sendAccountPickup(
-          client, conversationId, action, text, deal?.version ?? 0, messageId,
+          client,
+          conversationId,
+          action,
+          text,
+          deal?.version ?? 0,
+          messageId,
         );
         inbox.change((rows) => {
-          if (!rows.deals || (rows.deals[conversationId]?.version ?? 0) > result.deal.version)
+          if (
+            !rows.deals ||
+            (rows.deals[conversationId]?.version ?? 0) > result.deal.version
+          )
             return rows;
-          return { ...rows, deals: { ...rows.deals, [conversationId]: result.deal } };
+          return {
+            ...rows,
+            deals: { ...rows.deals, [conversationId]: result.deal },
+          };
         });
         window.dispatchEvent(new Event("takeover-message-sent"));
         return result;

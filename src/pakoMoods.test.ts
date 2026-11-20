@@ -238,7 +238,11 @@ test("new matches lead the home guide's line while his mood follows the search b
 });
 
 test("a deal that needs the student, or a booked pickup, comes before new matches on home", () => {
-  const offer = { kind: "offer", other: "Léa", title: "White study desk" } as const;
+  const offer = {
+    kind: "offer",
+    other: "Léa",
+    title: "White study desk",
+  } as const;
   assert.deepEqual(guide({ deal: offer, unreadMatches: 2 }), {
     mood: "happy",
     line: "Léa made you an offer for the White study desk.",
@@ -247,7 +251,11 @@ test("a deal that needs the student, or a booked pickup, comes before new matche
   assert.equal(guide({ deal: offer, typing: true }).mood, "listen");
   assert.deepEqual(
     guide({
-      deal: { kind: "booked", title: "White study desk", when: "Fri 20 Nov, 18:00" },
+      deal: {
+        kind: "booked",
+        title: "White study desk",
+        when: "Fri 20 Nov, 18:00",
+      },
     }),
     {
       mood: "wave",
@@ -698,7 +706,10 @@ test("Pako's thread lines name the other student and never guess their pronouns"
     line({ phase: "paused", remaining: undefined }),
     "Read Léa's reply?",
   );
-  assert.equal(line({ phase: "paused", remaining: 1 }), "Read Léa's reply? 1 read left today.");
+  assert.equal(
+    line({ phase: "paused", remaining: 1 }),
+    "Read Léa's reply? 1 read left today.",
+  );
   assert.equal(
     line({ phase: "gone", status: "reserved" }),
     "The White study desk is reserved for someone else. Shall I look for something similar?",
@@ -757,15 +768,21 @@ test("on the deal card Pako listens while the other side decides, cheers once bo
     }).line,
     "That's the asking price. Add the time and place to send it back, then Léa can confirm.",
   );
-  assert.deepEqual(guide({ phase: "deal_looks_agreed", ...offer, role: "buyer", asking: 50 }), {
-    mood: "happy",
-    line: "That's CHF 5 under the asking price. Once you both confirm, the White study desk is reserved for you.",
-  });
+  assert.deepEqual(
+    guide({ phase: "deal_looks_agreed", ...offer, role: "buyer", asking: 50 }),
+    {
+      mood: "happy",
+      line: "That's CHF 5 under the asking price. Once you both confirm, the White study desk is reserved for you.",
+    },
+  );
   assert.equal(
     guide({ phase: "deal_looks_agreed", ...offer }).line,
     "That's CHF 5 under your asking price. Once you both confirm, the White study desk is reserved for Léa.",
   );
-  assert.equal(guide({ phase: "deal_waiting" }).line, "Waiting for Léa to confirm.");
+  assert.equal(
+    guide({ phase: "deal_waiting" }).line,
+    "Waiting for Léa to confirm.",
+  );
   assert.equal(guide({ phase: "deal_waiting" }).mood, "listen");
   assert.deepEqual(guide({ phase: "deal_agreed", role: "buyer" }), {
     mood: "cheer",
@@ -775,13 +792,19 @@ test("on the deal card Pako listens while the other side decides, cheers once bo
     guide({ phase: "deal_agreed", role: "seller" }).line,
     "Deal with Léa! The White study desk is reserved until pickup.",
   );
-  assert.equal(guide({ phase: "deal_cancelled", by: "them" }).line, "Léa cancelled the deal.");
+  assert.equal(
+    guide({ phase: "deal_cancelled", by: "them" }).line,
+    "Léa cancelled the deal.",
+  );
   assert.equal(
     guide({ phase: "agreed_elsewhere", agreedWith: "Arjun" }).line,
     "You agreed with Arjun. Let Léa know?",
   );
   assert.equal(guide({ phase: "deal_cancelled", by: "me" }).mood, "sad");
-  assert.equal(threadReactionMs({ phase: "deal_agreed", role: "buyer" }, "cheer"), 2400);
+  assert.equal(
+    threadReactionMs({ phase: "deal_agreed", role: "buyer" }, "cheer"),
+    2400,
+  );
   assert.equal(threadReactionMs({ phase: "deal_waiting" }, "listen"), null);
   assert.equal(threadReactionMs({ phase: "error" }, "dizzy"), 2600);
   for (const moment of [
@@ -802,12 +825,27 @@ test("Pako compares an offer's price with what the card does not show", () => {
     pickupPoint: null,
   };
   const compare = (changes: Partial<Parameters<typeof priceComparison>[0]>) =>
-    priceComparison({ terms, role: "seller", asking: 40, mine: null, ...changes });
+    priceComparison({
+      terms,
+      role: "seller",
+      asking: 40,
+      mine: null,
+      ...changes,
+    });
   assert.equal(compare({}), "That's your asking price.");
   assert.equal(compare({ asking: 35 }), "That's CHF 5 over your asking price.");
-  assert.equal(compare({ role: "buyer", asking: 50 }), "That's CHF 10 under the asking price.");
-  assert.equal(compare({ role: "buyer", mine: 40 }), "That's what you offered.");
-  assert.equal(compare({ role: "buyer", mine: 45 }), "That's CHF 5 less than you offered.");
+  assert.equal(
+    compare({ role: "buyer", asking: 50 }),
+    "That's CHF 10 under the asking price.",
+  );
+  assert.equal(
+    compare({ role: "buyer", mine: 40 }),
+    "That's what you offered.",
+  );
+  assert.equal(
+    compare({ role: "buyer", mine: 45 }),
+    "That's CHF 5 less than you offered.",
+  );
   assert.equal(compare({ asking: 0, terms: { ...terms, amount: 0 } }), "");
   assert.equal(compare({ terms: { ...terms, amount: null } }), "");
 });
@@ -829,7 +867,10 @@ test("Pako mentions an offer waiting for the student, or a booked pickup, on hom
     outcome: null,
     updatedAt: "2026-11-19T13:00:00.000Z",
   };
-  const news = (deal: Parameters<typeof homeDealNews>[0]["deal"], role: "buyer" | "seller" = "buyer") =>
+  const news = (
+    deal: Parameters<typeof homeDealNews>[0]["deal"],
+    role: "buyer" | "seller" = "buyer",
+  ) =>
     homeDealNews({
       deal,
       role,
@@ -837,33 +878,71 @@ test("Pako mentions an offer waiting for the student, or a booked pickup, on hom
       title: "White study desk",
       now: new Date("2026-11-19T13:00:00.000Z"),
     });
-  const offered = { ...base, status: "open" as const, proposal: { by: "seller" as const, terms, messageId: "m1" } };
-  assert.deepEqual(news(offered), { kind: "offer", other: "Léa", title: "White study desk" });
+  const offered = {
+    ...base,
+    status: "open" as const,
+    proposal: { by: "seller" as const, terms, messageId: "m1" },
+  };
+  assert.deepEqual(news(offered), {
+    kind: "offer",
+    other: "Léa",
+    title: "White study desk",
+  });
   assert.equal(news(offered, "seller"), null);
   assert.deepEqual(
-    news({ ...base, status: "agreed", agreed: { terms, at: "2026-11-19T13:00:00.000Z" } }),
+    news({
+      ...base,
+      status: "agreed",
+      agreed: { terms, at: "2026-11-19T13:00:00.000Z" },
+    }),
     { kind: "booked", title: "White study desk", when: "Fri 20 Nov, 18:00" },
   );
   assert.equal(news({ ...base, status: "cancelled" }), null);
 });
 
 test("a busy server reads as Pako at work, then a calm next step", () => {
-  const retrying = threadGuide({ phase: "busy", retrying: true }, { other: "Léa", title: "desk" });
+  const retrying = threadGuide(
+    { phase: "busy", retrying: true },
+    { other: "Léa", title: "desk" },
+  );
   assert.equal(retrying.mood, "work");
   assert.match(retrying.line, /try again in a second/);
-  const still = threadGuide({ phase: "busy", retrying: false }, { other: "Léa", title: "desk" });
+  const still = threadGuide(
+    { phase: "busy", retrying: false },
+    { other: "Léa", title: "desk" },
+  );
   assert.match(still.line, /write your own reply/);
 });
 
 test("on home Pako asks about an unclosed pickup a day later", () => {
   const pickupAt = "2026-11-18T17:00:00.000Z";
   const deal: Parameters<typeof homeDealNews>[0]["deal"] = {
-    conversationId: "c1", listingId: "l1", version: 2, status: "agreed", proposal: null, outcome: null,
-    agreed: { terms: { amount: 40, fulfillment: "pickup", pickupAt, pickupTime: "", pickupPoint: "Vortex" }, at: pickupAt },
+    conversationId: "c1",
+    listingId: "l1",
+    version: 2,
+    status: "agreed",
+    proposal: null,
+    outcome: null,
+    agreed: {
+      terms: {
+        amount: 40,
+        fulfillment: "pickup",
+        pickupAt,
+        pickupTime: "",
+        pickupPoint: "Vortex",
+      },
+      at: pickupAt,
+    },
     updatedAt: pickupAt,
   };
   assert.deepEqual(
-    homeDealNews({ deal, role: "buyer", other: "Léa", title: "desk", now: new Date("2026-11-19T18:00:00.000Z") }),
+    homeDealNews({
+      deal,
+      role: "buyer",
+      other: "Léa",
+      title: "desk",
+      now: new Date("2026-11-19T18:00:00.000Z"),
+    }),
     { kind: "pickup_check", other: "Léa", title: "desk" },
   );
 });

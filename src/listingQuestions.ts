@@ -328,7 +328,8 @@ export function questionQueue(
     pickup ?? questions.find((question) => question.id === PICKUP_QUESTION.id);
   const fromRun = questions.filter(
     (question) =>
-      question.id !== PICKUP_QUESTION.id && (!own || !isPickupQuestion(question)),
+      question.id !== PICKUP_QUESTION.id &&
+      (!own || !isPickupQuestion(question)),
   );
   return own ? [own, ...fromRun] : fromRun;
 }

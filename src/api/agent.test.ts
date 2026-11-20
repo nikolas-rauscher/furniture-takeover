@@ -238,8 +238,7 @@ test("network errors explain that writing can continue", async (context) => {
     requestAgentAssist({ intent: "listing", text: "wooden chair" }),
     {
       code: "NETWORK_ERROR",
-      message:
-        "I lost the connection. You can keep writing and try again.",
+      message: "I lost the connection. You can keep writing and try again.",
     },
   );
 });

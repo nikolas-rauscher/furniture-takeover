@@ -47,11 +47,7 @@ export default function HomeSearch({
     >
       <h1 id="agent-title">What are you looking for?</h1>
       <div className="agent-hero-guide">
-        <PakoReaction
-          className="agent-hero-pako"
-          mood={guide.mood}
-          size={64}
-        />
+        <PakoReaction className="agent-hero-pako" mood={guide.mood} size={64} />
         <p className="ob-bubble agent-hero-bubble">
           {guide.line}
           {guide.newMatches && (
@@ -76,19 +72,13 @@ export default function HomeSearch({
           }}
           data-dragging={photo.dragging || undefined}
           onDragOver={(event) => {
-            if (!event.dataTransfer.types.includes("Files"))
-              return;
+            if (!event.dataTransfer.types.includes("Files")) return;
             event.preventDefault();
             photo.setDragging(true);
           }}
           onDragLeave={(event) => {
             const next = event.relatedTarget;
-            if (
-              !(
-                next instanceof Node &&
-                event.currentTarget.contains(next)
-              )
-            )
+            if (!(next instanceof Node && event.currentTarget.contains(next)))
               photo.setDragging(false);
           }}
           onDrop={(event) => {
@@ -139,7 +129,9 @@ export default function HomeSearch({
             </Button>
             <PhotoSearchButton
               busy={photo.busy}
-              disabled={search.running || !pako.configured || pako.quotaExhausted}
+              disabled={
+                search.running || !pako.configured || pako.quotaExhausted
+              }
               onFile={(file) => void search.searchByPhoto(file)}
               onKeyboardFocus={photo.setHint}
             />
@@ -186,15 +178,10 @@ export default function HomeSearch({
         <p>
           <strong>Moving out?</strong>{" "}
           <span>
-            Start with a photo. Pako drafts your listing for you
-            to review.
+            Start with a photo. Pako drafts your listing for you to review.
           </span>
         </p>
-        <Button
-          animateIcon
-          className="button quiet"
-          onClick={actions.onSell}
-        >
+        <Button animateIcon className="button quiet" onClick={actions.onSell}>
           Sell from a photo
           <ArrowRight size={16} />
         </Button>

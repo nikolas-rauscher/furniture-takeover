@@ -18,12 +18,10 @@ import { withCardImages } from "../cardPhotos";
 import { randomUuid } from "../randomUuid";
 import type { AccountConnection } from "./connection";
 
-function toProduct(
-  row: Listing,
-  userId?: string,
-  name = "Seller",
-): Product {
-  const pickupPoint = campusPickupPoints.find(({ name }) => name === row.demo_meeting_point);
+function toProduct(row: Listing, userId?: string, name = "Seller"): Product {
+  const pickupPoint = campusPickupPoints.find(
+    ({ name }) => name === row.demo_meeting_point,
+  );
   const clientImages = row.images; // converted to public URLs by the loader
   const cardImages = row.card_images;
   return {
@@ -61,7 +59,11 @@ async function loadProducts(client: SupabaseClient, userId?: string) {
       .order("id")
       .range(offset, offset + 499);
     fail(result.error);
-    rows.push(...(result.data as Listing[]).filter((row) => !row.hidden_at || row.owner_id === userId));
+    rows.push(
+      ...(result.data as Listing[]).filter(
+        (row) => !row.hidden_at || row.owner_id === userId,
+      ),
+    );
     if (result.data!.length < 500) break;
   }
   const ids = [...new Set(rows.map((r) => r.owner_id))];

@@ -78,7 +78,10 @@ export default function ListingConversation({
     closing: `${closing.title} ${closing.text}`,
   });
   return (
-    <section className="listing-conversation" aria-label="Listing conversation with Pako">
+    <section
+      className="listing-conversation"
+      aria-label="Listing conversation with Pako"
+    >
       <AgentConversation
         state={turn}
         announcement={announcement}

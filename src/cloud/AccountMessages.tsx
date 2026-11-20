@@ -318,22 +318,26 @@ export default function AccountMessages({
           deal: rows?.deals?.[thread.id],
         })),
     );
-  const nextBuyer = released && nextThread && product && {
-    name: names[nextThread.buyerId] || "Buyer",
-    onOffer: () => {
-      const draft = availableAgainMessage(product.title);
-      setOfferAgain({
-        threadKey: nextThread.id,
-        releasedConversationId: released.id,
-        draft,
-      });
-      setSelected(nextThread.id);
-      setDrafts((items) => ({ ...items, [nextThread.id]: draft }));
-    },
-  };
+  const nextBuyer = released &&
+    nextThread &&
+    product && {
+      name: names[nextThread.buyerId] || "Buyer",
+      onOffer: () => {
+        const draft = availableAgainMessage(product.title);
+        setOfferAgain({
+          threadKey: nextThread.id,
+          releasedConversationId: released.id,
+          draft,
+        });
+        setSelected(nextThread.id);
+        setDrafts((items) => ({ ...items, [nextThread.id]: draft }));
+      },
+    };
   /** The composer holds the offer of a released item to this thread's buyer. */
   const offeringAgain =
-    offerAgain?.threadKey === selected && role === "seller" ? offerAgain : undefined;
+    offerAgain?.threadKey === selected && role === "seller"
+      ? offerAgain
+      : undefined;
   /** Pako's offer of a released item to this buyer, still as he wrote it. */
   const offerAgainDraft = offeringAgain?.draft === text;
   /** A first offer starts the conversation, then records the offer with its message. */
@@ -815,7 +819,9 @@ export default function AccountMessages({
                 busy={busy}
                 disabled={otherBlocked}
                 error={error}
-                pakoDrafted={appDraft || offerAgainDraft || assistant.draftedByPako}
+                pakoDrafted={
+                  appDraft || offerAgainDraft || assistant.draftedByPako
+                }
                 tools={!otherBlocked && !seededSeller && assistant.askMenu}
                 terms={termsNote}
                 onTextChange={setText}

@@ -30,8 +30,7 @@ type WaitlistEntry = {
   priorityUntil?: string;
 };
 
-type NoticeKind =
-  "declined" | "expired" | "hold_ended" | "available_again";
+type NoticeKind = "declined" | "expired" | "hold_ended" | "available_again";
 
 export type AvailabilityNotice = {
   id: string;

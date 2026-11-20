@@ -91,18 +91,30 @@ const requestSchema = z.object({
         .enum(["search", "listing_review", "listing_assist", "negotiation"])
         .optional(),
       listingStart: z.boolean().optional(),
-      photoAnalysis: z.object({
-        missingDetails: z.array(z.string().trim().min(1).max(240)).max(12).optional(),
-        keywords: z.array(z.string().trim().min(1).max(120)).max(12).optional(),
-      }).strict().optional(),
+      photoAnalysis: z
+        .object({
+          missingDetails: z
+            .array(z.string().trim().min(1).max(240))
+            .max(12)
+            .optional(),
+          keywords: z
+            .array(z.string().trim().min(1).max(120))
+            .max(12)
+            .optional(),
+        })
+        .strict()
+        .optional(),
       currentDraft: listingDraftSchema.optional(),
       previousQuestion: z.string().max(500).optional(),
       negotiation: negotiationSchema.optional(),
       skippedQuestions: z
         .array(
-          questionSchema
-            .pick({ question: true, listingField: true })
-            .extend({ choices: z.array(z.string().trim().min(1).max(120)).max(5).optional() }),
+          questionSchema.pick({ question: true, listingField: true }).extend({
+            choices: z
+              .array(z.string().trim().min(1).max(120))
+              .max(5)
+              .optional(),
+          }),
         )
         .max(30)
         .optional(),

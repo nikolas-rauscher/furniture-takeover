@@ -107,7 +107,10 @@ export function accountStorageKey(key: string) {
 export async function accountAccessToken(allowGuest = false) {
   if (!client) return undefined;
   const { data, error } = await client.auth.getSession();
-  if (error) throw new Error("Couldn't check your session. Try signing in again.", { cause: error });
+  if (error)
+    throw new Error("Couldn't check your session. Try signing in again.", {
+      cause: error,
+    });
   if (!data.session && !allowGuest) throw new Error("Sign in to ask Pako.");
   return data.session?.access_token;
 }

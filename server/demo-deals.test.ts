@@ -86,20 +86,46 @@ test("demo pickup checks notify once and release or complete a reservation", () 
   let now = new Date("2026-11-20T12:00:00Z");
   const store = createMessagesStore(":memory:", () => now);
   const pickupAt = "2026-11-20T15:00:00.000Z";
-  const terms = { amount: 30, fulfillment: "pickup", pickupAt, pickupTime: formatPickup(pickupAt), pickupPoint: "Atrium" };
+  const terms = {
+    amount: 30,
+    fulfillment: "pickup",
+    pickupAt,
+    pickupTime: formatPickup(pickupAt),
+    pickupPoint: "Atrium",
+  };
   try {
-    for (const resolution of ["expired", "confirm_pickup_happened", "release_stale_pickup", "release_no_show"]) {
+    for (const resolution of [
+      "expired",
+      "confirm_pickup_happened",
+      "release_stale_pickup",
+      "release_no_show",
+    ]) {
       now = new Date("2026-11-20T12:00:00Z");
       const workspace = randomUUID();
-      const send = { listingId: "desk", title: "Desk", seller: "Seller", text: "CHF 30, Atrium, 16:00." };
-      const act = (type: string, version: number, sender = "buyer") => store.act(workspace, {
-        ...send, listingStatus: "active", expectedVersion: version, action: { type, terms },
-        sender, messageId: randomUUID(),
-      });
-      const resolve = () => store.actPickup(workspace, {
-        ...send, listingStatus: "reserved", expectedVersion: 2, action: { type: resolution },
-        sender: "buyer", messageId: randomUUID(),
-      });
+      const send = {
+        listingId: "desk",
+        title: "Desk",
+        seller: "Seller",
+        text: "CHF 30, Atrium, 16:00.",
+      };
+      const act = (type: string, version: number, sender = "buyer") =>
+        store.act(workspace, {
+          ...send,
+          listingStatus: "active",
+          expectedVersion: version,
+          action: { type, terms },
+          sender,
+          messageId: randomUUID(),
+        });
+      const resolve = () =>
+        store.actPickup(workspace, {
+          ...send,
+          listingStatus: "reserved",
+          expectedVersion: 2,
+          action: { type: resolution },
+          sender: "buyer",
+          messageId: randomUUID(),
+        });
       const { conversation } = act("propose", 0);
       act("accept", 1, "seller");
       now = new Date("2026-11-21T14:59:59.999Z");
@@ -113,10 +139,16 @@ test("demo pickup checks notify once and release or complete a reservation", () 
       assert.equal(store.list(workspace)[0].systemEvents?.length, 1);
       if (resolution === "expired") {
         now = new Date("2026-11-22T15:00:00.000Z");
-        assert.equal(store.list(workspace)[0].deal?.outcome?.kind, "pickup_expired");
+        assert.equal(
+          store.list(workspace)[0].deal?.outcome?.kind,
+          "pickup_expired",
+        );
         assert.equal(store.list(workspace)[0].systemEvents?.length, 2);
       } else {
-        assert.equal(resolve().statusChange, resolution === "confirm_pickup_happened" ? "sold" : "active");
+        assert.equal(
+          resolve().statusChange,
+          resolution === "confirm_pickup_happened" ? "sold" : "active",
+        );
       }
       if (resolution !== "confirm_pickup_happened") {
         const reopened = act("propose", 3).conversation;

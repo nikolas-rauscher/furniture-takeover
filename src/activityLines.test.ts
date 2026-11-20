@@ -22,8 +22,20 @@ test("a step Pako took again shows once, where it first appeared, in its latest 
   const lines = activityLines(
     [
       step("read", "Reading your listing details", "complete", "request"),
-      step("web-1", "Checking comparable prices online", "complete", "web", "Desk"),
-      step("web-2", "Checking comparable prices online", "complete", "web", "Desk"),
+      step(
+        "web-1",
+        "Checking comparable prices online",
+        "complete",
+        "web",
+        "Desk",
+      ),
+      step(
+        "web-2",
+        "Checking comparable prices online",
+        "complete",
+        "web",
+        "Desk",
+      ),
       step("price-1", "Suggesting a price", "needs_input"),
       step("price-2", "Suggesting a price", "needs_input"),
       step("fill", "Filling in your listing", "complete"),

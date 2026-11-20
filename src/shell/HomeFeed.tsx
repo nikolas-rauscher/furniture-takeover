@@ -71,7 +71,10 @@ export default function HomeFeed({
                 : "From students around EPFL, UNIL and the FMEL residences."}
             </p>
           </div>
-          <ProductGrid items={listings.visible} renderProduct={listings.render} />
+          <ProductGrid
+            items={listings.visible}
+            renderProduct={listings.render}
+          />
         </>
       )}
       {listings.settled && !listings.visible.length && (

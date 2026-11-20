@@ -57,22 +57,38 @@ export function readDeal(r: DealRow) {
       by: r.outcome_by,
       at: r.updated_at,
     },
-    ...(r.buyer_on_way_at === undefined ? {} : {
-      pickup: {
-        onWay: { buyer: r.buyer_on_way_at, seller: r.seller_on_way_at },
-        late: r.late_minutes === null ? null : { minutes: r.late_minutes, by: r.late_by, at: r.late_at },
-        noShow: r.no_show_at === null ? null : { by: r.no_show_by, at: r.no_show_at },
-        buyerPickedUpAt: r.buyer_picked_up_at,
-        cancelReason: r.pickup_cancel_reason,
-      },
-    }),
+    ...(r.buyer_on_way_at === undefined
+      ? {}
+      : {
+          pickup: {
+            onWay: { buyer: r.buyer_on_way_at, seller: r.seller_on_way_at },
+            late:
+              r.late_minutes === null
+                ? null
+                : { minutes: r.late_minutes, by: r.late_by, at: r.late_at },
+            noShow:
+              r.no_show_at === null
+                ? null
+                : { by: r.no_show_by, at: r.no_show_at },
+            buyerPickedUpAt: r.buyer_picked_up_at,
+            cancelReason: r.pickup_cancel_reason,
+          },
+        }),
   });
   return reopenUnagreedDeal(deal);
 }
-function rpcFailure(error: { code?: string; message: string }, updateNeeded: string) {
+function rpcFailure(
+  error: { code?: string; message: string },
+  updateNeeded: string,
+) {
   if (missingFromSchema(error)) return new Error(updateNeeded);
-  if (!error.code) return new Error("Couldn't connect. Check the conversation before trying again.");
-  return Object.assign(new Error(dealErrorMessage(error.message)), { key: error.message });
+  if (!error.code)
+    return new Error(
+      "Couldn't connect. Check the conversation before trying again.",
+    );
+  return Object.assign(new Error(dealErrorMessage(error.message)), {
+    key: error.message,
+  });
 }
 export async function sendAccountDeal(
   client: SupabaseClient,
@@ -102,9 +118,9 @@ export async function sendAccountDeal(
         ? "reserved"
         : deal.status === "completed" && action.type === "complete_shipping"
           ? "sold"
-        : deal.status === "cancelled" && deal.agreed
-          ? "active"
-          : undefined;
+          : deal.status === "cancelled" && deal.agreed
+            ? "active"
+            : undefined;
   return { deal, statusChange } as const;
 }
 export async function sendAccountPickup(
@@ -114,23 +130,39 @@ export async function sendAccountPickup(
   text: string,
   expectedVersion: number,
   messageId = randomUuid(),
-): Promise<{ deal: ReturnType<typeof readDeal>; statusChange?: PickupStatusChange }> {
-  const { data, error } = await client.rpc("pickup_action", {
-    p_conversation: conversationId,
-    p_message: messageId,
-    p_body: text,
-    p_action: action.type,
-    p_expected_version: expectedVersion,
-    p_terms: "terms" in action ? writeTerms(action.terms) : null,
-    p_minutes: action.type === "late" ? action.minutes : null,
-    p_reason: action.type === "cancel_pickup" ? action.reason : null,
-    p_released_conversation: action.type === "offer_again" ? action.releasedConversationId : null,
-  }).single<DealRow>();
+): Promise<{
+  deal: ReturnType<typeof readDeal>;
+  statusChange?: PickupStatusChange;
+}> {
+  const { data, error } = await client
+    .rpc("pickup_action", {
+      p_conversation: conversationId,
+      p_message: messageId,
+      p_body: text,
+      p_action: action.type,
+      p_expected_version: expectedVersion,
+      p_terms: "terms" in action ? writeTerms(action.terms) : null,
+      p_minutes: action.type === "late" ? action.minutes : null,
+      p_reason: action.type === "cancel_pickup" ? action.reason : null,
+      p_released_conversation:
+        action.type === "offer_again" ? action.releasedConversationId : null,
+    })
+    .single<DealRow>();
   if (error) throw rpcFailure(error, pickupUpdateNeeded);
   const deal = readDeal(data!);
   if (deal.version !== expectedVersion + 1) return { deal };
-  if ((action.type === "picked_up" || action.type === "confirm_pickup_happened") && deal.status === "completed") return { deal, statusChange: "sold" };
-  if (deal.status === "cancelled" && (action.type === "cancel_pickup" || action.type === "release_no_show" || action.type === "release_stale_pickup"))
+  if (
+    (action.type === "picked_up" ||
+      action.type === "confirm_pickup_happened") &&
+    deal.status === "completed"
+  )
+    return { deal, statusChange: "sold" };
+  if (
+    deal.status === "cancelled" &&
+    (action.type === "cancel_pickup" ||
+      action.type === "release_no_show" ||
+      action.type === "release_stale_pickup")
+  )
     return { deal, statusChange: "active" };
   return { deal };
 }
@@ -143,7 +175,10 @@ type ThreadEventDetails = {
 };
 export type ThreadDealEvent = DealEvent & ThreadEventDetails;
 export type ThreadPickupEvent = PickupEvent & ThreadEventDetails;
-export async function loadThreadDealHistory(client: SupabaseClient, conversationId: string) {
+export async function loadThreadDealHistory(
+  client: SupabaseClient,
+  conversationId: string,
+) {
   const events: ThreadDealEvent[] = [];
   const pickupEvents: ThreadPickupEvent[] = [];
   for (let from = 0; ; from += 500) {
@@ -168,8 +203,15 @@ export async function loadThreadDealHistory(client: SupabaseClient, conversation
       };
       const kind = pickupEventKindSchema.safeParse(r.kind);
       if (kind.success) {
-        const minutes = r.pickup_minutes == null ? undefined : lateMinutesSchema.parse(r.pickup_minutes);
-        pickupEvents.push({ ...details, kind: kind.data, ...(minutes === undefined ? {} : { minutes }) });
+        const minutes =
+          r.pickup_minutes == null
+            ? undefined
+            : lateMinutesSchema.parse(r.pickup_minutes);
+        pickupEvents.push({
+          ...details,
+          kind: kind.data,
+          ...(minutes === undefined ? {} : { minutes }),
+        });
       } else {
         events.push({ ...details, kind: r.kind });
       }

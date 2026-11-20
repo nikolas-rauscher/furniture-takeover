@@ -1,7 +1,18 @@
-import { adminMigration, applyMigrations, pickupMigration, reviewMigration } from "./supabase-fixture.ts";
+import {
+  adminMigration,
+  applyMigrations,
+  pickupMigration,
+  reviewMigration,
+} from "./supabase-fixture.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buyer,seller,stranger,count,marketplace } from "./supabase-fixture.ts";
+import {
+  buyer,
+  seller,
+  stranger,
+  count,
+  marketplace,
+} from "./supabase-fixture.ts";
 
 test("read markers belong to one participant and only move forward", async () => {
   const { db, as, conversation } = await marketplace();
@@ -122,7 +133,11 @@ test("reading replies has its own allowance of 150 a day, apart from searches", 
   try {
     type Budget = { allowed: boolean; limit: number; remaining: number };
     await db.exec("reset role");
-    await applyMigrations(db, [pickupMigration, adminMigration, reviewMigration]);
+    await applyMigrations(db, [
+      pickupMigration,
+      adminMigration,
+      reviewMigration,
+    ]);
     await db.exec("set role service_role");
     const allowance = async (userId: string, kind: string, spend: boolean) =>
       (

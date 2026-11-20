@@ -68,7 +68,9 @@ export function SellPage({
             [...listing.state.history, listing.state],
             draft,
           )}
-          onReviewPrice={listing.decidingPrice ? listing.reviewPrice : undefined}
+          onReviewPrice={
+            listing.decidingPrice ? listing.reviewPrice : undefined
+          }
           insight={
             <SellerInsight
               similar={similarListings(
@@ -80,7 +82,9 @@ export function SellPage({
                 market.developerMode
                   ? demandLadder(market.savedSearches, {
                       title: draft.title,
-                      price: draft.price.trim() ? Number(draft.price) : Number.NaN,
+                      price: draft.price.trim()
+                        ? Number(draft.price)
+                        : Number.NaN,
                       condition: draft.condition,
                       pickupBy: draft.pickup,
                     })

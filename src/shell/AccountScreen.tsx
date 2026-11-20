@@ -1,5 +1,9 @@
 import type { ReactNode } from "react";
-import { isMine, type Product, type SavedListing } from "../../shared/marketplace";
+import {
+  isMine,
+  type Product,
+  type SavedListing,
+} from "../../shared/marketplace";
 import AccountPage from "../components/AccountPage";
 import type { InboxDeals } from "../hooks/useInboxDeals";
 import type { MyListings } from "../hooks/useMyListings";
@@ -28,7 +32,10 @@ export default function AccountScreen({
   loaded: boolean;
   cloud: boolean;
   catalog: MyListings;
-  saved: { listings: SavedListing[]; render: (item: SavedListing) => ReactNode };
+  saved: {
+    listings: SavedListing[];
+    render: (item: SavedListing) => ReactNode;
+  };
   sell: SellSession;
   agreementFor: InboxDeals["agreementFor"];
   actions: Actions;

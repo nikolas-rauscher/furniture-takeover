@@ -263,7 +263,9 @@
   }
   :root[data-compact-viewport]
     .messages-page.has-conversation
-    > :is(.page-title, .quiet-caption), :root[data-compact-viewport] .selling-chat-layout .listing-preview, :root[data-compact-viewport] .selling-chat-layout .page-title {
+    > :is(.page-title, .quiet-caption),
+  :root[data-compact-viewport] .selling-chat-layout .listing-preview,
+  :root[data-compact-viewport] .selling-chat-layout .page-title {
     display: none;
   }
   :root[data-compact-viewport]

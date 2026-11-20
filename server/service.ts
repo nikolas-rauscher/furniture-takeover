@@ -75,11 +75,14 @@ function groundSearch(
     const words = normalized(candidate.query).split(/[^\p{L}\p{N}]+/u);
     return (
       identityWords.every((word) => words.includes(word)) &&
-      (stated.maxPrice === undefined || supplied.maxPrice === stated.maxPrice) &&
-      (supplied.maxPrice === undefined || constraints.maxPrice === undefined ||
+      (stated.maxPrice === undefined ||
+        supplied.maxPrice === stated.maxPrice) &&
+      (supplied.maxPrice === undefined ||
+        constraints.maxPrice === undefined ||
         supplied.maxPrice === constraints.maxPrice) &&
       (stated.radius === undefined || supplied.radius === stated.radius) &&
-      (supplied.radius === undefined || constraints.radius === undefined ||
+      (supplied.radius === undefined ||
+        constraints.radius === undefined ||
         supplied.radius === constraints.radius) &&
       (!constraints.pickupBy || supplied.pickup === constraints.pickupBy)
     );

@@ -120,7 +120,13 @@ export function proposeOffer(input: ProposalInput): OfferProposal {
     place: place?.[0] ?? null,
     reasons: {
       price: price.reason,
-      time: kept ? "kept" : earliest ? "earliest" : slots.length ? "none" : "no_slots",
+      time: kept
+        ? "kept"
+        : earliest
+          ? "earliest"
+          : slots.length
+            ? "none"
+            : "no_slots",
       place: place?.[1] ?? "none",
     },
   };
@@ -264,9 +270,12 @@ export function proposalLine(
     changed.time || changed.place
       ? null
       : keptPickupSentence(proposal, context);
-  const pickup = proposal.reasons.time === "no_slots" && !changed.time && context.available.trim()
-    ? "I couldn't find a time that fits the seller's pickup availability. Ask for a time or choose one together."
-    : kept ?? pickupSentenceFor(proposal, changed, context);
+  const pickup =
+    proposal.reasons.time === "no_slots" &&
+    !changed.time &&
+    context.available.trim()
+      ? "I couldn't find a time that fits the seller's pickup availability. Ask for a time or choose one together."
+      : (kept ?? pickupSentenceFor(proposal, changed, context));
   const line = [price, pickup].filter(Boolean).join(" ");
   return line || "Got it. Your changes are in the message.";
 }

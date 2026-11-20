@@ -57,19 +57,29 @@ export function checkDemoContact(
 }
 
 function conversationsExist(db: DatabaseSync) {
-  return Boolean(db.prepare(
-    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='conversations'",
-  ).get());
+  return Boolean(
+    db
+      .prepare(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='conversations'",
+      )
+      .get(),
+  );
 }
 
 export function hasAgreedDemoDeal(db: DatabaseSync, listingId?: string) {
   if (!conversationsExist(db)) return false;
-  return Boolean(db.prepare(`
+  return Boolean(
+    db
+      .prepare(
+        `
     SELECT 1 FROM conversations c JOIN listings l ON l.id=c.listing_id AND l.demo=1
     WHERE json_extract(c.payload,'$.deal.status')='agreed'
       AND json_extract(c.payload,'$.deletedAt') IS NULL AND (? IS NULL OR l.id=?)
     LIMIT 1
-  `).get(listingId ?? null, listingId ?? null));
+  `,
+      )
+      .get(listingId ?? null, listingId ?? null),
+  );
 }
 
 export function createDemoAdmin(
@@ -349,20 +359,31 @@ export function createDemoAdmin(
           let studentId = row.student_id ? String(row.student_id) : null;
           if (target.kind === "listing") {
             const current = readListing.get(target.id);
-            target = current ? listingTarget(current) : { ...target, hidden: true };
+            target = current
+              ? listingTarget(current)
+              : { ...target, hidden: true };
           } else if (target.listingTitle === undefined) {
             // Older reports stored the workspace even for simulated seller replies.
-            const conversationRow = conversationsExist(db) && db.prepare(
-              "SELECT payload FROM conversations WHERE id=?",
-            ).get(target.conversationId);
+            const conversationRow =
+              conversationsExist(db) &&
+              db
+                .prepare("SELECT payload FROM conversations WHERE id=?")
+                .get(target.conversationId);
             const conversation: SellerConversation | undefined = conversationRow
               ? JSON.parse(String(conversationRow.payload))
               : undefined;
             const messageId = target.id;
-            const sender = conversation?.messages.find(({ id }) => id === messageId)?.sender;
+            const sender = conversation?.messages.find(
+              ({ id }) => id === messageId,
+            )?.sender;
             studentId = sender === "buyer" ? studentId : null;
             const listing = readListing.get(target.listingId);
-            target = { ...target, listingTitle: listing ? listingJson(listing).title : conversation?.title };
+            target = {
+              ...target,
+              listingTitle: listing
+                ? listingJson(listing).title
+                : conversation?.title,
+            };
           }
           return {
             id: String(row.id),

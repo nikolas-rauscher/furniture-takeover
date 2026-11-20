@@ -37,9 +37,7 @@ export function useNegotiations() {
       setItems(repository.list());
       setError("");
     } catch {
-      setError(
-        "I couldn't open your saved offer drafts. Reload to try again.",
-      );
+      setError("I couldn't open your saved offer drafts. Reload to try again.");
     }
   }
   useEffect(() => {
@@ -66,7 +64,9 @@ export function useNegotiations() {
         localStorage.setItem(migrationKey, "complete");
       } catch {
         if (!cancelled)
-          setError("I couldn't verify which saved drafts were already sent. Reload to try again.");
+          setError(
+            "I couldn't verify which saved drafts were already sent. Reload to try again.",
+          );
       }
     }
     void reconcileLegacyDrafts();
@@ -92,7 +92,7 @@ export function useNegotiations() {
           ? error.message
           : "I couldn't save your offer draft. Try again.";
       setError(message);
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   }
   function open(listingId: string) {

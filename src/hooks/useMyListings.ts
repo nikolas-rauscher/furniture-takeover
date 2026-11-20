@@ -39,14 +39,13 @@ export function useMyListings({
         .sort()
         .join(",");
   useEffect(() => {
-    if (accountDealStatuses !== null && !database.pending) void reloadListings();
+    if (accountDealStatuses !== null && !database.pending)
+      void reloadListings();
   }, [accountDealStatuses, database.pending, reloadListings]);
   /** What demo deals reserved or made available again, as it was before; clearing the workspace puts it back. */
-  const [statusBefore, setStatusBefore] = useSaved<Record<string, ListingStatus>>(
-    "takeover-deal-original-status",
-    {},
-    isListingStatuses,
-  );
+  const [statusBefore, setStatusBefore] = useSaved<
+    Record<string, ListingStatus>
+  >("takeover-deal-original-status", {}, isListingStatuses);
 
   // Preserve old browser records, but never show seeded inventory as real offers.
   const expiredReleases = new Set(
@@ -55,15 +54,20 @@ export function useMyListings({
       .filter(
         (deal) =>
           !deals.some(
-            (other) => other.listingId === deal.listingId && other.status === "agreed",
+            (other) =>
+              other.listingId === deal.listingId && other.status === "agreed",
           ),
       )
       .map(({ listingId }) => listingId),
   );
   const releasePending =
     !cloud &&
-    own.some((item) => item.status === "reserved" && expiredReleases.has(item.id));
-  const releaseKey = releasePending ? [...expiredReleases].sort().join(",") : "";
+    own.some(
+      (item) => item.status === "reserved" && expiredReleases.has(item.id),
+    );
+  const releaseKey = releasePending
+    ? [...expiredReleases].sort().join(",")
+    : "";
   useEffect(() => {
     if (!releaseKey) return;
     const ids = new Set(releaseKey.split(","));
@@ -76,14 +80,17 @@ export function useMyListings({
     );
   }, [releaseKey, setOwn]);
   const listings = own
-    .map(
-      (item): Product =>
-        releasePending && item.status === "reserved" && expiredReleases.has(item.id)
-          ? { ...item, status: "active" }
-          : item,
+    .map((item): Product =>
+      releasePending &&
+      item.status === "reserved" &&
+      expiredReleases.has(item.id)
+        ? { ...item, status: "active" }
+        : item,
     )
     .filter((item) =>
-      cloud ? true : item.own && (item.demo || !item.image.startsWith("/images/")),
+      cloud
+        ? true
+        : item.own && (item.demo || !item.image.startsWith("/images/")),
     );
 
   async function applyStatus(id: string, status: ListingStatus) {

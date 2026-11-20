@@ -65,7 +65,9 @@ function FiltersDialog({
 }) {
   return (
     <Modal title="Search preferences" onClose={onClose}>
-      <p className="modal-intro">Tell the agent what matters for this search.</p>
+      <p className="modal-intro">
+        Tell the agent what matters for this search.
+      </p>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -225,33 +227,33 @@ function HelpDialog({ onClose }: { onClose: () => void }) {
         <div>
           <Search size={20} />
           <p>
-            <strong>Search</strong>Pako checks takeover listings and can
-            search other sites. Check external prices and availability on
-            the original page.
+            <strong>Search</strong>Pako checks takeover listings and can search
+            other sites. Check external prices and availability on the original
+            page.
           </p>
         </div>
         <div>
           <Camera size={20} />
           <p>
-            <strong>Search with a photo</strong>When you search with a
-            photo, we send it to the AI service to identify the item. The
-            search then uses that description.
+            <strong>Search with a photo</strong>When you search with a photo, we
+            send it to the AI service to identify the item. The search then uses
+            that description.
           </p>
         </div>
         <div>
           <Camera size={20} />
           <p>
             <strong>Sell</strong>When Pako looks at your photos or drafts a
-            listing, we send your photos and notes to the AI service. Check
-            the details before publishing.
+            listing, we send your photos and notes to the AI service. Check the
+            details before publishing.
           </p>
         </div>
         <div>
           <Bookmark size={20} />
           <p>
-            <strong>Keep</strong>Saved searches and alerts stay in this
-            browser. Nothing reaches another student until you publish a
-            listing or send a message.
+            <strong>Keep</strong>Saved searches and alerts stay in this browser.
+            Nothing reaches another student until you publish a listing or send
+            a message.
           </p>
         </div>
       </div>
@@ -270,8 +272,8 @@ function ClearDialog({
     <Modal title="Clear browser data for takeover?" onClose={onClose}>
       <p className="modal-intro">
         This clears your listings, saved items, saved searches, alerts,
-        conversations and demo deals from this browser. Shared sample
-        listings stay available.
+        conversations and demo deals from this browser. Shared sample listings
+        stay available.
       </p>
       <div className="modal-actions">
         <Button className="button secondary" onClick={onClose}>

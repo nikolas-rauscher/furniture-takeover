@@ -10,21 +10,17 @@ type TransportGuidance = {
 };
 
 function dimensionsInCentimetres(value: string) {
-  const measurements = [
-    ...value.matchAll(/(\d+(?:[.,]\d+)?)\s*(mm|cm|m)?/gi),
-  ];
+  const measurements = [...value.matchAll(/(\d+(?:[.,]\d+)?)\s*(mm|cm|m)?/gi)];
   if (measurements.length !== 3) return null;
 
-  const trailingUnit = value.match(/(?:mm|cm|m)\s*$/i)?.[0]
+  const trailingUnit = value
+    .match(/(?:mm|cm|m)\s*$/i)?.[0]
     .trim()
     .toLowerCase();
   const values = measurements.map((match) => {
     const number = Number(match[1].replace(",", "."));
     const unit = (match[2]?.toLowerCase() || trailingUnit) as
-      | "mm"
-      | "cm"
-      | "m"
-      | undefined;
+      "mm" | "cm" | "m" | undefined;
     if (!unit || !Number.isFinite(number) || number <= 0) return null;
     return number * (unit === "m" ? 100 : unit === "mm" ? 0.1 : 1);
   });

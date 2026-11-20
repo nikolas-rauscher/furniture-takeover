@@ -27,18 +27,20 @@ test("cloud config is opt-in and rejects missing or privileged credentials", () 
     /never a secret/,
   );
   assert.throws(
-    () => createCloud({
-      SUPABASE_URL: "https://example.supabase.co",
-      SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
-    }),
+    () =>
+      createCloud({
+        SUPABASE_URL: "https://example.supabase.co",
+        SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
+      }),
     /Set SUPABASE_SECRET_KEY when Supabase accounts are configured/,
   );
   assert.throws(
-    () => createCloud({
-      SUPABASE_URL: "https://example.supabase.co",
-      SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
-      SUPABASE_SECRET_KEY: "sb_publishable_test",
-    }),
+    () =>
+      createCloud({
+        SUPABASE_URL: "https://example.supabase.co",
+        SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
+        SUPABASE_SECRET_KEY: "sb_publishable_test",
+      }),
     /SUPABASE_SECRET_KEY must be a Supabase secret API key/,
   );
   const token = `a.${Buffer.from(JSON.stringify({ role: "service_role" })).toString("base64url")}.c`;
@@ -72,7 +74,9 @@ test("daily quotas use the server key and verified user ID and fail closed on da
     assert.equal(headers.get("apikey"), secret);
     assert.equal(init?.redirect, "error");
     assert.deepEqual(JSON.parse(init?.body as string), {
-      p_user: "alice", p_kind: kind, p_spend: true,
+      p_user: "alice",
+      p_kind: kind,
+      p_spend: true,
     });
     return new Response(JSON.stringify(result), { status });
   };
@@ -89,7 +93,10 @@ test("daily quotas use the server key and verified user ID and fail closed on da
   status = 400;
   const previousResult = result;
   result = { message: "admin_student_blocked" };
-  await assert.rejects(cloud.quota("alice", true), { code: "admin_student_blocked", status: 403 });
+  await assert.rejects(cloud.quota("alice", true), {
+    code: "admin_student_blocked",
+    status: 403,
+  });
   result = previousResult;
   status = 200;
   for (const invalid of [
@@ -105,10 +112,7 @@ test("daily quotas use the server key and verified user ID and fail closed on da
     );
   }
   status = 503;
-  await assert.rejects(
-    cloud.quota("alice", true),
-    /temporarily unavailable/,
-  );
+  await assert.rejects(cloud.quota("alice", true), /temporarily unavailable/);
   const networkError = new Error("network unavailable");
   globalThis.fetch = async () => {
     throw networkError;
@@ -173,7 +177,10 @@ test("temporary local test allowance is scoped to a confirmed account and disabl
   globalThis.fetch = async (url) => {
     const auth = String(url).endsWith("/auth/v1/user");
     if (!auth && blocked)
-      return new Response(JSON.stringify({ message: "admin_student_blocked" }), { status: 400 });
+      return new Response(
+        JSON.stringify({ message: "admin_student_blocked" }),
+        { status: 400 },
+      );
     return new Response(
       JSON.stringify(
         auth
@@ -237,7 +244,9 @@ test("temporary local test allowance is scoped to a confirmed account and disabl
   await local.authorize("Bearer tester", false);
   assert.equal((await local.quota("tester")).remaining, 250);
   blocked = true;
-  await assert.rejects(local.spendReplyReading("tester"), { code: "admin_student_blocked" });
+  await assert.rejects(local.spendReplyReading("tester"), {
+    code: "admin_student_blocked",
+  });
   blocked = false;
   for (let i = 0; i < 250; i++)
     assert.equal((await local.quota("tester", true)).allowed, true);
@@ -331,7 +340,9 @@ test("browsers get the public URL while the server uses the internal LAN address
     );
   };
   await cloud.quota("alice");
-  assert.deepEqual(urls, ["http://192.168.1.20:8000/rest/v1/rpc/ai_quota_spend"]);
+  assert.deepEqual(urls, [
+    "http://192.168.1.20:8000/rest/v1/rpc/ai_quota_spend",
+  ]);
 });
 
 test("inventory photo links use the public URL, not the internal address", async (t) => {

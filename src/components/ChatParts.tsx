@@ -46,13 +46,7 @@ function initialOf(name: string) {
 }
 
 /** The listing photo with the other student's initial on it, recognisable at a glance. */
-function ChatIdentity({
-  image,
-  name,
-}: {
-  image?: string;
-  name: string;
-}) {
+function ChatIdentity({ image, name }: { image?: string; name: string }) {
   return (
     <span className="chat-identity" aria-hidden="true">
       {image ? (

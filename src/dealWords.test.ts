@@ -230,17 +230,45 @@ test("a thread card names its deal in a few words", () => {
   assert.equal(threadDealNote(offer, "buyer", NOW), "Offer · CHF 40");
   assert.equal(threadDealNote(offer, "seller", NOW), "Your offer · CHF 40");
   assert.equal(
-    threadDealNote(deal({ status: "agreed", agreed: { terms, at: "2026-11-19T13:00:00.000Z" } }), "buyer", NOW),
+    threadDealNote(
+      deal({
+        status: "agreed",
+        agreed: { terms, at: "2026-11-19T13:00:00.000Z" },
+      }),
+      "buyer",
+      NOW,
+    ),
     "Agreed · Fri 18:00",
   );
-  assert.equal(threadDealNote(deal({ status: "cancelled" }), "buyer", NOW), "Deal cancelled");
+  assert.equal(
+    threadDealNote(deal({ status: "cancelled" }), "buyer", NOW),
+    "Deal cancelled",
+  );
   assert.equal(threadDealNote(deal(), "buyer", NOW), undefined);
   assert.equal(threadDealNote(null, "buyer", NOW), undefined);
-  const booked = deal({ status: "agreed", agreed: { terms, at: "2026-11-19T13:00:00.000Z" } });
-  const after = (hours: number) => new Date(Date.parse(terms.pickupAt!) + hours * 3_600_000);
-  assert.equal(threadDealNote(booked, "seller", after(25)), "Did the pickup happen?");
+  const booked = deal({
+    status: "agreed",
+    agreed: { terms, at: "2026-11-19T13:00:00.000Z" },
+  });
+  const after = (hours: number) =>
+    new Date(Date.parse(terms.pickupAt!) + hours * 3_600_000);
   assert.equal(
-    threadDealNote(deal({ status: "cancelled", outcome: { kind: "pickup_expired", by: null, at: "2026-11-22T17:00:00.000Z" } }), "buyer", NOW),
+    threadDealNote(booked, "seller", after(25)),
+    "Did the pickup happen?",
+  );
+  assert.equal(
+    threadDealNote(
+      deal({
+        status: "cancelled",
+        outcome: {
+          kind: "pickup_expired",
+          by: null,
+          at: "2026-11-22T17:00:00.000Z",
+        },
+      }),
+      "buyer",
+      NOW,
+    ),
     "Reservation released",
   );
 });
@@ -254,14 +282,19 @@ test("away from its thread a deal reads as its strip, and a thread without an of
       listing,
       now: new Date("2026-11-19T13:05:00.000Z"),
     });
-  assert.deepEqual(view({ proposal: { by: "seller", terms, messageId: "m1" } }), {
-    lead: "Léa offers",
-    detail: "CHF 40 · Fri 18:00 · FMEL Vortex",
-    tone: "needs",
-  });
+  assert.deepEqual(
+    view({ proposal: { by: "seller", terms, messageId: "m1" } }),
+    {
+      lead: "Léa offers",
+      detail: "CHF 40 · Fri 18:00 · FMEL Vortex",
+      tone: "needs",
+    },
+  );
   assert.equal(
-    view({ status: "agreed", agreed: { terms, at: "2026-11-19T13:00:00.000Z" } })
-      ?.tone,
+    view({
+      status: "agreed",
+      agreed: { terms, at: "2026-11-19T13:00:00.000Z" },
+    })?.tone,
     "booked",
   );
   assert.equal(view({}), null);
@@ -269,7 +302,13 @@ test("away from its thread a deal reads as its strip, and a thread without an of
 
 test("away from its thread, an offer whose message waited a day says so", () => {
   const offer = deal({ proposal: { by: "buyer", terms, messageId: "m1" } });
-  const sent = (at: string) => ({ id: "m1", from: "me" as const, text: "CHF 40?", at, structured: true });
+  const sent = (at: string) => ({
+    id: "m1",
+    from: "me" as const,
+    text: "CHF 40?",
+    at,
+    structured: true,
+  });
   const away = (latest?: ReturnType<typeof sent>) => ({
     deal: offer,
     role: "buyer" as const,
@@ -279,17 +318,28 @@ test("away from its thread, an offer whose message waited a day says so", () => 
   });
   assert.equal(awayPhase(away(sent("2026-11-18T12:00:00.000Z"))), "no_answer");
   assert.equal(
-    dealView({ ...away(sent("2026-11-18T12:00:00.000Z")), other: "Léa" })?.status,
+    dealView({ ...away(sent("2026-11-18T12:00:00.000Z")), other: "Léa" })
+      ?.status,
     "No answer yet",
   );
-  assert.equal(awayPhase(away(sent("2026-11-19T09:00:00.000Z"))), "you_confirmed");
+  assert.equal(
+    awayPhase(away(sent("2026-11-19T09:00:00.000Z"))),
+    "you_confirmed",
+  );
   assert.equal(awayPhase(away()), "you_confirmed");
 });
 
 test("a seller's reserved listing names the buyer and the pickup", () => {
-  assert.equal(reservedForChip("Arjun", terms), "Reserved for Arjun · Fri 18:00");
   assert.equal(
-    reservedForChip("Arjun", { ...terms, fulfillment: "shipping", pickupAt: null }),
+    reservedForChip("Arjun", terms),
+    "Reserved for Arjun · Fri 18:00",
+  );
+  assert.equal(
+    reservedForChip("Arjun", {
+      ...terms,
+      fulfillment: "shipping",
+      pickupAt: null,
+    }),
     "Reserved for Arjun",
   );
 });

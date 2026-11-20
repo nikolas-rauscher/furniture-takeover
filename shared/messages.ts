@@ -1,4 +1,9 @@
-import type { Deal, DealEvent, PickupEvent, PickupStatusChange } from "./deal.ts";
+import type {
+  Deal,
+  DealEvent,
+  PickupEvent,
+  PickupStatusChange,
+} from "./deal.ts";
 export type ChatMessage = {
   id: string;
   deal?: DealEvent;
@@ -16,7 +21,10 @@ export type SellerConversation = {
   image?: string;
   buyerKey?: string;
   deal?: Deal;
-  systemEvents?: {kind: "superseded" | "pickup_check_due" | "pickup_expired";at:string}[];
+  systemEvents?: {
+    kind: "superseded" | "pickup_check_due" | "pickup_expired";
+    at: string;
+  }[];
   deletedAt?: string;
   messages: ChatMessage[];
 };

@@ -761,7 +761,10 @@ test("explicit answered-question history remains usable as seller evidence", () 
 });
 
 test("a seller's answer reaches the description restated with words of Pako's question", () => {
-  const draft = { title: "MacBook Pro", description: "Two small scratches on the lid." };
+  const draft = {
+    title: "MacBook Pro",
+    description: "Two small scratches on the lid.",
+  };
   const answer = (description: string, quote = "512 GB") =>
     listingAction(
       {

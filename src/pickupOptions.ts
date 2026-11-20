@@ -148,7 +148,9 @@ function pickedUp({
       id: "picked_up",
       label: "Mark sold",
       send,
-      unavailable: day.canMarkSold ? undefined : "You can mark it sold at pickup time.",
+      unavailable: day.canMarkSold
+        ? undefined
+        : "You can mark it sold at pickup time.",
     };
   return {
     id: "picked_up",
@@ -305,7 +307,9 @@ export function listingPickupChoices(context: Omit<Context, "role">): {
 export function pickupChoices(context: Context): PickupChoices {
   const { day, deal, role } = context;
   if (day.pickupCheck)
-    return day.pickupCheck.expired ? { secondary: [] } : pickupCheckChoices(context);
+    return day.pickupCheck.expired
+      ? { secondary: [] }
+      : pickupCheckChoices(context);
   if (day.change && deal.proposal)
     return changeChoices(context, deal.proposal.terms);
   if (role === "seller" && day.buyerReportedPickup)
