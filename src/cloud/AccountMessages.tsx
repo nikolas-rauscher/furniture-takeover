@@ -1,57 +1,19 @@
 import { cardImageFor } from "../../shared/listingPhotos";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "../components/ui/dropdown-menu";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { AnimatePresence } from "motion/react";
-import { useEffect, useEffectEvent, useRef, useState } from "react";
-import {
-  Archive,
-  ArchiveRestore,
-  Ellipsis,
-  ArrowLeft,
-} from "@/components/icons";
+import { useEffect, useRef, useState } from "react";
 import type { InboxView } from "../api/inbox";
-import type {
-  MessagesProps,
-  OfferAgain,
-  ThreadRequest,
-} from "../components/messagesProps";
-import InboxEmpty from "../components/InboxEmpty";
+import type { MessagesProps, ThreadRequest } from "../components/messagesProps";
+import Messages from "../components/Messages";
 import {
-  ChatPartner,
-  ChatSegment,
-  ChatThreadCard,
-  InboxLoading,
-  usePakoDrafts,
-} from "../components/ChatParts";
-import {
-  useThreadDeal,
-  type DealController,
-  type ThreadEvent,
-} from "../components/ThreadDeal";
-import { useThreadPako } from "../components/ThreadPako";
-import {
-  CARD_IN_CONVERSATION,
-  sendFailure,
-  ThreadComposer,
-  ThreadDisclosure,
-  ThreadLog,
-} from "../components/ThreadView";
-import Pako from "../components/onboarding/Pako";
-import { useMediaQuery } from "../hooks/useMediaQuery";
+  useMessagesState,
+  type InboxFilter,
+  type MessagesModel,
+  type ThreadRow,
+} from "../components/messagesModel";
+import type { DealController, ThreadEvent } from "../components/ThreadDeal";
 import { useNow } from "../hooks/useNow";
-import { usePageVisible } from "../hooks/usePageVisible";
 import { accountInboxThread, isUnread } from "../inboxActivity";
-import { newestAt } from "../inboxDeals";
 import type { ThreadMessage } from "../pakoThread";
-import { NO_TERMS } from "../dealOptions";
-import { attachedTermsNote, threadDealNote } from "../dealWords";
+import { threadDealNote } from "../dealWords";
 import type { Conversation, Message } from "./client";
 import { useMarketplaceData } from "../marketplaceData";
 import { PendingMessage } from "../pendingMessage";
@@ -61,11 +23,12 @@ import { useAccountThread } from "./useAccountThread";
 import { nextPickupBuyer, threadDealSnapshot } from "../../shared/deal";
 import { availableAgainMessage } from "../../shared/dealMessages";
 import { money, type Product } from "../../shared/marketplace";
-const FILTERS = [
-  ["all", "All"],
-  ["buying", "Buying"],
-  ["selling", "Selling"],
-] as const;
+
+type AccountMessagesProps = MessagesProps &
+  Extract<InboxView, { mode: "account" }> & {
+    threadRequest?: ThreadRequest;
+  };
+
 const STATUS_WORDS: Record<Product["status"], string> = {
   active: "Available",
   withdrawn: "Archived listing",
@@ -81,29 +44,28 @@ const GONE_NOTES: Record<Exclude<Product["status"], "active">, string> = {
 const fromSide = (message: Message, userId: string) =>
   message.sender_id === userId ? ("me" as const) : ("them" as const);
 
-export default function AccountMessages({
+/** The demo listings belong to seeded sellers, whose names carry this prefix. */
+const withoutDemoPrefix = (name: string) => name.replace(/^Demo Seller — /, "");
+
+/** Messages for a signed-in student. */
+export default function AccountMessages(props: AccountMessagesProps) {
+  const model = useAccountMessages(props);
+  return <Messages app={props} model={model} />;
+}
+
+/** The signed-in inbox: server conversations with search, archive, blocking and reports. */
+function useAccountMessages({
   client,
   inbox,
   source,
-  pako: reading,
   listingId,
   listing,
   listings,
   onOpenListing,
-  onBrowse,
   initialMessage,
-  initialTerms,
-  offerRequest,
-  homePoint,
-  onListingStatus,
-  onBeforeSend,
-  onSent,
   onDeleted,
   threadRequest,
-}: MessagesProps &
-  Extract<InboxView, { mode: "account" }> & {
-    threadRequest?: ThreadRequest;
-  }) {
+}: AccountMessagesProps): MessagesModel {
   const { userId } = source;
   const dealApi = useMarketplaceData().deals;
   const rows = inbox.rows;
@@ -112,13 +74,12 @@ export default function AccountMessages({
     archived = rows?.archived ?? [],
     blocked = rows?.blocked ?? [],
     names = rows?.names ?? {};
+  const state = useMessagesState({});
+  const { setDrafts, setBusy, setError } = state;
   const [selected, setSelected] = useState(""),
     [query, setQuery] = useState(""),
-    [filter, setFilter] = useState<"all" | "buying" | "selling">("all"),
-    [showArchived, setShowArchived] = useState(false),
-    [error, setError] = useState(""),
-    [busy, setBusy] = useState(false),
-    [drafts, setDrafts] = useState<Record<string, string>>({});
+    [filter, setFilter] = useState<InboxFilter>("all"),
+    [showArchived, setShowArchived] = useState(false);
   const pending = useRef(new PendingMessage());
   const requestedSelection = useRef({ listingId, initialMessage });
   const selectionDone = useRef(false);
@@ -145,7 +106,7 @@ export default function AccountMessages({
     setSelected(threadRequest.id);
     const { id, draft } = threadRequest;
     if (draft) setDrafts((current) => ({ ...current, [id]: draft }));
-  }, [threadRequest, rows]);
+  }, [threadRequest, rows, setDrafts]);
   // Once the inbox has loaded, open the conversation the app asked for, or the newest one.
   useEffect(() => {
     if (!rows || selectionDone.current) return;
@@ -166,7 +127,7 @@ export default function AccountMessages({
         ...current,
         [target?.id ?? `new:${listingId}`]: initialMessage,
       }));
-  }, [rows, listingId, initialMessage, userId]);
+  }, [rows, listingId, initialMessage, userId, setDrafts]);
   const current = threads.find((c) => c.id === selected);
   const product = current
     ? listings.find((p) => p.id === current.listing_id)
@@ -182,7 +143,7 @@ export default function AccountMessages({
     ? names[otherId] || (current?.buyer_id === userId ? "Seller" : "Buyer")
     : (product?.seller ?? "Seller");
   const otherName = product?.demo
-    ? rawOtherName.replace(/^Demo Seller — /, "")
+    ? withoutDemoPrefix(rawOtherName)
     : rawOtherName;
   const inQuery = (words: string) =>
     words.toLowerCase().includes(query.trim().toLowerCase());
@@ -206,22 +167,9 @@ export default function AccountMessages({
     !showArchived &&
     filter !== "selling" &&
     inQuery(`${otherName} ${product.title}`);
-  const text = drafts[selected] ?? "";
-  const setText = (value: string) =>
-    setDrafts((xs) => ({ ...xs, [selected]: value }));
   const otherBlocked = !!otherId && blocked.includes(otherId);
   /** The demo listings belong to seeded sellers, who never reply. */
   const seededSeller = Boolean(product?.demo);
-  // A message the app prepared, the opening offer or a follow-up, stays labelled as Pako's until the student edits it.
-  const appDraft = [initialMessage, threadRequest?.draft].some(
-    (draft) => draft !== undefined && text === draft,
-  );
-  /** Only the opening offer from the search chat carries terms. */
-  const openingTerms =
-    initialMessage !== undefined && text === initialMessage
-      ? initialTerms
-      : undefined;
-  const pakoDrafts = usePakoDrafts();
   const thread = useAccountThread(source, current?.id);
   const deal = useAccountDeal(inbox, current?.id, role);
   const events: ThreadEvent[] = [
@@ -252,8 +200,6 @@ export default function AccountMessages({
     at: message.created_at,
     ...(structured.has(message.id) ? { structured: true } : {}),
   }));
-  const pageVisible = usePageVisible();
-  const cardInConversation = useMediaQuery(CARD_IN_CONVERSATION);
   /** Another thread about the same listing in which the seller already agreed. */
   const agreedElsewhere =
     role === "seller" && current
@@ -264,34 +210,7 @@ export default function AccountMessages({
             rows?.deals?.[thread.id]?.status === "agreed",
         )
       : undefined;
-  const visible = Boolean(current);
-  const assistant = useThreadPako({
-    reading,
-    thread:
-      current && product
-        ? {
-            key: current.id,
-            role,
-            listing: product,
-            messages,
-            // Pickup news marks its messages as structured, so Pako waits for it.
-            loaded:
-              thread.loaded &&
-              deal.loaded &&
-              (!deal.deal || deal.pickupEventsLoaded),
-            deal: threadDealSnapshot(deal.deal, role),
-            cache: source.draftCache(current.id),
-          }
-        : null,
-    otherName,
-    visible,
-    text,
-    onText: setText,
-    canNudge: !seededSeller,
-    agreedWith: agreedElsewhere && (names[agreedElsewhere.buyer_id] || "Buyer"),
-  });
   const now = useNow();
-  const [offerAgain, setOfferAgain] = useState<OfferAgain>();
   /** After a released pickup, the next buyer in the inbox who wrote about the listing. */
   const released =
     role === "seller" && product?.status === "active" ? current : undefined;
@@ -319,23 +238,14 @@ export default function AccountMessages({
     product && {
       name: names[nextThread.buyerId] || "Buyer",
       onOffer: () => {
-        const draft = availableAgainMessage(product.title);
-        setOfferAgain({
+        state.offerAgainIn(nextThread.id, {
           threadKey: nextThread.id,
           releasedConversationId: released.id,
-          draft,
+          draft: availableAgainMessage(product.title),
         });
         setSelected(nextThread.id);
-        setDrafts((items) => ({ ...items, [nextThread.id]: draft }));
       },
     };
-  /** The composer holds the offer of a released item to this thread's buyer. */
-  const offeringAgain =
-    offerAgain?.threadKey === selected && role === "seller"
-      ? offerAgain
-      : undefined;
-  /** Pako's offer of a released item to this buyer, still as he wrote it. */
-  const offerAgainDraft = offeringAgain?.draft === text;
   /** A first offer starts the conversation, then records the offer with its message. */
   const controller: DealController = current
     ? deal
@@ -349,63 +259,10 @@ export default function AccountMessages({
           );
           setSelected(conversation.id);
           void inbox.refresh();
-          window.dispatchEvent(
-            new CustomEvent("takeover-message-sent", {
-              detail: conversation.id,
-            }),
-          );
+          announceSent(conversation.id);
           return result;
         },
       };
-  const threadDeal = useThreadDeal({
-    threadKey: current?.id ?? selected,
-    controller,
-    role,
-    otherName,
-    listing: product,
-    messages,
-    events,
-    turn: assistant.turn,
-    enabled: !otherBlocked && !seededSeller,
-    visible,
-    homePoint,
-    now,
-    nextBuyer,
-    onStatusChange: onListingStatus,
-    onWrite: setText,
-  });
-  // A listing's "Draft an offer" opens the offer card in its thread, once per tap.
-  const offerOpened = useRef<number>(undefined);
-  const offerThread =
-    product?.id === listingId &&
-    role === "buyer" &&
-    controller.loaded &&
-    threadDeal.open;
-  const openOffer = useEffectEvent(() =>
-    threadDeal.openOffer({ mode: "offer", terms: NO_TERMS }),
-  );
-  useEffect(() => {
-    if (!offerRequest || offerOpened.current === offerRequest || !offerThread)
-      return;
-    offerOpened.current = offerRequest;
-    openOffer();
-  }, [offerRequest, offerThread]);
-  // Terms travel with the text from Pako's option or the opening offer while the deal can take them.
-  const attached = assistant.terms ?? openingTerms ?? null;
-  const termsNote =
-    attached && threadDeal.open && !deal.error
-      ? attachedTermsNote(text, attached)
-      : null;
-  // Reading a thread covers the other side's newest message and news nobody wrote, such as another buyer's deal.
-  const news = current && rows?.systemLatest[current.id];
-  const seenUpTo = newestAt([
-    [...messages].reverse().find((message) => message.from === "them")?.at,
-    news && news.sender_id !== userId ? news.created_at : undefined,
-  ]);
-  useEffect(() => {
-    if (visible && pageVisible && current && seenUpTo)
-      void inbox.markRead(current.id, seenUpTo);
-  }, [visible, pageVisible, current?.id, seenUpTo, inbox.markRead]);
   async function changeArchive(id: string, remove: boolean) {
     setBusy(true);
     setError("");
@@ -469,7 +326,8 @@ export default function AccountMessages({
     return conversation;
   }
   /** A message without terms: the conversation's ordinary path. */
-  async function sendPlain(conversation: Conversation) {
+  async function sendPlain(itemId: string, text: string) {
+    const conversation = await conversationFor(itemId);
     const id = pending.current.idFor(conversation.id, role, text);
     await source.send({
       id,
@@ -480,55 +338,17 @@ export default function AccountMessages({
     pending.current.acknowledge(id);
     return id;
   }
-  /** The conversation's own path for the composed text: offered again, with terms, or plain. */
-  function sendComposed(conversation: Conversation) {
-    const withTerms = attached && termsNote?.states ? attached : null;
-    if (offeringAgain)
-      return threadDeal.sendPickup(
-        {
-          type: "offer_again",
-          releasedConversationId: offeringAgain.releasedConversationId,
-        },
-        text.trim(),
-      );
-    return withTerms
-      ? threadDeal.sendTerms(withTerms, text.trim())
-      : sendPlain(conversation);
-  }
-  async function send() {
-    const fromPako = appDraft || offerAgainDraft || assistant.draftedByPako;
-    const celebrates = Boolean(openingTerms) || assistant.celebrates;
-    const withTerms = attached && termsNote?.states ? attached : null;
-    setBusy(true);
-    setError("");
-    const key = selected;
-    try {
-      const itemId = current?.listing_id ?? product!.id;
-      onBeforeSend?.(itemId, role);
-      const conversation = await conversationFor(itemId);
-      const id = await sendComposed(conversation);
-      if (offeringAgain) setOfferAgain(undefined);
-      if (fromPako) pakoDrafts.remember(id);
-      if (celebrates && !withTerms)
-        threadDeal.celebrate({ kind: "sent", other: otherName });
-      assistant.sent();
-      onSent?.(itemId, role, text.trim());
-      setDrafts((xs) => ({ ...xs, [key]: "", [conversation.id]: "" }));
-      setSelected(conversation.id);
-      await source.unarchiveAfterSend(conversation.id);
-      const sentTo = conversation.id;
-      inbox.change((rows) => ({
-        ...rows,
-        archived: rows.archived.filter((x) => x !== sentTo),
-      }));
-      window.dispatchEvent(
-        new CustomEvent("takeover-message-sent", { detail: conversation.id }),
-      );
-    } catch (err) {
-      setError(sendFailure(err));
-    } finally {
-      setBusy(false);
-    }
+  /** A sent message moves the draft to its conversation and brings that conversation back from the archive. */
+  async function afterSend(itemId: string) {
+    const { id } = await conversationFor(itemId);
+    setDrafts((items) => ({ ...items, [id]: "" }));
+    setSelected(id);
+    await source.unarchiveAfterSend(id);
+    inbox.change((rows) => ({
+      ...rows,
+      archived: rows.archived.filter((x) => x !== id),
+    }));
+    announceSent(id);
   }
   const threadNote = (c: Conversation, item: Product | undefined) => {
     const threadDealState = rows?.deals?.[c.id];
@@ -546,269 +366,177 @@ export default function AccountMessages({
       (newest && fromSide(newest, userId) === "them" ? "Your turn" : undefined)
     );
   };
-  return (
-    <section
-      className={`messages-page account-messages${selected ? " has-conversation" : ""}`}
-      aria-label="Messages page"
-    >
-      <div className="page-title title-with-action">
-        <h1>Messages</h1>
-        <Button
-          className="text-button"
-          onClick={() => {
-            setShowArchived((value) => !value);
-            setSelected("");
-            setError("");
-          }}
-        >
-          {showArchived ? "Back to Messages" : "Archived"}
-        </Button>
-      </div>
-      {rows && rows.reads === null && (
-        <p className="account-notice" role="status">
-          Pako can't read replies here yet. You can still send messages.
-        </p>
-      )}
-      <div className="seller-chat-layout">
-        <nav aria-label="Conversations">
-          <div className="inbox-controls">
-            <Input
-              type="search"
-              placeholder="Search conversations"
-              aria-label="Search conversations"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <ChatSegment
-              label="Conversation filters"
-              options={FILTERS}
-              value={filter}
-              onChange={setFilter}
-            />
-          </div>
-          {visibleThreads.map((c, order) => {
-            const item = listings.find((l) => l.id === c.listing_id),
-              other = c.buyer_id === userId ? c.seller_id : c.buyer_id,
-              newest = latest[c.id];
-            return (
-              <ChatThreadCard
-                key={c.id}
-                order={order}
-                active={selected === c.id}
-                disabled={busy}
-                image={item && cardImageFor(item)}
-                name={
-                  (item?.demo
-                    ? names[other]?.replace(/^Demo Seller — /, "")
-                    : names[other]) ||
-                  (c.buyer_id === userId ? "Seller" : "Buyer")
-                }
-                title={item?.title ?? "Listing unavailable"}
-                preview={
-                  newest &&
-                  `${newest.sender_id === userId ? "You: " : ""}${newest.body}`
-                }
-                note={threadNote(c, item)}
-                unread={
-                  rows?.reads != null &&
-                  isUnread(
-                    accountInboxThread(
-                      c.id,
-                      newest,
-                      userId,
-                      rows.systemLatest[c.id],
-                    ),
-                    rows.reads,
-                  )
-                }
-                onSelect={() => {
-                  setSelected(c.id);
-                  setError("");
-                }}
-              />
-            );
-          })}
-          {newThreadShown && product && (
-            <ChatThreadCard
-              order={visibleThreads.length}
-              active
-              image={cardImageFor(product)}
-              name={otherName}
-              title={product.title}
-              note="New conversation"
-            />
-          )}
-          {!rows && !inbox.loadError && <InboxLoading />}
-          {rows &&
-            !visibleThreads.length &&
-            !newThreadShown &&
-            (query || filter !== "all" || showArchived ? (
-              <p>
-                {query || filter !== "all"
-                  ? "No matches. Try a different search or filter."
-                  : "No archived conversations."}
-              </p>
-            ) : (
-              <InboxEmpty onBrowse={onBrowse} />
-            ))}
-        </nav>
-        <section
-          className="seller-chat"
-          aria-label={
-            selected && (current || product)
-              ? `Conversation with ${otherName}`
-              : "Conversation"
+  const select = (id: string) => {
+    setSelected(id);
+    setError("");
+  };
+  const threadRows = visibleThreads.map((c): ThreadRow => {
+    const item = listings.find((l) => l.id === c.listing_id),
+      other = c.buyer_id === userId ? c.seller_id : c.buyer_id,
+      newest = latest[c.id];
+    return {
+      id: c.id,
+      active: selected === c.id,
+      image: item && cardImageFor(item),
+      name:
+        (item?.demo && names[other]
+          ? withoutDemoPrefix(names[other])
+          : names[other]) || (c.buyer_id === userId ? "Seller" : "Buyer"),
+      title: item?.title ?? "Listing unavailable",
+      preview:
+        newest && `${newest.sender_id === userId ? "You: " : ""}${newest.body}`,
+      note: threadNote(c, item),
+      unread:
+        rows?.reads != null &&
+        isUnread(
+          accountInboxThread(c.id, newest, userId, rows.systemLatest[c.id]),
+          rows.reads,
+        ),
+      onSelect: () => select(c.id),
+    };
+  });
+  const filtering = query !== "" || filter !== "all";
+  const shown = selected !== "" && (current !== undefined || !!product);
+  const itemId = current?.listing_id ?? product?.id ?? "";
+  const dealNote = !otherBlocked && !seededSeller ? deal.error : "";
+  return {
+    kind: "account",
+    state,
+    selected,
+    draftKey: selected,
+    role,
+    conversationOpen: selected !== "",
+    visible: Boolean(current),
+    now,
+    notice:
+      rows && rows.reads === null
+        ? "Pako can't read replies here yet. You can still send messages."
+        : undefined,
+    archiveView: {
+      showing: showArchived,
+      onToggle: () => {
+        setShowArchived((value) => !value);
+        select("");
+      },
+    },
+    search: { query, onQuery: setQuery, filter, onFilter: setFilter },
+    rows: threadRows,
+    newRow:
+      newThreadShown && product
+        ? {
+            id: `new:${product.id}`,
+            active: true,
+            image: cardImageFor(product),
+            name: otherName,
+            title: product.title,
+            note: "New conversation",
           }
-        >
-          {selected && (current || product) ? (
-            <>
-              <header>
-                <div className="chat-header-item">
-                  <Button
-                    className="icon-button inbox-back"
-                    aria-label="Back to conversations"
-                    onClick={() => {
-                      setSelected("");
-                      setError("");
-                    }}
-                  >
-                    <ArrowLeft size={20} />
-                  </Button>
-                  <ChatPartner
-                    name={otherName}
-                    image={product && cardImageFor(product)}
-                    title={product?.title ?? "Listing unavailable"}
-                    detail={
-                      product &&
-                      `${money(product.price)} · ${STATUS_WORDS[product.status]}`
-                    }
-                    onOpenListing={() =>
-                      onOpenListing(current?.listing_id ?? product!.id)
-                    }
-                  />
-                  {(current || otherId) && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        render={<Button variant="ghost" size="icon" />}
-                        aria-label="Conversation options"
-                        disabled={busy}
-                      >
-                        <Ellipsis size={20} />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {current && (
-                          <DropdownMenuItem
-                            onClick={() =>
-                              void changeArchive(
-                                current.id,
-                                !archived.includes(current.id),
-                              )
-                            }
-                          >
-                            {archived.includes(current.id) ? (
-                              <ArchiveRestore size={16} />
-                            ) : (
-                              <Archive size={16} />
-                            )}
-                            {archived.includes(current.id)
-                              ? "Restore conversation"
-                              : "Archive conversation"}
-                          </DropdownMenuItem>
-                        )}
-                        {current && otherId && <DropdownMenuSeparator />}
-                        {otherId && (
-                          <DropdownMenuItem
-                            disabled={busy}
-                            onClick={() => void toggleBlock(otherId)}
-                          >
-                            {blocked.includes(otherId)
-                              ? `Unblock ${otherName}`
-                              : `Block ${otherName}`}
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </div>
-              </header>
-              {!cardInConversation && threadDeal.card}
-              <ThreadLog
-                threadKey={current?.id ?? selected}
-                messages={messages}
-                otherName={otherName}
-                role={role}
-                loaded={thread.loaded}
-                error={thread.error}
-                drafted={pakoDrafts.drafted}
-                events={events}
-                extras={(message) => (
-                  <Report client={client} messageId={message.id} />
-                )}
-                disclosure={
-                  current &&
-                  product &&
-                  reading.available === "ready" && (
-                    <ThreadDisclosure
-                      autoRead={reading.autoRead}
-                      onOpenSettings={reading.onOpenSettings}
-                    />
-                  )
+        : undefined,
+    loading: !rows && !inbox.loadError,
+    empty:
+      rows && !visibleThreads.length && !newThreadShown
+        ? filtering || showArchived
+          ? {
+              note: filtering
+                ? "No matches. Try a different search or filter."
+                : "No archived conversations.",
+            }
+          : "inbox"
+        : "none",
+    loadError: inbox.loadError
+      ? { message: inbox.loadError, onRetry: () => void inbox.refresh() }
+      : undefined,
+    readError: inbox.readError || undefined,
+    thread: shown
+      ? {
+          image: product && cardImageFor(product),
+          title: product?.title ?? "Listing unavailable",
+          detail:
+            product &&
+            `${money(product.price)} · ${STATUS_WORDS[product.status]}`,
+          onOpenListing: () => onOpenListing(itemId),
+          onBack: () => select(""),
+          loaded: thread.loaded,
+          error: thread.error,
+          disclosure: Boolean(current && product),
+          actions: {
+            archive: current && {
+              archived: archived.includes(current.id),
+              onToggle: () =>
+                void changeArchive(current.id, !archived.includes(current.id)),
+            },
+            block: otherId
+              ? {
+                  blocked: otherBlocked,
+                  onToggle: () => void toggleBlock(otherId),
                 }
-                after={
-                  <>
-                    {cardInConversation && threadDeal.card}
-                    <AnimatePresence>{threadDeal.celebration}</AnimatePresence>
-                    {!otherBlocked &&
-                      !seededSeller &&
-                      !threadDeal.celebrating &&
-                      assistant.tray(threadDeal.trayMoment)}
-                  </>
-                }
-              />
-              {otherBlocked && (
-                <p className="inbox-blocked-note" role="status">
-                  You blocked this user. Unblock them to send a message.
-                </p>
-              )}
-              {!otherBlocked && !seededSeller && deal.error && (
-                <p className="chat-note" role="status">
-                  {deal.error}
-                </p>
-              )}
-              <ThreadComposer
-                text={text}
-                busy={busy}
-                disabled={otherBlocked}
-                error={error}
-                pakoDrafted={
-                  appDraft || offerAgainDraft || assistant.draftedByPako
-                }
-                tools={!otherBlocked && !seededSeller && assistant.askMenu}
-                terms={termsNote}
-                onTextChange={setText}
-                onSend={() => void send()}
-              />
-              {threadDeal.editor}
-            </>
-          ) : (
-            <div className="inbox-empty">
-              <Pako mood="idle" size={88} />
-              <h2>Your conversations</h2>
-              <p>Choose a conversation.</p>
-            </div>
-          )}
-        </section>
-      </div>
-      {inbox.loadError && (
-        <p role="alert">
-          {inbox.loadError}{" "}
-          <Button className="text-button" onClick={() => void inbox.refresh()}>
-            Retry
-          </Button>
-        </p>
-      )}
-      {inbox.readError && <p role="alert">{inbox.readError}</p>}
-      {error && !selected && <p role="alert">{error}</p>}
-    </section>
-  );
+              : undefined,
+          },
+          blocked: otherBlocked,
+          dealNote: dealNote || undefined,
+          send: {
+            listingId: itemId,
+            prepare: () => conversationFor(itemId),
+            plain: (text) => sendPlain(itemId, text),
+            after: () => afterSend(itemId),
+          },
+        }
+      : undefined,
+    threadKey: current?.id ?? selected,
+    otherName,
+    product,
+    messages,
+    events,
+    messageExtras: (message) => (
+      <Report client={client} messageId={message.id} />
+    ),
+    controller,
+    dealEnabled: !otherBlocked && !seededSeller,
+    nextBuyer: nextBuyer || undefined,
+    pako: {
+      thread:
+        current && product
+          ? {
+              key: current.id,
+              role,
+              listing: product,
+              messages,
+              // Pickup news marks its messages as structured, so Pako waits for it.
+              loaded:
+                thread.loaded &&
+                deal.loaded &&
+                (!deal.deal || deal.pickupEventsLoaded),
+              deal: threadDealSnapshot(deal.deal, role),
+              cache: source.draftCache(current.id),
+            }
+          : null,
+      canNudge: !seededSeller,
+      agreedWith:
+        agreedElsewhere && (names[agreedElsewhere.buyer_id] || "Buyer"),
+    },
+    offerTarget:
+      product?.id === listingId && role === "buyer" && controller.loaded,
+    termsAllowed: !deal.error,
+    preparedDrafts: [initialMessage, threadRequest?.draft].filter(
+      (draft) => draft !== undefined,
+    ),
+    openingDraft: initialMessage,
+    read: {
+      key: current?.id ?? "",
+      newsAt: newsFrom(current && rows?.systemLatest[current.id], userId),
+      mark: inbox.markRead,
+    },
+  };
 }
+
+/** News nobody in the thread wrote counts as read with the thread; the student's own does not count. */
+const newsFrom = (
+  news: { sender_id: string | null; created_at: string } | undefined,
+  userId: string,
+) => (news && news.sender_id !== userId ? news.created_at : undefined);
+
+/** Tells the open thread and the inbox that a message went out. */
+const announceSent = (conversationId: string) =>
+  window.dispatchEvent(
+    new CustomEvent("takeover-message-sent", { detail: conversationId }),
+  );
