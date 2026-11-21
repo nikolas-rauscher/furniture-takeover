@@ -26,7 +26,7 @@ import {
 } from "./v3Flow";
 import { PILOT_KEY, v3Job } from "./v3Jobs";
 import { rememberFinished, type V3Progress } from "./v3Progress";
-import type { V3ChoiceStep, V3Step } from "./v3Script";
+import type { V3AmountStep, V3ChoiceStep, V3Step } from "./v3Script";
 import { optionsOf, questionOf } from "./v3Words";
 import SectionStrip from "./SectionStrip";
 import type { Given, SceneState, StepContext } from "./stepContext";
@@ -67,8 +67,12 @@ const reactsToPick = (step: V3Step) => step.kind === "choice" && !step.product;
  * Pako's line on a question: the context of a step with a card, which the question
  * then follows above the answers, or else the question itself.
  */
-function choiceBubble(step: V3ChoiceStep, text: TourText): GuideBubble {
-  if (!step.card) return { id: step.id, text: questionOf(text, step) };
+function questionBubble(
+  step: V3ChoiceStep | V3AmountStep,
+  question: string,
+  text: TourText,
+): GuideBubble {
+  if (!step.card) return { id: step.id, text: question };
   const card: { title?: string; text: string } = text.v3.cards[step.card];
   return { id: step.id, title: card.title, text: card.text };
 }
@@ -79,7 +83,9 @@ function bubbleFor(step: V3Step, text: TourText): GuideBubble | undefined {
     case "part":
       return { id: step.id, text: v3.parts[step.section].bubble };
     case "choice":
-      return choiceBubble(step, text);
+      return questionBubble(step, questionOf(text, step), text);
+    case "amount":
+      return questionBubble(step, v3.amounts[step.id].question, text);
     case "draft":
       return { id: step.id, text: v3.draft.intro };
     case "scene":

@@ -131,22 +131,26 @@ const PARTICIPANTS: Participant[] = [
       "last-trouble": ["deadline-pickup"],
       "last-transport": ["not-yet"],
       "last-messages": ["6-15"],
+      "trade-frequency": ["monthly"],
       "idle-items": ["4-10"],
       "idle-release": ["yes"],
       "idle-why": ["listing-hassle", "transport"],
-      move: ["move-feb"],
-      "wanted-react": ["offer-now"],
       seeking: { chosen: ["yes"], text: "A bike" },
+      "check-listing": ["price", "photos"],
       "draft-day": ["sat"],
-      "draft-variant": ["wrong-price"],
       draft: {
         chosen: ["sent-unchanged"],
         first: ["send"],
-        text: "Great, thanks! So CHF 45, on Saturday at 5:30 pm at the Rolex Learning Center. See you then!",
+        text: "Great, thanks! So CHF 40, on Saturday at 5:30 pm at the Rolex Learning Center. See you then!",
       },
-      "draft-price": ["chf-45"],
+      "max-distance": ["1-3"],
+      "trust-signals": ["verified"],
       delegate: ["answer-questions", "suggest-time"],
+      "wanted-react": ["offer-now"],
+      "wtp-monthly": ["chf-3.5"],
       "pay-model": ["pack-5"],
+      "pay-model-not": ["seller-fee", "monthly"],
+      "pay-for": ["listings", "replies"],
       age: ["21-23"],
       gender: ["woman"],
     },
@@ -173,21 +177,21 @@ const PARTICIPANTS: Participant[] = [
       "last-trouble": ["finding"],
       "last-transport": ["foot"],
       "last-messages": ["1-5"],
+      "trade-frequency": ["yearly"],
       "idle-items": ["1-3"],
       "idle-release": ["unsure"],
       "idle-why": ["might-need", "keep"],
-      move: ["no-or-later"],
-      "wanted-react": ["rather-not"],
       seeking: ["no"],
-      "draft-variant": ["wrong-price"],
       draft: {
         chosen: ["sent-changed"],
         first: ["change"],
-        text: "Great, thanks! So CHF 40, on Sunday at 5:30 pm.",
+        text: "Great, thanks! So CHF 40, on Sunday at 6 pm.",
       },
-      "draft-price": ["chf-40"],
       delegate: ["none"],
+      "wanted-react": ["rather-not"],
+      "wtp-monthly": ["chf-0"],
       "pay-model": ["free"],
+      "pay-model-not": ["all-ok"],
     },
     events: [
       ["shown", "part-last-time"],
@@ -203,18 +207,18 @@ const PARTICIPANTS: Participant[] = [
       who: ["unil"],
       "last-role": ["none"],
       "idle-items": ["none"],
-      move: ["move-jun"],
-      "wanted-react": ["offer-later"],
       seeking: { chosen: ["yes"], text: "A desk lamp" },
-      "draft-variant": ["exact"],
       draft: {
         chosen: ["sent-own"],
         first: ["own"],
-        text: "Hi Mia, CHF 40 on Saturday works.",
+        text: "Hi Léa, CHF 40 on Saturday works.",
       },
-      "draft-price": ["chf-40"],
       delegate: ["remind"],
+      "wanted-react": ["offer-later"],
+      "wtp-monthly": ["chf-10"],
       "pay-model": ["monthly"],
+      "pay-model-not": [],
+      "pay-for": ["nothing"],
     },
     events: [
       ["shown", "who"],
@@ -228,7 +232,7 @@ const PARTICIPANTS: Participant[] = [
 async function addParticipant(
   db: Awaited<ReturnType<typeof studyDatabase>>["db"],
   participant: Participant,
-  version = "v4-1",
+  version = "v4-2",
 ) {
   const session = randomUUID();
   await db.query("select public.study_start($1,'v3',$2,'en',$3,$4)", [
@@ -279,14 +283,14 @@ async function addVolunteers(
   ] as const;
   for (const [name, roles] of forms)
     await db.query(
-      "select public.study_save_pilot($1,false,true,false,false,$2,'atrium','v4-1')",
+      "select public.study_save_pilot($1,false,true,false,false,$2,'atrium','v4-2')",
       [`${name}@epfl.ch`, roles],
     );
   await db.query(
-    "select public.study_save_pilot('flat@unil.ch',false,true,true,false,'{sell}','flat','v4-1')",
+    "select public.study_save_pilot('flat@unil.ch',false,true,true,false,'{sell}','flat','v4-2')",
   );
   await db.query(
-    "select public.study_save_pilot('later@unil.ch',true,false,false,true,'{}',null,'v4-1')",
+    "select public.study_save_pilot('later@unil.ch',true,false,false,true,'{}',null,'v4-2')",
   );
   // A form of another wording version counts in neither rate nor places.
   await db.query(
@@ -325,7 +329,7 @@ test("the v4 results queries run on the sessions of the named version only", asy
   for (const participant of PARTICIPANTS) await addParticipant(db, participant);
   await addParticipant(db, PARTICIPANTS[0], "v3-pilot");
   await db.query(
-    "select public.study_start($1,'v1','v4-1',null,'moodle','phone')",
+    "select public.study_start($1,'v1','v4-2',null,'moodle','phone')",
     [randomUUID()],
   );
   await addVolunteers(db);
@@ -410,8 +414,9 @@ test("the v4 results queries run on the sessions of the named version only", asy
     ),
     [
       ["all", 3, 2, 1],
-      ["moving-by-june", 2, 1, 1],
-      ["rest", 1, 1, 0],
+      ["monthly", 1, 1, 1],
+      ["not-answered", 1, 0, 0],
+      ["yearly", 1, 1, 0],
     ],
   );
   assert.deepEqual(
@@ -433,6 +438,7 @@ test("the v4 results queries run on the sessions of the named version only", asy
   assert.deepEqual(
     rowsOf(await query("rq3-wanted"), "step", "answer", "chosen", "answered"),
     [
+      ["max-distance", "1-3", 1, "1"],
       ["seeking", "yes", 2, "3"],
       ["seeking", "no", 1, "3"],
       ["wanted-react", "offer-later", 1, "3"],
@@ -444,77 +450,72 @@ test("the v4 results queries run on the sessions of the named version only", asy
     ["A bike"],
     ["A desk lamp"],
   ]);
+  const draft = await query("rq4-draft");
   assert.deepEqual(
     rowsOf(
-      await query("rq4-draft"),
-      "variant",
+      draft,
       "final",
       "first",
       "participants",
-      "completed_decisions",
+      "completed",
+      "sends_draft",
       "shown_task",
     ),
     [
-      ["exact", "sent-own", "own", 1, 1, 2],
-      ["wrong-price", "sent-changed", "change", 1, 2, 2],
-      ["wrong-price", "sent-unchanged", "send", 1, 2, 2],
+      ["sent-changed", "change", 1, 3, 2, 2],
+      ["sent-own", "own", 1, 3, 2, 2],
+      ["sent-unchanged", "send", 1, 3, 2, 2],
     ],
   );
-  const unchanged = await query("rq4-unchanged");
-  assert.deepEqual(
-    rowsOf(unchanged, "variant", "completed", "sent_unchanged"),
-    [
-      ["exact", 1, 0],
-      ["wrong-price", 2, 1],
-    ],
-  );
-  assert.deepEqual(
-    unchanged.map((row) => numberOf(row.unchanged_low)),
-    [wilsonLow(0, 1), wilsonLow(1, 2)],
-  );
-  assert.deepEqual(
-    rowsOf(await query("rq4-price"), "variant", "price", "participants"),
-    [
-      ["exact", "chf-40", 1],
-      ["wrong-price", "chf-40", 1],
-      ["wrong-price", "chf-45", 1],
-    ],
-  );
+  assert.equal(numberOf(draft[0].sends_draft_low), wilsonLow(2, 3));
+  assert.deepEqual(rowsOf(await query("rq4-texts"), "final", "text").sort(), [
+    ["sent-changed", "Great, thanks! So CHF 40, on Sunday at 6 pm."],
+    ["sent-own", "Hi Léa, CHF 40 on Saturday works."],
+  ]);
   assert.deepEqual(
     rowsOf(
-      await query("rq4-texts"),
-      "variant",
-      "final",
-      "price",
-      "text",
-    ).sort(),
-    [
-      ["exact", "sent-own", "chf-40", "Hi Mia, CHF 40 on Saturday works."],
-      [
-        "wrong-price",
-        "sent-changed",
-        "chf-40",
-        "Great, thanks! So CHF 40, on Sunday at 5:30 pm.",
-      ],
-    ],
-  );
-  assert.deepEqual(
-    rowsOf(
-      await query("rq4-delegate"),
-      "variant",
-      "task",
+      await query("multi"),
+      "step",
+      "option",
       "chosen",
       "participants",
+      "any_but_exclusive",
     ),
     [
-      ["all", "answer-questions", 1, 3],
-      ["all", "none", 1, 3],
-      ["all", "remind", 1, 3],
-      ["all", "suggest-time", 1, 3],
-      ["exact", "remind", 1, 1],
-      ["wrong-price", "answer-questions", 1, 2],
-      ["wrong-price", "none", 1, 2],
-      ["wrong-price", "suggest-time", 1, 2],
+      ["check-listing", "photos", 1, 1, 1],
+      ["check-listing", "price", 1, 1, 1],
+      ["delegate", "answer-questions", 1, 3, 2],
+      ["delegate", "none", 1, 3, 2],
+      ["delegate", "remind", 1, 3, 2],
+      ["delegate", "suggest-time", 1, 3, 2],
+      ["idle-why", "keep", 1, 2, 2],
+      ["idle-why", "listing-hassle", 1, 2, 2],
+      ["idle-why", "might-need", 1, 2, 2],
+      ["idle-why", "transport", 1, 2, 2],
+      ["pay-for", "listings", 1, 2, 1],
+      ["pay-for", "nothing", 1, 2, 1],
+      ["pay-for", "replies", 1, 2, 1],
+      ["pay-model-not", "all-ok", 1, 2, 1],
+      ["pay-model-not", "monthly", 1, 2, 1],
+      ["pay-model-not", "seller-fee", 1, 2, 1],
+      ["trust-signals", "verified", 1, 1, 1],
+    ],
+  );
+  assert.deepEqual(
+    rowsOf(
+      await query("rq5-wtp"),
+      "side",
+      "answered",
+      "median",
+      "q1",
+      "q3",
+      "nothing",
+    ),
+    [
+      ["all", 3, 3.5, 1.75, 6.75, 1],
+      ["buying", 1, 0, 0, 0, 1],
+      ["none", 1, 10, 10, 10, 0],
+      ["passing-on", 1, 3.5, 3.5, 3.5, 0],
     ],
   );
   assert.deepEqual(
@@ -560,7 +561,7 @@ test("the v4 results queries run on the sessions of the named version only", asy
       ["flat", 1, 0, 0, 1],
     ],
   );
-  assert.equal(queries.size, 17);
+  assert.equal(queries.size, 16);
 
   await runDeletion(run, deletion);
   for (const table of [
@@ -611,7 +612,7 @@ test("answers emptied by going back count as not answered in the v4 queries", as
     rowsOf(await query("rq2-idle"), "subgroup", "answered", "with_idle"),
     [
       ["all", 1, 0],
-      ["rest", 1, 0],
+      ["not-answered", 1, 0],
     ],
   );
   assert.deepEqual(

@@ -3,27 +3,19 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { useTourText } from "../i18n/TourLanguage";
 import TextAnswer from "../study/TextAnswer";
-import {
-  resumeDraft,
-  sentPrice,
-  sentResult,
-  type DraftPhase,
-} from "./draftResume";
+import { resumeDraft, sentResult, type DraftPhase } from "./draftResume";
 import type { Given, StepContext } from "./stepContext";
 import {
   DRAFT_DAY_STEP,
   DRAFT_DAYS,
-  DRAFT_PRICE_STEP,
-  DRAFT_PRICES,
-  DRAFT_VARIANT_STEP,
+  DRAFT_PRICE,
   type DraftAction,
   type DraftDay,
   type DraftResult,
-  type DraftVariant,
   type DraftWriting,
 } from "./v3Script";
 
-const PAUSE_MS = { "mia-typing": 1100, "pako-typing": 1000 } as const;
+const PAUSE_MS = { "lea-typing": 1100, "pako-typing": 1000 } as const;
 const REDUCED_PAUSE_MS = 250;
 /** The sent message stays in view this long before the next step. */
 const DECIDED_MS = 1100;
@@ -33,7 +25,7 @@ function Bubble({
   name,
   children,
 }: {
-  from: "mia" | "you" | "pako";
+  from: "lea" | "you" | "pako";
   name: string;
   children: ReactNode;
 }) {
@@ -47,18 +39,11 @@ function Bubble({
   );
 }
 
-/** The variant is drawn when the task is first shown, so it is there by now. */
-function variantOf(variant: DraftVariant | null): DraftVariant {
-  if (!variant) throw new Error("The draft task has no variant drawn.");
-  return variant;
-}
-
-/** Task: Mia's chat, the day agreed, and what to do with Pako's offer for that day. */
+/** Task: Léa's chat, the day agreed, and what to do with Pako's offer for that day. */
 export default function DraftChat({ context }: { context: StepContext }) {
   const { draft } = useTourText().v3;
   const reduced = useReducedMotion() === true;
   const { answers } = context.progress;
-  const draftVariant = variantOf(context.progress.draftVariant);
   const [start] = useState(() =>
     resumeDraft(answers[DRAFT_DAY_STEP]?.chosen[0], answers.draft),
   );
@@ -67,9 +52,7 @@ export default function DraftChat({ context }: { context: StepContext }) {
   const [writing, setWriting] = useState<DraftWriting | undefined>(
     start.writing,
   );
-  const offer = day
-    ? draft.offer(draft.days[day], DRAFT_PRICES[draftVariant])
-    : "";
+  const offer = day ? draft.offer(draft.days[day], DRAFT_PRICE) : "";
   const [message, setMessage] = useState(
     context.progress.unsentDraft ?? (start.writing === "change" ? offer : ""),
   );
@@ -81,8 +64,8 @@ export default function DraftChat({ context }: { context: StepContext }) {
   const questionId = useId();
 
   useEffect(() => {
-    if (phase !== "mia-typing" && phase !== "pako-typing") return;
-    const next: DraftPhase = phase === "mia-typing" ? "pako-typing" : "decide";
+    if (phase !== "lea-typing" && phase !== "pako-typing") return;
+    const next: DraftPhase = phase === "lea-typing" ? "pako-typing" : "decide";
     const timer = window.setTimeout(
       () => setPhase(next),
       reduced ? REDUCED_PAUSE_MS : PAUSE_MS[phase],
@@ -104,7 +87,7 @@ export default function DraftChat({ context }: { context: StepContext }) {
     return () => window.clearTimeout(timer);
   }, [phase, reduced]);
 
-  // The decision is seen whole: Mia's agreement scrolls to the top, so her terms, Pako's
+  // The decision is seen whole: Léa's agreement scrolls to the top, so her terms, Pako's
   // draft and the four choices stand together. The draft takes focus, so it is read first.
   useEffect(() => {
     if (phase !== "decide") return;
@@ -114,29 +97,19 @@ export default function DraftChat({ context }: { context: StepContext }) {
 
   function pickDay(picked: DraftDay) {
     setDay(picked);
-    setPhase("mia-typing");
-    // The variant is stored with the day: the offer it decides shows only after the day.
-    context.saveNow({
-      [DRAFT_DAY_STEP]: { chosen: [picked], text: "" },
-      [DRAFT_VARIANT_STEP]: { chosen: [draftVariant], text: "" },
-    });
+    setPhase("lea-typing");
+    context.saveNow({ [DRAFT_DAY_STEP]: { chosen: [picked], text: "" } });
     log.current?.focus();
   }
 
-  /**
-   * The final answer, saved at once with the price a sent message names; a decision
-   * straight from the choices names that choice as the first.
-   */
+  /** The final answer, saved at once; a decision straight from the choices names that choice as the first. */
   function decide(result: DraftResult, text: string, first?: DraftAction) {
     const decided: Given = {
       chosen: [result],
       text,
       firstChosen: first ? [first] : undefined,
     };
-    const price: Record<string, Given> = text
-      ? { [DRAFT_PRICE_STEP]: { chosen: [sentPrice(text)], text: "" } }
-      : {};
-    context.saveNow({ draft: decided, ...price });
+    context.saveNow({ draft: decided });
     context.keepUnsentDraft(null);
     setDecision(decided);
     setPhase("decided");
@@ -180,7 +153,7 @@ export default function DraftChat({ context }: { context: StepContext }) {
         aria-live="polite"
         tabIndex={-1}
       >
-        <Bubble from="mia" name={draft.mia}>
+        <Bubble from="lea" name={draft.lea}>
           {draft.askDay}
         </Bubble>
         {day && (
@@ -188,13 +161,13 @@ export default function DraftChat({ context }: { context: StepContext }) {
             {draft.yourDay(dayWords)}
           </Bubble>
         )}
-        {phase === "mia-typing" && (
-          <p className="tour-chat-typing">{draft.typing(draft.mia)}</p>
+        {phase === "lea-typing" && (
+          <p className="tour-chat-typing">{draft.typing(draft.lea)}</p>
         )}
         {after(["pako-typing", "decide", "write", "decided"]) && (
           <div ref={agreement} className="tour-chat-anchor">
-            <Bubble from="mia" name={draft.mia}>
-              {draft.confirm(dayWords, DRAFT_PRICES.exact)}
+            <Bubble from="lea" name={draft.lea}>
+              {draft.confirm(dayWords, DRAFT_PRICE)}
             </Bubble>
           </div>
         )}

@@ -2,9 +2,37 @@
 
 The tour page (`/tour`) has two uses. Without a tag it is the pitch: a hero and a short tour of takeover, and nothing is recorded. With a tag (`/tour?s=<channel>`) it is the study, described here. `/tour?s=<channel>&v=1` runs version 1 ([STUDY-v1.md](STUDY-v1.md)) unchanged, so both versions can be compared. Every session stores its questionnaire (`survey`), its wording version and its language.
 
-This file is the protocol of survey version 4, wording version `v4-1`. In code and in the database it still runs as questionnaire `v3` (`survey = 'v3'`); only the wording version tells v3 and v4 sessions apart. The script in `src/tour/v3/` follows this file, in English, French and German with equivalent meaning; the English wording below is the live reference. The app screens inside the phone stay in English. The decision rules are frozen before launch (see [Pre-registration](#pre-registration)).
+This file is the protocol of survey version 4, wording version `v4-2`. In code and in the database it still runs as questionnaire `v3` (`survey = 'v3'`); only the wording version tells v3 and v4 sessions apart. The script in `src/tour/v3/` follows this file, in English, French and German with equivalent meaning; the English wording below is the live reference. The app screens inside the phone stay in English. The decision rules are frozen before launch (see [Pre-registration](#pre-registration)).
 
 Setting: a course project (CS-500). Prices are hypothetical; nothing is launched, sold or booked.
+
+## What we test
+
+Five hypotheses, one per research question (H1 = RQ1, and so on). Each is read off the questions named here; the exact rules and cutoffs are in [Pre-registration](#pre-registration). A rule is read only with at least 40 answers to its item; below that the result is inconclusive and only counts are reported.
+
+| H   | Hypothesis                                                                                                                                    | Questions                                                                                                           | Support                                                                                                                                              | No support                                                       | Inconclusive                            |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------- |
+| H1  | The problem is coordination: replies, back-and-forth, timing and pickups are harder than finding or listing.                                  | `last-trouble`; `last-how`, `last-outcome`, `last-transport`, `last-messages` describe the attempt                  | Coordination ≥ 40% of those who tried, and more than finding + listing                                                                               | Coordination ≤ 20%                                               | Between the two, or fewer than 40       |
+| H2  | There is supply of idle things: many students have usable things they don't use and would let go; effort, not attachment, keeps them at home. | `idle-items`, `idle-release`, `idle-why`; `trade-frequency` (market size and segments) and `last-occasion` describe | ≥ 50% have an idle thing and would release it, and effort reasons outnumber keeping reasons                                                          | ≤ 30% would release, or keeping reasons outnumber effort reasons | Between the two, or fewer than 40       |
+| H3  | Local matching works: students would answer a nearby request.                                                                                 | `wanted-react`; `seeking`, `max-distance`, `trust-signals` describe                                                 | `offer-now` lower bound ≥ 25%                                                                                                                        | `offer-now` upper bound < 15%                                    | Between the two, or fewer than 40       |
+| H4  | Students delegate to Pako: they use its drafts and let it do chores alone.                                                                    | `draft` (what they do with Pako's correct draft), `delegate`; `check-listing` describes                             | ≥ 50% send Pako's draft (as written or edited) **and** ≥ 50% let Pako do at least one task alone                                                     | Either share ≤ 25%                                               | Neither threshold met, or fewer than 40 |
+| H5  | Some students would pay for Pako's help.                                                                                                      | `wtp-monthly`, `pay-model`, `pay-model-not`, `pay-for`                                                              | Descriptive only; no threshold. Reported: median and distribution of `wtp-monthly` by side, plan choices, plans ruled out, what people would pay for | –                                                                | –                                       |
+
+What the survey measures: stated answers, plus behaviour-like tasks in the practice chat (`draft`, `draft-day`). Stated intentions overstate what people later do, especially for prices and for answering a request; the chat task is closer to behaviour but has no real stakes, no real person and no time pressure. So the results can rank problems and options and rule ideas out; they cannot show adoption, real willingness to pay or how carefully people check drafts in real use.
+
+## Changed in v4-2
+
+Owner review of the live `v4-1`:
+
+- Removed `move` ("Will you move out by the end of June 2027?"); personal plans are not needed. "Wider than moving out" (H2) is read off `last-occasion`.
+- Removed the planted error: no `wrong-price` variant, no `draft-variant`, no `draft-price`, no CHF 45 debrief at the end. Everyone gets the correct draft (CHF 40, their day, 17:30). In a survey nobody proofreads carefully, and a planted mistake works against trust in Pako. H4 is now read off what people do with the correct draft and off `delegate`.
+- One storyline in part 3 with the same people and the same desk: Léa sells her desk, the participant buys it (Mia is now Léa), then takes Léa's place for `delegate`, and Léa posts the lamp request for `wanted-react`. In the deal scene the offer is CHF 40 in the survey (the tour keeps CHF 35); the caption says the buyer in the example is called Noah.
+- Parts by topic: part 1 is the last attempt only (`who` and `housing` moved to part 4); part 2 is "You right now" (new `trade-frequency` first, `seeking` moved here from part 3); part 3 is the story; part 4 is price, then about you.
+- New items: `trade-frequency` (part 2), `check-listing`, `max-distance`, `trust-signals` (part 3), `wtp-monthly`, `pay-model-not`, `pay-for` (part 4).
+- Price part: Pako's long card above the price cards is replaced by one neutral line on the first price screen, "Finally, a few questions about possible prices."; the free unit is no longer defined in words, the cards are unchanged. `pay-model` asks "Which of these options would you like best?".
+- `last-trouble` asks "What was difficult about this attempt, if anything was?".
+- Answer options may contain a decimal point (`chf-3.5`); event details keep the old pattern.
+- About 33 screens on the longest path; estimated 8–9 minutes, `V3_MINUTES` = 9.
 
 ## Changed in v4
 
@@ -16,48 +44,27 @@ User test 1 (one participant who did not know the app, German, wording `v3-8`, o
 - Product terms ("Auszugspaket", "Wanted nearby") were used before they were explained, and the part screens mixed topics.
 - The end screen's title was a long sentence placed left of centre.
 
-What v4 changes:
+What v4 changed:
 
-- Research questions first. Every item serves one of five research questions (RQ1–RQ5) with one rule each; the v3 decisions D1–D11 are replaced. The target is about 80 completes and 6–6.5 minutes on a phone.
+- Research questions first. Every item serves one of five research questions (RQ1–RQ5) with one rule each; the v3 decisions D1–D11 are replaced.
 - Questions are short and direct; the context sits in Pako's line before the question, and the question stands right above its answers.
 - Four parts, each opened by a part screen "Part n of 4". The progress strip has four equal bars: finished parts are full, the current one fills with the steps done in it (at least 15%), and the last part is labelled "Last part".
 - `last-trouble` offers each side its own obstacles (see [Script](#script)); the shared obstacles keep their ids across sides.
-- New items: `last-how`, `last-outcome`, `last-transport`, `last-messages`, `idle-items`, `idle-release`, `idle-why`, `seeking`, `delegate`.
-- The draft task: Mia confirms price and time first; the wrong variant drafts CHF 45 instead of the agreed CHF 40 (v3: CHF 35), two in three participants get it, and the price named in the sent message is stored as `draft-price`.
 - Price cards in one column, each with its price on the right and the same two rows, "Pako's help" and "You pay". A pill "More options below" shows while the end of a step is out of view.
 - End: "Thank you!" with Pako, centred; the save status shows once saving is done; the form at the end has a fourth tick, "I'm up for a 15-minute chat" (`study_pilot.interview`, migration `202611220002_study_v4.sql`).
+- Two screenshot reviews before launch fixed wording in all three languages, added `idle-release` before `idle-why`, put `nothing` first in `last-trouble` and "None of these" first in `delegate`, hid the form from anyone under 18, and stored the wording version on form rows.
 
-Round-1 review of `v4-1` before launch (screenshots in EN, DE and FR; the version label stays `v4-1`, since nothing has gone live):
-
-- Wording: the `last-role` card, `housing`, `last-occasion` (new option `both`), `last-how` ("first"), `last-transport` (new options, shown only after `last-outcome` yes or ongoing), `last-messages`, `idle-items` ("usable things you don't currently use"), `idle-why` (visible "You can choose several."), `wanted-react`, the `seeking` field, `delegate` card and question, the `pay-model` card and rows, the part 4 name, and the draft intro and card.
-- `last-trouble`: sellers and givers get `finding-taker` ("Finding someone interested", counted as finding) and the new `deadline-pickup` ("Arranging pickup before my deadline", counted as coordination); `agree-price` is for buyers only. Option lists may hold up to 16 ids (sellers see 13).
-- `wanted-react` ids are now `offer-now`, `offer-later`, `leave`, `rather-not`, shuffled; RQ3 counts `offer-now` only.
-- The form: one role became a multiple choice of what to try (`roles`: `buy`, `get-free`, `sell`, `give-away`, `not-sure`); the "Open takeover" link is gone; after Send the form card disappears; participants who saw the wrong draft read a short debrief.
-- Analysis: `delegate` is read by draft variant, `seller-fee` by side of the last attempt.
-- UI: the draft decision is in view as a whole with a 2×2 button grid; the hover tint no longer looks like a selection; the "More options below" cue sits in the footer instead of over the answers; the progress strip counts the longest path of part 1, so it never moves back; scenes go straight to their final frame with reduced motion and are captioned "Example from the app (in English)".
-
-Round-2 review before launch:
-
-- RQ2 supply: a new gate `idle-release` ("Would you consider selling or giving away any of these?") follows `idle-items` for anyone with at least one item; `idle-why` is asked only after yes or unsure and gains `keep` ("I'd rather keep them"), counted with `might-need`. `dont-know-where` is renamed `dont-know-whom`.
-- `last-trouble` asks "What, if anything, was difficult about this attempt?"; `nothing` ("Nothing was difficult") comes first, so nobody has to read every obstacle to say there was none.
-- `delegate`: new card; "None of these" comes first, the five permissions are shuffled below it.
-- `pay-model`: the card defines the free unit ("Each draft counts once"); `pay-once` is renamed `pack-5`, its row reads "5 extra drafts".
-- Wording: `last-occasion` both, `housing` flat, `last-how` other, and French and German fixes.
-- The draft's day buttons are in fixed order, Saturday then Sunday.
-- End: the CHF 45 debrief moved below the contact form; anyone who answered `age` = `under-18` is not shown the form; form rows store the wording version, so the try-early rate divides forms and finishers of the same version.
-- Scenes: with reduced motion the short scenes open directly on their outcome; the deal scene's pickup is at 17:30; the "Saved on this device" note is hidden in scenes.
-
-Cut: the slogans (`headline`), `helped-*`, `try-first`, `stop`, `sending` (replaced by `delegate`), the desk trade-off (`desk`), `move-it`, `delivery-*`, `institution-pay`, the pack price ladder (`pack-chf-*`), the find scene, `level`, `exchange`, `last-cost`, `last-story`, `why-not`, the `what-is` screen (the start screen now says what the app is), the optional full tour after the core (`peek`, `scene-pick`, `tour-*`), the "How others answered" counts at the end with their endpoint `GET /api/study/results`, and the database function `study_results`, which the v4 migration drops.
+Cut over the versions: the slogans (`headline`), `helped-*`, `try-first`, `stop`, `sending`, the desk trade-off (`desk`), `move-it`, `delivery-*`, `institution-pay`, the pack price ladder (`pack-chf-*`), the find scene, `level`, `exchange`, `last-cost`, `last-story`, `why-not`, the `what-is` screen, the optional full tour after the core, the "How others answered" counts at the end with `GET /api/study/results` and `study_results`, `move`, `draft-variant`, `draft-price`.
 
 ## Research questions
 
-| RQ  | Question                                     | Hypothesis                                                                                                                 | Measure                                                                                | Decision it informs                                           |
-| --- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| RQ1 | What makes passing on used things hard?      | Coordination (replies, back-and-forth, timing, cancelled pickups, a pickup deadline) matters more than finding or listing. | `last-trouble`; `last-how`, `last-outcome`, `last-transport`, `last-messages` describe | Which pain the pilot and onboarding lead with                 |
-| RQ2 | Is there untapped supply?                    | Many students have usable things they don't currently use and would let go; effort, not attachment, is why they keep them. | `idle-items`, `idle-release`, `idle-why`, crossed with `move`                          | Whether "pass on what's lying around" is the core message     |
-| RQ3 | Does local matching work?                    | Students would answer a nearby request, and some are looking for something now.                                            | `wanted-react`, `seeking` and its text                                                 | Build or drop "Wanted nearby"                                 |
-| RQ4 | Which steps would students hand to an agent? | Students hand over chores but keep price; many send a wrong draft unchanged.                                               | `draft` by `draft-variant`, `draft-price`; `delegate` by `draft-variant`               | Which tasks Pako may do alone; whether a check step is needed |
-| RQ5 | Would anyone pay, and how?                   | A minority would pay for extra help; one model is preferred.                                                               | `pay-model`; `seller-fee` by side                                                      | Which payment model to test first (exploratory)               |
+| RQ  | Question                                     | Measure                                                                                | Decision it informs                                       |
+| --- | -------------------------------------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| RQ1 | What makes passing on used things hard?      | `last-trouble`; `last-how`, `last-outcome`, `last-transport`, `last-messages` describe | Which pain the pilot and onboarding lead with             |
+| RQ2 | Is there untapped supply, and how big?       | `idle-items`, `idle-release`, `idle-why`; `trade-frequency` by segment                 | Whether "pass on what's lying around" is the core message |
+| RQ3 | Does local matching work?                    | `wanted-react`; `seeking` and its text, `max-distance`, `trust-signals`                | Build or drop requests; how near "nearby" must be         |
+| RQ4 | Which steps would students hand to an agent? | `draft` with the correct draft; `delegate`; `check-listing`                            | Which tasks Pako may do alone; what users want to check   |
+| RQ5 | Would anyone pay, how much and for what?     | `wtp-monthly`, `pay-model`, `pay-model-not`, `pay-for`; by side of the last attempt    | Which payment model to test first (exploratory)           |
 
 Primary risk this cycle: value (RQ1, RQ2). RQ3 and RQ4 are secondary; RQ5 is exploratory. Behavioural value metric: submitted forms with "I'd like to try takeover early" ticked, divided by the participants who reached the end.
 
@@ -65,7 +72,7 @@ What the results cannot claim: shares for all EPFL/UNIL students; adoption or fu
 
 ## Participants and recruitment
 
-- Everyone who agrees takes part. Nobody is filtered by student status, answers, move plans, time windows or response speed.
+- Everyone who agrees takes part. Nobody is filtered by student status, answers, time windows or response speed.
 - Analysis exclusions, and only these: no consent (no session exists), duplicates (the browser marks a finished survey), sessions without any answer (counted as break-offs).
 - No incentive. Target: about 80 completes.
 - Pretest: 3–5 phone runs (iOS and Android) with their own wording version, then deleted. Launch and close dates are set when the protocol is frozen.
@@ -84,13 +91,13 @@ Each QR code encodes the full `/tour?s=<tag>` link of the deployment.
 
 Invitation (chat): "Hi all, we're EPFL students building takeover, an app for passing on used stuff around campus. Could you do our {measured}-minute phone survey? No sign-in, everyone welcome, also if you've never bought or sold anything used. {link}". For `moodle-peer`: "The app demo is directly via 'Just show me the app'."
 
-`{measured}` is 7 (`V3_MINUTES`), an estimate, until the pretest measures the median time from start to the end screen; it is then rounded up.
+`{measured}` is 9 (`V3_MINUTES`), an estimate for about 33 screens on the longest path, until the pretest measures the median time from start to the end screen; it is then rounded up.
 
 ## Script
 
-Pako asks every question. On a step with context, Pako's line gives the context and the question stands as a heading right above the answers; otherwise Pako's line is the question. On product questions (`wanted-react`, `seeking`, `delegate`, `pay-model`) Pako keeps a neutral face; on questions about the participant it smiles briefly after a pick. A single-choice tap moves on after about 300 ms; multiple choices and steps with a text field move on with Continue. Back is visible on every step but the first and the end. Shuffled options appear in an order drawn once per participant and stored; options marked _last_ stay at the bottom in the order listed.
+Pako asks every question. On a step with context, Pako's line gives the context and the question stands as a heading right above the answers; otherwise Pako's line is the question. On product questions (all of part 3 after the part screen, and the price questions) Pako keeps a neutral face; on questions about the participant it smiles briefly after a pick. A single-choice tap moves on after about 300 ms; multiple choices, the slider and steps with a text field move on with Continue. Multiple choices without a card show "You can choose several." above the options, unless the question already says it. Back is visible on every step but the first and the end. Shuffled options appear in an order drawn once per participant and stored; options marked _first_ or _last_ keep their place. An exclusive option clears the others and is cleared by them.
 
-Progress strip: four equal bars, `Your experience · Things at home · The app · Price, and about you`. A finished part is full and shows a small taped box; the current part fills with the share of its steps before the current one, at least 15%. Part 1 is counted along its longest path (an attempt that worked out), so the bar never moves back; someone who never tried jumps forward. The label under the strip names the part, in the last part as "Last part · Price, and about you".
+Progress strip: four equal bars, `Your experience · You right now · The app · Price, and about you`. A finished part is full and shows a small taped box; the current part fills with the share of its steps before the current one, at least 15%. Part 1 is counted along its longest path (an attempt that worked out), so the bar never moves back; someone who never tried jumps forward. The label under the strip names the part, in the last part as "Last part · Price, and about you".
 
 ### Start screen
 
@@ -102,28 +109,26 @@ Folded toggle "What we save": "We save your answers and record which screens you
 
 "Just show me the app" opens the tour without a session; nothing is stored. `{date}` and `{contact}` come from `STUDY_DELETE_BY` and `STUDY_CONTACT`. A session starts with "Start the survey".
 
-### Part 1 of 4: Your experience (RQ1)
+### Part 1 of 4: Your experience (H1)
 
-`part-last-time`. Pako: "First, a few questions about you and your experience." Card: "Part 1 of 4" · Your experience · "There are no right or wrong answers."
+The last attempt only. `part-last-time`. Pako: "First, a few questions about your own experience." Card: "Part 1 of 4" · Your experience · "There are no right or wrong answers."
 
-| Id               | Shown to                             | Pako's context                                                                                                                | Question                                                         | Options                                                                                                                                                                                     |
-| ---------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `who`            | everyone                             |                                                                                                                               | "Are you a student?"                                             | `epfl` Yes, at EPFL · `unil` Yes, at UNIL · `other-school` Yes, at another university · `no` No                                                                                             |
-| `housing`        | everyone                             |                                                                                                                               | "Which best describes where you live now?"                       | `fmel` In an FMEL residence · `other-res` In another student residence · `flat` Flat, flat-share or studio (not a student residence) · `family` With my family · `elsewhere` Somewhere else |
-| `last-role`      | everyone                             | "Think of the last time you tried to buy, sell, give away or get a used item for free. It counts even if it didn't work out." | "What were you trying to do?"                                    | `buying` Buy something · `getting-free` Get something for free · `selling` Sell something · `giving-away` Give something away · `none` I've never tried any of these                        |
-| `last-item`      | tried                                |                                                                                                                               | "What was it?"                                                   | `furniture` Furniture · `household` Household items · `electronics` Electronics · `bike` Bike or scooter · `books` Books · `clothes` Clothes · `other` Other                                |
-| `last-occasion`  | tried                                |                                                                                                                               | "Was it connected with a move?"                                  | `moving-in` Yes, moving in · `moving-out` Yes, moving out · `both` Yes, both (moving out and in) · `no-move` No                                                                             |
-| `last-how`       | tried                                |                                                                                                                               | "Where did you try first?"                                       | `friends` Friends or people I know · `chat-group` WhatsApp or Telegram group · `facebook` Facebook Marketplace · `anibis` Anibis, Tutti or Ricardo · `other` Somewhere else                 |
-| `last-outcome`   | tried                                |                                                                                                                               | "Did it work out?"                                               | `yes` Yes · `no` No · `ongoing` Still in progress                                                                                                                                           |
-| `last-trouble`   | tried                                |                                                                                                                               | "What, if anything, was difficult about this attempt?"           | See below; `nothing` _first_, the obstacles shuffled, `other` and `cant-recall` _last_                                                                                                      |
-| `last-transport` | `last-outcome` is `yes` or `ongoing` |                                                                                                                               | "How was it transported?"                                        | `foot` On foot · `bike` By bike · `public-transport` By public transport · `car` By car · `delivery` Delivered · `not-yet` Not moved yet · `dont-know` Don't know                           |
-| `last-messages`  | tried                                |                                                                                                                               | "Roughly how many messages did it take in total, with everyone?" | `none` None · `1-5` 1–5 · `6-15` 6–15 · `over-15` More than 15 · `dont-remember` Can't remember                                                                                             |
+| Id               | Shown to                             | Pako's context                                                                                                                | Question                                                         | Options                                                                                                                                                                     |
+| ---------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `last-role`      | everyone                             | "Think of the last time you tried to buy, sell, give away or get a used item for free. It counts even if it didn't work out." | "What were you trying to do?"                                    | `buying` Buy something · `getting-free` Get something for free · `selling` Sell something · `giving-away` Give something away · `none` I've never tried any of these        |
+| `last-item`      | tried                                |                                                                                                                               | "What was it?"                                                   | `furniture` Furniture · `household` Household items · `electronics` Electronics · `bike` Bike or scooter · `books` Books · `clothes` Clothes · `other` Other                |
+| `last-occasion`  | tried                                |                                                                                                                               | "Was it connected with a move?"                                  | `moving-in` Yes, moving in · `moving-out` Yes, moving out · `both` Yes, both (moving out and in) · `no-move` No                                                             |
+| `last-how`       | tried                                |                                                                                                                               | "Where did you try first?"                                       | `friends` Friends or people I know · `chat-group` WhatsApp or Telegram group · `facebook` Facebook Marketplace · `anibis` Anibis, Tutti or Ricardo · `other` Somewhere else |
+| `last-outcome`   | tried                                |                                                                                                                               | "Did it work out?"                                               | `yes` Yes · `no` No · `ongoing` Still in progress                                                                                                                           |
+| `last-trouble`   | tried                                |                                                                                                                               | "What was difficult about this attempt, if anything was?"        | See below; `nothing` _first_, the obstacles shuffled, `other` and `cant-recall` _last_                                                                                      |
+| `last-transport` | `last-outcome` is `yes` or `ongoing` |                                                                                                                               | "How was it transported?"                                        | `foot` On foot · `bike` By bike · `public-transport` By public transport · `car` By car · `delivery` Delivered · `not-yet` Not moved yet · `dont-know` Don't know           |
+| `last-messages`  | tried                                |                                                                                                                               | "Roughly how many messages did it take in total, with everyone?" | `none` None · `1-5` 1–5 · `6-15` 6–15 · `over-15` More than 15 · `dont-remember` Can't remember                                                                             |
 
 "Tried" means `last-role` is `buying`, `getting-free`, `selling` or `giving-away`. Someone who never tried goes on to part 2.
 
-`last-trouble` is single choice. Its options depend on `last-role`; the last column says how RQ1 counts each one:
+`last-trouble` is single choice. Its options depend on `last-role`; the last column says how H1 counts each one:
 
-| Id                | Words                               | Offered to                  | RQ1 group    |
+| Id                | Words                               | Offered to                  | H1 group     |
 | ----------------- | ----------------------------------- | --------------------------- | ------------ |
 | `nothing`         | Nothing was difficult               | everyone who tried, _first_ |              |
 | `finding`         | Finding something suitable          | buying, getting-free        | finding      |
@@ -144,50 +149,53 @@ Folded toggle "What we save": "We save your answers and record which screens you
 
 Buyers see 12 options, people getting something for free 11, sellers 13, givers 12. `agree-price` is for buyers only and `set-price` for sellers only, since nothing is paid when something is given away or got for free. The shuffle runs over the options of the participant's side; going back and changing `last-role` to another side draws a new order and empties the answer (see [What is stored](#what-is-stored)).
 
-### Part 2 of 4: Things at home (RQ2)
+### Part 2 of 4: You right now (H2, H3)
 
-`part-home`. Pako: "Next, a few questions about things you have at home." Card: "Part 2 of 4" · Things at home · "For example furniture, books, kitchen things or electronics."
+Personal and current. `part-home`. Pako: "Next, a few questions about you right now: used things and what you have at home." Card: "Part 2 of 4" · You right now · "For example furniture, books, kitchen things or electronics."
 
-| Id             | Shown to                                 | Question                                                                                                                  | Options                                                                                                                                                                                                                                                                                                                                                                                |
-| -------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `idle-items`   | everyone                                 | "How many usable things do you have at home that you don't currently use?"                                                | `none` None · `1-3` 1–3 · `4-10` 4–10 · `over-10` More than 10                                                                                                                                                                                                                                                                                                                         |
-| `idle-release` | `idle-items` is `1-3`, `4-10`, `over-10` | "Would you consider selling or giving away any of these?"                                                                 | `yes` Yes · `no` No · `unsure` Unsure                                                                                                                                                                                                                                                                                                                                                  |
-| `idle-why`     | `idle-release` is `yes` or `unsure`      | "Why do you still have them?" with "You can choose several." above the options; multiple choice, shuffled, `other` _last_ | `listing-hassle` Listing is too much hassle · `messages-hassle` Messages and scheduling are too much hassle · `transport` I can't transport them · `not-worth` Not worth the effort for the money · `dont-know-whom` I don't know who I could offer them to · `might-need` I might still need them · `keep` I'd rather keep them · `not-yet` I haven't got round to it · `other` Other |
-| `move`         | everyone                                 | "Will you move out by the end of June 2027?"                                                                              | `move-feb` Yes, by the end of February · `move-jun` Yes, between March and June · `no-or-later` No, or later · `not-sure` Not sure                                                                                                                                                                                                                                                     |
+| Id                | Shown to                                 | Question                                                                   | Options                                                                                                                                                                                                                                                                                                                                                                                |
+| ----------------- | ---------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `trade-frequency` | everyone                                 | "How often do you buy, sell or give away something used?"                  | `monthly-plus` Several times a month · `monthly` About once a month · `yearly` A few times a year · `rarely` Less often · `never` Never                                                                                                                                                                                                                                                |
+| `idle-items`      | everyone                                 | "How many usable things do you have at home that you don't currently use?" | `none` None · `1-3` 1–3 · `4-10` 4–10 · `over-10` More than 10                                                                                                                                                                                                                                                                                                                         |
+| `idle-release`    | `idle-items` is `1-3`, `4-10`, `over-10` | "Would you consider selling or giving away any of these?"                  | `yes` Yes · `no` No · `unsure` Unsure                                                                                                                                                                                                                                                                                                                                                  |
+| `idle-why`        | `idle-release` is `yes` or `unsure`      | "Why do you still have them?"; multiple choice, shuffled, `other` _last_   | `listing-hassle` Listing is too much hassle · `messages-hassle` Messages and scheduling are too much hassle · `transport` I can't transport them · `not-worth` Not worth the effort for the money · `dont-know-whom` I don't know who I could offer them to · `might-need` I might still need them · `keep` I'd rather keep them · `not-yet` I haven't got round to it · `other` Other |
+| `seeking`         | everyone                                 | "Are you looking for something used right now?"                            | `yes` Yes · `no` No. `yes` opens a one-line field, "What are you looking for? (optional)", stored as the answer's `text`                                                                                                                                                                                                                                                               |
 
-### Part 3 of 4: The app (RQ3, RQ4)
+### Part 3 of 4: The app (H3, H4)
 
-`part-the-app`. Pako: "Now a quick look at the app. I draft listings and messages in it. You decide what gets sent." Card: "Part 3 of 4" · The app · "Two short scenes, an idea for the app and a short chat."
+One story with the same people and the same desk. `part-the-app`. Pako: "Now a short story in the app. Léa is moving out and sells her desk, and you'd like to buy it. I'm Pako: I draft listings and messages, and you decide what gets sent." Card: "Part 3 of 4" · The app · "Two short scenes, a chat and a few questions about the story."
 
-Two short scenes in a phone frame, captioned "Example from the app (in English)", each with Next and Replay; a scene left before it ends logs `scene-skipped`. With reduced motion a scene opens directly on its outcome: the saved desk listing, and the agreed CHF 35 pickup at 17:30.
+The scenes play in a phone frame, captioned "Example from the app (in English)", each with Next and Replay; a scene left before it ends logs `scene-skipped`. With reduced motion a scene opens directly on its outcome.
 
-| Id         | Pako                                                                                                                                                    |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `app-sell` | "Selling with a photo" · "Léa takes a photo of her desk. Pako writes the listing and suggests a price. Léa sets her own price and saves the listing."   |
-| `app-deal` | "Agreeing on a pickup" · "Noah offers CHF 35 for the desk and Léa accepts, so the pickup is booked. At pickup time, both of them confirm the handover." |
+1. `app-sell`, scene. Pako: "Léa sells her desk" · "Léa is moving out and sells her desk with takeover. She takes a photo, Pako writes the listing and suggests a price, and Léa sets her own price of CHF 40."
+2. `check-listing`. "What would you check before Pako's listing goes online?" Multiple choice, shuffled, `none` _last_ and exclusive: `price` The price · `description` The description · `photos` The photos · `pickup-times` The pickup times · `none` None of these.
+3. `draft`, the practice chat (below).
+4. `app-deal`, scene. Pako: "The pickup is booked" · "On Léa's phone: your offer of CHF 40 arrives (in the example you're called Noah). Léa accepts, and the pickup is booked. At pickup time, you both confirm the handover." In the survey the offer in the scene is CHF 40, the price agreed in the chat; the tour outside the survey keeps Noah's CHF 35. The pickup is at 17:30.
+5. `max-distance`. "How far would you go at most to pick up a desk?" `under-1` Under 1 km · `1-3` 1–3 km · `3-10` 3–10 km · `over-10` More than 10 km.
+6. `trust-signals`. "What would help you trust the other person?" Multiple choice, shuffled, `none` _last_ and exclusive: `verified` Verified student account · `reviews` Reviews · `campus-meet` Meeting on campus · `chat` The chat so far · `none` None of these.
+7. `delegate`. Pako: "Now you're in Léa's place: you're selling the desk, and Pako may act on its own. It sends messages in your name; you see them only afterwards." Question: "What would you let Pako do without checking with you first? You can choose several." Multiple choice; `none` _first_ and exclusive, the five permissions shuffled below it: `none` None of these · `answer-questions` Answer questions about the item · `suggest-time` Suggest a pickup time · `remind` Remind the other person about the pickup · `negotiate` Negotiate the price · `accept-offer` Accept an offer.
+8. `wanted-react`. Pako: "An idea for takeover: requests." · "Léa still needs a desk lamp for her new room. Anyone looking for something can post what they need, and students nearby see it." Below it an example post without a button: "Léa, 5 minutes from you, is looking for a desk lamp." Question: "You have a spare desk lamp. What would you most likely do?" Options, shuffled: `offer-now` Offer it now · `offer-later` Offer it later · `leave` Leave the request unanswered · `rather-not` I don't want to see requests like this.
 
-`wanted-react`. Pako: "An idea for takeover: requests." · "If you're looking for something, you post what you need. All students nearby who use takeover can see it." Below it an example post without a button: "Someone 5 minutes from you is looking for a desk lamp." Question: "You have a spare desk lamp like the one requested. What would you most likely do?" Options, shuffled: `offer-now` Offer it now · `offer-later` Offer it later · `leave` Leave the request unanswered · `rather-not` I don't want to see requests like this.
+`draft`. Pako: "You're looking for a desk and find Léa's listing. Léa asks when you could pick it up: choose a day in the chat below." Card above the chat: "The price and the pickup place work for you." and, in bold, "First, answer Léa in the chat. Pako then drafts a reply for you, and you decide what to do with it."
 
-`seeking`. "Are you looking for something used right now?" `yes` Yes · `no` No. `yes` opens a one-line field, "What are you looking for? (optional)", stored as the answer's `text`.
-
-`draft`, the practice chat. Pako: "You want to buy Mia's desk. Mia asks when you could pick it up: choose a day in the chat below." Card above the chat: "Mia is another student. The price and the pickup place work for you." and, in bold, "First, answer Mia in the chat. Pako then drafts a reply for you, and you decide what to do with it."
-
-1. Listing: "White desk · 120 × 60 cm", "CHF 40 · Pickup: EPFL, Rolex Learning Center · Mia".
-2. Mia: "Hi! The desk is still available. Which day could you pick it up? I'm free from 5 pm." Two chips, Saturday then Sunday, in this fixed order.
+1. Listing: "Compact study desk · 100 × 50 cm", "CHF 40 · Pickup: EPFL, Rolex Learning Center · Léa".
+2. Léa: "Hi! The desk is still available. Which day could you pick it up? I'm free from 5 pm." Two chips, Saturday then Sunday, in this fixed order.
 3. You: "{day} works for me. How about 5:30 pm?"
-4. Mia: "Agreed: CHF 40, on {day} at 5:30 pm at the Rolex Learning Center."
-5. Pako: "I've drafted a reply for you." Card "Pako's draft": "Great, thanks! So CHF {price}, on {day} at 5:30 pm at the Rolex Learning Center. See you then!"
-6. "What would you do with this draft?" Four equal buttons in a 2×2 grid: Send as written · Edit it · Write my own · Send nothing. Mia's agreement, the draft and the four buttons are in view together. "Edit it" opens the draft in a text field ("Your reply to Mia"), "Write my own" an empty one ("Your message to Mia"), each with Send and Send nothing. Not sent: "You didn't send anything."
+4. Léa: "Agreed: CHF 40, on {day} at 5:30 pm at the Rolex Learning Center."
+5. Pako: "I've drafted a reply for you." Card "Pako's draft": "Great, thanks! So CHF 40, on {day} at 5:30 pm at the Rolex Learning Center. See you then!"
+6. "What would you do with this draft?" Four equal buttons in a 2×2 grid: Send as written · Edit it · Write my own · Send nothing. Léa's agreement, the draft and the four buttons are in view together. "Edit it" opens the draft in a text field ("Your reply to Léa"), "Write my own" an empty one ("Your message to Léa"), each with Send and Send nothing. Not sent: "You didn't send anything."
 
-`{price}` depends on the variant, drawn once per participant when the task is first shown: `exact` drafts CHF 40, `wrong-price` drafts CHF 45, against the participant's interest. The draw takes one of `exact`, `wrong-price`, `wrong-price` with equal chance (`DRAFT_ALLOCATION`), so two in three participants get the wrong price. Participants in `wrong-price` are told at the end that the mistake was deliberate.
+The draft is correct for everyone: it repeats the agreed price, the day picked and the time.
 
-`delegate`. Pako: "Now imagine you are selling something and Pako may act on its own. It sends messages in your name; you see them only afterwards." Question: "What would you let Pako do without checking with you first? You can choose several." Multiple choice; `none` _first_ and exclusive, the five permissions shuffled below it: `none` None of these · `answer-questions` Answer questions about the item · `suggest-time` Suggest a pickup time · `remind` Remind the other person about the pickup · `negotiate` Negotiate the price · `accept-offer` Accept an offer.
+### Part 4 of 4: Price, and about you (H5, background)
 
-### Part 4 of 4: Price, and about you (RQ5, background)
+Price first, then the participant. `part-price`. Pako: "Last part: price, then a few questions about you." Card: "Part 4 of 4" · Price, and about you · "Then you're done."
 
-`part-price`. Pako: "Last part: price, and two questions about you." Card: "Part 4 of 4" · Price, and about you · "Then you're done."
+`wtp-monthly`. Pako: "Finally, a few questions about possible prices." Question above the slider: "How much would you be willing to pay per month for an app that takes care of writing listings and messages for you?" A native range input from CHF 0 to 10 in steps of 0.50, with the arrow keys, Home and End. The value shows large above the track: "CHF 3.50 a month", and "Nothing" at 0; the ends read "Nothing" and "CHF 10". Stored as `chf-<amount>` (`chf-0`, `chf-3.5`, `chf-10`).
 
-`pay-model`. Pako: "Searching, listing and messaging are free. Pako drafts a few listings or messages a day for free. Each draft counts once. Only extra help from Pako would cost something." Question: "Which option would you choose?" Small label above the cards: "Example prices, not available yet". One column, shuffled, `not-sure` _last_ without a card:
+Neutral start: nothing is preset. Until the participant moves the slider, the track has no handle and no fill, the value reads "Please choose" in a quieter type, the screen reader hears "Please choose" as the value, and Continue is off. The input needs a value, so it sits in the middle internally; a tap on exactly that spot counts as a choice when the finger lifts. With the keyboard, the first arrow key sets CHF 4.50 or 5.50. The middle is not shown as a suggestion because no handle is drawn there; the range itself (0–10) still frames the answer, which the analysis states.
+
+`pay-model`. Pako: "Which of these options would you like best?" Small label above the cards: "Example prices, not available yet". One column, shuffled, `not-sure` _last_ without a card:
 
 | Id           | Title                | Price       | Pako's help       | You pay                                                            |
 | ------------ | -------------------- | ----------- | ----------------- | ------------------------------------------------------------------ |
@@ -197,12 +205,16 @@ Two short scenes in a phone frame, captioned "Example from the app (in English)"
 | `monthly`    | Monthly subscription | CHF 3/month | unlimited         | CHF 3 a month                                                      |
 | `not-sure`   | Not sure             |             |                   |                                                                    |
 
-No note follows the pick.
+`pay-model-not`, optional: "Which of these would you not use? You can choose several." Multiple choice in this fixed order, with the titles of `pay-model`: `free` Free · `seller-fee` Fee per sale · `pack-5` Pack of 5 · `monthly` Monthly subscription · `all-ok` I'd consider all of them (exclusive). Continue works without a pick; the answer is then stored empty and logged as `skipped`.
 
-| Id       | Question           | Options                                                                                                                                    |
-| -------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `age`    | "How old are you?" | `under-18` Under 18 · `18-20` 18–20 · `21-23` 21–23 · `24-26` 24–26 · `27-30` 27–30 · `31-plus` 31+ · `na` Prefer not to say               |
-| `gender` | "Your gender?"     | `woman` Woman · `man` Man · `non-binary` Non-binary · `self-describe` Another term (opens an optional text field) · `na` Prefer not to say |
+`pay-for`. "What would you most likely pay for?" Multiple choice, shuffled, `nothing` _last_ and exclusive: `listings` Having my listings written · `replies` Replies and appointments handled by Pako · `transport` Transport or delivery · `visibility` More visibility for my listing · `nothing` None of these.
+
+| Id        | Question                                   | Options                                                                                                                                                                                     |
+| --------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `who`     | "Are you a student?"                       | `epfl` Yes, at EPFL · `unil` Yes, at UNIL · `other-school` Yes, at another university · `no` No                                                                                             |
+| `housing` | "Which best describes where you live now?" | `fmel` In an FMEL residence · `other-res` In another student residence · `flat` Flat, flat-share or studio (not a student residence) · `family` With my family · `elsewhere` Somewhere else |
+| `age`     | "How old are you?"                         | `under-18` Under 18 · `18-20` 18–20 · `21-23` 21–23 · `24-26` 24–26 · `27-30` 27–30 · `31-plus` 31+ · `na` Prefer not to say                                                                |
+| `gender`  | "Your gender?"                             | `woman` Woman · `man` Man · `non-binary` Non-binary · `self-describe` Another term (opens an optional text field) · `na` Prefer not to say                                                  |
 
 ### End
 
@@ -219,13 +231,11 @@ Form "Would you like to hear from us again?", shown to everyone who reaches the 
 
 `tryEarly` reveals "What would you like to try?", multiple choice (`buy` Buy · `get-free` Get for free · `sell` Sell · `give-away` Give away · `not-sure` Not sure yet; `not-sure` stands alone), and "Where do you live?" (`vortex` FMEL Vortex · `atrium` FMEL Atrium · `triaudes` FMEL Triaudes · `fmel-other` Another FMEL residence · `other-res` Another student residence · `flat` A flat or studio · `elsewhere` Somewhere else), both required then. After Send the form card disappears, the page scrolls to the top and "We've saved your email. We'll be in touch." shows under the thank-you.
 
-Below the form, participants in `wrong-price` read: "By the way: the CHF 45 draft was a deliberate mistake to see whether people check drafts."
-
 Share: "Every answer helps, including from people who never sell anything. Would you share the survey?" Share · Copy link · Show QR code. Text: "I just did a {measured}-minute survey for an EPFL student project. No sign-in: {link}". The link carries the tag `friend`. The end screen has no other link.
 
 ## What is stored
 
-One session per participant, created on "Start the survey": a random id, `survey = 'v3'`, the wording version (`v4-1`), the language at the start (`en`, `fr`, `de`), the channel tag, phone or desktop. No name, no IP address, no browser details.
+One session per participant, created on "Start the survey": a random id, `survey = 'v3'`, the wording version (`v4-2`), the language at the start (`en`, `fr`, `de`), the channel tag, phone or desktop. No name, no IP address, no browser details.
 
 The tab keeps the participant's progress with the wording version the session started in. A reload continues the session only in that version: after a new version is deployed, the progress is set aside and the survey starts again with a new session and the line "The survey was updated, so it starts again."
 
@@ -236,21 +246,19 @@ One answer per session and step, replaced when the participant goes back and ans
 | `chosen`       | The final answer; empty when skipped or emptied                               |
 | `first_chosen` | The first answer; the server keeps the value it received first                |
 | `shown`        | Option order on screen, for shuffled steps                                    |
-| `text`         | The `seeking` line, the `gender` self-description, or the message sent to Mia |
+| `text`         | The `seeking` line, the `gender` self-description, or the message sent to Léa |
+| `elapsed_ms`   | Time on screen                                                                |
 
-`chosen`, `first_chosen` and `shown` hold at most 16 ids.
-| `elapsed_ms` | Time on screen |
+`chosen`, `first_chosen` and `shown` hold at most 16 ids. An option id is lower case with digits, hyphens and dots, such as `chf-3.5`.
 
-The draft task stores four answers:
+The draft task stores two answers:
 
-| Step            | `chosen`                                                                                                                                                                                   | Saved when                                      |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
-| `draft-day`     | `sat` or `sun`                                                                                                                                                                             | the day is picked                               |
-| `draft-variant` | `exact` or `wrong-price`                                                                                                                                                                   | the day is picked                               |
-| `draft`         | `sent-unchanged` (sent as Pako drafted it, directly or after opening it), `sent-changed`, `sent-own`, `not-sent`; `change` or `own` while writing and undecided; `text` = the message sent | a writing option is tapped, and at the decision |
-| `draft-price`   | The price named in the sent message: `chf-40`, `chf-45` or another `chf-N`; `several` when it names different prices; `no-price` when it names none                                        | a message is sent                               |
+| Step        | `chosen`                                                                                                                                                                                   | Saved when                                      |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
+| `draft-day` | `sat` or `sun`                                                                                                                                                                             | the day is picked                               |
+| `draft`     | `sent-unchanged` (sent as Pako drafted it, directly or after opening it), `sent-changed`, `sent-own`, `not-sent`; `change` or `own` while writing and undecided; `text` = the message sent | a writing option is tapped, and at the decision |
 
-`first_chosen` of `draft` holds the option picked first (`send`, `change`, `own` or `dont-send`). `sent-unchanged` means the message equals the draft of the participant's own variant, so in `wrong-price` it is a reply sent at CHF 45. `draft-price` reads amounts next to "CHF", "Fr." or "francs", or followed by ".-"; a time such as 17:30 is not a price.
+`first_chosen` of `draft` holds the option picked first (`send`, `change`, `own` or `dont-send`). `sent-unchanged` means the message equals Pako's draft.
 
 The form at the end goes to `study_pilot` without a session, so it cannot be linked to answers: email, `launch_news`, `try_early`, `interview`, `future_surveys`, `roles` (what the person wants to try, empty unless `try_early`), `place`, and `version`, the wording version of the survey it ends. The version is the same for everyone in a run, so it does not identify anyone; forms from before v4 have none. Nobody who answered `age` = `under-18` is shown the form, so no email address of a minor is collected. The v4 migration replaces the column `role` with `roles`: an earlier seller becomes `{sell}`, a buyer `{buy}`, both `{buy,sell}`; earlier forms have `interview = false`. One form per address; the first one stands.
 
@@ -265,7 +273,7 @@ Events, sent in batches and stored once per sequence number, at most 600 per ses
 | `share`                                   |                                     | `native`, `copy` or `qr` |
 | `language`                                |                                     | language switched to     |
 
-Not recorded: touch paths, scroll depth, keystrokes, session replay. The survey shows no counts of other participants; v4 has no results endpoint for participants.
+Not recorded: touch paths, scroll depth, keystrokes, slider movements before Continue, session replay. The survey shows no counts of other participants; v4 has no results endpoint for participants.
 
 In account mode the data is in Supabase, in tables that students cannot read; the server writes them through security-definer functions with its service key. In the local demo it is in the SQLite file. Without `STUDY_CONTACT` and `STUDY_DELETE_BY` the study is closed and only the pitch is available. From the deletion date on it collects nothing.
 
@@ -273,73 +281,76 @@ In account mode the data is in Supabase, in tables that students cannot read; th
 
 Plausible range: two-sided 95% Wilson interval. For a network sample it only illustrates precision. Main figures use everyone who answered the item; subgroups are described next to them, never used to drop anyone.
 
-| Subgroup                 | From                                                      | Used for                                                                   |
-| ------------------------ | --------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Tried before             | `last-role` is not `none`                                 | RQ1 denominator                                                            |
-| Side of the last attempt | `last-role`: buying, getting-free vs selling, giving-away | RQ1 and `seller-fee` (RQ5), described per side                             |
-| Moving by June           | `move` in `move-feb`, `move-jun`                          | RQ2: "wider than moving out"                                               |
-| Would let go             | `idle-release`                                            | RQ2: supply counts `yes` only; `idle-why` is asked after `yes` or `unsure` |
-| Housing                  | `housing` = `fmel`                                        | RQ3, sample description                                                    |
-| Student status           | `who`                                                     | Whether figures depend on non-students                                     |
-| Background               | `age`, `gender`                                           | Sample description for the course                                          |
-| Channel, language        | session                                                   | Sample description                                                         |
+| Subgroup                 | From                                                      | Used for                                                                  |
+| ------------------------ | --------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Tried before             | `last-role` is not `none`                                 | H1 denominator                                                            |
+| Side of the last attempt | `last-role`: buying, getting-free vs selling, giving-away | H1, and H5 (`wtp-monthly`, `seller-fee`), described per side              |
+| Trade frequency          | `trade-frequency`                                         | H2: segments and market size                                              |
+| Linked to a move         | `last-occasion`                                           | H2: whether passing things on goes beyond moving out                      |
+| Would let go             | `idle-release`                                            | H2: supply counts `yes` only; `idle-why` is asked after `yes` or `unsure` |
+| Housing                  | `housing` = `fmel`                                        | H3, sample description                                                    |
+| Student status           | `who`                                                     | Whether figures depend on non-students                                    |
+| Background               | `age`, `gender`                                           | Sample description for the course                                         |
+| Channel, language        | session                                                   | Sample description                                                        |
 
-Coordination obstacles (RQ1): `replies`, `messages`, `timing`, `cancelled` and `deadline-pickup`. Finding: `finding` and `finding-taker`. Listing: `listing`. The rule compares coordination with finding + listing.
+Coordination obstacles (H1): `replies`, `messages`, `timing`, `cancelled` and `deadline-pickup`. Finding: `finding` and `finding-taker`. Listing: `listing`. The rule compares coordination with finding + listing.
 
-Delegation (RQ4) is counted over completed decisions (`sent-unchanged`, `sent-changed`, `sent-own`, `not-sent`) per variant; unfinished drafts are reported over everyone shown the task. `delegate` is counted per task over the participants who answered, separately per draft variant, since seeing the wrong draft may lower trust in Pako. `pay-model` is also reported per side of the last attempt, since only sellers would pay `seller-fee`.
+Delegation (H4) is counted over completed decisions (`sent-unchanged`, `sent-changed`, `sent-own`, `not-sent`); unfinished drafts are reported over everyone shown the task. "Sends Pako's draft" means `sent-unchanged` or `sent-changed`. `delegate` is counted over the participants who answered: "at least one task" means any option but `none`; each task is also reported on its own. `check-listing` and `trust-signals` are multiple choices, reported per option over the participants who answered.
 
-Count cutoffs (unrounded Wilson bounds):
+Price (H5) is descriptive. `wtp-monthly`: median, quartiles, the share at CHF 0 and the full distribution, overall and per side of the last attempt. Since the slider runs from 0 to 10, answers are bounded by that range and may lean towards its middle; amounts are read as a ranking of interest, not as a price. `pay-model` counts with ranges, paid options also among those who chose a paid one, `seller-fee` also per side. `pay-model-not` and `pay-for` are counted per option over the participants who answered; skips of `pay-model-not` are reported.
 
-| Measure                                                 | RQ  | Denominator                          | n = 40  | 53      | 60      | 80      |
-| ------------------------------------------------------- | --- | ------------------------------------ | ------- | ------- | ------- | ------- |
-| coordination share ≥ 40% / ≤ 20%                        | RQ1 | tried, answered `last-trouble`       | 16 / 8  | 22 / 10 | 24 / 12 | 32 / 16 |
-| ≥ 1 unused item and release yes ≥ 50% / ≤ 30%           | RQ2 | answered `idle-items`                | 20 / 12 | 27 / 15 | 30 / 18 | 40 / 24 |
-| `offer-now`, lower bound ≥ 25% / upper bound < 15%      | RQ3 | answered                             | 16 / 1  | 20 / 2  | 22 / 3  | 28 / 5  |
-| `sent-unchanged`, lower bound ≥ 15% / upper bound < 15% | RQ4 | completed decisions in `wrong-price` | 11 / 1  | 14 / 2  | 15 / 3  | 19 / 5  |
+Count cutoffs (unrounded Wilson bounds for H3; shares for the others):
 
-With 80 completes and the 2:1 allocation, about 53 participants see the wrong price.
+| Measure                                            | H   | Denominator                    | n = 40  | 60      | 80      |
+| -------------------------------------------------- | --- | ------------------------------ | ------- | ------- | ------- |
+| coordination share ≥ 40% / ≤ 20%                   | H1  | tried, answered `last-trouble` | 16 / 8  | 24 / 12 | 32 / 16 |
+| ≥ 1 unused item and release yes ≥ 50% / ≤ 30%      | H2  | answered `idle-items`          | 20 / 12 | 30 / 18 | 40 / 24 |
+| `offer-now`, lower bound ≥ 25% / upper bound < 15% | H3  | answered                       | 16 / 1  | 22 / 3  | 28 / 5  |
+| sends Pako's draft ≥ 50% / ≤ 25%                   | H4  | completed decisions            | 20 / 10 | 30 / 15 | 40 / 20 |
+| `delegate` at least one task ≥ 50% / ≤ 25%         | H4  | answered `delegate`            | 20 / 10 | 30 / 15 | 40 / 20 |
 
-The `sent-changed` and `sent-own` texts in `wrong-price` are coded by two team members for whether the price was corrected; `draft-price` gives a first automatic reading. Agreement (% and Cohen's κ) is reported before disagreements are settled. The `seeking` texts are listed as seeds for the pilot.
+The `sent-changed` and `sent-own` texts are coded by two team members for what was changed (price, day, time, place, tone); agreement (% and Cohen's κ) is reported before disagreements are settled. The `seeking` texts are listed as seeds for the pilot.
 
 ## Pre-registration
 
 Frozen with a date before the first invitation, together with the script and the codebook; later changes are listed as deviations. The rules are decisions for the next build, not confirmed findings. Rate rules apply only with at least 40 answers to the item; below that, counts only. Each rule has three outcomes: success, fail, inconclusive (neither threshold met, or fewer than 40 answers).
 
-| RQ  | Rule                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Success →                                         | Fail →                                   |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | ---------------------------------------- |
-| RQ1 | Coordination share of `last-trouble` among those who tried: `replies`, `messages`, `timing`, `cancelled`, `deadline-pickup`. Success if it is ≥ 40% **and** larger than the share of finding (`finding`, `finding-taker`) + `listing` combined. Fail if it is ≤ 20%.                                                                                                                                                                                                                                                          | Pilot and onboarding lead with coordination       | Lead with finding or listing             |
-| RQ2 | Supply: the share of those who answered `idle-items` who report at least one usable thing they don't currently use **and** answer `idle-release` = `yes`. Success if supply is ≥ 50% **and**, among those who answered `idle-why` (release yes or unsure), more name at least one of `listing-hassle`, `messages-hassle`, `transport` than name at least one of `might-need`, `keep`. Fail if supply is ≤ 30%, or `might-need` + `keep` is named by more. Crossed with `move` to check whether supply goes beyond moving out. | "Pass on what's lying around" as the core message | Message around moving out only           |
-| RQ3 | `wanted-react` `offer-now` among those who answered; `offer-later` does not count. Success if its lower bound is ≥ 25%. Fail if its upper bound is below 15%. The share `seeking` = `yes` and the typed requests are reported with it.                                                                                                                                                                                                                                                                                        | Build a first version of requests                 | Drop requests for now                    |
-| RQ4 | `sent-unchanged` among completed decisions in `wrong-price`. Success if its lower bound is ≥ 15%. Fail if its upper bound is below 15%. `delegate` is reported per task and per draft variant.                                                                                                                                                                                                                                                                                                                                | Add a check step before Pako's drafts are sent    | No check step; review again after launch |
-| RQ5 | `pay-model`: descriptive only, counts with ranges, paid options also among those who chose a paid one; `seller-fee` also per side of the last attempt.                                                                                                                                                                                                                                                                                                                                                                        |                                                   |                                          |
+| H   | Rule                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Success →                                                | Fail →                                        |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------- |
+| H1  | Coordination share of `last-trouble` among those who tried: `replies`, `messages`, `timing`, `cancelled`, `deadline-pickup`. Success if it is ≥ 40% **and** larger than the share of finding (`finding`, `finding-taker`) + `listing` combined. Fail if it is ≤ 20%.                                                                                                                                                                                                                                          | Pilot and onboarding lead with coordination              | Lead with finding or listing                  |
+| H2  | Supply: the share of those who answered `idle-items` who report at least one usable thing they don't currently use **and** answer `idle-release` = `yes`. Success if supply is ≥ 50% **and**, among those who answered `idle-why` (release yes or unsure), more name at least one of `listing-hassle`, `messages-hassle`, `transport` than name at least one of `might-need`, `keep`. Fail if supply is ≤ 30%, or `might-need` + `keep` is named by more. Supply is also reported per `trade-frequency` band. | "Pass on what's lying around" as the core message        | Message around moving out only                |
+| H3  | `wanted-react` `offer-now` among those who answered; `offer-later` does not count. Success if its lower bound is ≥ 25%. Fail if its upper bound is below 15%. `seeking` = `yes`, the typed requests, `max-distance` and `trust-signals` are reported with it.                                                                                                                                                                                                                                                 | Build a first version of requests                        | Drop requests for now                         |
+| H4  | Among completed decisions on the correct draft, the share that sends Pako's draft (`sent-unchanged` or `sent-changed`); among those who answered `delegate`, the share naming at least one task. Success if both are ≥ 50%. Fail if either is ≤ 25%. `sent-unchanged` alone, each `delegate` task and `check-listing` are reported with it.                                                                                                                                                                   | Pako drafts by default; let it do the chosen tasks alone | Keep Pako to suggestions the user writes over |
+| H5  | Descriptive only: `wtp-monthly` median, quartiles, share at CHF 0 and distribution, overall and per side; `pay-model` counts with ranges, paid options also among those who chose a paid one, `seller-fee` per side; `pay-model-not` and `pay-for` per option.                                                                                                                                                                                                                                                |                                                          |                                               |
 
 Behavioural value metric: submitted forms with `try_early` divided by sessions that reached the end, with its range. It has no threshold; it is compared with the next cycle.
 
-The RQ2 fail threshold and the RQ3 and RQ4 fail thresholds are set in this protocol; the spec gave the success sides.
+The H2, H3 fail thresholds were set in this protocol; the spec gave the success sides. The H4 rule was set in `v4-2`, when the planted error was removed, before any `v4-2` data.
 
 ## Threats to validity
 
-| Threat                               | Where                                                       | Mitigation                                                                                                                                                                                                                      |
-| ------------------------------------ | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Pako asks the product questions      | `wanted-react`, `seeking`, `delegate`, `pay-model`, `draft` | Neutral wording, outside options, no reaction to product answers                                                                                                                                                                |
-| The draft task frames `delegate`     | `delegate`                                                  | The card says the setting is different; `delegate` is read per draft variant; the debrief comes only at the end                                                                                                                 |
-| Self-selection, course peers         | Everything                                                  | Neutral invitation, channel tags, subgroups described                                                                                                                                                                           |
-| Recall of the last attempt           | Part 1                                                      | No time window; `last-outcome` and `last-occasion` describe the episode; "Can't remember" offered                                                                                                                               |
-| One answer for the main difficulty   | `last-trouble`                                              | Single choice forces a ranking; several pains per episode are lost. `nothing` comes first so "none" is easy to say. `last-messages` and `last-transport` describe the episode                                                   |
-| Minors                               | End form                                                    | Nobody who answered `age` = `under-18` is shown the contact form                                                                                                                                                                |
-| Option lists per side                | `last-trouble`                                              | Buyers and sellers see different lists (11 to 13 options), so a share depends on the mix of sides; reported per side next to the pooled share. Shared obstacles keep one id; finding and coordination each have one id per side |
-| Imagined vs real behaviour           | `draft`, `wanted-react`, `delegate`                         | Practice chat, not real money; every "go" is checked against real use                                                                                                                                                           |
-| One planted error, uneven allocation | `draft`                                                     | Variant drawn at random and stored; 2:1 towards `wrong-price` for precision there; the two variants are read apart, never pooled                                                                                                |
-| Hypothetical prices                  | `pay-model`                                                 | "Example prices, not available yet"; "one help" defined on the card; same two facts on every card; descriptive only                                                                                                             |
-| Short scenes as context              | Part 3                                                      | Pako's line says what each scene shows; the scenes are in English and captioned so; Replay; skipped scenes logged; no question about the scenes themselves                                                                      |
-| Fixed section order                  | All                                                         | Shuffled options with stored order where order would bias; `delegate` after the draft so it does not frame the task                                                                                                             |
-| Three languages                      | All                                                         | One dictionary per language with equivalent meaning; language stored per session                                                                                                                                                |
-| Two versions running                 | v1 and v4                                                   | Each session stores questionnaire and wording version; analysed separately                                                                                                                                                      |
-| Repeat answers                       | Counts                                                      | Browser marker                                                                                                                                                                                                                  |
+| Threat                             | Where                                                  | Mitigation                                                                                                                                                                                                                      |
+| ---------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Stated intentions                  | Parts 3 and 4                                          | Short neutral questions with outside options; read as rankings and as reasons to drop ideas, not as forecasts of use                                                                                                            |
+| Pako asks the product questions    | Part 3, price questions                                | Neutral wording, outside options, no reaction to product answers                                                                                                                                                                |
+| A correct draft is easy to send    | `draft`                                                | H4 also needs `delegate`; `sent-unchanged` is reported apart; no planted error, so nobody is misled about Pako                                                                                                                  |
+| The story frames the answers       | Part 3                                                 | One consistent story so questions are clear; `delegate` comes after the draft and says the setting changed; personal questions sit in parts 1, 2 and 4, apart from the story                                                    |
+| Self-selection, course peers       | Everything                                             | Neutral invitation, channel tags, subgroups described                                                                                                                                                                           |
+| Recall of the last attempt         | Part 1                                                 | No time window; `last-outcome` and `last-occasion` describe the episode; "Can't remember" offered                                                                                                                               |
+| One answer for the main difficulty | `last-trouble`                                         | Single choice forces a ranking; several pains per episode are lost. `nothing` comes first so "none" is easy to say. `last-messages` and `last-transport` describe the episode                                                   |
+| Minors                             | End form                                               | Nobody who answered `age` = `under-18` is shown the contact form                                                                                                                                                                |
+| Option lists per side              | `last-trouble`                                         | Buyers and sellers see different lists (11 to 13 options), so a share depends on the mix of sides; reported per side next to the pooled share. Shared obstacles keep one id; finding and coordination each have one id per side |
+| Anchoring on the slider            | `wtp-monthly`                                          | No preset value or handle; Continue only after a move; the range 0–10 still frames answers, stated in the analysis; descriptive only                                                                                            |
+| Hypothetical prices                | `wtp-monthly`, `pay-model`, `pay-model-not`, `pay-for` | "Example prices, not available yet"; same two facts on every card; descriptive only                                                                                                                                             |
+| Short scenes as context            | Part 3                                                 | Pako's line says what each scene shows; the scenes are in English and captioned so; the deal scene's buyer name is explained; Replay; skipped scenes logged                                                                     |
+| Fixed section order                | All                                                    | Shuffled options with stored order where order would bias                                                                                                                                                                       |
+| Three languages                    | All                                                    | One dictionary per language with equivalent meaning; language stored per session                                                                                                                                                |
+| Two versions running               | v1 and v4                                              | Each session stores questionnaire and wording version; analysed separately                                                                                                                                                      |
+| Repeat answers                     | Counts                                                 | Browser marker                                                                                                                                                                                                                  |
 
 ## Reporting template
 
-One block per research question, same order and colours every time. Symbol and word always shown with the colour; bars in a neutral colour, outcome colour only on the badge.
+One block per hypothesis, same order and colours every time. Symbol and word always shown with the colour; bars in a neutral colour, outcome colour only on the badge.
 
 | Outcome      | Meaning                                      | Colour          | Symbol |
 | ------------ | -------------------------------------------- | --------------- | ------ |
@@ -348,8 +359,8 @@ One block per research question, same order and colours every time. Symbol and w
 | Fail         | Opposite threshold met                       | red `#B3261E`   | ✗      |
 
 ```
-RQ1 What makes passing on used things hard?          [✓ Success]
-Question   What, if anything, was difficult about this attempt? (those who tried)
+H1 The problem is coordination                         [✓ Success]
+Question   What was difficult about this attempt, if anything was? (those who tried)
 Result     27 of 60 named a coordination obstacle: 45% (plausible range 33–58%)
            finding + listing 12 · transport 8 · nothing 6
 Rule       Success if ≥ 40% and above finding + listing  →  met
@@ -362,12 +373,12 @@ Every block: k of n with the denominator named, the range, the rule and its outc
 
 ### Build-to-Learn card
 
-| Cycle       | Build                                                                                                                         | Measure                                                   | Learn                                                                                                 | Next                                        |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| v1          | Tour page with a short survey and two tasks ([STUDY-v1.md](STUDY-v1.md))                                                      | Answers and task results of the first participants        | Questions about features drew polite yeses; the tasks were more telling                               | A longer protocol around decisions          |
-| v3          | Five parts, scenes with "would it have helped", desk and draft tasks, price ladder, slogans                                   | Pretest runs and decision rules D1–D11                    | Too long for a phone, many items without a decision behind them                                       | User test with someone new to the app       |
-| User test 1 | `v3-8` in German, observed                                                                                                    | Where the participant hesitated or was confused           | Progress felt slow; price cards cut off and not comparable; unclear German; unexplained product terms | Fewer items, one rule per research question |
-| v4          | Four parts, 21 items, role-specific obstacles, wrong-price draft at 2:1, four-tick form; revised after two screenshot reviews | RQ1–RQ5 rules, try-early sign-up rate, about 80 completes | To be filled in after the run                                                                         | To be filled in after the run               |
+| Cycle       | Build                                                                                                                                                | Measure                                                 | Learn                                                                                                 | Next                                        |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| v1          | Tour page with a short survey and two tasks ([STUDY-v1.md](STUDY-v1.md))                                                                             | Answers and task results of the first participants      | Questions about features drew polite yeses; the tasks were more telling                               | A longer protocol around decisions          |
+| v3          | Five parts, scenes with "would it have helped", desk and draft tasks, price ladder, slogans                                                          | Pretest runs and decision rules D1–D11                  | Too long for a phone, many items without a decision behind them                                       | User test with someone new to the app       |
+| User test 1 | `v3-8` in German, observed                                                                                                                           | Where the participant hesitated or was confused         | Progress felt slow; price cards cut off and not comparable; unclear German; unexplained product terms | Fewer items, one rule per research question |
+| v4          | Four parts, role-specific obstacles, four-tick form; `v4-2`: one story in part 3, correct draft for everyone, price slider, personal questions apart | H1–H5 rules, try-early sign-up rate, about 80 completes | To be filled in after the run                                                                         | To be filled in after the run               |
 
 ## Before launch
 
@@ -375,7 +386,7 @@ Every block: k of n with the denominator named, the range, the rule and its outc
 2. This protocol frozen with a date.
 3. Pretest sessions deleted.
 4. `STUDY_CONTACT` and `STUDY_DELETE_BY` set on the deployment.
-5. Migration `202611220002_study_v4.sql` reviewed and applied, and the server deployed right after it: the migration replaces `study_save_pilot`, the column `role` and `study_results`, which the previous server still uses.
+5. Migration `202611220002_study_v4.sql` applied before the server that needs it (done for `v4-1`). `v4-2` needs no migration: option ids with a dot are checked only by the server.
 6. Server logs checked for request addresses.
 7. QR codes generated per channel and tested at poster distance.
 
@@ -387,7 +398,7 @@ The page shows one wording version at a time, the newest first: sessions per UTC
 
 ## Results queries
 
-Run these in the Supabase SQL editor, which connects with the owner role and can read the study tables. Each query reads the v3-questionnaire sessions of one wording version: replace `v4-1` with the version of the real run. Intervals and rule outcomes are computed from the counts (`k` = `chosen`, `n` = `answered`); where a rule uses a bound, the query gives the Wilson lower bound (`z` = 1.96).
+Run these in the Supabase SQL editor, which connects with the owner role and can read the study tables. Each query reads the v3-questionnaire sessions of one wording version: replace `v4-2` with the version of the real run. Intervals and rule outcomes are computed from the counts (`k` = `chosen`, `n` = `answered`); where a rule uses a bound, the query gives the Wilson lower bound (`z` = 1.96).
 
 Tables in `takeover_admin`: `study_sessions`, `study_answers`, `study_events`, `study_pilot` (the form at the end), and `study_contacts` (v1 only).
 
@@ -399,7 +410,7 @@ Tables in `takeover_admin`: `study_sessions`, `study_answers`, `study_events`, `
 -- funnel
 with run as (
   select id, source, device from takeover_admin.study_sessions
-  where survey = 'v3' and version = 'v4-1'
+  where survey = 'v3' and version = 'v4-2'
 ), reached as (
   select e.session, e.kind from takeover_admin.study_events e join run on run.id = e.session
 )
@@ -422,7 +433,7 @@ order by started desc;
 ```sql
 -- drop-off
 with run as (
-  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-1'
+  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-2'
 ), shown as (
   select e.session, e.step, e.seq from takeover_admin.study_events e join run on run.id = e.session
   where e.kind = 'shown'
@@ -440,12 +451,12 @@ order by shown desc, shown.step;
 
 ### Counts per option for one step
 
-For the descriptive steps (`who`, `housing`, `last-item`, `last-occasion`, `move`, `age`, `gender`). Change the step id. Skips are not counted. For a multiple choice, `answered` counts choices, not people; use the step's own query.
+For the single-choice descriptive steps (`trade-frequency`, `who`, `housing`, `last-item`, `last-occasion`, `max-distance`, `wtp-monthly` as a distribution, `age`, `gender`). Change the step id. Skips are not counted. For a multiple choice, `answered` counts choices, not people; use the step's own query.
 
 ```sql
 -- split
 with run as (
-  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-1'
+  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-2'
 )
 select option, count(*) as chosen, sum(count(*)) over () as answered
 from takeover_admin.study_answers a
@@ -456,14 +467,14 @@ group by option
 order by chosen desc, option;
 ```
 
-### RQ1 Coordination among those who tried
+### H1 Coordination among those who tried
 
 Per side and pooled (`all`, the row the rule reads). Coordination: `replies`, `messages`, `timing`, `cancelled`, `deadline-pickup`; finding: `finding`, `finding-taker`. `coordination_low` is the Wilson lower bound of the coordination share.
 
 ```sql
 -- rq1-coordination
 with run as (
-  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-1'
+  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-2'
 ), trouble as (
   select case when r.chosen[1] in ('buying', 'getting-free') then 'buying' else 'passing-on' end as side,
     a.chosen[1] as obstacle
@@ -485,12 +496,12 @@ from counts
 order by side;
 ```
 
-### RQ1 The last attempt in context
+### H1 The last attempt in context
 
 ```sql
 -- rq1-context
 with run as (
-  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-1'
+  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-2'
 )
 select a.step, a.chosen[1] as answer, count(*) as chosen,
   sum(count(*)) over (partition by a.step) as answered
@@ -501,38 +512,38 @@ group by a.step, answer
 order by a.step, chosen desc, answer;
 ```
 
-### RQ2 Supply, by move plans
+### H2 Supply, by trade frequency
 
-`with_idle`: answered `1-3`, `4-10` or `over-10`. `supply`: with idle things **and** `idle-release` = `yes`, the share the rule reads. `moving-by-june`: `move` in `move-feb`, `move-jun`.
+`with_idle`: answered `1-3`, `4-10` or `over-10`. `supply`: with idle things **and** `idle-release` = `yes`, the share the rule reads (row `all`). The other rows split by `trade-frequency` (`not-answered` when it was skipped).
 
 ```sql
 -- rq2-idle
 with run as (
-  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-1'
+  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-2'
 ), idle as (
   select a.chosen[1] as count_band, r.chosen[1] as release,
-    case when m.chosen && array['move-feb', 'move-jun'] then 'moving-by-june' else 'rest' end as part
+    coalesce(f.chosen[1], 'not-answered') as frequency
   from takeover_admin.study_answers a join run on run.id = a.session
-  left join takeover_admin.study_answers m on m.session = a.session and m.step = 'move'
+  left join takeover_admin.study_answers f on f.session = a.session and f.step = 'trade-frequency'
   left join takeover_admin.study_answers r on r.session = a.session and r.step = 'idle-release'
   where a.step = 'idle-items' and cardinality(a.chosen) > 0
 )
-select coalesce(part, 'all') as subgroup, count(*) as answered,
+select coalesce(frequency, 'all') as subgroup, count(*) as answered,
   count(*) filter (where count_band <> 'none') as with_idle,
   count(*) filter (where count_band <> 'none' and release = 'yes') as supply
 from idle
-group by grouping sets ((), (part))
+group by grouping sets ((), (frequency))
 order by subgroup;
 ```
 
-### RQ2 Why things stay at home
+### H2 Why things stay at home
 
 Asked after `idle-release` yes or unsure. Multiple choice: `participants` is the number who answered `idle-why`. `effort_or_transport` counts participants naming at least one of `listing-hassle`, `messages-hassle`, `transport`; `keeping` those naming at least one of `might-need`, `keep`. The rule compares the two.
 
 ```sql
 -- rq2-reasons
 with run as (
-  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-1'
+  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-2'
 ), why as (
   select a.session, a.chosen from takeover_admin.study_answers a join run on run.id = a.session
   where a.step = 'idle-why' and cardinality(a.chosen) > 0
@@ -546,29 +557,29 @@ group by option
 order by chosen desc, option;
 ```
 
-### RQ3 Requests nearby
+### H3 Requests nearby and distance
 
 The rule reads `offer-now` in `wanted-react`.
 
 ```sql
 -- rq3-wanted
 with run as (
-  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-1'
+  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-2'
 )
 select a.step, a.chosen[1] as answer, count(*) as chosen,
   sum(count(*)) over (partition by a.step) as answered
 from takeover_admin.study_answers a join run on run.id = a.session
-where a.step in ('wanted-react', 'seeking') and cardinality(a.chosen) > 0
+where a.step in ('wanted-react', 'seeking', 'max-distance') and cardinality(a.chosen) > 0
 group by a.step, answer
 order by a.step, chosen desc, answer;
 ```
 
-### RQ3 What participants are looking for
+### H3 What participants are looking for
 
 ```sql
 -- rq3-seeking-texts
 with run as (
-  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-1'
+  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-2'
 )
 select a.text
 from takeover_admin.study_answers a join run on run.id = a.session
@@ -576,114 +587,105 @@ where a.step = 'seeking' and a.chosen && array['yes'] and a.text <> ''
 order by a.text;
 ```
 
-### RQ4 The draft by variant
+### H4 The correct draft
+
+One row per final and first answer. `completed` counts the completed decisions; `sends_draft` those that sent Pako's draft as written or edited, the share the rule reads; `sends_draft_low` is its Wilson lower bound. `shown_task`: sessions shown the task.
 
 ```sql
 -- rq4-draft
 with run as (
-  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-1'
+  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-2'
 ), draft as (
-  select v.chosen[1] as variant, a.chosen[1] as final, a.first_chosen[1] as first
+  select a.chosen[1] as final, a.first_chosen[1] as first
   from takeover_admin.study_answers a join run on run.id = a.session
-  left join takeover_admin.study_answers v on v.session = a.session and v.step = 'draft-variant'
   where a.step = 'draft'
+), totals as (
+  select count(*) filter (where final in ('sent-unchanged', 'sent-changed', 'sent-own', 'not-sent')) as completed,
+    count(*) filter (where final in ('sent-unchanged', 'sent-changed')) as sends_draft
+  from draft
 )
-select variant, final, first, count(*) as participants,
-  (select count(*) from draft d where d.variant is not distinct from draft.variant
-    and d.final in ('sent-unchanged', 'sent-changed', 'sent-own', 'not-sent')) as completed_decisions,
+select final, first, count(*) as participants, totals.completed, totals.sends_draft,
+  round(((totals.sends_draft + 1.9208) / (totals.completed + 3.8416)
+    - 1.96 * sqrt(totals.sends_draft::numeric * (totals.completed - totals.sends_draft) / nullif(totals.completed, 0) + 0.9604)
+      / (totals.completed + 3.8416))::numeric, 3) as sends_draft_low,
   (select count(distinct e.session) from takeover_admin.study_events e join run on run.id = e.session
     where e.kind = 'shown' and e.step = 'draft') as shown_task
-from draft
-group by variant, final, first
-order by variant, final, first;
+from draft cross join totals
+group by final, first, totals.completed, totals.sends_draft
+order by final, first;
 ```
 
-### RQ4 Unchanged sends per variant
-
-The rule reads the `wrong-price` row: `unchanged_low` is the Wilson lower bound of `sent_unchanged` over `completed`.
-
-```sql
--- rq4-unchanged
-with run as (
-  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-1'
-), counts as (
-  select v.chosen[1] as variant, count(*) as completed,
-    count(*) filter (where a.chosen[1] = 'sent-unchanged') as sent_unchanged
-  from takeover_admin.study_answers a join run on run.id = a.session
-  join takeover_admin.study_answers v on v.session = a.session and v.step = 'draft-variant'
-  where a.step = 'draft' and a.chosen[1] in ('sent-unchanged', 'sent-changed', 'sent-own', 'not-sent')
-  group by variant
-)
-select variant, completed, sent_unchanged,
-  round(((sent_unchanged + 1.9208) / (completed + 3.8416)
-    - 1.96 * sqrt(sent_unchanged::numeric * (completed - sent_unchanged) / completed + 0.9604)
-      / (completed + 3.8416))::numeric, 3) as unchanged_low
-from counts
-order by variant;
-```
-
-### RQ4 Price named in the sent message
-
-```sql
--- rq4-price
-with run as (
-  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-1'
-)
-select v.chosen[1] as variant, p.chosen[1] as price, count(*) as participants
-from takeover_admin.study_answers p join run on run.id = p.session
-left join takeover_admin.study_answers v on v.session = p.session and v.step = 'draft-variant'
-where p.step = 'draft-price' and cardinality(p.chosen) > 0
-group by variant, price
-order by variant, price;
-```
-
-### RQ4 Changed and own replies to code
+### H4 Changed and own replies to code
 
 ```sql
 -- rq4-texts
 with run as (
-  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-1'
+  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-2'
 )
-select a.session, v.chosen[1] as variant, a.chosen[1] as final, p.chosen[1] as price, a.text
+select a.session, a.chosen[1] as final, a.text
 from takeover_admin.study_answers a
 join run on run.id = a.session
-left join takeover_admin.study_answers v on v.session = a.session and v.step = 'draft-variant'
-left join takeover_admin.study_answers p on p.session = a.session and p.step = 'draft-price'
 where a.step = 'draft' and a.chosen[1] in ('sent-changed', 'sent-own')
 order by a.saved_at;
 ```
 
-### RQ4 What Pako may do alone, by draft variant
+### Multiple choices per option
 
-Multiple choice: `participants` is the number in the variant who answered `delegate`; `all` pools both variants.
+For `delegate`, `check-listing`, `trust-signals`, `idle-why`, `pay-model-not` and `pay-for`. `participants` is the number who answered the step (empty answers excluded); `any_but_exclusive` counts those who picked at least one option other than the exclusive one (`none`, `all-ok`, `nothing`), the share the H4 rule reads for `delegate`.
 
 ```sql
--- rq4-delegate
+-- multi
 with run as (
-  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-1'
+  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-2'
 ), answers as (
-  select coalesce(v.chosen[1], 'none-drawn') as variant, a.chosen
+  select a.step, a.chosen
   from takeover_admin.study_answers a join run on run.id = a.session
-  left join takeover_admin.study_answers v on v.session = a.session and v.step = 'draft-variant'
-  where a.step = 'delegate' and cardinality(a.chosen) > 0
-), tasks as (
-  select variant, task from answers cross join unnest(answers.chosen) as task
+  where a.step in ('delegate', 'check-listing', 'trust-signals', 'idle-why', 'pay-model-not', 'pay-for')
+    and cardinality(a.chosen) > 0
 )
-select coalesce(variant, 'all') as variant, task, count(*) as chosen,
-  (select count(*) from answers a where tasks.variant is null or a.variant = tasks.variant) as participants
-from tasks
-group by grouping sets ((task), (variant, task))
-order by variant, chosen desc, task;
+select answers.step, option, count(*) as chosen,
+  (select count(*) from answers a where a.step = answers.step) as participants,
+  (select count(*) from answers a where a.step = answers.step
+    and not a.chosen <@ array['none', 'all-ok', 'nothing']) as any_but_exclusive
+from answers cross join unnest(answers.chosen) as option
+group by answers.step, option
+order by answers.step, chosen desc, option;
 ```
 
-### RQ5 Pay model, by side of the last attempt
+### H5 Monthly amount, by side of the last attempt
+
+`side` as in the pay-model query below; `all` pools them. Amounts in CHF; `nothing` counts `chf-0`. The distribution per amount comes from the counts query above with `wtp-monthly`.
+
+```sql
+-- rq5-wtp
+with run as (
+  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-2'
+), amounts as (
+  select replace(a.chosen[1], 'chf-', '')::numeric as amount,
+    case when r.chosen[1] in ('buying', 'getting-free') then 'buying'
+      when r.chosen[1] in ('selling', 'giving-away') then 'passing-on' else 'none' end as part
+  from takeover_admin.study_answers a join run on run.id = a.session
+  left join takeover_admin.study_answers r on r.session = a.session and r.step = 'last-role'
+  where a.step = 'wtp-monthly' and cardinality(a.chosen) > 0
+)
+select coalesce(part, 'all') as side, count(*) as answered,
+  percentile_cont(0.5) within group (order by amount) as median,
+  percentile_cont(0.25) within group (order by amount) as q1,
+  percentile_cont(0.75) within group (order by amount) as q3,
+  count(*) filter (where amount = 0) as nothing
+from amounts
+group by grouping sets ((), (part))
+order by side;
+```
+
+### H5 Pay model, by side of the last attempt
 
 `side`: `buying` (buying, getting-free), `passing-on` (selling, giving-away), `none` (never tried or not answered); `all` pools them. `paid_answered`: participants in the row's group who chose one of the three paid options.
 
 ```sql
 -- rq5-pay-model
 with run as (
-  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-1'
+  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-2'
 ), models as (
   select a.chosen[1] as model,
     case when r.chosen[1] in ('buying', 'getting-free') then 'buying'
@@ -710,7 +712,7 @@ The forms carry no session but name the wording version they end, so both counts
 ```sql
 -- forms
 with run as (
-  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-1'
+  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v4-2'
 )
 select
   (select count(distinct e.session) from takeover_admin.study_events e join run on run.id = e.session
@@ -721,7 +723,7 @@ select
   count(*) filter (where interview) as interview,
   count(*) filter (where future_surveys) as future_surveys
 from takeover_admin.study_pilot
-where version = 'v4-1';
+where version = 'v4-2';
 ```
 
 ### Those who want to try takeover early, per place
@@ -736,7 +738,7 @@ select place,
   count(*) filter (where roles = array['not-sure']) as undecided,
   count(*) as people
 from takeover_admin.study_pilot
-where try_early and version = 'v4-1'
+where try_early and version = 'v4-2'
 group by place
 order by people desc, place;
 ```

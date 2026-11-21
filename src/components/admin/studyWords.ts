@@ -1,4 +1,6 @@
 import { EN } from "../../tour/i18n/en";
+import { amountOption, amountsOf, V3_STEPS } from "../../tour/v3/v3Script";
+import { amountLabel } from "../../tour/v3/v3Words";
 
 type Words = { question: string; options: Record<string, string> };
 
@@ -7,13 +9,6 @@ const RECORDED: Record<string, Words> = {
   "draft-day": {
     question: "Day picked in the practice chat",
     options: EN.v3.draft.days,
-  },
-  "draft-variant": {
-    question: "Reply Pako drafted in the practice chat",
-    options: {
-      exact: "At the agreed CHF 40",
-      "wrong-price": "At CHF 45 instead of the agreed CHF 40",
-    },
   },
   draft: {
     question: "What participants did with Pako's draft",
@@ -26,16 +21,22 @@ const RECORDED: Record<string, Words> = {
       own: "Started their own, nothing decided",
     },
   },
-  "draft-price": {
-    question: "Price named in the message sent to Mia",
-    options: {
-      "chf-40": "CHF 40, as agreed",
-      "chf-45": "CHF 45, the wrong price",
-      several: "More than one price",
-      "no-price": "No price",
-    },
-  },
 };
+
+/** The amounts of each slider step, labelled as the participant read them. */
+const AMOUNTS: Record<string, Words> = Object.fromEntries(
+  V3_STEPS.flatMap((step) => {
+    if (step.kind !== "amount") return [];
+    const words = EN.v3.amounts[step.id];
+    const options = Object.fromEntries(
+      amountsOf(step).map((amount) => [
+        amountOption(amount),
+        amountLabel(words, amount),
+      ]),
+    );
+    return [[step.id, { question: words.question, options }]];
+  }),
+);
 
 /** Screens that show something instead of asking. */
 const SHOWN: Record<string, string> = {
@@ -49,7 +50,7 @@ const SHOWN: Record<string, string> = {
 
 function wordsOf(step: string): Words | undefined {
   const steps: Record<string, Words> = EN.v3.steps;
-  return RECORDED[step] ?? steps[step];
+  return RECORDED[step] ?? AMOUNTS[step] ?? steps[step];
 }
 
 /**

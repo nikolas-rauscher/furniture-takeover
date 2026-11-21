@@ -208,6 +208,54 @@
   }
 }
 
+/* An amount on a slider. Until it is moved there is no handle and no fill, so no
+   amount is suggested; the value reads "Please choose" in a quieter type. */
+.tour-amount {
+  display: grid;
+  gap: 10px;
+}
+/* Keeps the height of the large value, so the track does not jump once it is moved. */
+.tour-amount-value {
+  display: flex;
+  align-items: flex-end;
+  min-height: calc(var(--type-price) * 1.1);
+  margin-top: 8px;
+  color: var(--blue-dark);
+  font-size: var(--type-price);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.tour-amount[data-untouched] .tour-amount-value {
+  color: var(--muted);
+  font-size: var(--type-item);
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.tour-amount[data-untouched] .price-slider-track::-webkit-slider-thumb {
+  opacity: 0;
+}
+.tour-amount[data-untouched] .price-slider-track::-moz-range-thumb {
+  opacity: 0;
+}
+.tour-amount[data-untouched] .price-slider-track::-moz-range-progress {
+  background: transparent;
+}
+/* Without a handle, the focus ring goes round the track. */
+.tour-amount[data-untouched]
+  .price-slider-track:focus-visible::-webkit-slider-runnable-track {
+  box-shadow:
+    0 3px 0 var(--lip),
+    0 0 0 4px var(--focus-ring);
+}
+.tour-amount[data-untouched]
+  .price-slider-track:focus-visible::-moz-range-track {
+  box-shadow:
+    0 3px 0 var(--lip),
+    0 0 0 4px var(--focus-ring);
+}
+
 /* Multiple choices say so above their answers. */
 .tour-hint {
   margin: 0;
@@ -220,15 +268,6 @@
 .tour-scene-note {
   margin: 0;
   text-align: center;
-}
-
-/* Who saw the wrong price learns that it was deliberate. */
-.tour-debrief {
-  margin: 0;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: var(--sky);
-  line-height: 1.45;
 }
 
 /* Inside the app: the desk listings and the practice chat. */
@@ -481,7 +520,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
-/* Mia's agreement scrolls to the top of the body, just below the header. */
+/* Léa's agreement scrolls to the top of the body, just below the header. */
 .tour-chat-anchor {
   scroll-margin-top: 8px;
 }

@@ -130,9 +130,6 @@ export default function V3End({ context }: { context: StepContext }) {
         {sent && <p className="tour-save">{v3.pilot.sent}</p>}
       </div>
       {!sent && !minor && <StayInTouch context={context} />}
-      {context.progress.draftVariant === "wrong-price" && (
-        <p className="tour-debrief">{v3.end.debrief}</p>
-      )}
       <ShareBlock context={context} />
     </div>
   );

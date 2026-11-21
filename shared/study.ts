@@ -34,7 +34,9 @@ const MAX_EVENT_SEQ = 9_999;
 const session = z.uuid();
 const stepId = z.string().regex(/^[a-z][a-z0-9-]{1,39}$/);
 const optionId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,39}$/);
-const optionIds = z.array(optionId).max(MAX_OPTIONS);
+/** An answer's option may also name an amount with a decimal point, such as `chf-3.5`. */
+const answerOption = z.string().regex(/^[a-z0-9][a-z0-9.-]{0,39}$/);
+const optionIds = z.array(answerOption).max(MAX_OPTIONS);
 const studySurveySchema = z.enum(STUDY_SURVEYS);
 const studyLanguageSchema = z.enum(STUDY_LANGUAGES);
 /** Changes with the questions or their wording, so answers to different wordings stay apart. */
@@ -221,8 +223,6 @@ export const studyWithdrawalSchema = z.strictObject({ session });
  */
 export const STUDY_V3_CORE_SCREENS = [
   "part-last-time",
-  "who",
-  "housing",
   "last-role",
   "last-item",
   "last-occasion",
@@ -232,19 +232,27 @@ export const STUDY_V3_CORE_SCREENS = [
   "last-transport",
   "last-messages",
   "part-home",
+  "trade-frequency",
   "idle-items",
   "idle-release",
   "idle-why",
-  "move",
+  "seeking",
   "part-the-app",
   "app-sell",
-  "app-deal",
-  "wanted-react",
-  "seeking",
+  "check-listing",
   "draft",
+  "app-deal",
+  "max-distance",
+  "trust-signals",
   "delegate",
+  "wanted-react",
   "part-price",
+  "wtp-monthly",
   "pay-model",
+  "pay-model-not",
+  "pay-for",
+  "who",
+  "housing",
   "age",
   "gender",
 ] as const;
@@ -291,7 +299,7 @@ export const studyReportSchema = z.strictObject({
     z.strictObject({
       step: stepId,
       answered: cell,
-      options: z.array(z.strictObject({ option: optionId, count: cell })),
+      options: z.array(z.strictObject({ option: answerOption, count: cell })),
     }),
   ),
   /** Typed answers per step, sorted alphabetically so their order says nothing. */

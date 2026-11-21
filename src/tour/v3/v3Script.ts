@@ -9,9 +9,9 @@ import type { TourText } from "../i18n/en.ts";
 import type { StepCondition } from "../stepConditions.ts";
 
 /** Raised whenever a question, an option or its wording changes. */
-export const V3_VERSION = "v4-1";
+export const V3_VERSION = "v4-2";
 /** The time the start screen and the share text name, rounded up from the core's estimate. */
-export const V3_MINUTES = 7;
+export const V3_MINUTES = 9;
 
 /** The four parts of the survey; each opens with a screen that says what it asks. */
 export const V3_SECTIONS = ["last-time", "home", "the-app", "price"] as const;
@@ -25,6 +25,7 @@ type V3Scene = Extract<TourScene, "sell" | "deal">;
 
 /** A step whose context comes first, as Pako's line, with the question above the answers. */
 type CardId = keyof TourText["v3"]["cards"];
+type AmountStepId = keyof TourText["v3"]["amounts"];
 
 type Base = {
   id: string;
@@ -62,41 +63,39 @@ export type V3ChoiceStep = Base & {
   multiple?: boolean;
   /** In a multiple choice, the option that clears the others and is cleared by them. */
   exclusive?: string;
+  /** Continue works without a pick; the answer is then stored as skipped. */
+  optional?: boolean;
+};
+
+/**
+ * An amount in CHF on a slider from `min` to `max` in steps of `increment`, stored as
+ * the option `chf-<amount>`. No amount is preset: the handle appears once it is moved.
+ */
+export type V3AmountStep = Base & {
+  kind: "amount";
+  id: AmountStepId;
+  min: number;
+  max: number;
+  increment: number;
+  card?: CardId;
 };
 
 export type V3Step =
   /** Opens a part: its number, its name and what it asks. */
   | (Base & { kind: "part"; section: V3Section })
   | V3ChoiceStep
+  | V3AmountStep
   | (Base & { kind: "draft" })
   | (Base & { kind: "scene"; scene: V3Scene })
   | (Base & { kind: "end" });
 
 /** The day picked in the draft chat is stored as an answer of its own. */
 export const DRAFT_DAY_STEP = "draft-day";
-/** The days Mia offers, in the order of the week. */
+/** The days Léa offers, in the order of the week. */
 export const DRAFT_DAYS = ["sat", "sun"] as const;
 export type DraftDay = (typeof DRAFT_DAYS)[number];
-/**
- * Which reply Pako drafts, drawn once per participant and stored with the day: the
- * agreed price, or CHF 5 more than it, against the participant's interest.
- */
-export const DRAFT_VARIANT_STEP = "draft-variant";
-export const DRAFT_VARIANTS = ["exact", "wrong-price"] as const;
-export type DraftVariant = (typeof DRAFT_VARIANTS)[number];
-/** Two in three participants get the wrong price, so its rate of unchanged sends is narrower. */
-export const DRAFT_ALLOCATION: readonly DraftVariant[] = [
-  "exact",
-  "wrong-price",
-  "wrong-price",
-];
-/** The agreed price in CHF, and the price the wrong draft names instead. */
-export const DRAFT_PRICES: Record<DraftVariant, number> = {
-  exact: 40,
-  "wrong-price": 45,
-};
-/** The price named in the message sent, stored as an answer of its own. */
-export const DRAFT_PRICE_STEP = "draft-price";
+/** The price Léa and the participant agree on, in CHF; Pako's draft names it. */
+export const DRAFT_PRICE = 40;
 /** The option picked first for Pako's draft, kept as the draft's first answer. */
 export type DraftAction = "send" | "change" | "own" | "dont-send";
 /** The options that open the message for writing. */
@@ -152,6 +151,28 @@ function choice(
   };
 }
 
+const AMOUNT_PREFIX = "chf-";
+
+/** The option an amount is stored as, such as `chf-3.5`. */
+export const amountOption = (amount: number) => `${AMOUNT_PREFIX}${amount}`;
+
+/** The amount of a stored option; throws on anything else. */
+export function amountOf(option: string): number {
+  const amount = Number(option.slice(AMOUNT_PREFIX.length));
+  if (!option.startsWith(AMOUNT_PREFIX) || !Number.isFinite(amount))
+    throw new Error(`${option} is not an amount.`);
+  return amount;
+}
+
+/** Every amount a slider step can store, from low to high. */
+export function amountsOf(step: V3AmountStep): number[] {
+  const count = Math.round((step.max - step.min) / step.increment);
+  return Array.from(
+    { length: count + 1 },
+    (_, index) => step.min + index * step.increment,
+  );
+}
+
 type ChosenSheet = Record<string, { chosen: readonly string[] }>;
 
 /** The options this participant is offered, in their listed order. */
@@ -170,12 +191,6 @@ export function offeredOptions(
 
 export const V3_STEPS: readonly V3Step[] = [
   { kind: "part", id: "part-last-time", section: "last-time" },
-  choice("who", ["epfl", "unil", "other-school", "no"], {
-    section: "last-time",
-  }),
-  choice("housing", ["fmel", "other-res", "flat", "family", "elsewhere"], {
-    section: "last-time",
-  }),
   choice(
     "last-role",
     ["buying", "getting-free", "selling", "giving-away", "none"],
@@ -263,6 +278,11 @@ export const V3_STEPS: readonly V3Step[] = [
     when: TRIED,
   }),
   { kind: "part", id: "part-home", section: "home" },
+  choice(
+    "trade-frequency",
+    ["monthly-plus", "monthly", "yearly", "rarely", "never"],
+    { section: "home" },
+  ),
   choice("idle-items", ["none", "1-3", "4-10", "over-10"], {
     section: "home",
   }),
@@ -292,26 +312,43 @@ export const V3_STEPS: readonly V3Step[] = [
       fixedLast: 1,
     },
   ),
-  choice("move", ["move-feb", "move-jun", "no-or-later", "not-sure"], {
-    section: "home",
-  }),
-  { kind: "part", id: "part-the-app", section: "the-app" },
-  { kind: "scene", id: "app-sell", scene: "sell", section: "the-app" },
-  { kind: "scene", id: "app-deal", scene: "deal", section: "the-app" },
-  // "Wanted nearby", a feature idea: a nearby student's request, shown as a post.
-  choice("wanted-react", ["offer-now", "offer-later", "leave", "rather-not"], {
-    section: "the-app",
-    product: true,
-    card: "wanted",
-    shuffle: true,
-    compact: true,
-  }),
   choice("seeking", ["yes", "no"], {
-    section: "the-app",
-    product: true,
+    section: "home",
     withText: "yes",
   }),
+  // One story with the same people and the same desk: Léa sells it, the participant buys it.
+  { kind: "part", id: "part-the-app", section: "the-app" },
+  { kind: "scene", id: "app-sell", scene: "sell", section: "the-app" },
+  choice(
+    "check-listing",
+    ["price", "description", "photos", "pickup-times", "none"],
+    {
+      section: "the-app",
+      product: true,
+      multiple: true,
+      exclusive: "none",
+      shuffle: true,
+      fixedLast: 1,
+    },
+  ),
   { kind: "draft", id: "draft", section: "the-app" },
+  { kind: "scene", id: "app-deal", scene: "deal", section: "the-app" },
+  choice("max-distance", ["under-1", "1-3", "3-10", "over-10"], {
+    section: "the-app",
+    product: true,
+  }),
+  choice(
+    "trust-signals",
+    ["verified", "reviews", "campus-meet", "chat", "none"],
+    {
+      section: "the-app",
+      product: true,
+      multiple: true,
+      exclusive: "none",
+      shuffle: true,
+      fixedLast: 1,
+    },
+  ),
   // Asked after the draft task, so the task is not framed by it.
   choice(
     "delegate",
@@ -334,13 +371,59 @@ export const V3_STEPS: readonly V3Step[] = [
       compact: true,
     },
   ),
+  // "Wanted nearby", a feature idea: Léa's request, shown as a post.
+  choice("wanted-react", ["offer-now", "offer-later", "leave", "rather-not"], {
+    section: "the-app",
+    product: true,
+    card: "wanted",
+    shuffle: true,
+    compact: true,
+  }),
   { kind: "part", id: "part-price", section: "price" },
+  // Price first, then the questions about the participant.
+  {
+    kind: "amount",
+    id: "wtp-monthly",
+    min: 0,
+    max: 10,
+    increment: 0.5,
+    card: "price",
+    section: "price",
+  },
   choice("pay-model", ["free", "seller-fee", "pack-5", "monthly", "not-sure"], {
     section: "price",
     product: true,
-    card: "price",
     shuffle: true,
     fixedLast: 1,
+  }),
+  choice(
+    "pay-model-not",
+    ["free", "seller-fee", "pack-5", "monthly", "all-ok"],
+    {
+      section: "price",
+      product: true,
+      multiple: true,
+      exclusive: "all-ok",
+      optional: true,
+    },
+  ),
+  choice(
+    "pay-for",
+    ["listings", "replies", "transport", "visibility", "nothing"],
+    {
+      section: "price",
+      product: true,
+      multiple: true,
+      exclusive: "nothing",
+      shuffle: true,
+      fixedLast: 1,
+    },
+  ),
+  choice("who", ["epfl", "unil", "other-school", "no"], {
+    section: "price",
+  }),
+  choice("housing", ["fmel", "other-res", "flat", "family", "elsewhere"], {
+    section: "price",
   }),
   choice(
     "age",
@@ -354,7 +437,11 @@ export const V3_STEPS: readonly V3Step[] = [
   { kind: "end", id: "end" },
 ];
 
-/** The ids stored for a step: a choice or the draft task stores its own answer. */
+/** The ids stored for a step: a choice, an amount or the draft task stores its own answer. */
 export function answerIds(step: V3Step): string[] {
-  return step.kind === "choice" || step.kind === "draft" ? [step.id] : [];
+  return step.kind === "choice" ||
+    step.kind === "amount" ||
+    step.kind === "draft"
+    ? [step.id]
+    : [];
 }

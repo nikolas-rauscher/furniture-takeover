@@ -211,7 +211,7 @@ test("events are stored once per sequence number, so a resent batch adds nothing
         {
           seq: 2,
           kind: "back",
-          step: "move",
+          step: "idle-why",
           detail: "last-trouble",
           at: "2026-11-30T10:00:05.000Z",
         },
@@ -226,7 +226,7 @@ test("events are stored once per sequence number, so a resent batch adds nothing
       [
         { seq: 0, kind: "shown", step: "who", detail: null },
         { seq: 1, kind: "shown", step: "who", detail: null },
-        { seq: 2, kind: "back", step: "move", detail: "last-trouble" },
+        { seq: 2, kind: "back", step: "idle-why", detail: "last-trouble" },
       ],
     );
   });

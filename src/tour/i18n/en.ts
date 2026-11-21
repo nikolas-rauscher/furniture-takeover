@@ -378,7 +378,7 @@ export const EN = {
   v3: {
     sections: {
       "last-time": "Your experience",
-      home: "Things at home",
+      home: "You right now",
       "the-app": "The app",
       price: "Price, and about you",
     },
@@ -403,20 +403,21 @@ export const EN = {
     parts: {
       label: (current: number, total: number) => `Part ${current} of ${total}`,
       "last-time": {
-        bubble: "First, a few questions about you and your experience.",
+        bubble: "First, a few questions about your own experience.",
         text: "There are no right or wrong answers.",
       },
       home: {
-        bubble: "Next, a few questions about things you have at home.",
+        bubble:
+          "Next, a few questions about you right now: used things and what you have at home.",
         text: "For example furniture, books, kitchen things or electronics.",
       },
       "the-app": {
         bubble:
-          "Now a quick look at the app. I draft listings and messages in it. You decide what gets sent.",
-        text: "Two short scenes, an idea for the app and a short chat.",
+          "Now a short story in the app. Léa is moving out and sells her desk, and you'd like to buy it. I'm Pako: I draft listings and messages, and you decide what gets sent.",
+        text: "Two short scenes, a chat and a few questions about the story.",
       },
       price: {
-        bubble: "Last part: price, and two questions about you.",
+        bubble: "Last part: price, then a few questions about you.",
         text: "Then you're done.",
       },
     },
@@ -426,27 +427,27 @@ export const EN = {
       },
       wanted: {
         title: "An idea for takeover: requests.",
-        text: "If you're looking for something, you post what you need. All students nearby who use takeover can see it.",
+        text: "Léa still needs a desk lamp for her new room. Anyone looking for something can post what they need, and students nearby see it.",
       },
       delegate: {
-        text: "Now imagine you are selling something and Pako may act on its own. It sends messages in your name; you see them only afterwards.",
+        text: "Now you're in Léa's place: you're selling the desk, and Pako may act on its own. It sends messages in your name; you see them only afterwards.",
       },
       price: {
-        text: "Searching, listing and messaging are free. Pako drafts a few listings or messages a day for free. Each draft counts once. Only extra help from Pako would cost something.",
+        text: "Finally, a few questions about possible prices.",
       },
     },
     wantedPost: {
       label: "Example of a request in the app",
-      text: "Someone 5 minutes from you is looking for a desk lamp.",
+      text: "Léa, 5 minutes from you, is looking for a desk lamp.",
     },
     scenes: {
       sell: {
-        title: "Selling with a photo",
-        text: "Léa takes a photo of her desk. Pako writes the listing and suggests a price. Léa sets her own price and saves the listing.",
+        title: "Léa sells her desk",
+        text: "Léa is moving out and sells her desk with takeover. She takes a photo, Pako writes the listing and suggests a price, and Léa sets her own price of CHF 40.",
       },
       deal: {
-        title: "Agreeing on a pickup",
-        text: "Noah offers CHF 35 for the desk and Léa accepts, so the pickup is booked. At pickup time, both of them confirm the handover.",
+        title: "The pickup is booked",
+        text: "On Léa's phone: your offer of CHF 40 arrives (in the example you're called Noah). Léa accepts, and the pickup is booked. At pickup time, you both confirm the handover.",
       },
     },
     steps: {
@@ -515,7 +516,7 @@ export const EN = {
         options: { yes: "Yes", no: "No", ongoing: "Still in progress" },
       },
       "last-trouble": {
-        question: "What, if anything, was difficult about this attempt?",
+        question: "What was difficult about this attempt, if anything was?",
         options: {
           nothing: "Nothing was difficult",
           finding: "Finding something suitable",
@@ -558,6 +559,16 @@ export const EN = {
           "dont-remember": "Can't remember",
         },
       },
+      "trade-frequency": {
+        question: "How often do you buy, sell or give away something used?",
+        options: {
+          "monthly-plus": "Several times a month",
+          monthly: "About once a month",
+          yearly: "A few times a year",
+          rarely: "Less often",
+          never: "Never",
+        },
+      },
       "idle-items": {
         question:
           "How many usable things do you have at home that you don't currently use?",
@@ -586,18 +597,8 @@ export const EN = {
           other: "Other",
         },
       },
-      move: {
-        question: "Will you move out by the end of June 2027?",
-        options: {
-          "move-feb": "Yes, by the end of February",
-          "move-jun": "Yes, between March and June",
-          "no-or-later": "No, or later",
-          "not-sure": "Not sure",
-        },
-      },
       "wanted-react": {
-        question:
-          "You have a spare desk lamp like the one requested. What would you most likely do?",
+        question: "You have a spare desk lamp. What would you most likely do?",
         options: {
           "offer-now": "Offer it now",
           "offer-later": "Offer it later",
@@ -622,13 +623,62 @@ export const EN = {
         },
       },
       "pay-model": {
-        question: "Which option would you choose?",
+        question: "Which of these options would you like best?",
         options: {
           free: "Free",
           "seller-fee": "Fee per sale",
           "pack-5": "Pack of 5",
           monthly: "Monthly subscription",
           "not-sure": "Not sure",
+        },
+      },
+      "pay-model-not": {
+        question: "Which of these would you not use? You can choose several.",
+        options: {
+          free: "Free",
+          "seller-fee": "Fee per sale",
+          "pack-5": "Pack of 5",
+          monthly: "Monthly subscription",
+          "all-ok": "I'd consider all of them",
+        },
+      },
+      "check-listing": {
+        question: "What would you check before Pako's listing goes online?",
+        options: {
+          price: "The price",
+          description: "The description",
+          photos: "The photos",
+          "pickup-times": "The pickup times",
+          none: "None of these",
+        },
+      },
+      "max-distance": {
+        question: "How far would you go at most to pick up a desk?",
+        options: {
+          "under-1": "Under 1 km",
+          "1-3": "1–3 km",
+          "3-10": "3–10 km",
+          "over-10": "More than 10 km",
+        },
+      },
+      "trust-signals": {
+        question: "What would help you trust the other person?",
+        options: {
+          verified: "Verified student account",
+          reviews: "Reviews",
+          "campus-meet": "Meeting on campus",
+          chat: "The chat so far",
+          none: "None of these",
+        },
+      },
+      "pay-for": {
+        question: "What would you most likely pay for?",
+        options: {
+          listings: "Having my listings written",
+          replies: "Replies and appointments handled by Pako",
+          transport: "Transport or delivery",
+          visibility: "More visibility for my listing",
+          nothing: "None of these",
         },
       },
       age: {
@@ -652,6 +702,16 @@ export const EN = {
           "self-describe": "Another term",
           na: "Prefer not to say",
         },
+      },
+    },
+    amounts: {
+      "wtp-monthly": {
+        question:
+          "How much would you be willing to pay per month for an app that takes care of writing listings and messages for you?",
+        choose: "Please choose",
+        nothing: "Nothing",
+        amount: (francs: string) => `CHF ${francs} a month`,
+        top: (francs: string) => `CHF ${francs}`,
       },
     },
     seekingWhat: "What are you looking for? (optional)",
@@ -683,24 +743,23 @@ export const EN = {
     },
     draft: {
       intro:
-        "You want to buy Mia's desk. Mia asks when you could pick it up: choose a day in the chat below.",
-      scenario:
-        "Mia is another student. The price and the pickup place work for you.",
-      task: "First, answer Mia in the chat. Pako then drafts a reply for you, and you decide what to do with it.",
-      chatLabel: "Practice chat with Mia",
+        "You're looking for a desk and find Léa's listing. Léa asks when you could pick it up: choose a day in the chat below.",
+      scenario: "The price and the pickup place work for you.",
+      task: "First, answer Léa in the chat. Pako then drafts a reply for you, and you decide what to do with it.",
+      chatLabel: "Practice chat with Léa",
       listing: {
-        title: "White desk",
-        size: "120 × 60 cm",
+        title: "Compact study desk",
+        size: "100\u00a0×\u00a050\u00a0cm",
         price: "CHF 40",
         pickup: "Pickup: EPFL, Rolex Learning Center",
-        seller: "Mia",
+        seller: "Léa",
       },
-      mia: "Mia",
+      lea: "Léa",
       you: "You",
       pako: "Pako",
       askDay:
         "Hi! The desk is still available. Which day could you pick it up? I'm free from 5 pm.",
-      pickDay: "Your answer to Mia",
+      pickDay: "Your answer to Léa",
       days: { sat: "Saturday", sun: "Sunday" },
       yourDay: (day: string) => `${day} works for me. How about 5:30 pm?`,
       confirm: (day: string, price: number) =>
@@ -714,10 +773,10 @@ export const EN = {
       sendAsIs: "Send as written",
       change: "Edit it",
       own: "Write my own",
-      ownLabel: "Your message to Mia",
+      ownLabel: "Your message to Léa",
       send: "Send",
       dontSend: "Send nothing",
-      editLabel: "Your reply to Mia",
+      editLabel: "Your reply to Léa",
       notSent: "You didn't send anything.",
     },
     scene: { next: "Next", replay: "Replay" },
@@ -762,8 +821,6 @@ export const EN = {
     },
     end: {
       title: "Thank you!",
-      debrief:
-        "By the way: the CHF 45 draft was a deliberate mistake to see whether people check drafts.",
       shareTitle:
         "Every answer helps, including from people who never sell anything. Would you share the survey?",
       share: "Share",

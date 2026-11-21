@@ -40,10 +40,14 @@ export default function V3Footer({ context }: { context: StepContext }) {
         </>
       );
     case "choice":
+    case "amount":
       return (
         <Button
           className={primary}
-          disabled={given[step.id].chosen.length === 0}
+          disabled={
+            given[step.id].chosen.length === 0 &&
+            !(step.kind === "choice" && step.optional)
+          }
           onClick={() => context.proceed()}
         >
           {common.continue}

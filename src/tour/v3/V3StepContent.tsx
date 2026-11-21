@@ -1,4 +1,5 @@
 import DeviceFrame from "../device/DeviceFrame";
+import AmountSlider from "./AmountSlider";
 import { useTourText } from "../i18n/TourLanguage";
 import ChoiceStep from "../study/ChoiceStep";
 import DraftChat from "./DraftChat";
@@ -24,14 +25,15 @@ function ChoiceContent({
   const text = useTourText();
   const question = questionOf(text, step);
   const plans = step.id === "pay-model";
+  // A multiple choice says so above its answers, unless its question already does.
+  const saysSeveral =
+    step.multiple && !step.card && !question.includes(text.v3.chooseSeveral);
   return (
     <>
       {step.id === "wanted-react" && <WantedPost />}
       {step.card && <h2 className="tour-question">{question}</h2>}
       {plans && <p className="tour-eyebrow">{text.v3.plans.label}</p>}
-      {step.multiple && !step.card && (
-        <p className="tour-hint">{text.v3.chooseSeveral}</p>
-      )}
+      {saysSeveral && <p className="tour-hint">{text.v3.chooseSeveral}</p>}
       <div
         className="tour-choice-group"
         data-compact={step.compact || undefined}
@@ -70,6 +72,8 @@ export default function V3StepContent({ context }: { context: StepContext }) {
   switch (step.kind) {
     case "choice":
       return <ChoiceContent step={step} context={context} />;
+    case "amount":
+      return <AmountSlider step={step} context={context} />;
     case "draft":
       return (
         <>

@@ -389,7 +389,7 @@ export const DE: TourText = {
   v3: {
     sections: {
       "last-time": "Deine Erfahrung",
-      home: "Sachen zu Hause",
+      home: "Du im Moment",
       "the-app": "Die App",
       price: "Preis und Angaben zu dir",
     },
@@ -414,20 +414,21 @@ export const DE: TourText = {
     parts: {
       label: (current, total) => `Teil ${current} von ${total}`,
       "last-time": {
-        bubble: "Zuerst ein paar Fragen zu dir und zu deiner Erfahrung.",
+        bubble: "Zuerst ein paar Fragen zu deiner eigenen Erfahrung.",
         text: "Es gibt keine richtigen oder falschen Antworten.",
       },
       home: {
-        bubble: "Jetzt ein paar Fragen zu Sachen, die du zu Hause hast.",
+        bubble:
+          "Jetzt ein paar Fragen zu dir im Moment: zu Gebrauchtem und zu Sachen, die du zu Hause hast.",
         text: "Zum Beispiel Möbel, Bücher, Küchensachen oder Elektronik.",
       },
       "the-app": {
         bubble:
-          "Jetzt zeige ich dir kurz die App. Ich entwerfe darin Inserate und Nachrichten. Du entscheidest, was gesendet wird.",
-        text: "Zwei kurze Szenen, eine Idee für die App und ein kurzer Chat.",
+          "Jetzt eine kurze Geschichte in der App. Léa zieht aus und verkauft ihren Schreibtisch, und du möchtest ihn kaufen. Ich bin Pako: Ich entwerfe Inserate und Nachrichten, und du entscheidest, was gesendet wird.",
+        text: "Zwei kurze Szenen, ein Chat und ein paar Fragen zur Geschichte.",
       },
       price: {
-        bubble: "Letzter Teil: der Preis und zwei Fragen zu dir.",
+        bubble: "Letzter Teil: der Preis, dann ein paar Fragen zu dir.",
         text: "Dann bist du fertig.",
       },
     },
@@ -437,27 +438,27 @@ export const DE: TourText = {
       },
       wanted: {
         title: "Eine Idee für takeover: Suchanfragen.",
-        text: "Wer etwas sucht, schreibt in die App, was er oder sie braucht. Das sehen alle Studierenden in der Nähe, die takeover nutzen.",
+        text: "Léa braucht noch eine Schreibtischlampe für ihr neues Zimmer. Wer etwas sucht, kann es in der App posten, und Studierende in der Nähe sehen es.",
       },
       delegate: {
-        text: "Stell dir jetzt vor, du verkaufst etwas und Pako darf selbst handeln. Pako schickt Nachrichten in deinem Namen; du siehst sie erst danach.",
+        text: "Jetzt bist du an Léas Stelle: Du verkaufst den Schreibtisch, und Pako darf selbst handeln. Pako schickt Nachrichten in deinem Namen; du siehst sie erst danach.",
       },
       price: {
-        text: "Suchen, Inserieren und Nachrichten sind gratis. Pako entwirft gratis ein paar Inserate oder Nachrichten pro Tag. Jeder Entwurf zählt einmal. Kosten würde nur zusätzliche Hilfe von Pako.",
+        text: "Zum Schluss ein paar Fragen zu möglichen Preisen.",
       },
     },
     wantedPost: {
       label: "Beispiel einer Suchanfrage in der App",
-      text: "Jemand, 5\u00a0Minuten von dir entfernt, sucht eine Schreibtischlampe.",
+      text: "Léa, 5\u00a0Minuten von dir entfernt, sucht eine Schreibtischlampe.",
     },
     scenes: {
       sell: {
-        title: "Verkaufen mit einem Foto",
-        text: "Léa fotografiert ihren Schreibtisch. Pako schreibt das Inserat und schlägt einen Preis vor. Léa legt ihren eigenen Preis fest und speichert das Inserat.",
+        title: "Léa verkauft ihren Schreibtisch",
+        text: "Léa zieht aus und verkauft ihren Schreibtisch mit takeover. Sie macht ein Foto, Pako schreibt das Inserat und schlägt einen Preis vor, und Léa legt ihren eigenen Preis fest: CHF\u00a040.",
       },
       deal: {
-        title: "Eine Abholung vereinbaren",
-        text: "Noah bietet CHF\u00a035 für den Schreibtisch, und Léa nimmt an. Damit steht der Abholtermin fest. Bei der Übergabe bestätigen beide, dass Noah den Schreibtisch abgeholt hat.",
+        title: "Die Abholung steht",
+        text: "Auf Léas Handy: Dein Angebot über CHF\u00a040 kommt an (im Beispiel heisst du Noah). Léa nimmt an, und die Abholung ist gebucht. Bei der Abholung bestätigt ihr beide die Übergabe.",
       },
     },
     steps: {
@@ -527,7 +528,7 @@ export const DE: TourText = {
       },
       "last-trouble": {
         question:
-          "Was war bei diesem Versuch schwierig, falls überhaupt etwas?",
+          "Was war bei diesem Versuch schwierig, falls überhaupt etwas schwierig war?",
         options: {
           nothing: "Nichts war schwierig",
           finding: "Etwas Passendes finden",
@@ -570,6 +571,17 @@ export const DE: TourText = {
           "dont-remember": "Weiss nicht mehr",
         },
       },
+      "trade-frequency": {
+        question:
+          "Wie oft kaufst, verkaufst oder verschenkst du etwas Gebrauchtes?",
+        options: {
+          "monthly-plus": "Mehrmals im Monat",
+          monthly: "Etwa einmal im Monat",
+          yearly: "Ein paar Mal im Jahr",
+          rarely: "Seltener",
+          never: "Nie",
+        },
+      },
       "idle-items": {
         question:
           "Wie viele brauchbare Sachen hast du zu Hause, die du gerade nicht benutzt?",
@@ -599,18 +611,9 @@ export const DE: TourText = {
           other: "Anderes",
         },
       },
-      move: {
-        question: "Ziehst du bis Ende Juni 2027 aus?",
-        options: {
-          "move-feb": "Ja, bis Ende Februar",
-          "move-jun": "Ja, zwischen März und Juni",
-          "no-or-later": "Nein, oder erst später",
-          "not-sure": "Weiss nicht",
-        },
-      },
       "wanted-react": {
         question:
-          "Du hast genau so eine Schreibtischlampe übrig. Was würdest du am ehesten tun?",
+          "Du hast eine Schreibtischlampe übrig. Was würdest du am ehesten tun?",
         options: {
           "offer-now": "Sie jetzt anbieten",
           "offer-later": "Sie später anbieten",
@@ -635,13 +638,65 @@ export const DE: TourText = {
         },
       },
       "pay-model": {
-        question: "Welche Variante würdest du wählen?",
+        question: "Welche dieser Varianten fändest du am besten?",
         options: {
           free: "Gratis",
           "seller-fee": "Gebühr pro Verkauf",
           "pack-5": "5er-Paket",
           monthly: "Monatsabo",
           "not-sure": "Weiss nicht",
+        },
+      },
+      "pay-model-not": {
+        question:
+          "Welche davon kämen für dich nicht infrage? Du kannst mehrere wählen.",
+        options: {
+          free: "Gratis",
+          "seller-fee": "Gebühr pro Verkauf",
+          "pack-5": "5er-Paket",
+          monthly: "Monatsabo",
+          "all-ok": "Alle kämen infrage",
+        },
+      },
+      "check-listing": {
+        question:
+          "Was würdest du prüfen, bevor Léas Inserat von Pako online geht?",
+        options: {
+          price: "Den Preis",
+          description: "Die Beschreibung",
+          photos: "Die Fotos",
+          "pickup-times": "Die Abholzeiten",
+          none: "Nichts davon",
+        },
+      },
+      "max-distance": {
+        question:
+          "Wie weit würdest du für einen Schreibtisch höchstens fahren oder gehen?",
+        options: {
+          "under-1": "Unter 1\u00a0km",
+          "1-3": "1–3\u00a0km",
+          "3-10": "3–10\u00a0km",
+          "over-10": "Mehr als 10\u00a0km",
+        },
+      },
+      "trust-signals": {
+        question: "Was würde dir helfen, der anderen Person zu vertrauen?",
+        options: {
+          verified: "Bestätigtes Studierendenkonto",
+          reviews: "Bewertungen",
+          "campus-meet": "Treffen auf dem Campus",
+          chat: "Der bisherige Chat",
+          none: "Nichts davon",
+        },
+      },
+      "pay-for": {
+        question: "Wofür würdest du am ehesten zahlen?",
+        options: {
+          listings: "Inserate schreiben lassen",
+          replies: "Antworten und Termine von Pako",
+          transport: "Transport oder Lieferung",
+          visibility: "Mehr Sichtbarkeit für mein Inserat",
+          nothing: "Für nichts davon",
         },
       },
       age: {
@@ -665,6 +720,16 @@ export const DE: TourText = {
           "self-describe": "Andere Bezeichnung",
           na: "Keine Angabe",
         },
+      },
+    },
+    amounts: {
+      "wtp-monthly": {
+        question:
+          "Wie viel wärst du bereit, pro Monat für eine App zu zahlen, die dir das Schreiben von Inseraten und die Nachrichten abnimmt?",
+        choose: "Bitte wählen",
+        nothing: "Nichts",
+        amount: (francs) => `CHF ${francs} pro Monat`,
+        top: (francs) => `CHF ${francs}`,
       },
     },
     seekingWhat: "Was suchst du? (freiwillig)",
@@ -700,23 +765,23 @@ export const DE: TourText = {
     },
     draft: {
       intro:
-        "Du möchtest Mias Schreibtisch kaufen. Mia fragt, wann du ihn abholen könntest: Wähle unten im Chat einen Tag.",
-      scenario: "Mia ist eine andere Studentin. Preis und Abholort passen dir.",
-      task: "Antworte Mia zuerst im Chat. Pako entwirft dann eine Antwort für dich, und du entscheidest, was du damit machst.",
-      chatLabel: "Übungschat mit Mia",
+        "Du suchst einen Schreibtisch und findest Léas Inserat. Léa fragt, wann du ihn abholen könntest: Wähle unten im Chat einen Tag.",
+      scenario: "Preis und Abholort passen dir.",
+      task: "Antworte Léa zuerst im Chat. Pako entwirft dann eine Antwort für dich, und du entscheidest, was du damit machst.",
+      chatLabel: "Übungschat mit Léa",
       listing: {
-        title: "Weisser Schreibtisch",
-        size: "120\u00a0×\u00a060\u00a0cm",
+        title: "Kompakter Schreibtisch",
+        size: "100\u00a0×\u00a050\u00a0cm",
         price: "CHF\u00a040",
         pickup: "Abholung: EPFL, Rolex Learning Center",
-        seller: "Mia",
+        seller: "Léa",
       },
-      mia: "Mia",
+      lea: "Léa",
       you: "Du",
       pako: "Pako",
       askDay:
         "Hallo! Der Schreibtisch ist noch zu haben. An welchem Tag könntest du ihn abholen? Ich habe ab 17\u00a0Uhr Zeit.",
-      pickDay: "Deine Antwort an Mia",
+      pickDay: "Deine Antwort an Léa",
       days: { sat: "Samstag", sun: "Sonntag" },
       yourDay: (day) => `${day} passt mir. Geht es um 17.30\u00a0Uhr?`,
       confirm: (day, price) =>
@@ -730,10 +795,10 @@ export const DE: TourText = {
       sendAsIs: "So senden",
       change: "Bearbeiten",
       own: "Selbst schreiben",
-      ownLabel: "Deine Nachricht an Mia",
+      ownLabel: "Deine Nachricht an Léa",
       send: "Senden",
       dontSend: "Nichts senden",
-      editLabel: "Deine Antwort an Mia",
+      editLabel: "Deine Antwort an Léa",
       notSent: "Du hast nichts gesendet.",
     },
     scene: { next: "Weiter", replay: "Nochmals abspielen" },
@@ -778,8 +843,6 @@ export const DE: TourText = {
     },
     end: {
       title: "Danke!",
-      debrief:
-        "Übrigens: Der Entwurf mit CHF\u00a045 war ein absichtlicher Fehler, um zu sehen, ob man Entwürfe prüft.",
       shareTitle:
         "Jede Antwort hilft, auch von Leuten, die nie etwas verkaufen. Magst du die Umfrage teilen?",
       share: "Teilen",

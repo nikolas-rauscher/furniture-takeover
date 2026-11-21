@@ -77,19 +77,28 @@ test("questions count chosen options over the participants who answered", () => 
         answer("seeking", ["yes"], "A bike"),
         answer("delegate", [], ""),
         answer("who", ["epfl"]),
-        answer("draft", ["sent-unchanged"], "Hi Mia! Saturday"),
+        answer("draft", ["sent-unchanged"], "Hi Léa! Saturday"),
         answer("draft", ["sent-own"], "Hi, Saturday at 18:00?"),
         answer("gender", ["self-describe"], "Agender"),
         answer("idle-items", ["1-3"]),
+        answer("wtp-monthly", ["chf-3.5"]),
       ],
     }),
     null,
   );
   assert.deepEqual(
     report.questions.map(({ step }) => step),
-    ["who", "idle-items", "seeking", "draft", "delegate", "gender"],
+    [
+      "idle-items",
+      "seeking",
+      "draft",
+      "delegate",
+      "wtp-monthly",
+      "who",
+      "gender",
+    ],
   );
-  assert.deepEqual(report.questions[4], {
+  assert.deepEqual(report.questions[3], {
     step: "delegate",
     answered: 6,
     options: [
@@ -109,7 +118,7 @@ test("drop-off counts the last screen of sessions that did not finish the core",
     rows({
       sessions: [
         ...times(5, () => session({ completed: false, lastShown: "draft" })),
-        session({ completed: false, lastShown: "move" }),
+        session({ completed: false, lastShown: "idle-why" }),
         session({ completed: false, lastShown: null }),
         session(),
       ],
@@ -118,7 +127,7 @@ test("drop-off counts the last screen of sessions that did not finish the core",
   );
   assert.deepEqual(report.dropOff, [
     { step: "draft", count: 5 },
-    { step: "move", count: null },
+    { step: "idle-why", count: null },
   ]);
   assert.equal(report.totals.completed, 1);
 });

@@ -74,11 +74,17 @@ function pickupTime(from: Date) {
   return pickup;
 }
 
-function offerTerms(pickupAt: Date): DealTerms {
+/**
+ * Noah's offer: below the asking price in the tour; in the survey's brief run the
+ * asking price, the CHF 40 the participant agreed with Léa in the practice chat.
+ */
+const offerAmount = (brief: boolean) => (brief ? DESK.price : 35);
+
+function offerTerms(pickupAt: Date, amount: number): DealTerms {
   const at = pickupAt.toISOString();
   if (!DESK.pickupPoint) throw new Error("The desk needs its meeting point.");
   return {
-    amount: 35,
+    amount,
     fulfillment: "pickup",
     pickupAt: at,
     pickupTime: formatPickup(at),
@@ -146,8 +152,8 @@ const PICKUP_CARD = ".pickup-card";
  * One thing at a time: the row, the offer, Pako reading it, his line, the
  * card, then each tap and its answer.
  */
-function dealBeats(pickupAt: Date): Beat<DealState>[] {
-  const terms = offerTerms(pickupAt);
+function dealBeats(pickupAt: Date, amount: number): Beat<DealState>[] {
+  const terms = offerTerms(pickupAt, amount);
   return [
     {
       hold: 1400,
@@ -273,7 +279,9 @@ function useDealCardStage(stage: DealCardStage) {
 /** Agree and pick up: Noah's offer arrives, Léa confirms, the pickup counts down, Picked up and Mark sold. */
 export default function DealScene(round: SceneProps) {
   const [start] = useState(sceneStart);
-  const [beats] = useState(() => dealBeats(pickupTime(start)));
+  const [beats] = useState(() =>
+    dealBeats(pickupTime(start), offerAmount(round.brief)),
+  );
   const { state, setState, marks } = useSceneScript<DealState>(
     () => ({
       view: "inbox",

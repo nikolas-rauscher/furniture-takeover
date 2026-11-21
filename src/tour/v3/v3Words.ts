@@ -4,6 +4,12 @@ import type { StudyOption } from "../tourScript.ts";
 import type { V3Progress } from "./v3Progress.ts";
 import { offeredOptions, type V3ChoiceStep } from "./v3Script.ts";
 
+/** An amount as the slider reads it: "Nothing" for 0, else francs and rappen per month. */
+export const amountLabel = (
+  words: TourText["v3"]["amounts"]["wtp-monthly"],
+  amount: number,
+): string => (amount === 0 ? words.nothing : words.amount(amount.toFixed(2)));
+
 /** A step's question in the page's language. */
 export const questionOf = (text: TourText, step: V3ChoiceStep): string =>
   text.v3.steps[step.id].question;

@@ -4,7 +4,6 @@ import { emptiedOffPath, isShown, neighbourStep } from "../stepConditions.ts";
 import type { V3Answer, V3Progress } from "./v3Progress.ts";
 import {
   answerIds,
-  DRAFT_ALLOCATION,
   offeredOptions,
   V3_SECTIONS,
   V3_STEPS,
@@ -141,17 +140,6 @@ function shuffleOf(step: V3Step, answers: AnswerSheet): Shuffle | null {
   };
 }
 
-/** The draft task's variant, drawn once per participant by its allocation and kept. */
-function withDraftVariant(
-  progress: V3Progress,
-  random: RandomSource,
-): V3Progress {
-  if (progress.draftVariant) return progress;
-  const draftVariant =
-    DRAFT_ALLOCATION[Math.floor(random() * DRAFT_ALLOCATION.length)];
-  return { ...progress, draftVariant };
-}
-
 /** Whether a stored order holds exactly the options offered now. */
 const ordersSame = (
   stored: readonly string[] | undefined,
@@ -163,7 +151,7 @@ const ordersSame = (
 
 /**
  * A shuffled step draws its order the first time it is shown and keeps it, until an
- * earlier answer changes the options it offers; the draft task also draws its variant.
+ * earlier answer changes the options it offers.
  */
 export function withV3Order(
   progress: V3Progress,
@@ -171,17 +159,15 @@ export function withV3Order(
   random: RandomSource = Math.random,
 ): V3Progress {
   const shuffle = shuffleOf(step, progress.answers);
-  const ordered =
-    !shuffle || ordersSame(progress.orders[shuffle.key], shuffle.ids)
-      ? progress
-      : {
-          ...progress,
-          orders: {
-            ...progress.orders,
-            [shuffle.key]: shuffledIds(shuffle, random),
-          },
-        };
-  return step.kind === "draft" ? withDraftVariant(ordered, random) : ordered;
+  if (!shuffle || ordersSame(progress.orders[shuffle.key], shuffle.ids))
+    return progress;
+  return {
+    ...progress,
+    orders: {
+      ...progress.orders,
+      [shuffle.key]: shuffledIds(shuffle, random),
+    },
+  };
 }
 
 /**
