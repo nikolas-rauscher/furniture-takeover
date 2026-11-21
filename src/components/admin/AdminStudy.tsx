@@ -204,6 +204,35 @@ function Questions({ report }: { report: StudyReport }) {
   );
 }
 
+/** The pack ladder: of those asked at each price, how many said yes. */
+function PackLadder({ report }: { report: StudyReport }) {
+  const prices = [2, 5, 8];
+  const asked = prices.map((price) => {
+    const question = report.questions.find(
+      ({ step }) => step === `pack-chf-${price}`,
+    );
+    const yes = question?.options.find(({ option }) => option === "yes");
+    return {
+      price,
+      answered: question?.answered ?? 0,
+      yes: yes ? yes.count : 0,
+    };
+  });
+  return (
+    <ul className="admin-study-bars">
+      {asked.map(({ price, answered, yes }) => (
+        <Bar
+          key={price}
+          label={`CHF ${price}: yes`}
+          count={yes}
+          of={answered}
+          minCell={report.minCell}
+        />
+      ))}
+    </ul>
+  );
+}
+
 function Texts({ report }: { report: StudyReport }) {
   if (report.texts.length === 0)
     return <p className="admin-empty">No typed answers yet.</p>;
@@ -322,6 +351,9 @@ function Report({
       </Panel>
       <Panel id="study-drop-off" title="Last screen of those who left">
         <DropOff report={report} />
+      </Panel>
+      <Panel id="study-pack" title="Move-out pack: acceptance per price">
+        <PackLadder report={report} />
       </Panel>
       <Panel id="study-questions" title="Answers per question">
         <Questions report={report} />

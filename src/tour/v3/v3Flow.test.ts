@@ -30,6 +30,7 @@ import {
   type V3ChoiceStep,
 } from "./v3Script.ts";
 import { optionsOf, questionOf } from "./v3Words.ts";
+import { drawStart, ladderOf } from "./packPricing.ts";
 import { toggleOption } from "../optionOrder.ts";
 
 const SESSION = "6f1c1f9e-5b7a-4c1e-9a1d-2f3b4c5d6e7f";
@@ -75,13 +76,13 @@ test("someone who tried answers the details; someone who did not gets one reason
   assert.equal(none[none.indexOf("why-not") + 1], "move");
 });
 
-test("with the start screen, the core has 24 screens after an attempt and 21 without", () => {
+test("with the start screen, the core has 27 screens after an attempt and 23 without", () => {
   const core = (role: string) => {
     const shown = ids({ "last-role": answer(role) });
-    return shown.slice(0, shown.indexOf("draft") + 1).length;
+    return shown.slice(0, shown.indexOf("saved")).length;
   };
-  assert.equal(core("buying") + 1, 24);
-  assert.equal(core("none") + 1, 21);
+  assert.equal(core("buying") + 1, 27);
+  assert.equal(core("none") + 1, 23);
 });
 
 test("the core shows each feature briefly, then asks whether it would have helped", () => {
@@ -108,7 +109,7 @@ test("the core shows each feature briefly, then asks whether it would have helpe
 test("the results page reads its funnel along the core screens of the script", () => {
   const core = V3_STEPS.slice(
     0,
-    V3_STEPS.findIndex((step) => step.kind === "draft") + 1,
+    V3_STEPS.findIndex((step) => step.kind === "saved"),
   );
   assert.deepEqual(
     core.map((step) => step.id),
@@ -160,7 +161,7 @@ test("back stops before the first screen and after the core", () => {
     assert.equal(canGoBack(steps, v3StepById(id)), false, id);
   assert.equal(canGoBack(steps, v3StepById("draft")), true);
   assert.equal(canGoBack(steps, v3StepById("who")), true);
-  assert.equal(nextV3({}, "draft").id, "saved");
+  assert.equal(nextV3({}, "delivery-pref").id, "saved");
 });
 
 test("the first answer stays when the step is answered again", () => {
@@ -262,8 +263,7 @@ test("each situation opens with its place among the four", () => {
     [
       ["move-it", 1],
       ["desk", 2],
-      ["pack", 3],
-      ["draft", 4],
+      ["draft", 3],
     ],
   );
   assert.equal(situations.length, SITUATIONS);
@@ -275,10 +275,57 @@ test("sections close in order and are all done after the core", () => {
     "last-time": "done",
     "the-app": "current",
     situations: "next",
+    price: "next",
   });
   assert.ok(
     Object.values(sectionStates(v3StepById("saved"))).every(
       (state) => state === "done",
     ),
   );
+});
+
+test("the pack ladder asks the next higher price after yes and the next lower after no", () => {
+  assert.deepEqual(
+    [0, 0.5, 0.99].map((r) => drawStart(() => r)),
+    ["chf-2", "chf-5", "chf-8"],
+  );
+  const sheet = (start: string, answers: Record<string, string>) => ({
+    orders: { "pack-price": [start] },
+    answers: Object.fromEntries(
+      Object.entries(answers).map(([id, chosen]) => [id, answer(chosen)]),
+    ),
+  });
+  assert.equal(ladderOf(sheet("chf-5", {})).next, 5);
+  assert.equal(ladderOf(sheet("chf-5", { "pack-chf-5": "yes" })).next, 8);
+  assert.equal(ladderOf(sheet("chf-5", { "pack-chf-5": "no" })).next, 2);
+  const done = ladderOf(
+    sheet("chf-5", { "pack-chf-5": "yes", "pack-chf-8": "no" }),
+  );
+  assert.equal(done.next, null);
+  assert.deepEqual(done.asked, [
+    { price: 5, answer: "yes" },
+    { price: 8, answer: "no" },
+  ]);
+  for (const [start, first] of [
+    ["chf-8", "yes"],
+    ["chf-2", "no"],
+    ["chf-5", "not-sure"],
+  ])
+    assert.equal(
+      ladderOf(sheet(start, { [`pack-chf-${start.slice(4)}`]: first })).next,
+      null,
+      `${start} ${first}`,
+    );
+});
+
+test("delivery's worth is asked of everyone who would consider delivery", () => {
+  assert.ok(
+    !ids({ "delivery-pref": answer("pick-up") }).includes("delivery-worth"),
+  );
+  for (const choice of ["if-priced", "always", "depends"])
+    assert.ok(
+      ids({ "delivery-pref": answer(choice) }).includes("delivery-worth"),
+    );
+  assert.ok(ids({ "last-role": answer("selling") }).includes("last-cost"));
+  assert.ok(!ids({ "last-role": answer("none") }).includes("last-cost"));
 });

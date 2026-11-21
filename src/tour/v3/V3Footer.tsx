@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useTourText } from "../i18n/TourLanguage";
 import type { StepContext } from "./stepContext";
+import { ladderOf } from "./packPricing";
 import { nextV3 } from "./v3Flow";
 
 /** Whether the screen's main button may be pressed with what is given. */
@@ -30,6 +31,16 @@ export default function V3Footer({ context }: { context: StepContext }) {
     case "pilot":
     case "end":
       return null;
+    case "ladder":
+      return (
+        <Button
+          className={primary}
+          disabled={ladderOf(context.progress).next !== null}
+          onClick={context.moveOn}
+        >
+          {common.continue}
+        </Button>
+      );
     case "about-app":
     case "saved":
       return (

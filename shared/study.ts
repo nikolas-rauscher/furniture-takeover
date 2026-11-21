@@ -228,6 +228,7 @@ export const STUDY_V3_CORE_SCREENS = [
   "last-occasion",
   "last-story",
   "last-trouble",
+  "last-cost",
   "why-not",
   "move",
   "housing",
@@ -243,8 +244,11 @@ export const STUDY_V3_CORE_SCREENS = [
   "sending",
   "move-it",
   "desk",
-  "pack",
   "draft",
+  "pay-model",
+  "pack-price",
+  "delivery-pref",
+  "delivery-worth",
 ] as const;
 
 /** On the results page, a breakdown cell with fewer answers than this is hidden. */

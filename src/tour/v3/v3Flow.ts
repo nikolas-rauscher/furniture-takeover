@@ -2,6 +2,7 @@ import type { StudyEventKind } from "../../../shared/study.ts";
 import type { TourScene } from "../device/sceneMessages.ts";
 import { shuffleOptions, type RandomSource } from "../optionOrder.ts";
 import { isShown, neighbourStep } from "../stepConditions.ts";
+import { drawStart } from "./packPricing.ts";
 import type { V3Answer, V3Progress } from "./v3Progress.ts";
 import {
   DRAFT_DAY_STEP,
@@ -94,12 +95,17 @@ function shuffleOf(step: V3Step): Shuffle | null {
   return null;
 }
 
-/** A shuffled step draws its order the first time it is shown and keeps it. */
+/** A shuffled step draws its order the first time it is shown and keeps it; the ladder draws its start price. */
 export function withV3Order(
   progress: V3Progress,
   step: V3Step,
   random: RandomSource = Math.random,
 ): V3Progress {
+  if (step.kind === "ladder") {
+    if (progress.orders[step.id]) return progress;
+    const start = [drawStart(random)];
+    return { ...progress, orders: { ...progress.orders, [step.id]: start } };
+  }
   const shuffle = shuffleOf(step);
   if (!shuffle || progress.orders[shuffle.key]) return progress;
   const order = shuffledIds(shuffle.ids, shuffle.fixedLast, random);

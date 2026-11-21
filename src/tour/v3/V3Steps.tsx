@@ -23,8 +23,17 @@ import {
   withV3Order,
 } from "./v3Flow";
 import { PILOT_KEY, v3Job } from "./v3Jobs";
+import { ladderOf } from "./packPricing";
 import { rememberFinished, type V3Progress } from "./v3Progress";
-import { PEEK_STEP, type V3ChoiceStep, type V3Step } from "./v3Script";
+import {
+  PACK_ANSWERS,
+  PACK_START_STEP,
+  PEEK_STEP,
+  packAnswerStep,
+  packPriceId,
+  type V3ChoiceStep,
+  type V3Step,
+} from "./v3Script";
 import { optionsOf, questionOf } from "./v3Words";
 import SectionStrip from "./SectionStrip";
 import type { Given, SceneState, StepContext } from "./stepContext";
@@ -63,7 +72,7 @@ function moodFor(step: V3Step): PakoMood {
 function reactsToPick(step: V3Step) {
   if (step.kind === "about") return true;
   if (step.kind !== "choice" || step.product) return false;
-  return step.section !== "the-app" && step.section !== "situations";
+  return step.section === "you" || step.section === "last-time";
 }
 
 /** Pako's title above a question: the part it opens, or the feature it asks about. */
@@ -75,9 +84,10 @@ function titleOf(step: V3ChoiceStep, text: TourText) {
 function bubbleFor(
   step: V3Step,
   text: TourText,
-  answers: V3Progress["answers"],
+  progress: V3Progress,
 ): GuideBubble | undefined {
   const { v3 } = text;
+  const { answers } = progress;
   switch (step.kind) {
     case "about-app":
       return { id: step.id, text: v3.whatIs.bubble };
@@ -93,6 +103,17 @@ function bubbleFor(
       return { id: step.id, text: v3.steps.desk.question };
     case "draft":
       return { id: step.id, text: v3.draft.intro };
+    case "ladder": {
+      // Pako asks each price in turn; the bubble changes with it, so the new price is read out.
+      const { next } = ladderOf(progress);
+      const words = v3.packLadder;
+      if (next === null) return { id: `${step.id}-done`, text: words.bubble };
+      return {
+        id: `${step.id}-${next}`,
+        title: words.bubble,
+        text: words.question(next),
+      };
+    }
     case "about":
       return { id: step.id, text: v3.about.intro };
     case "scene":
@@ -278,6 +299,24 @@ export default function V3Steps({
     );
   }
 
+  function answerLadder(chosen: string) {
+    const ladder = ladderOf(progress);
+    if (ladder.next === null) return;
+    if (ladder.asked.length === 0)
+      setProgress(
+        storeAnswers({
+          [PACK_START_STEP]: { chosen: [packPriceId(ladder.start)], text: "" },
+          [packAnswerStep(ladder.next)]: { chosen: [chosen], text: "" },
+        }),
+      );
+    else
+      setProgress(
+        storeAnswers({
+          [packAnswerStep(ladder.next)]: { chosen: [chosen], text: "" },
+        }),
+      );
+  }
+
   function sendPilot(pilot: StudyPilot) {
     const transform: Transform = (current) => ({ ...current, pilot });
     recorder.add(v3Job(transform(progress), PILOT_KEY));
@@ -310,6 +349,7 @@ export default function V3Steps({
       ),
     saveNow: (id, given) => setProgress(storeAnswers({ [id]: given })),
     draftDone: (given) => proceed({ [step.id]: given }),
+    answerLadder,
     sendPilot,
     retry: recorder.retry,
     log,
@@ -319,6 +359,20 @@ export default function V3Steps({
 
   // Number keys pick answers and Enter moves on, as long as no control has the key.
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (step.kind === "ladder") {
+      const number = Number(event.key);
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest("input, textarea, select, [contenteditable]")) return;
+      if (
+        !Number.isInteger(number) ||
+        number < 1 ||
+        number > PACK_ANSWERS.length
+      )
+        return;
+      event.preventDefault();
+      answerLadder(PACK_ANSWERS[number - 1]);
+      return;
+    }
     if (
       step.kind !== "choice" ||
       event.defaultPrevented ||
@@ -349,7 +403,7 @@ export default function V3Steps({
     }
   }
 
-  const bubble = bubbleFor(step, text, progress.answers);
+  const bubble = bubbleFor(step, text, progress);
   const strip = step.section !== undefined || step.kind === "saved";
   const header =
     step.kind === "end" ? undefined : (

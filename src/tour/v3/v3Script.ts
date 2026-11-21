@@ -9,11 +9,9 @@ import type { TourText } from "../i18n/en.ts";
 import type { StepCondition } from "../stepConditions.ts";
 
 /** Raised whenever a question, an option or its wording changes. */
-export const V3_VERSION = "v3-3";
+export const V3_VERSION = "v3-4";
 /** The time the start screen and the share text name, rounded up from the core's estimate. */
 export const V3_MINUTES = 5;
-/** Free photo drafts a day in the pack situation. */
-export const FREE_DRAFTS = 3;
 /** The one open sentence is shorter than what the server accepts. */
 export const STORY_MAX = 200;
 
@@ -22,6 +20,7 @@ export const V3_SECTIONS = [
   "last-time",
   "the-app",
   "situations",
+  "price",
 ] as const;
 export type V3Section = (typeof V3_SECTIONS)[number];
 
@@ -29,7 +28,7 @@ type StepWords = TourText["v3"]["steps"];
 type ChoiceStepId = keyof StepWords;
 
 /** Pako's line above a step's question, opening a part of the survey. */
-type Intro = "moveIntro" | "firstLookIntro" | "situationsIntro";
+type Intro = "moveIntro" | "firstLookIntro" | "situationsIntro" | "priceIntro";
 
 type Base = {
   id: string;
@@ -69,6 +68,8 @@ export type V3Step =
   | (Base & { kind: "story" })
   | (Base & { kind: "desk"; options: readonly string[] })
   | (Base & { kind: "draft" })
+  /** The pack's price ladder: one or two prices, each its own stored answer. */
+  | (Base & { kind: "ladder" })
   | (Base & { kind: "saved" })
   | (Base & { kind: "about"; rows: readonly V3ChoiceStep[] })
   | (Base & {
@@ -95,7 +96,19 @@ export type DraftWriting = Extract<DraftAction, "change" | "own">;
 export type DraftResult =
   "sent-unchanged" | "sent-changed" | "sent-own" | "not-sent";
 /** How many situations part 4 holds, for its context cards. */
-export const SITUATIONS = 4;
+export const SITUATIONS = 3;
+
+/** The move-out pack's prices in CHF, from low to high; the ladder starts at one at random. */
+export const PACK_PRICES = [2, 5, 8] as const;
+export type PackPrice = (typeof PACK_PRICES)[number];
+export const PACK_ANSWERS = ["yes", "no", "not-sure"] as const;
+export type PackAnswer = (typeof PACK_ANSWERS)[number];
+export const PACK_LADDER_STEP = "pack-price";
+/** The start price is stored as an answer of its own, like the draft's day. */
+export const PACK_START_STEP = "pack-start";
+export const packPriceId = (price: PackPrice) => `chf-${price}` as const;
+export const packAnswerStep = (price: PackPrice) =>
+  `pack-chf-${price}` as const;
 
 /** Pressed at the end of "About you": finish, or watch the optional tour first. */
 export const PEEK_STEP = "peek";
@@ -210,6 +223,11 @@ export const V3_STEPS: readonly V3Step[] = [
     { section: "last-time", when: TRIED, shuffle: true, fixedLast: 3 },
   ),
   choice(
+    "last-cost",
+    ["nothing", "under-10", "10-30", "over-30", "dont-remember"],
+    { section: "last-time", when: TRIED },
+  ),
+  choice(
     "why-not",
     ["no-need", "prefer-new", "hassle", "dont-know-where", "other"],
     {
@@ -303,15 +321,35 @@ export const V3_STEPS: readonly V3Step[] = [
     situation: 2,
     options: ["nearer", "cheaper", "neither"],
   },
-  choice("pack", ["manual", "wait", "pack", "other-way", "not-sure"], {
-    section: "situations",
-    situation: 3,
+  { kind: "draft", id: "draft", section: "situations", situation: 3 },
+  choice(
+    "pay-model",
+    ["seller-fee", "move-pack", "monthly", "institution", "none"],
+    {
+      section: "price",
+      intro: "priceIntro",
+      product: true,
+      shuffle: true,
+      fixedLast: 1,
+    },
+  ),
+  { kind: "ladder", id: PACK_LADDER_STEP, section: "price" },
+  choice("delivery-pref", ["pick-up", "if-priced", "always", "depends"], {
+    section: "price",
     product: true,
-    shuffle: true,
-    fixedLast: 2,
-    disclosure: "packMissing",
   }),
-  { kind: "draft", id: "draft", section: "situations", situation: 4 },
+  choice(
+    "delivery-worth",
+    ["only-free", "up-to-5", "5-10", "10-20", "over-20", "not-sure"],
+    {
+      section: "price",
+      product: true,
+      when: {
+        step: "delivery-pref",
+        anyOf: ["if-priced", "always", "depends"],
+      },
+    },
+  ),
   { kind: "saved", id: "saved" },
   {
     kind: "about",
@@ -357,8 +395,10 @@ function storesAnswer(step: V3Step): boolean {
   );
 }
 
-/** The ids stored for a step: the step itself, or each row of an "About you" screen. */
+/** The ids stored for a step: the step itself, each row of an "About you" screen, or each ladder price. */
 export function answerIds(step: V3Step): string[] {
   if (step.kind === "about") return step.rows.map((row) => row.id);
+  if (step.kind === "ladder")
+    return [PACK_START_STEP, ...PACK_PRICES.map(packAnswerStep)];
   return storesAnswer(step) ? [step.id] : [];
 }

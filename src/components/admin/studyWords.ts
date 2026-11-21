@@ -1,6 +1,5 @@
 import type { TourScene } from "../../tour/device/sceneMessages";
 import { EN } from "../../tour/i18n/en";
-import { FREE_DRAFTS } from "../../tour/v3/v3Script";
 
 type Words = { question: string; options: Record<string, string> };
 
@@ -33,6 +32,22 @@ const RECORDED: Record<string, Words> = {
       own: "Started their own, nothing decided",
     },
   },
+  "pack-start": {
+    question: "Pack ladder: the price asked first",
+    options: { "chf-2": "CHF 2", "chf-5": "CHF 5", "chf-8": "CHF 8" },
+  },
+  "pack-chf-2": {
+    question: EN.v3.packLadder.question(2),
+    options: EN.v3.packLadder.options,
+  },
+  "pack-chf-5": {
+    question: EN.v3.packLadder.question(5),
+    options: EN.v3.packLadder.options,
+  },
+  "pack-chf-8": {
+    question: EN.v3.packLadder.question(8),
+    options: EN.v3.packLadder.options,
+  },
   peek: {
     question: "After “About you”",
     options: { finish: "Finished", tour: "Watched the full scenes" },
@@ -45,6 +60,7 @@ const SHOWN: Record<string, string> = {
   "app-sell": `Scene: ${EN.scenes.sell.title}`,
   "app-deal": `Scene: ${EN.scenes.deal.title}`,
   "what-is": "What is takeover?",
+  "pack-price": "Move-out pack price ladder",
 };
 
 function wordsOf(step: string): Words | undefined {
@@ -60,7 +76,6 @@ function wordsOf(step: string): Words | undefined {
 /** A situation's scenario, which the participant read on its card before the question. */
 function scenarioOf(step: string): string | undefined {
   const { situations } = EN.v3;
-  if (step === "pack") return situations.pack(FREE_DRAFTS);
   if (step === "move-it" || step === "desk") return situations[step];
   return undefined;
 }

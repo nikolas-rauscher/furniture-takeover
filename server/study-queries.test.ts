@@ -134,7 +134,13 @@ const PARTICIPANTS: Participant[] = [
       sending: { chosen: ["short-updates"], first: ["myself"] },
       "move-it": ["helper"],
       desk: ["nearer"],
-      pack: ["pack"],
+      "last-cost": ["10-30"],
+      "pay-model": ["move-pack"],
+      "pack-start": ["chf-5"],
+      "pack-chf-5": ["yes"],
+      "pack-chf-8": ["no"],
+      "delivery-pref": ["if-priced"],
+      "delivery-worth": ["10-20"],
       "draft-day": ["sat"],
       draft: { chosen: ["sent-changed"], first: ["change"] },
     },
@@ -166,7 +172,10 @@ const PARTICIPANTS: Participant[] = [
       sending: ["myself"],
       "move-it": ["carry-bike"],
       desk: ["cheaper"],
-      pack: ["manual"],
+      "pay-model": ["none"],
+      "pack-start": ["chf-2"],
+      "pack-chf-2": ["no"],
+      "delivery-pref": ["pick-up"],
       draft: { chosen: ["sent-own"], first: ["own"] },
     },
     draftText: "Hi, is Sunday at 18:00 possible?",
@@ -334,12 +343,32 @@ test("the v3 results queries run on v3 sessions of the named version only", asyn
       ["rest", "carry-bike", "1"],
     ],
   );
-  assert.deepEqual(rowsOf(await query("d4-pack"), "subgroup", "option"), [
-    ["all", "manual"],
-    ["all", "pack"],
-    ["moving-by-june", "pack"],
-    ["rest", "manual"],
-  ]);
+  assert.deepEqual(
+    rowsOf(await query("d4-ladder"), "price", "start_price", "yes", "asked"),
+    [
+      ["chf-2", "all", 0, 1],
+      ["chf-2", "chf-2", 0, 1],
+      ["chf-5", "all", 1, 1],
+      ["chf-5", "chf-5", 1, 1],
+      ["chf-8", "all", 0, 1],
+      ["chf-8", "chf-5", 0, 1],
+    ],
+  );
+  assert.deepEqual(
+    rowsOf(await query("d9-pay-model"), "model", "chosen", "answered"),
+    [
+      ["move-pack", 1, "2"],
+      ["none", 1, "2"],
+    ],
+  );
+  assert.deepEqual(
+    rowsOf(await query("d10-delivery"), "item", "answer", "chosen", "answered"),
+    [
+      ["delivery-pref", "if-priced", 1, "2"],
+      ["delivery-pref", "pick-up", 1, "2"],
+      ["delivery-worth", "10-20", 1, "1"],
+    ],
+  );
   assert.deepEqual(
     rowsOf(
       await query("d5a-draft"),
@@ -407,7 +436,7 @@ test("the v3 results queries run on v3 sessions of the named version only", asyn
     ["epfl-unil", "h-photo"],
     ["rest", "none"],
   ]);
-  assert.equal(queries.size, 17);
+  assert.equal(queries.size, 19);
 
   await runDeletion(run, deletion);
   for (const table of [

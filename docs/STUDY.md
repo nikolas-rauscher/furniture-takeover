@@ -13,13 +13,16 @@ Setting: a course project. Dates, prices and the pilot are hypothetical; nothing
 | D1 | Launch place and timing: which FMEL house, February or June | Pilot volunteers per house, role and week | Confirmed matches and attendance in the first pilot week |
 | D1b | Sorting: distance first or price first | `desk` | Which sort pilot users pick |
 | D2 | Problem to test first in the pilot | `last-trouble` | What breaks down in real pilot exchanges |
+| `last-cost` | "What did getting it there cost you, roughly?" | In order: `nothing` Nothing · `under-10` Under CHF 10 · `10-30` CHF 10–30 · `over-30` More than CHF 30 · `dont-remember` Don't remember | tried |
 | D3 | Transport help | `move-it`, helper option | Real bookings at a quoted price |
-| D4 | Paid pack in the spring pilot | `pack` | Share of real movers who reach the free limit, and how many buy |
+| D4 | Paid pack in the spring pilot | `pack-chf-2`, `pack-chf-5`, `pack-chf-8` (price ladder) | Share of real movers who reach the free limit, and how many buy |
 | D5a | Pako's draft as the default way to write an offer (delegation) | `draft`: sent as it is, changed, own message, not sent | Share of pilot offers sent from Pako's draft |
 | D5b | Opt-in for short updates | `sending`: `short-updates` or `replies-too` | Opt-in uptake in the pilot |
 | D6 | Poster lines | `headline` | Scans per line in the poster test |
 | D7 | Which features the pilot and the onboarding lead with | `helped-find`, `helped-sell`, `helped-deal`, `try-first` | Which features pilot users open and finish |
 | D8 | Barriers the pilot plan must answer | `stop` | Reasons pilot volunteers give for dropping out |
+| D9 | Which way of paying to test first | `pay-model` | Uptake of the model offered in the pilot |
+| D10 | Delivery feature or local pickup only | `delivery-pref`, `delivery-worth`; `last-cost` describes the last attempt | Bookings of a delivery offer at a quoted price |
 
 What the results cannot claim: shares for all EPFL/UNIL students; adoption or future use; real willingness to pay, a price or revenue; anything about the word "AI"; how carefully people read drafts in real use; differences between small subgroups; that the tour works.
 
@@ -48,7 +51,7 @@ Invitation (chat): "Hi all, we're EPFL students building takeover, an app for pa
 
 ## Script
 
-Pako asks every question. Wording is neutral; on product questions (`headline` to `draft`) Pako keeps a neutral face and does not react to answers. All questions are single choice except `stop`. Shuffled options appear in random order, which is stored; options marked *last* stay at the bottom. A single-choice tap moves on after about 300 ms; Back is always visible. A section strip shows `You · Last time · The app · Situations`.
+Pako asks every question. Wording is neutral; on product questions (`headline` to `delivery-worth`) Pako keeps a neutral face and does not react to answers. All questions are single choice except `stop`. Shuffled options appear in random order, which is stored; options marked *last* stay at the bottom. A single-choice tap moves on after about 300 ms; Back is always visible. A section strip shows `You · Last time · The app · Situations · Price & delivery`.
 
 ### Start
 
@@ -118,17 +121,16 @@ Changed in `v3-2`: the scenes, the `helped-*` questions and `stop` are new; `try
 
 ### 4. Situations
 
-Pako: "Four quick situations." Each situation opens with a context card: "Situation {n} of 4", one sentence on the scenario, and what to do ("Pick one."). Pako then asks the question.
+Pako: "Three quick situations." Each situation opens with a context card: "Situation {n} of 3", one sentence on the scenario, and what to do ("Pick one."). Pako then asks the question.
 
 | Id | Card | Question | Options | After the tap |
 | --- | --- | --- | --- | --- |
-| `move-it` | "Situation 1 of 4. You've found a desk you like, 4 km from where you live. Pick one." | "Before you agree to buy it: how would you most likely get it home?" | Shuffled: `carry-bike` Carry it or take it by bike · `public-transport` Public transport · `friend-car` Borrow a car, or ask a friend with one · `helper` A helper with a cargo bike, booked in the app: CHF 15 for the whole trip up to 4 km, carried to your door (ground floor or lift; stairs may cost extra) · *last:* `skip-desk` I'd look for one closer instead · `not-sure` Not sure | "The helper option doesn't exist yet." |
-| `desk` | "Situation 2 of 4. You need a desk, and two in the app fit. Pick one." | "Which one would you go for?" Two cards in the phone, order shuffled, same desk and condition, pickup this week. | `nearer` CHF 45 · 200 m from where you live · `cheaper` CHF 30 · 4 km from where you live · *last:* `neither` Neither | |
-| `pack` | "Situation 3 of 4. You're moving out in two weeks and still have three things to sell, a desk among them. You've used today's 3 free photo drafts in takeover. Pick one." | "What would you do?" | Shuffled: `manual` List them myself now, for free · `wait` Wait until tomorrow for new free drafts · `pack` Buy the move-out pack: CHF 5 once, five more photo drafts with price checks, valid 30 days · *last:* `other-way` Something else (another app, a group chat, give them away) · `not-sure` Not sure | "This pack doesn't exist yet." |
+| `move-it` | "Situation 1 of 3. You've found a desk you like, 4 km from where you live. Pick one." | "Before you agree to buy it: how would you most likely get it home?" | Shuffled: `carry-bike` Carry it or take it by bike · `public-transport` Public transport · `friend-car` Borrow a car, or ask a friend with one · `helper` A helper with a cargo bike, booked in the app: CHF 15 for the whole trip up to 4 km, carried to your door (ground floor or lift; stairs may cost extra) · *last:* `skip-desk` I'd look for one closer instead · `not-sure` Not sure | "The helper option doesn't exist yet." |
+| `desk` | "Situation 2 of 3. You need a desk, and two in the app fit. Pick one." | "Which one would you go for?" Two cards in the phone, order shuffled, same desk and condition, pickup this week. | `nearer` CHF 45 · 200 m from where you live · `cheaper` CHF 30 · 4 km from where you live · *last:* `neither` Neither | |
 
 `draft`, the last core task, in a chat inside the phone. It measures delegation: whether people send Pako's draft as it is, change it, write their own or send nothing. The draft matches the participant's own choices; nothing in it is wrong on purpose.
 
-1. Card: "Situation 4 of 4. You're buying a desk from Mia. The price and the place suit you. Answer Mia, then pick what to do with Pako's draft."
+1. Card: "Situation 3 of 3. You're buying a desk from Mia. The price and the place suit you. Answer Mia, then pick what to do with Pako's draft."
 2. Pako: "Pick the day that suits you in the chat with Mia."
 3. Listing card: "White desk · 120 × 60 cm · CHF 40 · Pickup: EPFL, Rolex Learning Center · Mia".
 4. Mia: "Hi! The desk is still available. Which day could you pick it up? I'm free from 17:00."
@@ -138,11 +140,24 @@ Pako: "Four quick situations." Each situation opens with a context card: "Situat
 8. Draft: "Hi Mia! I'd like your white desk for CHF 40. I can pick it up on {Day} at 17:30 at the Rolex Learning Center."
 9. "What would you do with this draft?" Four equal buttons: `send` Send as it is · `change` Change something first (the draft becomes editable, then Send) · `own` Write my own (an empty message, then Send) · `dont-send` Not send it. While writing, "Not send it" stays available.
 
-Then Pako: "Done! Your answers are saved." (event `core-complete`).
-
 Changed in `v3-3`: the `what-is` screen and the context cards are new; the draft no longer plants a wrong day, so the reveal screen and its "Remove my answers" link are gone.
 
-### 5. About you (optional)
+### 5. Price & delivery
+
+Pako: "Last part: price and delivery." Pako does not react to these answers.
+
+| Id | Question | Options | Shown to |
+| --- | --- | --- | --- |
+| `pay-model` | "The basics of takeover stay free. If something had to cost money, which would you pick?" | Shuffled: `seller-fee` A small fee when your item sells (5%, paid by the seller) · `move-pack` A one-off move-out pack (CHF 5: extra photo drafts and price checks for 30 days) · `monthly` A monthly plan (CHF 3/month: unlimited help from Pako) · `institution` Free for students, paid by the residence or university · *last:* `none` None of these, I wouldn't pay | all |
+| `pack-price` | One screen, the price ladder (Gabor–Granger). Pako: "One more about the move-out pack." Card "Move-out pack: Five more photo drafts with price checks, valid for 30 days, paid once." Then "Would you spend your own CHF {price} on this pack for your next move?" The first price is drawn at random from CHF 2, 5 and 8 and stored as `pack-start` (`chf-2`, `chf-5`, `chf-8`). After `yes` the next higher price is asked, after `no` the next lower; `not-sure`, or no price left, ends it. Two questions at most; each answer is stored as `pack-chf-{price}`. Then "This pack doesn't exist yet." and Continue. The answers are final: a participant who comes back sees the note. | `yes` Yes · `no` No · `not-sure` Not sure | all |
+| `delivery-pref` | "When you buy something bulky second-hand, how would you rather get it?" | In order: `pick-up` I pick it up myself to save money · `if-priced` Delivery, if the price is right · `always` Always delivery · `depends` Depends on the item | all |
+| `delivery-worth` | "What would delivery to your door within Lausanne (up to about 5 km) be worth to you?" | In order: `only-free` Nothing, only if free · `up-to-5` Up to CHF 5 · `5-10` CHF 5–10 · `10-20` CHF 10–20 · `over-20` More than CHF 20 · `not-sure` Not sure | `delivery-pref` is not `pick-up` |
+
+Then Pako: "Done! Your answers are saved." (event `core-complete`).
+
+Changed in `v3-4`: `last-cost` and this part are new; the pack situation of `v3-3` is replaced by the price ladder, so part 4 holds three situations. The helper situation (`move-it`) stays as the behavioural choice about transport.
+
+### 6. About you (optional)
 
 Pako: "Last bit, all optional: it helps us understand who answered." Two rows per screen, each with Skip.
 
@@ -155,14 +170,14 @@ Pako: "Last bit, all optional: it helps us understand who answered." Two rows pe
 
 Then two equal buttons, saved as the answer to step `peek`: `finish` Finish · `tour` See the full scenes (optional).
 
-### 6. Optional tour
+### 7. Optional tour
 
 | Id | Content |
 | --- | --- |
 | `scene-pick` | "What would you like to see first?" Shuffled: `sell` Sell from a photo · `deal` Agree on a pickup · `find` Find something. |
 | `tour-sell`, `tour-deal`, `tour-find` | The full app scenes in the phone, with key moments the participant can tap. Next is available from the start; Replay; "Skip the rest". |
 
-### 7. Pilot form (EPFL/UNIL students only)
+### 8. Pilot form (EPFL/UNIL students only)
 
 Shown after Finish or after the tour to participants who answered `epfl` or `unil`. Stored in its own table without a session, so it cannot be linked to answers.
 
@@ -180,7 +195,7 @@ Pako: "We're testing takeover with real items in a few FMEL houses. Want a spot?
 
 Send needs at least one tick. A sign-up counts only with the first tick, later-email permission only with the second. Strong interest: signed up, at least one week and one item. It sets the order of re-contact; everyone who signs up is contacted. Pilot capacity: up to 10 real exchanges of items a student can carry or move with a bike trailer.
 
-### 8. End
+### 9. End
 
 Pako: "Thanks! That helps us decide what to build next."
 
@@ -190,7 +205,7 @@ Share: "Every answer helps, also from people who never sell anything. Share it?"
 
 ## What is stored
 
-One session per participant, created on "Let's go": a random id, `survey = 'v3'`, the wording version (`v3-3` for the pilot, a raised label for the run), the language at the start (`en`, `fr`, `de`), the channel tag, phone or desktop. No name, no IP address, no browser details.
+One session per participant, created on "Let's go": a random id, `survey = 'v3'`, the wording version (`v3-4` for the pilot, a raised label for the run), the language at the start (`en`, `fr`, `de`), the channel tag, phone or desktop. No name, no IP address, no browser details.
 
 One answer per session and step, replaced when the participant goes back and answers again:
 
@@ -213,6 +228,8 @@ One answer per session and step, replaced when the participant goes back and ans
 | `change`, `own` | Started writing, no decision yet (unfinished if it stays so) |
 
 `first_chosen` holds the option picked first (`send`, `change`, `own` or `dont-send`); `draft-day` holds the chosen day.
+
+The price ladder stores `pack-start` (the price asked first: `chf-2`, `chf-5` or `chf-8`) and one answer per price asked: `pack-chf-2`, `pack-chf-5`, `pack-chf-8`, each `yes`, `no` or `not-sure`.
 
 Events, sent in batches and stored once per sequence number:
 
@@ -238,7 +255,8 @@ Plausible range: two-sided 95% Wilson interval. For a network sample it only ill
 | --- | --- | --- |
 | Student status | `who` | Whether figures depend on non-users |
 | Side of the last attempt | `last-role`: buying, getting-free vs selling, giving-away | D2 |
-| Moving by June | `move` in `move-feb`, `move-jun` | D4, D1 |
+| Moving by June | `move` in `move-feb`, `move-jun` | D4, D1, D10 |
+| Ladder start | `pack-start` | D4: acceptance by the price asked first |
 | Housing | `housing` = `fmel` | D1b, D1 |
 | Bulky item | `last-item` = `furniture` | D3 |
 | Tried before | `last-role` is not `none` | D7: the `helped-*` wording differs, so the two groups are reported apart |
@@ -253,7 +271,10 @@ Count cutoffs (unrounded Wilson bounds):
 | `last-trouble` nothing ≥ 40% | D2 | tried | 16 | 24 | 40 | 80 |
 | `last-trouble` top named ≥ 25% | D2 | tried | 10 | 15 | 25 | 50 |
 | `move-it` helper: go ≥ / deprioritise ≤ | D3 | answered | 11 / 1 | 15 / 3 | 22 / 8 | 40 / 20 |
-| `pack`: go ≥ / no payment ≤ | D4 | answered | 14 / 3 | 19 / 6 | 29 / 12 | 53 / 30 |
+| `pack-chf-5` yes ≥ (lower bound ≥ 20%) | D4 | asked at CHF 5 | 13 | 19 | 28 | 52 |
+| `pay-model` leading model ≥ (lower bound ≥ 25%), and ≥ 10 points ahead | D9 | answered | 16 | 22 | 34 | 63 |
+| `delivery-pref` pick-up > (lower bound > 50%) | D10 | answered | 27 | 38 | 60 | 114 |
+| `delivery-pref` if-priced + always ≥ (lower bound ≥ 25%) | D10 | answered | 16 | 22 | 34 | 63 |
 | `draft` sent as it is: keep ≥ / as it is + changed: optional ≤ | D5a | completed decisions | 27 / 13 | 38 / 22 | 60 / 40 | 114 / 86 |
 | `sending` short-updates + replies-too: go ≥ / keep manual ≤ | D5b | answered | 27 / 13 | 38 / 22 | 60 / 40 | 114 / 86 |
 | `helped-*` yes: keep ≥ / yes + partly: deprioritise ≤ | D7 | tried, answered | 23 / 6 | 32 / 11 | 50 / 21 | 94 / 47 |
@@ -276,25 +297,29 @@ Frozen with a date before the first invitation, together with the script and the
 | D1b | Nearer lower bound > 50% → test a second price–distance pair and nearby sorting. Cheaper lower bound > 50% → price sort first. Else open. "Neither" stays in the denominator. | FMEL, EPFL/UNIL |
 | D2 | (1) Nothing ≥ 40% → problem weaker than believed, no nomination. (2) Else top named obstacle ≥ 25% and no tie → nominate it for the pilot. (3) Else open. | Buyers and sellers separately |
 | D3 | Helper lower bound ≥ 15% → partner quote and a real booking offer in the pilot. Upper bound < 15% → deprioritise this offer. Else open. 15% is a team threshold. | Furniture subgroup |
-| D4 | Pack lower bound > 20.6% (break-even: 33 packs from 160 movers) → offer a real paid pack in February. Upper bound < 20.6% → no student payment in the pilot. Else open. | Moving by June |
+| D4 | Acceptance at CHF 5 (`yes` ÷ asked at CHF 5) lower bound ≥ 20% → continue the pack idea and offer a real paid pack in February. Else no student payment in the pilot. | Acceptance at CHF 2 and 8; each price by start price; moving by June |
 | D5a | `sent-unchanged` lower bound > 50% → keep Pako's draft as the default for offers and test one-tap sending in the pilot. `sent-unchanged` + `sent-changed` upper bound < 50% → make the draft optional; offers start from an empty message. Else open. | `sent-own` and `not-sent` separately; unfinished; first vs final choice |
 | D5b | `short-updates` + `replies-too` lower bound > 50% → prototype the opt-in. Upper bound < 50% → keep "you tap every send". Else open. | Each option separately; by draft code |
 | D5c | Dropped in `v3-2`: the comprehension item was merged into `sending`. The sentence stays as it is. | |
 | D6 | The two most chosen lines go to the poster test; a tie for second sends all tied lines. `none` chosen most → no shortlist, rewrite the lines. | EPFL/UNIL counts |
 | D7 | Per feature, over participants who tried (`na` stays in the denominator): `yes` lower bound ≥ 40% → keep the feature as shown in the pilot. `yes` + `partly` upper bound < 30% → deprioritise it in the pilot and the onboarding. Else open. `try-first`: the most chosen feature with ≥ 25% and no tie leads the onboarding; `none` + `need-more` ≥ 40% → rewrite how the features are introduced. 40% and 30% are team thresholds. | Never-tried answers ("Would this help you?") descriptively; scenes skipped vs played |
+| D9 | A model leads if its share's lower bound ≥ 25% and it is at least 10 percentage points ahead of the next model; it is tested first in the pilot. Else no model leads. | `none` share; EPFL/UNIL |
+| D10 | `pick-up` lower bound > 50% → no delivery feature; focus on local pickup. A delivery partner is explored only if `if-priced` + `always` has a lower bound ≥ 25% and the median `delivery-worth` among them (`not-sure` left out) is CHF 10–20 or more. Else open. | `depends` separately; `last-cost`; furniture subgroup |
 | D8 | Each barrier with a lower bound ≥ 25% gets a named counter-measure in the pilot plan (for example `nobody-nearby` → one house at a time, `ai-mistakes` → a check of the details before a draft is sent, `prefer-groups` → posting listings into existing groups). `nothing` ≥ 40% → no main barrier. Else open. Several barriers per participant; the denominator is participants who answered. | "Something else" texts, coded like `last-story` |
 
 ## Threats to validity
 
 | Threat | Where | Mitigation | What remains |
 | --- | --- | --- | --- |
-| Pako asks the product questions | `headline`, `helped-*`, `stop`, `try-first`, `sending`, `move-it`, `pack` | Neutral wording, outside options, "the app" in questions, no reaction to product answers; real behaviour weighs more | Product answers likely lean positive; size unknown |
+| Pako asks the product questions | `headline`, `helped-*`, `stop`, `try-first`, `sending`, `move-it`, `pay-model`, `pack-chf-*`, `delivery-*` | Neutral wording, outside options, "the app" in questions, no reaction to product answers; real behaviour weighs more | Product answers likely lean positive; size unknown |
 | Self-selection, course peers | Everything | Neutral invitation, channel tags, subgroups described | No campus-wide rates |
 | No time window on the last attempt | `last-trouble`, `last-item` | `last-occasion` and side describe the episode | Older episodes recalled less precisely |
 | Fixed section order | All | Shuffled options with stored order; headline before the scenes; helper before desk; `sending` before the draft | Same order for everyone; the features always run find, sell, deal |
 | Short scenes as the stimulus | `helped-*`, `stop`, `try-first` | Pako's line says what each scene shows; Replay; skipped scenes are logged | A 12-second demo, not use: answers describe a first impression |
 | Two wordings of one question | `helped-*` | Tried and never tried reported apart | The two groups' answers are not comparable |
-| Imagined vs real behaviour | `draft`, `pack`, `move-it`, `desk` | Every "go" leads to a real test | Stated choices run high |
+| Imagined vs real behaviour | `draft`, `move-it`, `desk` | Every "go" leads to a real test | Stated choices run high |
+| Hypothetical bias in prices | `pay-model`, `pack-chf-*`, `delivery-worth` | Real money named ("your own CHF"), outside options (`none`, `no`, `only-free`, `not-sure`); across 77 studies stated willingness to pay averaged about 21% above real willingness to pay (Schmidt & Bijmolt 2020) | No numeric correction is applied: on this sample it would add false precision. Real purchases in the pilot decide |
+| Anchoring on prices | `pay-model`, `pack-chf-*` | The ladder's first price is drawn at random and acceptance is reported by start price | `pay-model` names CHF 5 for the pack just before the ladder, so every start follows that anchor |
 | Shown results | Later participants | Only after the core, two items, from 20 answers | |
 | Three languages | All | One dictionary per language with equivalent meaning; language stored per session | Small wording differences between languages; report n per language |
 | Two versions running | v1 and v3 | Each session stores its version; analysed separately | Channels may favour one link |
@@ -325,7 +350,7 @@ Every block: k of n with the denominator named, the range, the rule and its outc
 
 ## Before launch
 
-1. Pilot done (it runs `v3-3`); wording and `{measured}` fixed; wording version raised for the run.
+1. Pilot done (it runs `v3-4`); wording and `{measured}` fixed; wording version raised for the run.
 2. This protocol frozen with a date.
 3. Pilot sessions deleted, so they do not count in "How others answered".
 4. `STUDY_CONTACT` and `STUDY_DELETE_BY` set on the deployment.
@@ -337,7 +362,7 @@ Every block: k of n with the denominator named, the range, the rule and its outc
 
 Admins see the counts in the app under Admin → Study, read through `GET /api/study/report`. In account mode the server passes the signed-in user to `study_report_rows`, which refuses anyone not in `public.admins`; the server calls it with its service key. In the local demo the admin area opens in developer mode, as the rest of it does.
 
-The page shows one wording version at a time, the newest first: sessions per UTC day and channel, how many sessions reached each core screen, the last screen of those who left before the core was saved, counts per option over the participants who answered (skips excluded), typed answers sorted alphabetically without session ids (offers sent as Pako drafted them are left out) and pilot sign-ups per house and week. Any breakdown count from 1 to 4 shows as "<5". Decision outcomes come from the queries below.
+The page shows one wording version at a time, the newest first: sessions per UTC day and channel, how many sessions reached each core screen, the last screen of those who left before the core was saved, counts per option over the participants who answered (skips excluded), typed answers sorted alphabetically without session ids (offers sent as Pako drafted them are left out) the move-out pack's acceptance per price, and pilot sign-ups per house and week. Any breakdown count from 1 to 4 shows as "<5". Decision outcomes come from the queries below.
 
 ## Results queries
 
@@ -391,7 +416,7 @@ order by shown desc, shown.step;
 
 ### Counts per option for one step
 
-For the descriptive steps (`who`, `last-occasion`, `why-not`, `move`, `housing`, `age`, `gender`, `level`, `exchange`, `scene-pick`). Change the step id. Skips are not counted.
+For the descriptive steps (`who`, `last-occasion`, `why-not`, `move`, `housing`, `age`, `gender`, `level`, `exchange`, `scene-pick`, `last-cost`). Change the step id. Skips are not counted.
 
 ```sql
 -- split
@@ -545,25 +570,28 @@ group by grouping sets ((option), (part, option))
 order by subgroup, chosen desc, option;
 ```
 
-### D4 Pack, with participants moving by June
+### D4 Pack price ladder
+
+Acceptance per price over everyone asked at that price, in total and by the price asked first.
 
 ```sql
--- d4-pack
+-- d4-ladder
 with run as (
   select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v3-1'
-), subgroup as (
-  select a.session from takeover_admin.study_answers a join run on run.id = a.session
-  where a.step = 'move' and a.chosen && array['move-feb', 'move-jun']
-), answers as (
-  select option, case when a.session in (select session from subgroup) then 'moving-by-june' else 'rest' end as part
-  from takeover_admin.study_answers a join run on run.id = a.session cross join unnest(a.chosen) as option
-  where a.step = 'pack'
+), starts as (
+  select a.session, a.chosen[1] as start
+  from takeover_admin.study_answers a join run on run.id = a.session
+  where a.step = 'pack-start'
+), asked as (
+  select substring(a.step from 6) as price, s.start, a.chosen[1] as answer
+  from takeover_admin.study_answers a join starts s on s.session = a.session
+  where a.step in ('pack-chf-2', 'pack-chf-5', 'pack-chf-8') and cardinality(a.chosen) > 0
 )
-select coalesce(part, 'all') as subgroup, option, count(*) as chosen,
-  sum(count(*)) over (partition by coalesce(part, 'all')) as answered
-from answers
-group by grouping sets ((option), (part, option))
-order by subgroup, chosen desc, option;
+select price, coalesce(start, 'all') as start_price,
+  count(*) filter (where answer = 'yes') as yes, count(*) as asked
+from asked
+group by grouping sets ((price), (price, start))
+order by price, start_price;
 ```
 
 ### D5a Delegation
@@ -691,6 +719,45 @@ select option, count(*) as chosen, (select count(*) from answered) as answered
 from answered cross join unnest(answered.chosen) as option
 group by option
 order by chosen desc, option;
+```
+
+### D9 Pay model
+
+```sql
+-- d9-pay-model
+with run as (
+  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v3-1'
+)
+select a.chosen[1] as model, count(*) as chosen, sum(count(*)) over () as answered
+from takeover_admin.study_answers a join run on run.id = a.session
+where a.step = 'pay-model' and cardinality(a.chosen) > 0
+group by model
+order by chosen desc, model;
+```
+
+### D10 Delivery
+
+`delivery-worth` is counted among those who answered `if-priced` or `always`; its median band comes from these counts.
+
+```sql
+-- d10-delivery
+with run as (
+  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v3-1'
+), prefs as (
+  select a.session, a.chosen[1] as pref
+  from takeover_admin.study_answers a join run on run.id = a.session
+  where a.step = 'delivery-pref' and cardinality(a.chosen) > 0
+)
+select 'delivery-pref' as item, pref as answer, count(*) as chosen,
+  sum(count(*)) over () as answered
+from prefs
+group by pref
+union all
+select 'delivery-worth', w.chosen[1], count(*), sum(count(*)) over ()
+from takeover_admin.study_answers w join prefs p on p.session = w.session
+where w.step = 'delivery-worth' and p.pref in ('if-priced', 'always') and cardinality(w.chosen) > 0
+group by w.chosen[1]
+order by item, answer;
 ```
 
 ### Deleting the data

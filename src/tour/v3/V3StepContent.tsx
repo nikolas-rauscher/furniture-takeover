@@ -7,10 +7,10 @@ import TextAnswer from "../study/TextAnswer";
 import AboutRows from "./AboutRows";
 import DeskTask from "./DeskTask";
 import DraftChat from "./DraftChat";
+import PackLadder from "./PackLadder";
 import PilotForm from "./PilotForm";
 import type { Given, StepContext } from "./stepContext";
 import {
-  FREE_DRAFTS,
   SITUATIONS,
   STORY_MAX,
   type V3ChoiceStep,
@@ -79,8 +79,6 @@ function scenarioOf(step: V3Step, text: TourText["v3"]["situations"]) {
     case "desk":
     case "draft":
       return text[step.id];
-    case "pack":
-      return text.pack(FREE_DRAFTS);
     default:
       throw new Error(`Step ${step.id} is not a situation.`);
   }
@@ -134,6 +132,8 @@ function StepBody({ context }: { context: StepContext }) {
       return <DeskTask step={step} context={context} />;
     case "draft":
       return <DraftChat context={context} />;
+    case "ladder":
+      return <PackLadder context={context} />;
     case "about-app":
       return <WhatIsTakeover />;
     case "saved":

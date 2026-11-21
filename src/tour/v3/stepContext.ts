@@ -40,6 +40,8 @@ export type StepContext = {
   /** Stores an answer at once, without leaving the step. */
   saveNow: (id: string, answer: Given) => void;
   draftDone: (answer: Given) => void;
+  /** Answers the pack ladder's current price; the next price, if any, follows on the same screen. */
+  answerLadder: (answer: string) => void;
   sendPilot: (pilot: StudyPilot) => void;
   retry: () => void;
   log: (kind: StudyEventKind, detail?: string) => void;

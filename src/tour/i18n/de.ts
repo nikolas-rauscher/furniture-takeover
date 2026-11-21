@@ -398,6 +398,7 @@ export const DE: TourText = {
       "last-time": "Letztes Mal",
       "the-app": "Die App",
       situations: "Situationen",
+      price: "Preis und Lieferung",
     },
     progress: "Teile der Umfrage",
     sectionState: {
@@ -444,13 +445,57 @@ export const DE: TourText = {
       "move-it":
         "Du hast einen Schreibtisch gefunden, der dir gefällt, 4 km von deinem Wohnort entfernt.",
       desk: "Du brauchst einen Schreibtisch, und zwei in der App passen.",
-      pack: (free) =>
-        `Du ziehst in zwei Wochen aus und hast noch drei Sachen zu verkaufen, darunter einen Schreibtisch. Die ${free} kostenlosen Fotoentwürfe von heute in takeover hast du aufgebraucht.`,
       draft: "Du kaufst Mia einen Schreibtisch ab. Preis und Ort passen dir.",
       draftTask:
         "Antworte Mia und wähle dann, was du mit Pakos Entwurf machst.",
     },
     steps: {
+      "last-cost": {
+        question: "Was hat dich der Transport ungefähr gekostet?",
+        options: {
+          nothing: "Nichts",
+          "under-10": "Unter CHF 10",
+          "10-30": "CHF 10–30",
+          "over-30": "Mehr als CHF 30",
+          "dont-remember": "Weiss nicht mehr",
+        },
+      },
+      "pay-model": {
+        question:
+          "Die Grundfunktionen von takeover bleiben gratis. Wenn etwas kosten müsste, was würdest du wählen?",
+        options: {
+          "seller-fee":
+            "Eine kleine Gebühr, wenn dein Artikel verkauft wird (5 %, zahlt der Verkäufer)",
+          "move-pack":
+            "Ein einmaliges Auszugspaket (CHF 5: mehr Fotoentwürfe und Preisprüfungen für 30 Tage)",
+          monthly: "Ein Monatsabo (CHF 3/Monat: unbegrenzte Hilfe von Pako)",
+          institution:
+            "Gratis für Studierende, bezahlt vom Wohnheim oder von der Hochschule",
+          none: "Nichts davon, ich würde nicht zahlen",
+        },
+      },
+      "delivery-pref": {
+        question:
+          "Wenn du etwas Sperriges gebraucht kaufst, wie würdest du es lieber bekommen?",
+        options: {
+          "pick-up": "Ich hole es selbst ab, um Geld zu sparen",
+          "if-priced": "Lieferung, wenn der Preis stimmt",
+          always: "Immer Lieferung",
+          depends: "Kommt auf den Artikel an",
+        },
+      },
+      "delivery-worth": {
+        question:
+          "Was wäre dir eine Lieferung bis vor die Tür innerhalb von Lausanne (bis etwa 5 km) wert?",
+        options: {
+          "only-free": "Nichts, nur wenn gratis",
+          "up-to-5": "Bis CHF 5",
+          "5-10": "CHF 5–10",
+          "10-20": "CHF 10–20",
+          "over-20": "Mehr als CHF 20",
+          "not-sure": "Weiss nicht",
+        },
+      },
       who: {
         question: "Zuerst: Studierst du?",
         options: {
@@ -595,17 +640,6 @@ export const DE: TourText = {
         question: "Welchen würdest du nehmen?",
         options: { nearer: "CHF 45", cheaper: "CHF 30", neither: "Keinen" },
       },
-      pack: {
-        question: "Was würdest du tun?",
-        options: {
-          manual: "Sie jetzt selbst inserieren, kostenlos",
-          wait: "Bis morgen auf neue kostenlose Entwürfe warten",
-          pack: "Das Auszugspaket kaufen: einmalig CHF 5, fünf weitere Fotoentwürfe mit Preisprüfung, 30 Tage gültig",
-          "other-way":
-            "Etwas anderes (eine andere App, ein Gruppenchat, verschenken)",
-          "not-sure": "Weiss nicht",
-        },
-      },
       "scene-pick": {
         question: "Was möchtest du zuerst sehen?",
         options: {
@@ -668,7 +702,16 @@ export const DE: TourText = {
     findingBySeller: "Jemanden finden, der es wollte",
     moveIntro: "Zwei kurze Fragen zu jetzt.",
     firstLookIntro: "Jetzt ein erster Blick auf takeover.",
-    situationsIntro: "Vier kurze Situationen.",
+    situationsIntro: "Drei kurze Situationen.",
+    priceIntro: "Letzter Teil: Preis und Lieferung.",
+    packLadder: {
+      bubble: "Noch eine Frage zum Auszugspaket.",
+      title: "Auszugspaket",
+      text: "Fünf weitere Fotoentwürfe mit Preisprüfung, 30 Tage gültig, einmal bezahlt.",
+      question: (price) =>
+        `Würdest du CHF ${price} aus eigener Tasche für dieses Paket bei deinem nächsten Umzug ausgeben?`,
+      options: { yes: "Ja", no: "Nein", "not-sure": "Weiss nicht" },
+    },
     lastStory: {
       question: "In einem Satz: Wie ist es gelaufen?",
       label: "Dein Satz",

@@ -398,6 +398,7 @@ export const FR: TourText = {
       "last-time": "La dernière fois",
       "the-app": "L'app",
       situations: "Situations",
+      price: "Prix et livraison",
     },
     progress: "Parties du sondage",
     sectionState: {
@@ -443,12 +444,57 @@ export const FR: TourText = {
       pickOne: "Choisis une réponse.",
       "move-it": "Tu as trouvé un bureau qui te plaît, à 4 km de chez toi.",
       desk: "Il te faut un bureau, et deux conviennent dans l'app.",
-      pack: (free) =>
-        `Tu déménages dans deux semaines et il te reste trois choses à vendre, dont un bureau. Tu as utilisé les ${free} brouillons photo gratuits du jour dans takeover.`,
       draft: "Tu achètes un bureau à Mia. Le prix et le lieu te conviennent.",
       draftTask: "Réponds à Mia, puis choisis quoi faire du brouillon de Pako.",
     },
     steps: {
+      "last-cost": {
+        question: "Combien t'a coûté le transport, à peu près\u00a0?",
+        options: {
+          nothing: "Rien",
+          "under-10": "Moins de CHF 10",
+          "10-30": "CHF 10–30",
+          "over-30": "Plus de CHF 30",
+          "dont-remember": "Je ne sais plus",
+        },
+      },
+      "pay-model": {
+        question:
+          "Les bases de takeover restent gratuites. Si quelque chose devait être payant, que choisirais-tu\u00a0?",
+        options: {
+          "seller-fee":
+            "Une petite commission quand ton objet se vend (5\u00a0%, payée par le vendeur)",
+          "move-pack":
+            "Un pack déménagement unique (CHF 5\u00a0: brouillons photo et vérifications de prix en plus pendant 30 jours)",
+          monthly:
+            "Un abonnement mensuel (CHF 3/mois\u00a0: aide illimitée de Pako)",
+          institution:
+            "Gratuit pour les étudiant·es, payé par la résidence ou l'université",
+          none: "Rien de tout ça, je ne paierais pas",
+        },
+      },
+      "delivery-pref": {
+        question:
+          "Quand tu achètes un objet encombrant d'occasion, comment préfères-tu le récupérer\u00a0?",
+        options: {
+          "pick-up": "Je vais le chercher moi-même pour économiser",
+          "if-priced": "Livraison, si le prix est correct",
+          always: "Toujours la livraison",
+          depends: "Ça dépend de l'objet",
+        },
+      },
+      "delivery-worth": {
+        question:
+          "Combien vaudrait pour toi une livraison jusqu'à ta porte dans Lausanne (jusqu'à environ 5 km)\u00a0?",
+        options: {
+          "only-free": "Rien, seulement si c'est gratuit",
+          "up-to-5": "Jusqu'à CHF 5",
+          "5-10": "CHF 5–10",
+          "10-20": "CHF 10–20",
+          "over-20": "Plus de CHF 20",
+          "not-sure": "Je ne sais pas",
+        },
+      },
       who: {
         question: "Pour commencer\u00a0: es-tu étudiant·e\u00a0?",
         options: {
@@ -599,17 +645,6 @@ export const FR: TourText = {
           neither: "Aucun des deux",
         },
       },
-      pack: {
-        question: "Que ferais-tu\u00a0?",
-        options: {
-          manual: "Je les publie moi-même maintenant, gratuitement",
-          wait: "J'attends demain pour de nouveaux brouillons gratuits",
-          pack: "J'achète le pack déménagement\u00a0: CHF 5 une fois, cinq brouillons photo de plus avec vérification du prix, valables 30 jours",
-          "other-way":
-            "Autre chose (une autre app, un groupe de discussion, je les donne)",
-          "not-sure": "Je ne sais pas",
-        },
-      },
       "scene-pick": {
         question: "Qu'aimerais-tu voir en premier\u00a0?",
         options: {
@@ -673,7 +708,16 @@ export const FR: TourText = {
     findingBySeller: "Trouver quelqu'un que ça intéressait",
     moveIntro: "Deux petites questions sur maintenant.",
     firstLookIntro: "Maintenant, un premier aperçu de takeover.",
-    situationsIntro: "Quatre courtes situations.",
+    situationsIntro: "Trois courtes situations.",
+    priceIntro: "Dernière partie\u00a0: prix et livraison.",
+    packLadder: {
+      bubble: "Encore une question sur le pack déménagement.",
+      title: "Pack déménagement",
+      text: "Cinq brouillons photo de plus avec vérification du prix, valables 30 jours, payés une fois.",
+      question: (price) =>
+        `Dépenserais-tu CHF ${price} de ta poche pour ce pack lors de ton prochain déménagement\u00a0?`,
+      options: { yes: "Oui", no: "Non", "not-sure": "Je ne sais pas" },
+    },
     lastStory: {
       question: "En une phrase\u00a0: comment ça s'est passé\u00a0?",
       label: "Ta phrase",

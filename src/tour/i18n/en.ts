@@ -390,6 +390,7 @@ export const EN = {
       "last-time": "Last time",
       "the-app": "The app",
       situations: "Situations",
+      price: "Price & delivery",
     },
     progress: "Survey sections",
     sectionState: {
@@ -436,12 +437,55 @@ export const EN = {
       pickOne: "Pick one.",
       "move-it": "You've found a desk you like, 4 km from where you live.",
       desk: "You need a desk, and two in the app fit.",
-      pack: (free: number) =>
-        `You're moving out in two weeks and still have three things to sell, a desk among them. You've used today's ${free} free photo drafts in takeover.`,
       draft: "You're buying a desk from Mia. The price and the place suit you.",
       draftTask: "Answer Mia, then pick what to do with Pako's draft.",
     },
     steps: {
+      "last-cost": {
+        question: "What did getting it there cost you, roughly?",
+        options: {
+          nothing: "Nothing",
+          "under-10": "Under CHF 10",
+          "10-30": "CHF 10–30",
+          "over-30": "More than CHF 30",
+          "dont-remember": "Don't remember",
+        },
+      },
+      "pay-model": {
+        question:
+          "The basics of takeover stay free. If something had to cost money, which would you pick?",
+        options: {
+          "seller-fee":
+            "A small fee when your item sells (5%, paid by the seller)",
+          "move-pack":
+            "A one-off move-out pack (CHF 5: extra photo drafts and price checks for 30 days)",
+          monthly: "A monthly plan (CHF 3/month: unlimited help from Pako)",
+          institution: "Free for students, paid by the residence or university",
+          none: "None of these, I wouldn't pay",
+        },
+      },
+      "delivery-pref": {
+        question:
+          "When you buy something bulky second-hand, how would you rather get it?",
+        options: {
+          "pick-up": "I pick it up myself to save money",
+          "if-priced": "Delivery, if the price is right",
+          always: "Always delivery",
+          depends: "Depends on the item",
+        },
+      },
+      "delivery-worth": {
+        question:
+          "What would delivery to your door within Lausanne (up to about 5 km) be worth to you?",
+        options: {
+          "only-free": "Nothing, only if free",
+          "up-to-5": "Up to CHF 5",
+          "5-10": "CHF 5–10",
+          "10-20": "CHF 10–20",
+          "over-20": "More than CHF 20",
+          "not-sure": "Not sure",
+        },
+      },
       who: {
         question: "First things first: are you a student?",
         options: {
@@ -583,17 +627,6 @@ export const EN = {
         question: "Which one would you go for?",
         options: { nearer: "CHF 45", cheaper: "CHF 30", neither: "Neither" },
       },
-      pack: {
-        question: "What would you do?",
-        options: {
-          manual: "List them myself now, for free",
-          wait: "Wait until tomorrow for new free drafts",
-          pack: "Buy the move-out pack: CHF 5 once, five more photo drafts with price checks, valid 30 days",
-          "other-way":
-            "Something else (another app, a group chat, give them away)",
-          "not-sure": "Not sure",
-        },
-      },
       "scene-pick": {
         question: "What would you like to see first?",
         options: {
@@ -655,7 +688,16 @@ export const EN = {
     findingBySeller: "Finding someone who wanted it",
     moveIntro: "Two quick ones about now.",
     firstLookIntro: "Now a first look at takeover.",
-    situationsIntro: "Four quick situations.",
+    situationsIntro: "Three quick situations.",
+    priceIntro: "Last part: price and delivery.",
+    packLadder: {
+      bubble: "One more about the move-out pack.",
+      title: "Move-out pack",
+      text: "Five more photo drafts with price checks, valid for 30 days, paid once.",
+      question: (price: number) =>
+        `Would you spend your own CHF ${price} on this pack for your next move?`,
+      options: { yes: "Yes", no: "No", "not-sure": "Not sure" },
+    },
     lastStory: {
       question: "In a sentence: how did it go?",
       label: "Your sentence",
