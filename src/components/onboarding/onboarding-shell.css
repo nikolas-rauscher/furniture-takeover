@@ -374,6 +374,10 @@
   top: 10px;
   right: 10px;
 }
+/* A card without a tile starts with its text, which keeps clear of the corner mark. */
+.ob-choices-grid .ob-choice:not(:has(.ob-choice-tile)) {
+  padding-inline-end: 40px;
+}
 
 /* Short phones keep all eight answers above Continue: the cards draw closer, their
    icons shrink and the step sits nearer to Pako. */
