@@ -74,8 +74,14 @@ export function v3StepById(id: string): V3Step {
 
 export const nextV3 = (answers: AnswerSheet, id: string) =>
   neighbourStep(visibleV3Steps(answers), id, 1);
-export const previousV3 = (answers: AnswerSheet, id: string) =>
+const previousV3 = (answers: AnswerSheet, id: string) =>
   neighbourStep(visibleV3Steps(answers), id, -1);
+
+/** Where Back leads: to the scene a skip of the tour left from, or else to the step before. */
+export function backTarget(progress: V3Progress): V3Step {
+  if (progress.skippedFrom) return v3StepById(progress.skippedFrom);
+  return previousV3(progress.answers, progress.stepId);
+}
 
 /** Back is offered except before the first screen and once the core is saved. */
 export function canGoBack(steps: readonly V3Step[], step: V3Step): boolean {

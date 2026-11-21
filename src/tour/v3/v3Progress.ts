@@ -36,6 +36,8 @@ export type V3Progress = {
   /** Events already handed to the save queue. */
   queuedEvents: number;
   pilot: StudyPilot | null;
+  /** The tour scene "Skip the rest" left from, while on the step it led to; Back returns there. */
+  skippedFrom: string | null;
 };
 
 /** As kept in session storage, with the saves the server has not confirmed yet. */

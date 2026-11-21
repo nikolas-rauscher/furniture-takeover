@@ -12,10 +12,10 @@ import StudyShell from "../study/StudyShell";
 import type { Recorder } from "../study/useRecorder";
 import {
   answerEvent,
+  backTarget,
   canGoBack,
   isTourScene,
   nextV3,
-  previousV3,
   recordV3Answer,
   v3StepById,
   visibleV3Steps,
@@ -197,7 +197,9 @@ export default function V3Steps({
     setPending(null);
     const from = step.id;
     setProgress((current) => {
-      let next = withV3Order({ ...before(current), stepId: target.id }, target);
+      // A move ends a skip's jump back; the skip itself records it again.
+      const moved = before({ ...current, skippedFrom: null });
+      let next = withV3Order({ ...moved, stepId: target.id }, target);
       if (travel === -1) next = withEvent(next, "back", from, target.id);
       next = withEvent(next, "shown", target.id);
       if (target.kind === "saved") next = withEvent(next, "core-complete");
@@ -275,8 +277,8 @@ export default function V3Steps({
     const remaining = steps.slice(steps.indexOf(step)).filter(isTourScene);
     const rest = steps[steps.map(isTourScene).lastIndexOf(true) + 1];
     if (!rest) throw new Error("The tour has no step after its scenes.");
-    goTo(rest, 1, (current) =>
-      remaining.reduce(
+    goTo(rest, 1, (current) => ({
+      ...remaining.reduce(
         (next, skipped) =>
           skipped.kind === "scene" &&
           !(skipped.id === step.id && scene.finished)
@@ -284,7 +286,8 @@ export default function V3Steps({
             : next,
         current,
       ),
-    );
+      skippedFrom: step.id,
+    }));
   }
 
   function sendPilot(pilot: StudyPilot) {
@@ -365,7 +368,7 @@ export default function V3Steps({
           className="ob-back"
           aria-label={text.common.back}
           disabled={!canGoBack(steps, step)}
-          onClick={() => goTo(previousV3(progress.answers, step.id), -1)}
+          onClick={() => goTo(backTarget(progress), -1)}
         >
           <ArrowLeft size={22} aria-hidden="true" />
         </Button>

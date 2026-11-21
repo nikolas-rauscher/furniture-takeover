@@ -31,6 +31,7 @@ function firstProgress(source: string, language: StudyLanguage): V3Progress {
     events: [],
     queuedEvents: 0,
     pilot: null,
+    skippedFrom: null,
   };
   return withEvent(withV3Order(started, first), "shown", first.id);
 }

@@ -160,7 +160,7 @@ Then two equal buttons, saved as the answer to step `peek`: `finish` Finish · `
 | Id | Content |
 | --- | --- |
 | `scene-pick` | "What would you like to see first?" Shuffled: `sell` Sell from a photo · `deal` Agree on a pickup · `find` Find something. |
-| `tour-sell`, `tour-deal`, `tour-find` | The full app scenes in the phone, with key moments the participant can tap. Next is available from the start; Replay; "Skip the rest". |
+| `tour-sell`, `tour-deal`, `tour-find` | The full app scenes in the phone, with key moments the participant can tap. Next is available from the start; Replay; "Skip the rest". Back after "Skip the rest" returns to the scene it was pressed on. |
 
 ### 7. Pilot form (EPFL/UNIL students only)
 

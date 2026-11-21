@@ -10,6 +10,7 @@ import {
 import { TOUR_TEXT } from "../i18n/tourText.ts";
 import {
   answerEvent,
+  backTarget,
   canGoBack,
   nextV3,
   recordV3Answer,
@@ -57,6 +58,7 @@ const progress: V3Progress = {
   events: [],
   queuedEvents: 0,
   pilot: null,
+  skippedFrom: null,
 };
 
 const ids = (answers: V3Progress["answers"]) =>
@@ -409,4 +411,28 @@ test("the start request names the wording version the session began in", async (
   );
   await v3Job({ ...progress, version: "v3-2" }, "session").send();
   assert.equal(sent[0].version, "v3-2");
+});
+
+test("Back after skipping the rest returns to the scene it was skipped from", () => {
+  const touring: V3Progress = {
+    ...progress,
+    answers: {
+      who: answer("epfl"),
+      peek: answer("tour"),
+      "scene-pick": answer("sell"),
+    },
+    stepId: "pilot",
+  };
+  assert.deepEqual(
+    visibleV3Steps(touring.answers)
+      .map((step) => step.id)
+      .slice(-5),
+    ["tour-sell", "tour-deal", "tour-find", "pilot", "end"],
+  );
+  assert.equal(
+    backTarget({ ...touring, skippedFrom: "tour-sell" }).id,
+    "tour-sell",
+  );
+  assert.equal(backTarget(touring).id, "tour-find");
+  assert.equal(backTarget({ ...touring, stepId: "tour-deal" }).id, "tour-sell");
 });
