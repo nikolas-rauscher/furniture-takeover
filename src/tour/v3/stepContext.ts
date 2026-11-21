@@ -39,7 +39,6 @@ export type StepContext = {
   sceneMoment: (moment: number, by: "visitor" | "scene") => void;
   /** Stores an answer at once, without leaving the step. */
   saveNow: (id: string, answer: Given) => void;
-  draftDone: (answer: Given) => void;
   sendPilot: (pilot: StudyPilot) => void;
   retry: () => void;
   log: (kind: StudyEventKind, detail?: string) => void;

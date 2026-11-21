@@ -92,8 +92,13 @@ export type DraftWriting = Extract<DraftAction, "change" | "own">;
  * The draft's final answer. `change` or `own` stays the final answer when the
  * participant started writing and decided nothing.
  */
-export type DraftResult =
-  "sent-unchanged" | "sent-changed" | "sent-own" | "not-sent";
+export const DRAFT_RESULTS = [
+  "sent-unchanged",
+  "sent-changed",
+  "sent-own",
+  "not-sent",
+] as const;
+export type DraftResult = (typeof DRAFT_RESULTS)[number];
 /** How many situations part 4 holds, for its context cards. */
 export const SITUATIONS = 4;
 

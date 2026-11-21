@@ -204,7 +204,7 @@ One answer per session and step, replaced when the participant goes back and ans
 | `text` | `last-story`, the `gender` self-description, the `stop` "Something else" text, or the offer as sent |
 | `elapsed_ms` | Time on screen |
 
-`draft` is saved when a writing option is tapped, with `chosen` = that option, then again with the final code:
+`draft` is saved when a writing option is tapped, with `chosen` = that option, then again with the final code at the tap that decides; the sent message stays in view for about a second before the next screen, and after a reload the decision is shown again, not asked again:
 
 | `chosen` | Meaning |
 | --- | --- |
