@@ -4,7 +4,8 @@ import type {
   StudyPilot,
   StudyStart,
 } from "../../../shared/study.ts";
-import { tabStorage } from "../tabStorage.ts";
+import { resumeFromTab, tabStorage, type Resumed } from "../tabStorage.ts";
+import { V3_VERSION } from "./v3Script.ts";
 
 export type V3Answer = {
   chosen: string[];
@@ -20,6 +21,8 @@ type StudyEvent = StudyEvents["events"][number];
 /** Where a v3 participant is, kept for the tab's life so a reload continues the session. */
 export type V3Progress = {
   session: string;
+  /** The wording version the session started in; it never continues in another one. */
+  version: string;
   source: string;
   device: StudyStart["device"];
   /** The page's language when the session started; switches are recorded as events. */
@@ -33,6 +36,8 @@ export type V3Progress = {
   /** Events already handed to the save queue. */
   queuedEvents: number;
   pilot: StudyPilot | null;
+  /** The tour scene "Skip the rest" left from, while on the step it led to; Back returns there. */
+  skippedFrom: string | null;
 };
 
 /** As kept in session storage, with the saves the server has not confirmed yet. */
@@ -41,12 +46,8 @@ export type StoredV3 = { progress: V3Progress; unsaved: string[] };
 const STORAGE_KEY = "takeover-study-v3";
 const FINISHED_KEY = "takeover-study-finished";
 
-export function loadV3(source: string): StoredV3 | null {
-  const raw = tabStorage()?.getItem(STORAGE_KEY);
-  if (!raw) return null;
-  const stored = JSON.parse(raw) as StoredV3;
-  // A link from another channel starts a session of its own.
-  return stored.progress.source === source ? stored : null;
+export function loadV3(source: string): Resumed<StoredV3> {
+  return resumeFromTab<StoredV3>(STORAGE_KEY, source, V3_VERSION);
 }
 
 export function storeV3(stored: StoredV3) {

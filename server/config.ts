@@ -38,13 +38,11 @@ export function localOrigins(appPort = 5173, previewPort = 4173): string[] {
 }
 
 /**
- * The study is open only when the deployment names a contact address and a future deletion date,
- * because the consent text promises both.
+ * The study is set up only when the deployment names a contact address and a deletion date,
+ * because the consent text promises both. A date that has passed still starts the server:
+ * the study routes stop collecting on that date, and the rest of the app runs as before.
  */
-export function readStudyConfig(
-  env: Environment,
-  now = new Date(),
-): StudyConfig {
+export function readStudyConfig(env: Environment): StudyConfig {
   const contact = env.STUDY_CONTACT?.trim();
   const deleteBy = env.STUDY_DELETE_BY?.trim();
   if (!contact && !deleteBy) return { open: false };
@@ -55,8 +53,6 @@ export function readStudyConfig(
     throw new Error(
       "STUDY_CONTACT must be an email address and STUDY_DELETE_BY an ISO date (YYYY-MM-DD).",
     );
-  if (deleteBy <= now.toISOString().slice(0, 10))
-    throw new Error("STUDY_DELETE_BY must be a date in the future.");
   return parsed.data;
 }
 

@@ -12,14 +12,16 @@ import StudyShell from "../study/StudyShell";
 import type { Recorder } from "../study/useRecorder";
 import {
   answerEvent,
+  backTarget,
   canGoBack,
   isTourScene,
   nextV3,
-  previousV3,
   recordV3Answer,
   v3StepById,
   visibleV3Steps,
   withEvent,
+  withMoment,
+  withoutAnswersOffPath,
   withV3Order,
 } from "./v3Flow";
 import { PILOT_KEY, v3Job } from "./v3Jobs";
@@ -216,7 +218,9 @@ export default function V3Steps({
     setPending(null);
     const from = step.id;
     setProgress((current) => {
-      let next = withV3Order({ ...before(current), stepId: target.id }, target);
+      // A move ends a skip's jump back; the skip itself records it again.
+      const moved = before({ ...current, skippedFrom: null });
+      let next = withV3Order({ ...moved, stepId: target.id }, target);
       if (travel === -1) next = withEvent(next, "back", from, target.id);
       next = withEvent(next, "shown", target.id);
       if (target.kind === "saved") next = withEvent(next, "core-complete");
@@ -226,11 +230,14 @@ export default function V3Steps({
     if (target.kind === "saved") rememberFinished();
   }
 
-  /** The change that stores the given answers; their saves are queued at once. */
+  /**
+   * The change that stores the given answers and empties those it takes off the path;
+   * the saves of every answer it touches are queued at once.
+   */
   function storeAnswers(answers: Record<string, Given>): Transform {
     const visitMs = performance.now() - arrivedAt.current;
     arrivedAt.current = performance.now();
-    const transform: Transform = (current) =>
+    const record: Transform = (current) =>
       Object.entries(answers).reduce((next, [id, answer]) => {
         const earlier = next.answers[id];
         const recorded = recordV3Answer(
@@ -245,8 +252,12 @@ export default function V3Steps({
           id,
         );
       }, current);
+    const transform: Transform = (current) =>
+      withoutAnswersOffPath(current.answers, record(current));
     const next = transform(progress);
-    Object.keys(answers).forEach((id) => recorder.add(v3Job(next, id)));
+    Object.keys(next.answers)
+      .filter((id) => next.answers[id] !== progress.answers[id])
+      .forEach((id) => recorder.add(v3Job(next, id)));
     return transform;
   }
 
@@ -287,8 +298,8 @@ export default function V3Steps({
     const remaining = steps.slice(steps.indexOf(step)).filter(isTourScene);
     const rest = steps[steps.map(isTourScene).lastIndexOf(true) + 1];
     if (!rest) throw new Error("The tour has no step after its scenes.");
-    goTo(rest, 1, (current) =>
-      remaining.reduce(
+    goTo(rest, 1, (current) => ({
+      ...remaining.reduce(
         (next, skipped) =>
           skipped.kind === "scene" &&
           !(skipped.id === step.id && scene.finished)
@@ -296,7 +307,8 @@ export default function V3Steps({
             : next,
         current,
       ),
-    );
+      skippedFrom: step.id,
+    }));
   }
 
   function answerLadder(chosen: string) {
@@ -343,12 +355,10 @@ export default function V3Steps({
       log("scene-played", step.scene);
     },
     sceneMoment: (moment, by) =>
-      log(
-        by === "visitor" ? "moment-tapped" : "moment-auto",
-        `moment-${moment}`,
+      setProgress((current) =>
+        withMoment(current, step.id, moment, by, scene.finished),
       ),
     saveNow: (id, given) => setProgress(storeAnswers({ [id]: given })),
-    draftDone: (given) => proceed({ [step.id]: given }),
     answerLadder,
     sendPilot,
     retry: recorder.retry,
@@ -412,7 +422,7 @@ export default function V3Steps({
           className="ob-back"
           aria-label={text.common.back}
           disabled={!canGoBack(steps, step)}
-          onClick={() => goTo(previousV3(progress.answers, step.id), -1)}
+          onClick={() => goTo(backTarget(progress), -1)}
         >
           <ArrowLeft size={22} aria-hidden="true" />
         </Button>

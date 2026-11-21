@@ -16,9 +16,62 @@ import {
   type StudyStart,
 } from "../../shared/study.ts";
 
+/** The first retry waits this long, and each later one twice as long as the one before. */
+const RETRY_BASE_MS = 800;
+/** A wait the server asks for is kept up to this long. */
+const MAX_REQUESTED_WAIT_MS = 60_000;
+
+/** A study request the server answered with an error status. */
+export class StudyRequestError extends Error {
+  readonly status: number;
+  /** The wait the server asked for in `Retry-After`; null without a readable one. */
+  readonly retryAfterMs: number | null;
+
+  constructor(message: string, status: number, retryAfterMs: number | null) {
+    super(message);
+    this.name = "StudyRequestError";
+    this.status = status;
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
+/** `Retry-After` in seconds or as an HTTP date, as a wait from `now`. */
+export function readRetryAfter(header: string | null, now = Date.now()) {
+  if (header === null || header.trim() === "") return null;
+  const seconds = Number(header);
+  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
+  const date = Date.parse(header);
+  return Number.isNaN(date) ? null : Math.max(0, date - now);
+}
+
 async function failure(response: Response, what: string) {
   const detail = await response.text();
-  return new Error(`Could not ${what} (${response.status}). ${detail}`.trim());
+  return new StudyRequestError(
+    `Could not ${what} (${response.status}). ${detail}`.trim(),
+    response.status,
+    readRetryAfter(response.headers.get("Retry-After")),
+  );
+}
+
+/** A refusal that sending again cannot change: a client error other than a timeout or a rate limit. */
+export function isFinalRefusal(error: Error): boolean {
+  if (!(error instanceof StudyRequestError)) return false;
+  const { status } = error;
+  return status >= 400 && status < 500 && status !== 408 && status !== 429;
+}
+
+/**
+ * How long to wait before retry `attempt` (1 for the first): as long as a busy or
+ * unavailable server asked, up to a minute, or else a pause that doubles each time.
+ */
+export function retryDelayMs(attempt: number, error: Error): number {
+  const asked =
+    error instanceof StudyRequestError &&
+    (error.status === 429 || error.status === 503)
+      ? error.retryAfterMs
+      : null;
+  if (asked !== null) return Math.min(asked, MAX_REQUESTED_WAIT_MS);
+  return RETRY_BASE_MS * 2 ** (attempt - 1);
 }
 
 async function post(route: string, body: unknown, what: string) {
@@ -76,8 +129,10 @@ export function sendPilot(pilot: StudyPilot) {
   );
 }
 
-export async function readResults(): Promise<StudyResults> {
-  const response = await fetch(STUDY_ROUTES.results);
+/** The shared counts of one wording version: the participant's own. */
+export async function readResults(version: string): Promise<StudyResults> {
+  const query = new URLSearchParams({ version });
+  const response = await fetch(`${STUDY_ROUTES.results}?${query}`);
   if (!response.ok) throw await failure(response, "read the results");
   return studyResultsSchema.parse(await response.json());
 }

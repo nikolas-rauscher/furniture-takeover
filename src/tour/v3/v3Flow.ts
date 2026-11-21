@@ -1,10 +1,11 @@
 import type { StudyEventKind } from "../../../shared/study.ts";
 import type { TourScene } from "../device/sceneMessages.ts";
 import { shuffleOptions, type RandomSource } from "../optionOrder.ts";
-import { isShown, neighbourStep } from "../stepConditions.ts";
+import { emptiedOffPath, isShown, neighbourStep } from "../stepConditions.ts";
 import { drawStart } from "./packPricing.ts";
 import type { V3Answer, V3Progress } from "./v3Progress.ts";
 import {
+  answerIds,
   DRAFT_DAY_STEP,
   DRAFT_DAYS,
   sceneStepId,
@@ -48,6 +49,24 @@ export function visibleV3Steps(answers: AnswerSheet): V3Step[] {
   return [...rest.slice(0, firstScene), ...ordered, ...rest.slice(firstScene)];
 }
 
+/**
+ * Empties the answers of steps that the change from `before` takes off the participant's
+ * path, such as `last-trouble` once `last-role` becomes `none`. Each keeps its first
+ * answer, its order and its time; the events stay as they were.
+ */
+export function withoutAnswersOffPath(
+  before: AnswerSheet,
+  after: V3Progress,
+): V3Progress {
+  const emptied = emptiedOffPath(
+    visibleV3Steps(before),
+    visibleV3Steps(after.answers),
+    answerIds,
+    after.answers,
+  );
+  return { ...after, answers: { ...after.answers, ...emptied } };
+}
+
 export function v3StepById(id: string): V3Step {
   const step = V3_STEPS.find((candidate) => candidate.id === id);
   if (!step) throw new Error(`Survey v3 has no step ${id}.`);
@@ -56,8 +75,14 @@ export function v3StepById(id: string): V3Step {
 
 export const nextV3 = (answers: AnswerSheet, id: string) =>
   neighbourStep(visibleV3Steps(answers), id, 1);
-export const previousV3 = (answers: AnswerSheet, id: string) =>
+const previousV3 = (answers: AnswerSheet, id: string) =>
   neighbourStep(visibleV3Steps(answers), id, -1);
+
+/** Where Back leads: to the scene a skip of the tour left from, or else to the step before. */
+export function backTarget(progress: V3Progress): V3Step {
+  if (progress.skippedFrom) return v3StepById(progress.skippedFrom);
+  return previousV3(progress.answers, progress.stepId);
+}
 
 /** Back is offered except before the first screen and once the core is saved. */
 export function canGoBack(steps: readonly V3Step[], step: V3Step): boolean {
@@ -161,6 +186,22 @@ export function withEvent(
     at: at.toISOString(),
   };
   return { ...progress, events: [...progress.events, event] };
+}
+
+/**
+ * Adds a key moment of a full scene: tapped by the visitor or advanced by the scene.
+ * A replay shows the same moments again, so only the scene's first play records them.
+ */
+export function withMoment(
+  progress: V3Progress,
+  step: string,
+  moment: number,
+  by: "visitor" | "scene",
+  replaying: boolean,
+): V3Progress {
+  if (replaying) return progress;
+  const kind = by === "visitor" ? "moment-tapped" : "moment-auto";
+  return withEvent(progress, kind, step, `moment-${moment}`);
 }
 
 export type SectionState = "done" | "current" | "next";

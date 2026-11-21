@@ -82,7 +82,7 @@ export default function TourPage() {
   if (!state.config.open)
     return <StudyNotice kind="closed" onShowPitch={showPitch} />;
   if (survey === "v3") {
-    if (finishedBefore() && !loadV3(source.data))
+    if (finishedBefore() && !loadV3(source.data).stored)
       return <StudyNotice kind="done-before" onShowPitch={showPitch} />;
     return (
       <V3Study

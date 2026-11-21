@@ -34,15 +34,18 @@ function ConsentText({
 export default function StudyStart({
   contact,
   deleteBy,
+  updated,
   onAgree,
   onShowPitch,
 }: {
   contact: string;
   deleteBy: string;
+  /** A session of an earlier wording was set aside, so the study starts again. */
+  updated: boolean;
   onAgree: () => void;
   onShowPitch: () => void;
 }) {
-  const { v1 } = useTourText();
+  const { common, v1 } = useTourText();
   const [consent, setConsent] = useState(false);
   if (!consent)
     return (
@@ -70,6 +73,11 @@ export default function StudyStart({
         }
       >
         <p className="ob-wordmark tour-study-wordmark">takeover</p>
+        {updated && (
+          <p className="tour-save" role="status">
+            {common.surveyUpdated}
+          </p>
+        )}
       </StudyShell>
     );
   return (

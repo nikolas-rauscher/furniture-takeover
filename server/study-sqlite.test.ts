@@ -255,13 +255,13 @@ test("events stop at the limit per session, and a refused batch stores none of i
   });
 });
 
-test("a contact is stored once per address, with or without a session", async () => {
+test("a contact is stored once per address, and a later submission for it changes nothing", async () => {
   await withDatabase((path) => {
     const store = createSqliteStudyStore(path);
     const { session } = v1Start();
     store.start(v1Start(session));
-    store.saveContact(contact("Ada@Epfl.ch"));
-    store.saveContact({ ...contact("ada@epfl.ch", session), pilot: true });
+    store.saveContact({ ...contact("Ada@Epfl.ch", session), pilot: true });
+    store.saveContact(contact("ada@epfl.ch"));
     store.saveContact(contact("bo@unil.ch"));
     store.close?.();
     assert.deepEqual(
@@ -277,7 +277,7 @@ test("a contact is stored once per address, with or without a session", async ()
   });
 });
 
-test("a pilot form is stored once per address and a second form replaces it", async () => {
+test("a pilot form is stored once per address, and a later form for it changes nothing", async () => {
   await withDatabase((path) => {
     const store = createSqliteStudyStore(path);
     store.savePilot(pilot("Ada@Epfl.ch"));
@@ -285,6 +285,7 @@ test("a pilot form is stored once per address and a second form replaces it", as
       ...pilot("ada@epfl.ch"),
       role: "both",
       weeks: [],
+      joinPilot: false,
       laterEmail: true,
     });
     store.close?.();
@@ -296,12 +297,12 @@ test("a pilot form is stored once per address and a second form replaces it", as
       [
         {
           email: "ada@epfl.ch",
-          role: "both",
+          role: "seller",
           house: "atrium",
-          weeks: "[]",
+          weeks: '["2027-02-01"]',
           items: '["furniture","bike"]',
           join_pilot: 1,
-          later_email: 1,
+          later_email: 0,
         },
       ],
     );
@@ -335,26 +336,27 @@ test("withdrawing removes the session with its answers and events, unlinks its c
   });
 });
 
-test("shared results appear once enough v3 participants answered the desk task, and count v3 only", async () => {
+test("shared results appear once enough v3 participants of one wording version answered the desk task", async () => {
   await withDatabase((path) => {
     const store = createSqliteStudyStore(path);
     const v1 = randomUUID();
-    store.start(v1Start(v1));
+    store.start({ ...v1Start(v1), version: "v3-1" });
     store.saveAnswer({ ...answer(v1, "desk"), chosen: ["cheaper"] });
-    const deskAnswers = (count: number, choice: string) => {
+    const deskAnswers = (count: number, choice: string, version = "v3-1") => {
       for (let n = 0; n < count; n++) {
         const { session } = v3Start();
-        store.start(v3Start(session));
+        store.start({ ...v3Start(session), version });
         store.saveAnswer(v3Answer(session, "desk", [choice]));
         if (n === 0)
           store.saveAnswer(v3Answer(session, "last-trouble", ["transport"]));
       }
     };
+    deskAnswers(STUDY_RESULTS_MINIMUM, "cheaper", "v3-0");
     deskAnswers(STUDY_RESULTS_MINIMUM - 2, "nearer");
     deskAnswers(1, "neither");
-    assert.deepEqual(store.results(), { ready: false });
+    assert.deepEqual(store.results("v3-1"), { ready: false });
     deskAnswers(1, "cheaper");
-    assert.deepEqual(store.results(), {
+    assert.deepEqual(store.results("v3-1"), {
       ready: true,
       desk: {
         answered: STUDY_RESULTS_MINIMUM,
@@ -369,7 +371,54 @@ test("shared results appear once enough v3 participants answered the desk task, 
         options: [{ option: "transport", count: 3 }],
       },
     });
+    assert.deepEqual(store.results("v3-0"), {
+      ready: true,
+      desk: {
+        answered: STUDY_RESULTS_MINIMUM,
+        options: [{ option: "cheaper", count: STUDY_RESULTS_MINIMUM }],
+      },
+      trouble: { answered: 1, options: [{ option: "transport", count: 1 }] },
+    });
+    assert.deepEqual(store.results("v3-9"), { ready: false });
     store.close?.();
+  });
+});
+
+test("an answer emptied by going back keeps its first answer and counts as not answered", async () => {
+  await withDatabase((path) => {
+    const store = createSqliteStudyStore(path);
+    const emptied = randomUUID();
+    for (let n = 0; n < STUDY_RESULTS_MINIMUM; n++) {
+      const { session } = v3Start();
+      store.start(v3Start(n === 0 ? emptied : session));
+      store.saveAnswer(
+        v3Answer(n === 0 ? emptied : session, "desk", ["nearer"]),
+      );
+      if (n === 1)
+        store.saveAnswer(v3Answer(session, "last-trouble", ["price"]));
+    }
+    store.saveAnswer(v3Answer(emptied, "last-trouble", ["transport"]));
+    store.saveAnswer({
+      ...v3Answer(emptied, "last-trouble", []),
+      firstChosen: ["transport"],
+    });
+    assert.deepEqual(store.results("v3-1"), {
+      ready: true,
+      desk: {
+        answered: STUDY_RESULTS_MINIMUM,
+        options: [{ option: "nearer", count: STUDY_RESULTS_MINIMUM }],
+      },
+      trouble: { answered: 1, options: [{ option: "price", count: 1 }] },
+    });
+    store.close?.();
+    assert.deepEqual(
+      rows(
+        path,
+        `SELECT chosen, first_chosen, text FROM study_answers
+         WHERE session = '${emptied}' AND step = 'last-trouble'`,
+      ),
+      [{ chosen: "[]", first_chosen: '["transport"]', text: "" }],
+    );
   });
 });
 
@@ -396,7 +445,7 @@ test("a demo file from before v3 gets the new columns and keeps its sessions as 
   });
 });
 
-test("answers, sessions, contacts and pilot forms stop at their limits; replacing does not count", async () => {
+test("answers, sessions, contacts and pilot forms stop at their limits; a full list refuses listed addresses too", async () => {
   await withDatabase((path) => {
     const store = createSqliteStudyStore(path);
     const { session } = v1Start();
@@ -434,14 +483,14 @@ test("answers, sessions, contacts and pilot forms stop at their limits; replacin
     assert.throws(() => full.start(v1Start()), {
       code: "STUDY_SESSION_LIMIT",
     });
-    full.saveContact({ ...contact("p0@epfl.ch"), pilot: true });
-    assert.throws(() => full.saveContact(contact("new@epfl.ch")), {
-      code: "STUDY_CONTACT_LIMIT",
-    });
-    full.savePilot(pilot("p0@epfl.ch"));
-    assert.throws(() => full.savePilot(pilot("new@epfl.ch")), {
-      code: "STUDY_PILOT_LIMIT",
-    });
+    for (const email of ["p0@epfl.ch", "new@epfl.ch"]) {
+      assert.throws(() => full.saveContact(contact(email)), {
+        code: "STUDY_CONTACT_LIMIT",
+      });
+      assert.throws(() => full.savePilot(pilot(email)), {
+        code: "STUDY_PILOT_LIMIT",
+      });
+    }
     full.close?.();
   });
 });

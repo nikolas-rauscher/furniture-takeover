@@ -10,7 +10,7 @@ import { SaveStatus } from "../study/StudyEnd";
 import { readResults } from "../studyApi";
 import QrCode from "./QrCode";
 import type { StepContext } from "./stepContext";
-import { V3_MINUTES } from "./v3Script";
+import { V3_MINUTES, V3_VERSION } from "./v3Script";
 
 /** The channel tag of links shared from the end of the survey. */
 const SHARE_TAG = "friend";
@@ -27,7 +27,7 @@ function useResults() {
   const [state, setState] = useState<ResultsState>({ status: "loading" });
   useEffect(() => {
     let current = true;
-    readResults()
+    readResults(V3_VERSION)
       .then((results) => current && setState({ status: "ready", results }))
       .catch((error: unknown) => {
         console.error(error);

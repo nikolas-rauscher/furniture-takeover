@@ -3,6 +3,8 @@ export type VisitorPointer = {
   move: (event: PointerEvent) => void;
   down: (event: PointerEvent) => void;
   up: (event: PointerEvent) => void;
+  /** The browser took the touch over, such as for a scroll, so it never ends with `up`. */
+  cancel: (event: PointerEvent) => void;
 };
 
 /**
@@ -32,6 +34,7 @@ function hand(event: Event) {
     if (event.type === "pointermove") reader.move(event);
     if (event.type === "pointerdown") reader.down(event);
     if (event.type === "pointerup") reader.up(event);
+    if (event.type === "pointercancel") reader.cancel(event);
   }
 }
 

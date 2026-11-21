@@ -137,22 +137,26 @@ test("an answer or linked contact for an unknown session is refused with a named
   assert.equal(await count("study_contacts"), 0);
 });
 
-test("a contact is stored once per address and unlinked when its session is deleted", async (t) => {
-  const { asOwner, startSession, saveContact, count } = await setup(t);
+test("a contact is stored once per address, kept as first sent, and unlinked when its session is deleted", async (t) => {
+  const { db, asOwner, startSession, saveContact, count } = await setup(t);
   const session = randomUUID();
   await startSession(session);
-  await saveContact("Ada@Epfl.ch");
-  await saveContact(" ada@epfl.ch ", session);
+  await saveContact("Ada@Epfl.ch", session);
+  await db.query("select public.study_save_contact($1,false,null)", [
+    " ada@epfl.ch ",
+  ]);
   assert.equal(await count("study_contacts"), 1);
+  const contacts = () =>
+    asOwner("select email, pilot, session from takeover_admin.study_contacts");
+  assert.deepEqual(await contacts(), [
+    { email: "ada@epfl.ch", pilot: true, session },
+  ]);
   await asOwner("delete from takeover_admin.study_sessions where id=$1", [
     session,
   ]);
-  assert.deepEqual(
-    await asOwner(
-      "select email, pilot, session from takeover_admin.study_contacts",
-    ),
-    [{ email: "ada@epfl.ch", pilot: true, session: null }],
-  );
+  assert.deepEqual(await contacts(), [
+    { email: "ada@epfl.ch", pilot: true, session: null },
+  ]);
 });
 
 test("deleting a session deletes its answers", async (t) => {
@@ -190,8 +194,8 @@ test("the limits on answers, sessions and contacts are enforced in SQL", async (
      select 'p'||n||'@epfl.ch',false from generate_series(1,$1) as n`,
     [STUDY_LIMITS.contacts],
   );
-  await saveContact("p1@epfl.ch");
-  await assert.rejects(saveContact("new@epfl.ch"), /study_contact_limit/);
+  for (const email of ["p1@epfl.ch", "new@epfl.ch"])
+    await assert.rejects(saveContact(email), /study_contact_limit/);
 });
 
 const STUDY_FUNCTIONS = [
@@ -201,7 +205,7 @@ const STUDY_FUNCTIONS = [
   "public.study_save_contact('a@epfl.ch',true,null)",
   "public.study_save_pilot('a@epfl.ch','buyer','atrium','{}','{}',true,false)",
   "public.study_withdraw(gen_random_uuid())",
-  "public.study_results()",
+  "public.study_results('v3-1')",
   "public.study_report_rows(gen_random_uuid())",
 ];
 
@@ -331,7 +335,7 @@ test("events are stored once per sequence number, checked, and capped per sessio
   assert.equal(await count("study_events"), STUDY_LIMITS.eventsPerSession);
 });
 
-test("a pilot form is stored once per address, without a session, and capped", async (t) => {
+test("a pilot form is stored once per address as first sent, without a session, and capped", async (t) => {
   const { asOwner, savePilot, count } = await setup(t);
   await savePilot("Ada@Epfl.ch");
   await savePilot(" ada@epfl.ch ", "both");
@@ -342,7 +346,7 @@ test("a pilot form is stored once per address, without a session, and capped", a
     [
       {
         email: "ada@epfl.ch",
-        role: "both",
+        role: "seller",
         weeks: ["2027-02-01"],
         items: ["furniture"],
         join_pilot: true,
@@ -364,8 +368,8 @@ test("a pilot form is stored once per address, without a session, and capped", a
     [STUDY_LIMITS.pilot],
   );
   assert.equal(await count("study_pilot"), STUDY_LIMITS.pilot);
-  await savePilot("p2@epfl.ch");
-  await assert.rejects(savePilot("new@epfl.ch"), /study_pilot_limit/);
+  for (const email of ["p2@epfl.ch", "new@epfl.ch"])
+    await assert.rejects(savePilot(email), /study_pilot_limit/);
 });
 
 test("withdrawing removes the session with its answers and events and can be repeated", async (t) => {
@@ -382,17 +386,29 @@ test("withdrawing removes the session with its answers and events and can be rep
   assert.equal(await count("study_events"), 0);
 });
 
-test("shared results count v3 sessions only and appear from the minimum on", async (t) => {
+test("shared results count the v3 sessions of one wording version and appear from the minimum on", async (t) => {
   const { db, startSession, startV3, saveV3Answer } = await setup(t);
-  const results = async () =>
-    (await db.query<{ r: unknown }>("select public.study_results() as r"))
-      .rows[0].r;
+  const resultsOf = async (version: string) =>
+    (
+      await db.query<{ r: unknown }>("select public.study_results($1) as r", [
+        version,
+      ])
+    ).rows[0].r;
+  const results = () => resultsOf("v3-1");
   const v1 = randomUUID();
   await startSession(v1);
   await db.query(
     "select public.study_save_answer($1,'desk','{cheaper}',null,'{}','',0)",
     [v1],
   );
+  for (let n = 0; n < STUDY_RESULTS_MINIMUM; n++) {
+    const session = randomUUID();
+    await db.query(
+      "select public.study_start($1,'v3','v3-0','en','moodle','phone')",
+      [session],
+    );
+    await saveV3Answer(session, "desk", ["cheaper"]);
+  }
   for (let n = 0; n < STUDY_RESULTS_MINIMUM; n++) {
     const session = randomUUID();
     await startV3(session);
@@ -417,6 +433,41 @@ test("shared results count v3 sessions only and appear from the minimum on", asy
     trouble: { answered: 3, options: [{ option: "price", count: 3 }] },
   });
   assert.ok(studyResultsSchema.safeParse(await results()).success);
+  assert.deepEqual(await resultsOf("v3-0"), {
+    ready: true,
+    desk: {
+      answered: STUDY_RESULTS_MINIMUM,
+      options: [{ option: "cheaper", count: STUDY_RESULTS_MINIMUM }],
+    },
+    trouble: { answered: 0, options: [] },
+  });
+});
+
+test("an answer emptied by going back keeps its first answer and is not counted in the shared results", async (t) => {
+  const { db, asOwner, startV3, saveV3Answer } = await setup(t);
+  const emptied = randomUUID();
+  for (let n = 0; n < STUDY_RESULTS_MINIMUM; n++) {
+    const session = n === 0 ? emptied : randomUUID();
+    await startV3(session);
+    await saveV3Answer(session, "desk", ["nearer"]);
+    if (n === 1) await saveV3Answer(session, "last-trouble", ["price"]);
+  }
+  await saveV3Answer(emptied, "last-trouble", ["transport"]);
+  await saveV3Answer(emptied, "last-trouble", [], ["transport"]);
+  assert.deepEqual(
+    await asOwner(
+      "select chosen, first_chosen from takeover_admin.study_answers where session=$1 and step='last-trouble'",
+      [emptied],
+    ),
+    [{ chosen: [], first_chosen: ["transport"] }],
+  );
+  const { rows } = await db.query<{ r: { trouble: unknown } }>(
+    "select public.study_results('v3-1') as r",
+  );
+  assert.deepEqual(rows[0].r.trouble, {
+    answered: 1,
+    options: [{ option: "price", count: 1 }],
+  });
 });
 
 test("the tables accept every value the wire contract allows", async (t) => {

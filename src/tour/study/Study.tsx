@@ -10,7 +10,7 @@ import {
 import { withOrder } from "../studyFlow";
 import type { StudyLanguage } from "../../../shared/study.ts";
 import { useTourLanguage } from "../i18n/TourLanguage";
-import { STUDY_SCRIPTS } from "../tourScript";
+import { STUDY_SCRIPTS, STUDY_VERSION } from "../tourScript";
 import StudyStart from "./StudyStart";
 import StudySteps from "./StudySteps";
 import { useRecorder } from "./useRecorder";
@@ -20,6 +20,7 @@ function firstProgress(source: string, language: StudyLanguage): StudyProgress {
   return withOrder(
     {
       session: randomUuid(),
+      version: STUDY_VERSION,
       source,
       device: deviceClass(),
       language,
@@ -44,7 +45,7 @@ export default function Study({
   deleteBy: string;
   onShowPitch: () => void;
 }) {
-  const [stored] = useState(() => loadProgress(source));
+  const [{ stored, updated }] = useState(() => loadProgress(source));
   const [resumed] = useState(() =>
     stored ? stored.unsaved.map((key) => saveJob(stored.progress, key)) : [],
   );
@@ -69,6 +70,7 @@ export default function Study({
       <StudyStart
         contact={contact}
         deleteBy={deleteBy}
+        updated={updated}
         onAgree={agree}
         onShowPitch={onShowPitch}
       />

@@ -35,7 +35,7 @@ Pako speaks in the first person. Single choice unless marked. "Shuffled" means t
 | Step | Pako says | Options |
 | --- | --- | --- |
 | Invitation | "Hi, I'm Pako! I'm the helper in takeover, a student project at EPFL. I'd like to ask about the last time you bought or sold something second-hand, then show you what we're building. It takes about 4 minutes." | Start · Just show me the tour |
-| Consent | "Before we start": your answers are saved without your name. I also save how long each step takes, which link brought you here and whether you're on a phone or a computer. Your IP address isn't saved with your answers. An email address is optional, at the end, and stored separately. Everything is deleted by {date}. Questions: {contact}. | I'm 18 or older and I agree · No thanks, just show me the tour |
+| Consent | "Before we start": your answers are saved without your name. I also save how long each step takes, which link brought you here and whether you're on a phone or a computer. Your IP address isn't saved with your answers. An email address is optional, at the end, and stored separately. Everything is deleted by {date}. Questions: {contact}. | I agree · No thanks, just show me the tour |
 
 Declining opens the pitch tour. No session is created and nothing is stored.
 
@@ -128,11 +128,12 @@ With a sample of this size the results justify the next test. They are not adopt
 
 ## Data handling
 
-- Nothing is stored before the participant confirms being 18 or older and agrees.
+- Nothing is stored before the participant agrees.
 - Stored per session: a random id, the script version, the channel tag, phone or desktop, and per step the chosen options, the order shown, a short text and the time on the step. No name, no IP address, no browser details.
-- The email address is optional and kept in a separate table. It is linked to a session only if the participant ticks that box.
+- The tab keeps the participant's progress with the script version the session started in. After a new version is deployed, a reload starts a new session instead of continuing the old one.
+- The email address is optional and kept in a separate table. It is linked to a session only if the participant ticks that box. One row per address: the first submission stands, and a later one with the same address changes nothing. Changes go through the contact address.
 - In account mode the data is in Supabase, in tables that students cannot read. The server writes them with its service key. In the local demo they are in the SQLite file.
-- The contact address and the deletion date come from the deployment (`STUDY_CONTACT`, `STUDY_DELETE_BY`). Without both, the study is closed and only the pitch tour is available.
+- The contact address and the deletion date come from the deployment (`STUDY_CONTACT`, `STUDY_DELETE_BY`). Without both, the study is closed and only the pitch tour is available. From the deletion date on it collects nothing, and the server still starts.
 - The owner deletes sessions, answers, contacts and any exports by the deletion date.
 
 ## Before launch
@@ -148,7 +149,7 @@ With a sample of this size the results justify the next test. They are not adopt
 
 Run these in the Supabase SQL editor, which connects with the owner role and can read the study tables. Students and the app's public keys cannot. Each query reads v1 sessions (`survey = 'v1'`) of one script version: replace `pilot-1` with the version of the real run, so pilot answers are left out. Option ids are the ones in `src/tour/tourScript.ts`.
 
-The tables are `takeover_admin.study_sessions` (one row per participant), `takeover_admin.study_answers` (one row per participant and step) and `takeover_admin.study_contacts` (one row per address). A step the participant went back to keeps only its latest answer.
+The tables are `takeover_admin.study_sessions` (one row per participant), `takeover_admin.study_answers` (one row per participant and step) and `takeover_admin.study_contacts` (one row per address). A step the participant went back to keeps only its latest answer. When a change after Back takes a step off the participant's path, such as `far-transport` after a switch from the cheaper to the nearer desk, its answer is saved again empty, and an empty answer counts as not answered.
 
 Eligible participants are students at EPFL or UNIL (`student`) with at least one attempt in the last 12 months (`last-role`). Each query that needs them starts with the same `eligible` block.
 
@@ -190,12 +191,12 @@ order by participants desc;
 
 ### Counts per option for one step
 
-Change the step id. `answered` is the denominator: participants who saved this step. Free text is not part of this query.
+Change the step id. `answered` is the denominator: participants who chose at least one option for this step; a skipped or emptied answer is not counted. Free text is not part of this query.
 
 ```sql
 select option, count(*) as chosen,
   (select count(*) from takeover_admin.study_answers
-    where step = 'last-hard'
+    where step = 'last-hard' and cardinality(chosen) > 0
       and session in (select id from takeover_admin.study_sessions where survey = 'v1' and version = 'pilot-1')) as answered
 from takeover_admin.study_answers a, unnest(a.chosen) as option
 where a.step = 'last-hard'

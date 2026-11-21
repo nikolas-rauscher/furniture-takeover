@@ -62,7 +62,7 @@ Pako asks every question. Wording is neutral; on product questions (`headline` t
 
 Folded toggle "What we save" below the invitation: "Your answers, which screens you see, skip or go back to, the time per screen, the link you came from, your language and whether you use a phone or a computer. Your progress stays in this tab until you close it, and this browser remembers that you finished. An email at the end is optional and kept apart from your answers. Everything is deleted by {date}. Questions: {contact}."
 
-`demo` opens the tour without a session; nothing is stored. `{date}` and `{contact}` come from `STUDY_DELETE_BY` and `STUDY_CONTACT`. A participant who wants their answers deleted writes to the contact.
+`demo` opens the tour without a session; nothing is stored. `{date}` and `{contact}` come from `STUDY_DELETE_BY` and `STUDY_CONTACT`. Answers carry no name or email, so the answers of one participant cannot be found later; the whole data set is deleted by the deletion date. Questions about the optional pilot email go to the contact address.
 
 Then one screen, `what-is`, before the first question. It says what the app does and names no problem, so the questions about the last attempt stay unprimed.
 
@@ -180,7 +180,7 @@ Then two equal buttons, saved as the answer to step `peek`: `finish` Finish · `
 | Id | Content |
 | --- | --- |
 | `scene-pick` | "What would you like to see first?" Shuffled: `sell` Sell from a photo · `deal` Agree on a pickup · `find` Find something. |
-| `tour-sell`, `tour-deal`, `tour-find` | The full app scenes in the phone, with key moments the participant can tap. Next is available from the start; Replay; "Skip the rest". |
+| `tour-sell`, `tour-deal`, `tour-find` | The full app scenes in the phone, with key moments the participant can tap. Next is available from the start; Replay; "Skip the rest". Back after "Skip the rest" returns to the scene it was pressed on. |
 
 ### 8. Pilot form (EPFL/UNIL students only)
 
@@ -200,11 +200,13 @@ Pako: "We're testing takeover with real items in a few FMEL houses. Want a spot?
 
 Send needs at least one tick. A sign-up counts only with the first tick, later-email permission only with the second. Strong interest: signed up, at least one week and one item. It sets the order of re-contact; everyone who signs up is contacted. Pilot capacity: up to 10 real exchanges of items a student can carry or move with a bike trailer.
 
+One form per address: the first one stands, and a later form with the same address changes nothing. The page answers both the same way, so it does not show whether an address is already listed. Changes, such as other weeks or leaving the list, go through the contact address. Addresses are not verified: before the pilot, the team writes once to each address and contacts only the addresses that confirm.
+
 ### 9. End
 
 Pako: "Thanks! That helps us decide what to build next."
 
-"How others answered": the `desk` split and the `last-trouble` counts as bars with counts, once 20 v3 participants answered `desk`; before that "Results appear once 20 people have answered."
+"How others answered": the `desk` split and the `last-trouble` counts as bars with counts, over the sessions of the participant's own wording version, once 20 of them answered `desk`; before that "Results appear once 20 people have answered."
 
 Share: "Every answer helps, also from people who never sell anything. Share it?" Share · Copy link · Show QR. Text: "I just did a {measured}-minute phone survey for an EPFL student project. No sign-in: {link}". The link carries the tag `friend`.
 
@@ -212,7 +214,9 @@ Share: "Every answer helps, also from people who never sell anything. Share it?"
 
 One session per participant, created on "Let's go": a random id, `survey = 'v3'`, the wording version (`v3-5` for the pilot, a raised label for the run), the language at the start (`en`, `fr`, `de`), the channel tag, phone or desktop. No name, no IP address, no browser details.
 
-One answer per session and step, replaced when the participant goes back and answers again:
+The tab keeps the participant's progress with the wording version the session started in. A reload continues the session only in that version: after a new version is deployed, the progress is set aside and the survey starts again with a new session and the line "The survey was updated, so it starts again."
+
+One answer per session and step, replaced when the participant goes back and answers again. When a change after Back takes a step off the participant's path, such as `last-role` changed to `none` after `last-trouble` was answered, that step's answer is saved again empty: `chosen` and `text` empty, `first_chosen` kept. An empty answer counts as not answered on the results page, in "How others answered" and in the queries below:
 
 | Field | Content |
 | --- | --- |
@@ -222,7 +226,7 @@ One answer per session and step, replaced when the participant goes back and ans
 | `text` | `last-story`, the `gender` self-description, the `stop` "Something else" text, or the offer as sent |
 | `elapsed_ms` | Time on screen |
 
-`draft` is saved when a writing option is tapped, with `chosen` = that option, then again with the final code:
+`draft` is saved when a writing option is tapped, with `chosen` = that option, then again with the final code at the tap that decides; the sent message stays in view for about a second before the next screen, and after a reload the decision is shown again, not asked again:
 
 | `chosen` | Meaning |
 | --- | --- |
@@ -236,21 +240,21 @@ One answer per session and step, replaced when the participant goes back and ans
 
 The price ladder stores `pack-start` (the price asked first: `chf-2`, `chf-5` or `chf-8`) and one answer per price asked: `pack-chf-2`, `pack-chf-5`, `pack-chf-8`, each `yes`, `no` or `not-sure`.
 
-Events, sent in batches and stored once per sequence number:
+Events, sent in batches and stored once per sequence number, at most 600 per session. A batch the server refuses for good is dropped, so events never hold back answers, the session or the pilot form:
 
 | Kind | Step | Detail |
 | --- | --- | --- |
 | `shown`, `answered`, `skipped`, `changed` | question | |
 | `back` | step left | step returned to |
 | `scene-played`, `scene-skipped` | scene step (`app-*` in the core, `tour-*` in the tour) | scene |
-| `moment-tapped`, `moment-auto` | tour step | key moment, tapped or advanced by itself (full scenes only) |
+| `moment-tapped`, `moment-auto` | tour step | key moment, tapped or advanced by itself (full scenes only, on their first play) |
 | `core-complete`, `end` | | |
 | `share` | | `native`, `copy` or `qr` |
 | `language` | | language switched to |
 
 Not recorded: touch paths, scroll depth, keystrokes, session replay.
 
-In account mode the data is in Supabase, in tables that students cannot read; the server writes them through security-definer functions with its service key. In the local demo it is in the SQLite file. Without `STUDY_CONTACT` and `STUDY_DELETE_BY` the study is closed and only the pitch is available. The owner deletes sessions, answers, events, pilot forms, contacts and exports by the deletion date.
+In account mode the data is in Supabase, in tables that students cannot read; the server writes them through security-definer functions with its service key. In the local demo it is in the SQLite file. Without `STUDY_CONTACT` and `STUDY_DELETE_BY` the study is closed and only the pitch is available. From the deletion date on it collects nothing: the server still starts and logs one line that the study is closed, and the results page and `POST /api/study/withdrawals` keep working until the data is deleted. The owner deletes sessions, answers, events, pilot forms, contacts and exports by the deletion date.
 
 ## Analysis
 
@@ -329,7 +333,7 @@ Frozen with a date before the first invitation, together with the script and the
 | Imagined vs real behaviour | `draft`, `move-it`, `desk` | Every "go" leads to a real test | Stated choices run high |
 | Hypothetical bias in prices | `pay-model`, `pack-chf-*`, `delivery-worth` | Real money named ("your own CHF"), outside options (`none`, `no`, `only-free`, `not-sure`); across 77 studies stated willingness to pay averaged about 21% above real willingness to pay (Schmidt & Bijmolt 2020) | No numeric correction is applied: on this sample it would add false precision. Real purchases in the pilot decide |
 | Anchoring on prices | `pay-model`, `pack-chf-*` | The ladder's first price is drawn at random and acceptance is reported by start price | `pay-model` names CHF 5 for the pack just before the ladder, so every start follows that anchor |
-| Shown results | Later participants | Only after the core, two items, from 20 answers | |
+| Shown results | Later participants | Only after the core, two items, from 20 answers of the same wording version | |
 | Three languages | All | One dictionary per language with equivalent meaning; language stored per session | Small wording differences between languages; report n per language |
 | Two versions running | v1 and v3 | Each session stores its version; analysed separately | Channels may favour one link |
 | Repeat answers | Counts | Browser marker | Private windows bypass it |
@@ -361,7 +365,7 @@ Every block: k of n with the denominator named, the range, the rule and its outc
 
 1. Pilot done (it runs `v3-5`); wording and `{measured}` fixed; wording version raised for the run.
 2. This protocol frozen with a date.
-3. Pilot sessions deleted, so they do not count in "How others answered".
+3. Pilot sessions deleted. "How others answered" counts one wording version, so pilot answers do not show there in any case.
 4. `STUDY_CONTACT` and `STUDY_DELETE_BY` set on the deployment.
 5. The migration reviewed and applied.
 6. Server logs checked for request addresses.
@@ -391,7 +395,8 @@ with run as (
 )
 select run.source, run.device,
   count(*) as started,
-  count(*) filter (where exists (select 1 from takeover_admin.study_answers a where a.session = run.id)) as answered_any,
+  count(*) filter (where exists (select 1 from takeover_admin.study_answers a
+    where a.session = run.id and (cardinality(a.chosen) > 0 or a.text <> ''))) as answered_any,
   count(*) filter (where exists (select 1 from reached r where r.session = run.id and r.kind = 'core-complete')) as core_complete,
   count(*) filter (where exists (select 1 from reached r where r.session = run.id and r.kind = 'end')) as end_reached,
   count(*) filter (where exists (select 1 from reached r where r.session = run.id and r.kind = 'share')) as shared

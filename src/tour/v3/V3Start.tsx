@@ -51,15 +51,19 @@ function SaveDetails({
 export default function V3Start({
   contact,
   deleteBy,
+  updated,
   onAgree,
   onShowPitch,
 }: {
   contact: string;
   deleteBy: string;
+  /** A session of an earlier wording was set aside, so the survey starts again. */
+  updated: boolean;
   onAgree: () => void;
   onShowPitch: () => void;
 }) {
-  const { start } = useTourText().v3;
+  const { common, v3 } = useTourText();
+  const { start } = v3;
   const bubble = start.bubble(V3_MINUTES);
   return (
     <StudyShell
@@ -81,6 +85,11 @@ export default function V3Start({
         </>
       }
     >
+      {updated && (
+        <p className="tour-save" role="status">
+          {common.surveyUpdated}
+        </p>
+      )}
       <SaveDetails contact={contact} deleteBy={deleteBy} />
     </StudyShell>
   );

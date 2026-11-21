@@ -8,6 +8,7 @@ import type { PakoMood } from "@/components/onboarding/storyTypes";
 import { orderOptions } from "../optionOrder";
 import { CONTACT_KEY, saveJob } from "../studyJobs";
 import {
+  answersOffPath,
   EMPTY_ANSWER,
   isAnswered,
   nextStep,
@@ -155,11 +156,13 @@ export default function StudySteps({
       progress.answers[step.id],
       performance.now() - arrivedAt.current,
     );
-    const next = {
-      ...progress,
-      answers: { ...progress.answers, [step.id]: recorded },
-    };
-    recorder.add(saveJob(next, step.id));
+    const answered = { ...progress.answers, [step.id]: recorded };
+    const emptied = answersOffPath(script, progress.answers, answered);
+    const next = { ...progress, answers: { ...answered, ...emptied } };
+    // The emptied answers are saved first, so the changed step stays the latest save.
+    [...Object.keys(emptied), step.id].forEach((id) =>
+      recorder.add(saveJob(next, id)),
+    );
     goTo(nextStep(script, next.answers, step.id), 1, next);
   }
 

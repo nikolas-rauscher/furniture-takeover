@@ -117,7 +117,8 @@ export function createSupabaseStudyStore(
       }),
     withdraw: (input: StudyWithdrawal) =>
       write("study_withdraw", { p_session: input.session }),
-    results: () => readJson("study_results", {}, studyResultsSchema),
+    results: (version: string) =>
+      readJson("study_results", { p_version: version }, studyResultsSchema),
     reportRows: (requestedBy: string | undefined) => {
       if (!requestedBy)
         throw new Error("Account mode reads the results page for a user.");

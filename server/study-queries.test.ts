@@ -67,6 +67,7 @@ test("the v1 results queries run and count eligible participants", async (t) => 
   await choose(eligible, "draft-check", ["send", "friday-kept"]);
   await choose(eligible, "need-soon", ["sell"]);
   await choose(other, "student", ["no"]);
+  await choose(other, "last-hard", []);
   await db.query("select public.study_save_contact('ada@epfl.ch',true,$1)", [
     eligible,
   ]);
@@ -460,4 +461,48 @@ test("the v3 results queries run on v3 sessions of the named version only", asyn
     "study_contacts",
   ])
     assert.equal(await count(table), 0);
+});
+
+test("answers emptied by going back count as not answered in the v3 queries", async (t) => {
+  const { db, run } = await database(t);
+  await addParticipant(db, {
+    source: "friends",
+    device: "phone",
+    answers: {
+      who: ["epfl"],
+      "last-role": { chosen: ["none"], first: ["buying"] },
+      "last-item": { chosen: [], first: ["furniture"] },
+      "last-trouble": { chosen: [], first: ["transport"] },
+      "why-not": ["hassle"],
+      "move-it": ["helper"],
+    },
+    events: [["shown", "who"]],
+  });
+  await addParticipant(db, {
+    source: "poster-rlc",
+    device: "desktop",
+    answers: { age: [] },
+    events: [["shown", "who"]],
+  });
+  const { queries } = await namedV3Queries();
+  const query = async (name: string) => {
+    const sql = queries.get(name);
+    assert.ok(sql, `query ${name} is documented`);
+    return run(sql);
+  };
+  assert.deepEqual(await query("d2-obstacles"), []);
+  assert.deepEqual(
+    rowsOf(await query("d3-transport"), "subgroup", "option", "answered"),
+    [
+      ["all", "helper", "1"],
+      ["rest", "helper", "1"],
+    ],
+  );
+  assert.deepEqual(
+    rowsOf(await query("funnel"), "source", "started", "answered_any").sort(),
+    [
+      ["friends", 1, 1],
+      ["poster-rlc", 1, 0],
+    ],
+  );
 });

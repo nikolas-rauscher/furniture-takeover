@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createSaveQueue, type SaveJob } from "../saveQueue";
+import { isFinalRefusal, retryDelayMs } from "../studyApi";
 
 /** A failed save is tried this often in all before the page says it is unsaved. */
 const SAVE_ATTEMPTS = 4;
-const RETRY_BASE_MS = 800;
 
 const wait = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -13,7 +13,8 @@ export function useRecorder(resumed: readonly SaveJob[]) {
   const [queue] = useState(() =>
     createSaveQueue({
       attempts: SAVE_ATTEMPTS,
-      pause: (attempt) => wait(RETRY_BASE_MS * 2 ** (attempt - 1)),
+      pause: (attempt, error) => wait(retryDelayMs(attempt, error)),
+      isFinal: isFinalRefusal,
     }),
   );
   const save = useSyncExternalStore(queue.subscribe, queue.getState);

@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { useTourText } from "../i18n/TourLanguage";
 import TextAnswer from "../study/TextAnswer";
+import { resumeDraft, type DraftPhase } from "./draftResume";
 import type { Given, StepContext } from "./stepContext";
 import {
   DRAFT_DAY_STEP,
@@ -13,25 +14,10 @@ import {
   type DraftWriting,
 } from "./v3Script";
 
-/**
- * How the chat unfolds after the day is picked: Mia answers, Pako drafts the offer,
- * the participant decides what to do with it, maybe writes, and the result shows.
- */
-type Phase =
-  "ask" | "mia-typing" | "pako-typing" | "decide" | "write" | "decided";
-
 const PAUSE_MS = { "mia-typing": 1100, "pako-typing": 1000 } as const;
 const REDUCED_PAUSE_MS = 250;
 /** The sent message stays in view this long before the next step. */
 const DECIDED_MS = 1100;
-
-function isDay(value: string | undefined): value is DraftDay {
-  return DRAFT_DAYS.some((day) => day === value);
-}
-
-function isWriting(value: string | undefined): value is DraftWriting {
-  return value === "change" || value === "own";
-}
 
 function Bubble({
   from,
@@ -52,16 +38,6 @@ function Bubble({
   );
 }
 
-/** Where a participant who reloaded mid-task picks up again. */
-function resumed(
-  day: string | undefined,
-  action: string | undefined,
-): { day?: DraftDay; phase: Phase; writing?: DraftWriting } {
-  if (!isDay(day)) return { phase: "ask" };
-  if (isWriting(action)) return { day, phase: "write", writing: action };
-  return { day, phase: "decide" };
-}
-
 /** What sending the written message records: Pako's words kept, changed, or replaced. */
 function sentResult(
   writing: DraftWriting,
@@ -78,10 +54,10 @@ export default function DraftChat({ context }: { context: StepContext }) {
   const reduced = useReducedMotion() === true;
   const { answers, orders } = context.progress;
   const [start] = useState(() =>
-    resumed(answers[DRAFT_DAY_STEP]?.chosen[0], answers.draft?.chosen[0]),
+    resumeDraft(answers[DRAFT_DAY_STEP]?.chosen[0], answers.draft),
   );
   const [day, setDay] = useState<DraftDay | undefined>(start.day);
-  const [phase, setPhase] = useState<Phase>(start.phase);
+  const [phase, setPhase] = useState<DraftPhase>(start.phase);
   const [writing, setWriting] = useState<DraftWriting | undefined>(
     start.writing,
   );
@@ -89,8 +65,8 @@ export default function DraftChat({ context }: { context: StepContext }) {
   const [message, setMessage] = useState(
     start.writing === "change" ? offer : "",
   );
-  const [decision, setDecision] = useState<Given | null>(null);
-  const done = useRef(context.draftDone);
+  const [decision, setDecision] = useState<Given | undefined>(start.decision);
+  const moveOn = useRef(context.moveOn);
   const log = useRef<HTMLDivElement>(null);
   const offerCard = useRef<HTMLDivElement>(null);
   const questionId = useId();
@@ -98,7 +74,7 @@ export default function DraftChat({ context }: { context: StepContext }) {
 
   useEffect(() => {
     if (phase !== "mia-typing" && phase !== "pako-typing") return;
-    const next: Phase = phase === "mia-typing" ? "pako-typing" : "decide";
+    const next: DraftPhase = phase === "mia-typing" ? "pako-typing" : "decide";
     const timer = window.setTimeout(
       () => setPhase(next),
       reduced ? REDUCED_PAUSE_MS : PAUSE_MS[phase],
@@ -107,18 +83,18 @@ export default function DraftChat({ context }: { context: StepContext }) {
   }, [phase, reduced]);
 
   useEffect(() => {
-    done.current = context.draftDone;
-  }, [context.draftDone]);
+    moveOn.current = context.moveOn;
+  }, [context.moveOn]);
 
-  // The decision stays in view briefly, then the next step follows.
+  // The decision is saved already; it stays in view briefly, then the next step follows.
   useEffect(() => {
-    if (!decision) return;
+    if (phase !== "decided") return;
     const timer = window.setTimeout(
-      () => done.current(decision),
+      () => moveOn.current(),
       reduced ? REDUCED_PAUSE_MS : DECIDED_MS,
     );
     return () => window.clearTimeout(timer);
-  }, [decision, reduced]);
+  }, [phase, reduced]);
 
   // The offer takes focus once it appears, so it is read before the choices.
   useEffect(() => {
@@ -132,15 +108,20 @@ export default function DraftChat({ context }: { context: StepContext }) {
     log.current?.focus();
   }
 
-  /** The final answer; a decision straight from the choices names that choice as the first. */
+  /**
+   * The final answer, saved at once; a decision straight from the choices names that
+   * choice as the first.
+   */
   function decide(result: DraftResult, text: string, first?: DraftAction) {
-    setPhase("decided");
-    log.current?.focus();
-    setDecision({
+    const decided: Given = {
       chosen: [result],
       text,
       firstChosen: first ? [first] : undefined,
-    });
+    };
+    context.saveNow("draft", decided);
+    setDecision(decided);
+    setPhase("decided");
+    log.current?.focus();
   }
 
   /** Opens the message for writing; the choice is saved as the first answer at once. */
@@ -151,7 +132,7 @@ export default function DraftChat({ context }: { context: StepContext }) {
     context.saveNow("draft", { chosen: [choice], text: "" });
   }
 
-  const after = (shown: Phase[]) => shown.includes(phase);
+  const after = (shown: DraftPhase[]) => shown.includes(phase);
   const dayWords = day ? draft.days[day] : "";
 
   return (

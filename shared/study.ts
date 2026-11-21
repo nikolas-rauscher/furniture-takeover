@@ -23,7 +23,12 @@ export const STUDY_SURVEYS = ["v1", "v3"] as const;
 export const STUDY_LANGUAGES = ["en", "fr", "de"] as const;
 export const STUDY_TEXT_MAX = 280;
 export const STUDY_EVENTS_PER_BATCH = 40;
-/** "How others answered" appears once this many v3 participants answered the desk task. */
+/** The server keeps at most this many events per session, so the client sends no more. */
+export const STUDY_EVENTS_PER_SESSION = 600;
+/**
+ * "How others answered" appears once this many v3 participants of the same wording version
+ * answered the desk task.
+ */
 export const STUDY_RESULTS_MINIMUM = 20;
 /** The two v3 steps whose counts are shown to later participants. */
 export const STUDY_RESULT_STEPS = {
@@ -47,6 +52,10 @@ const uniqueList = <T extends string>(values: readonly [T, ...T[]]) =>
 
 const studySurveySchema = z.enum(STUDY_SURVEYS);
 const studyLanguageSchema = z.enum(STUDY_LANGUAGES);
+/** Changes with the questions or their wording, so answers to different wordings stay apart. */
+export const studyVersionSchema = z
+  .string()
+  .regex(/^[a-z0-9][a-z0-9.-]{0,19}$/);
 
 /** The study is open once the deployment names a contact and a deletion date. */
 export const studyConfigSchema = z.discriminatedUnion("open", [
@@ -63,8 +72,8 @@ export const studyStartSchema = z
     session,
     /** Which questionnaire the participant answers. The v1 client predates the field. */
     survey: studySurveySchema.optional(),
-    /** Changes with the questions or their wording, so pilot answers can be told apart. */
-    version: z.string().regex(/^[a-z0-9][a-z0-9.-]{0,19}$/),
+    /** The wording version, so pilot answers can be told apart. */
+    version: studyVersionSchema,
     /** Page language when the session started; a later switch is recorded as an event. */
     language: studyLanguageSchema.optional(),
     /** Channel tag from the invitation link. */
@@ -106,7 +115,7 @@ export const studyAnswerSchema = z.strictObject({
  * - `back`: step = the step left, detail = the step returned to.
  * - `scene-played`, `scene-skipped`: step = the tour step, detail = the scene.
  * - `moment-tapped`, `moment-auto`: a key moment of a scene was tapped or advanced by
- *   itself; step = the tour step, detail = the moment.
+ *   itself, on the scene's first play; step = the tour step, detail = the moment.
  * - `core-complete`, `end`: no step, no detail.
  * - `share`: detail = `native`, `copy` or `qr`.
  * - `language`: detail = the language switched to.
@@ -206,7 +215,7 @@ const tallySchema = z.strictObject({
   ),
 });
 
-/** Counts over all v3 sessions, shown at the end of the survey. */
+/** Counts over the v3 sessions of one wording version, shown at the end of the survey. */
 export const studyResultsSchema = z.discriminatedUnion("ready", [
   z.strictObject({ ready: z.literal(false) }),
   z.strictObject({

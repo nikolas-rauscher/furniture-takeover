@@ -1,11 +1,12 @@
-import type {
-  StudyAnswer,
-  StudyContact,
-  StudyEvents,
-  StudyPilot,
-  StudyResults,
-  StudyStart,
-  StudyWithdrawal,
+import {
+  STUDY_EVENTS_PER_SESSION,
+  type StudyAnswer,
+  type StudyContact,
+  type StudyEvents,
+  type StudyPilot,
+  type StudyResults,
+  type StudyStart,
+  type StudyWithdrawal,
 } from "../shared/study.ts";
 import { adminErrors } from "../shared/admin.ts";
 import { AgentError } from "./errors.ts";
@@ -13,7 +14,7 @@ import type { StudyReportRows } from "./study-report.ts";
 
 export const STUDY_LIMITS = {
   answersPerSession: 60,
-  eventsPerSession: 600,
+  eventsPerSession: STUDY_EVENTS_PER_SESSION,
   sessions: 5_000,
   contacts: 2_000,
   pilot: 2_000,
@@ -26,13 +27,17 @@ export type StudyStore = {
   saveAnswer: (input: StudyAnswer) => void | Promise<void>;
   /** An event that was stored before (same session and seq) is not stored again. */
   saveEvents: (input: StudyEvents) => void | Promise<void>;
-  /** One row per address; a repeated address updates its pilot flag and session link. */
+  /**
+   * One row per address, and the first one stands: a repeated address changes nothing
+   * and is answered the same, so nobody can find out which addresses are listed.
+   */
   saveContact: (input: StudyContact) => void | Promise<void>;
-  /** One row per address; a repeated address replaces the form. */
+  /** One form per address, and the first one stands, as for `saveContact`. */
   savePilot: (input: StudyPilot) => void | Promise<void>;
   /** Deletes the session with its answers and events; an unknown session changes nothing. */
   withdraw: (input: StudyWithdrawal) => void | Promise<void>;
-  results: () => StudyResults | Promise<StudyResults>;
+  /** The shared counts over the v3 sessions of one wording version. */
+  results: (version: string) => StudyResults | Promise<StudyResults>;
   /**
    * The rows of the admin results page. In account mode `requestedBy` is the signed-in
    * user, and the database refuses anyone who is not an admin; the demo has no accounts.

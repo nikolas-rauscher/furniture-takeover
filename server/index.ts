@@ -7,6 +7,7 @@ import { createThreadAgent } from "./thread-agent.ts";
 import { isLoopbackHost, readServerConfig } from "./config.ts";
 import { createListingsStore } from "./database.ts";
 import { createAccountKeyStore } from "./account-keys.ts";
+import { isCollecting } from "./routes/study.ts";
 import { createSqliteStudyStore } from "./study-sqlite.ts";
 import { createSupabaseStudyStore } from "./study-supabase.ts";
 import { access } from "node:fs/promises";
@@ -70,6 +71,10 @@ const study = config.study.open
         : createSqliteStudyStore(config.databasePath),
     }
   : undefined;
+if (study && !isCollecting(study.config, new Date()))
+  console.log(
+    `The study's deletion date ${study.config.deleteBy} has come: it collects no more answers.`,
+  );
 const server = createAgentServer(service, {
   runtime,
   threads,
