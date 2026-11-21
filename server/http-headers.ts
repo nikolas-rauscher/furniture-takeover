@@ -7,7 +7,8 @@ export function setSecurityHeaders(
   staticDirectory?: string,
   supabaseUrl?: string,
 ) {
-  response.setHeader("X-Frame-Options", "DENY");
+  // The tour shows the app's own pages in its phone frames; other sites may not frame them.
+  response.setHeader("X-Frame-Options", "SAMEORIGIN");
   response.setHeader("Referrer-Policy", "no-referrer");
   if (staticDirectory) {
     const cloudOrigin =
@@ -23,7 +24,7 @@ export function setSecurityHeaders(
         `connect-src 'self' ${cloudOrigin} ${cloudOrigin.replace(/^http/, "ws")}`,
         "object-src 'none'",
         "base-uri 'none'",
-        "frame-ancestors 'none'",
+        "frame-ancestors 'self'",
         "form-action 'self'",
       ].join("; "),
     );

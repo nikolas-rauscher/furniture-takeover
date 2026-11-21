@@ -96,13 +96,14 @@ test("production hosting serves built assets but never source, secrets or escape
   assert.match(page.headers.get("content-type") ?? "", /text\/html/);
   assert.equal(page.headers.get("cache-control"), "no-cache");
   assert.equal(page.headers.get("referrer-policy"), "no-referrer");
+  assert.equal(page.headers.get("x-frame-options"), "SAMEORIGIN");
   assert.match(
     page.headers.get("content-security-policy") ?? "",
     /script-src 'self'/,
   );
   assert.match(
     page.headers.get("content-security-policy") ?? "",
-    /frame-ancestors 'none'/,
+    /frame-ancestors 'self'/,
   );
   assert.equal(await page.text(), "<html>Takeover</html>");
   const asset = await fetch(`${url}/assets/app-123.js`);
