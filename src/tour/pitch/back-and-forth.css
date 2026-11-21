@@ -362,7 +362,8 @@
   }
 }
 @media (max-width: 380px) {
-  .baf-stage {
+  .baf-stage,
+  .baf-waiting {
     height: 620px;
   }
 }

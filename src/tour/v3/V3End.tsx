@@ -208,7 +208,10 @@ function ShareBlock({ context }: { context: StepContext }) {
   );
 }
 
-/** The thank-you, how saving went, how others answered and the share block. */
+/**
+ * The thank-you, how saving went, the share block and how others answered. The counts
+ * load last and grow by an unknown height, so they come last and push nothing aside.
+ */
 export default function V3End({ context }: { context: StepContext }) {
   const { v3, common } = useTourText();
   return (
@@ -217,11 +220,11 @@ export default function V3End({ context }: { context: StepContext }) {
       <div role="status">
         <SaveStatus save={context.save} onRetry={context.retry} />
       </div>
-      <OthersAnswered />
       <ShareBlock context={context} />
       <a className="button quiet large" href="/">
         {common.openApp}
       </a>
+      <OthersAnswered />
     </div>
   );
 }

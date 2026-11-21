@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { globalStylesReady } from "../globalStyles";
 import { briefInAddress, sceneInAddress } from "./device/sceneMessages";
 import { initialLanguage } from "./i18n/language";
+import { holdScreenHeight } from "./screenHeight";
 import { TOUR_TEXT } from "./i18n/tourText";
 
 function pageRoot() {
@@ -42,6 +43,7 @@ function loadPage(): Promise<ReactElement> {
   ));
 }
 
+holdScreenHeight();
 Promise.all([loadPage(), globalStylesReady])
   .then(([page]) =>
     createRoot(pageRoot()).render(<StrictMode>{page}</StrictMode>),

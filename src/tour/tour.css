@@ -9,6 +9,14 @@
   background: var(--sky);
   color: var(--ink);
 }
+/* On phones the sheet keeps the screen's height: the browser's bars collapsing must not
+   resize it. An open keyboard shrinks it through the shell's visible area. */
+@media (max-width: 760px) {
+  .ob.tour-study {
+    bottom: auto;
+    height: var(--tour-screen-height, 100svh);
+  }
+}
 
 /* The drawn look (?look=illustrated): a plain outline around the intro's scenes on larger
    screens; phones show the content full width. */
@@ -59,11 +67,19 @@
     height: calc(var(--tour-phone-height, 700px) + 28px);
   }
   .tour-hero-device .tour-phone {
-    --tour-phone-height: clamp(440px, 100dvh - 260px, 560px);
+    --tour-phone-height: clamp(
+      440px,
+      var(--tour-screen-height, 100svh) - 260px,
+      560px
+    );
   }
   .tour-section .tour-phone,
   .tour-section .tour-phone-waiting {
-    --tour-phone-height: clamp(480px, 100dvh - 160px, 620px);
+    --tour-phone-height: clamp(
+      480px,
+      var(--tour-screen-height, 100svh) - 160px,
+      620px
+    );
   }
 }
 
@@ -71,7 +87,11 @@
    whole device still fits on one screen. */
 @media (max-width: 760px) {
   .tour-page .tour-device-slot {
-    width: min(100%, 400px, (100dvh - 48px) * 436 / 902);
+    width: min(
+      100%,
+      400px,
+      (var(--tour-screen-height, 100svh) - 48px) * 436 / 902
+    );
     height: auto;
     margin: 0 auto;
   }
@@ -79,7 +99,7 @@
 
 /* Pitch. */
 .tour-page {
-  min-height: 100dvh;
+  min-height: var(--tour-screen-height, 100svh);
   background: var(--background);
 }
 
@@ -124,7 +144,11 @@
 }
 @media (max-width: 760px) {
   .tour-page .tour-hero-device .tour-device-slot {
-    width: min(100% - 88px, 300px, (100dvh - 48px) * 436 / 902);
+    width: min(
+      100% - 88px,
+      300px,
+      (var(--tour-screen-height, 100svh) - 48px) * 436 / 902
+    );
     margin: 0;
   }
 }
@@ -284,7 +308,7 @@
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: 48px;
-    min-height: 100dvh;
+    min-height: var(--tour-screen-height, 100svh);
     padding: 48px 32px;
   }
   .tour-hero-text {
@@ -313,7 +337,11 @@
     margin-top: 0;
   }
   .tour-hero-device .tour-device-slot {
-    --tour-device-height: clamp(540px, 100dvh - 96px, 860px);
+    --tour-device-height: clamp(
+      540px,
+      var(--tour-screen-height, 100svh) - 96px,
+      860px
+    );
   }
   /* Pako stands beside the phone and overlaps its edge. */
   .tour-hero-device .tour-hero-pako {
@@ -363,7 +391,11 @@
     font-size: 1.1875rem;
   }
   .tour-section .tour-device-slot {
-    --tour-device-height: clamp(540px, 100dvh - 112px, 820px);
+    --tour-device-height: clamp(
+      540px,
+      var(--tour-screen-height, 100svh) - 112px,
+      820px
+    );
   }
   .tour-principle-list {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -433,7 +465,9 @@
   }
   .tour-study[data-arrangement="beside"] .tour-device-slot {
     /* The sheet's height less its header and footer. */
-    --tour-device-height: calc(min(800px, 100dvh - 48px) - 216px);
+    --tour-device-height: calc(
+      min(800px, var(--tour-screen-height, 100svh) - 48px) - 216px
+    );
   }
 }
 .tour-study[data-layout="hero"] .ob-footer .button.primary {
@@ -595,32 +629,51 @@
   outline-offset: 2px;
 }
 .tour-language {
+  position: relative;
   flex: none;
 }
 .tour-language-menu {
-  width: auto;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 10;
+  display: grid;
   min-width: 168px;
+  margin: 0;
   padding: 6px;
   border: 2px solid var(--card-line);
   border-radius: 14px;
   background: var(--surface);
   box-shadow: 0 4px 0 var(--lip);
+  list-style: none;
 }
 .tour-language-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
   min-height: 44px;
-  padding-inline: 12px 36px;
+  padding: 0 12px;
+  border: 0;
   border-radius: 10px;
+  background: none;
   color: var(--ink);
+  font: inherit;
   font-size: var(--type-label);
   font-weight: 650;
+  text-align: left;
 }
-.tour-language-item[data-checked] {
+.tour-language-item:hover,
+.tour-language-item:focus-visible {
+  background: var(--selected);
+}
+.tour-language-item:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: -3px;
+}
+.tour-language-item[aria-checked="true"] {
   color: var(--blue-dark);
-}
-/* The menu library keeps its animated check mounted on every item; only the chosen one shows it. */
-.tour-language-item:not([data-checked])
-  [data-slot="dropdown-menu-radio-item-indicator"] {
-  visibility: hidden;
 }
 
 .tour-page {

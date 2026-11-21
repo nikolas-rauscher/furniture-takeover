@@ -26,17 +26,34 @@ const DEVICE = { width: SCREEN.width + 34, height: SCREEN.height + 28 };
 
 /** The device's scale, and its offset that centres it in a slot wider than it needs. */
 type Fit = { scale: number; left: number };
+/**
+ * A slot that only grows taller by less than this, such as when the browser's bars
+ * collapse, keeps the device's scale; a narrower or shorter slot always rescales it.
+ */
+const HEIGHT_JITTER_PX = 100;
+
+type Box = { width: number; height: number };
+
+/** Whether the slot changed enough to rescale the device it holds. */
+function needsRescale(previous: Box | null, next: Box) {
+  if (!previous || previous.width !== next.width) return true;
+  const grown = next.height - previous.height;
+  return grown < 0 || grown >= HEIGHT_JITTER_PX;
+}
 
 /** How far the device shrinks to fit whole into its slot, which the page's styles size. */
 function useFit() {
   const slot = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState<Fit | null>(null);
+  const measured = useRef<Box | null>(null);
   useLayoutEffect(() => {
     const element = slot.current;
     if (!element) return;
     const measure = () => {
       const { width, height } = element.getBoundingClientRect();
       if (!width || !height) return;
+      if (!needsRescale(measured.current, { width, height })) return;
+      measured.current = { width, height };
       const scale = Math.min(width / DEVICE.width, height / DEVICE.height);
       setFit({ scale, left: (width - DEVICE.width * scale) / 2 });
     };
