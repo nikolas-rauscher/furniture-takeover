@@ -210,6 +210,8 @@ export default function V3Steps({
   const [direction, setDirection] = useState(0);
   const [scenes, setScenes] = useState<Record<string, SceneState>>({});
   const arrivedAt = useRef(performance.now());
+  /** The step being shown or gone to, set at once, before the screen changes. */
+  const stepNow = useRef(progress.stepId);
   const timers = useTimers();
   const given = givenOn(step, pending, progress.answers);
   const scene = scenes[step.id] ?? { replay: 0, finished: false };
@@ -218,6 +220,7 @@ export default function V3Steps({
     setProgress((current) => withEvent(current, kind, step.id, detail ?? null));
 
   function goTo(target: V3Step, travel: 1 | -1, before: Transform = keep) {
+    stepNow.current = target.id;
     window.clearTimeout(timers.advance);
     window.clearTimeout(timers.mood);
     arrivedAt.current = performance.now();
@@ -275,7 +278,15 @@ export default function V3Steps({
     goTo(nextV3(transform(progress).answers, step.id), 1, transform);
   }
 
-  const moveOn = () => goTo(nextV3(progress.answers, step.id), 1);
+  /**
+   * Moves on from this step. A delayed move-on, such as the draft's after its sent
+   * message, can fire once the participant has left the step, as an exit animation
+   * keeps it mounted; then it does nothing.
+   */
+  const moveOn = () => {
+    if (stepNow.current !== step.id) return;
+    goTo(nextV3(progress.answers, step.id), 1);
+  };
 
   function reactToPick() {
     window.clearTimeout(timers.mood);
