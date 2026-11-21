@@ -384,6 +384,44 @@ test("shared results appear once enough v3 participants of one wording version a
   });
 });
 
+test("an answer emptied by going back keeps its first answer and counts as not answered", async () => {
+  await withDatabase((path) => {
+    const store = createSqliteStudyStore(path);
+    const emptied = randomUUID();
+    for (let n = 0; n < STUDY_RESULTS_MINIMUM; n++) {
+      const { session } = v3Start();
+      store.start(v3Start(n === 0 ? emptied : session));
+      store.saveAnswer(
+        v3Answer(n === 0 ? emptied : session, "desk", ["nearer"]),
+      );
+      if (n === 1)
+        store.saveAnswer(v3Answer(session, "last-trouble", ["price"]));
+    }
+    store.saveAnswer(v3Answer(emptied, "last-trouble", ["transport"]));
+    store.saveAnswer({
+      ...v3Answer(emptied, "last-trouble", []),
+      firstChosen: ["transport"],
+    });
+    assert.deepEqual(store.results("v3-1"), {
+      ready: true,
+      desk: {
+        answered: STUDY_RESULTS_MINIMUM,
+        options: [{ option: "nearer", count: STUDY_RESULTS_MINIMUM }],
+      },
+      trouble: { answered: 1, options: [{ option: "price", count: 1 }] },
+    });
+    store.close?.();
+    assert.deepEqual(
+      rows(
+        path,
+        `SELECT chosen, first_chosen, text FROM study_answers
+         WHERE session = '${emptied}' AND step = 'last-trouble'`,
+      ),
+      [{ chosen: "[]", first_chosen: '["transport"]', text: "" }],
+    );
+  });
+});
+
 test("a demo file from before v3 gets the new columns and keeps its sessions as v1", async () => {
   await withDatabase((path) => {
     const db = new DatabaseSync(path);

@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  answersOffPath,
   isAnswered,
   nextStep,
   previousStep,
   recordAnswer,
   withOrder,
 } from "./studyFlow.ts";
+import { saveJob } from "./studyJobs.ts";
 import type { StudyProgress } from "./studyProgress.ts";
 import { STUDY_SCRIPTS, stepById as findStep } from "./tourScript.ts";
 
@@ -76,4 +78,54 @@ test("choices need an answer; text steps can be left blank", () => {
     isAnswered(stepById("student"), { ...empty, chosen: ["no"] }),
     true,
   );
+});
+
+test("switching from the cheaper desk to the nearer one empties far-transport", async (t) => {
+  const answers = {
+    "nearer-or-cheaper": {
+      chosen: ["cheaper"],
+      shown: ["cheaper", "nearer", "neither"],
+      text: "",
+      elapsedMs: 900,
+    },
+    "far-transport": { chosen: ["bike"], shown: [], text: "", elapsedMs: 1500 },
+  };
+  const nearer = {
+    ...answers,
+    "nearer-or-cheaper": {
+      ...answers["nearer-or-cheaper"],
+      chosen: ["nearer"],
+    },
+  };
+  const emptied = answersOffPath(STEPS, answers, nearer);
+  assert.deepEqual(emptied, {
+    "far-transport": { chosen: [], shown: [], text: "", elapsedMs: 1500 },
+  });
+  const next = { ...progress, answers: { ...nearer, ...emptied } };
+  assert.equal(
+    nextStep(STEPS, next.answers, "nearer-or-cheaper").id,
+    "draft-check",
+  );
+  assert.deepEqual(answersOffPath(STEPS, answers, answers), {});
+
+  const sent: unknown[] = [];
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async (_url: string, init: RequestInit) => {
+      sent.push(JSON.parse(String(init.body)));
+      return new Response(null, { status: 200 });
+    },
+  );
+  await saveJob(next, "far-transport").send();
+  assert.deepEqual(sent, [
+    {
+      session: progress.session,
+      step: "far-transport",
+      chosen: [],
+      shown: [],
+      text: "",
+      elapsedMs: 1500,
+    },
+  ]);
 });

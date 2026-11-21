@@ -142,13 +142,15 @@ language sql security definer set search_path='' as $$
 $$;
 
 -- Counts shown at the end of the v3 survey, over the sessions of one wording version, once 20
--- participants of that version answered the desk task.
+-- participants of that version answered the desk task. An empty answer, skipped or emptied by
+-- going back, counts as not answered.
 create function public.study_results(p_version text) returns jsonb
 language sql stable security definer set search_path='' as $$
  with answers as (
   select a.step,a.chosen from takeover_admin.study_answers a
   join takeover_admin.study_sessions s on s.id=a.session
   where s.survey='v3' and s.version=p_version and a.step in('desk','last-trouble')
+   and cardinality(a.chosen)>0
  ), tallies as (
   select t.step,jsonb_build_object(
    'answered',(select count(*) from answers a where a.step=t.step),

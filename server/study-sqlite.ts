@@ -105,10 +105,11 @@ export function createSqliteStudyStore(
     return String(row.survey);
   };
   const requireSession = (id: string) => void surveyOfSession(id);
+  // An empty answer, skipped or emptied by going back, counts as not answered.
   const tally = (version: string, step: string): Tally => ({
     answered: count(
       "study_v3_answers",
-      "version = ? AND step = ?",
+      "version = ? AND step = ? AND json_array_length(chosen) > 0",
       version,
       step,
     ),

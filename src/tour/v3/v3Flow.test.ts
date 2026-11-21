@@ -18,9 +18,10 @@ import {
   visibleV3Steps,
   withEvent,
   withMoment,
+  withoutAnswersOffPath,
   withV3Order,
 } from "./v3Flow.ts";
-import { eventJobs } from "./v3Jobs.ts";
+import { eventJobs, v3Job } from "./v3Jobs.ts";
 import type { V3Answer, V3Progress } from "./v3Progress.ts";
 import {
   answerIds,
@@ -311,4 +312,86 @@ test("a scene's key moments are recorded on its first play, not on replays", () 
     ],
   );
   assert.equal(withMoment(auto, "tour-sell", 2, "visitor", true), auto);
+});
+
+test("going back from last-trouble and changing last-role to none empties the answers left behind", async (t) => {
+  const tried: V3Progress = {
+    ...progress,
+    stepId: "last-role",
+    answers: {
+      who: answer("epfl"),
+      "last-role": answer("buying"),
+      "last-item": answer("furniture"),
+      "last-occasion": answer("moving-in"),
+      "last-story": { ...answer(), text: "The seller never answered." },
+      "last-trouble": {
+        ...answer("transport"),
+        shown: ["transport", "price"],
+        elapsedMs: 4000,
+      },
+    },
+  };
+  const none = recordV3Answer(
+    { chosen: ["none"], text: "" },
+    [],
+    tried.answers["last-role"],
+    500,
+  );
+  const changed = withoutAnswersOffPath(tried.answers, {
+    ...tried,
+    answers: { ...tried.answers, "last-role": none },
+  });
+  assert.equal(nextV3(changed.answers, "last-role").id, "why-not");
+  assert.deepEqual(changed.answers["last-trouble"], {
+    chosen: [],
+    firstChosen: ["transport"],
+    shown: ["transport", "price"],
+    text: "",
+    elapsedMs: 4000,
+  });
+  for (const id of ["last-item", "last-occasion", "last-story"])
+    assert.deepEqual(
+      [changed.answers[id].chosen, changed.answers[id].text],
+      [[], ""],
+      id,
+    );
+  assert.equal(changed.answers.who, tried.answers.who);
+  assert.deepEqual(changed.events, tried.events);
+
+  const sent: unknown[] = [];
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async (_url: string, init: RequestInit) => {
+      sent.push(JSON.parse(String(init.body)));
+      return new Response(null, { status: 200 });
+    },
+  );
+  await v3Job(changed, "last-trouble").send();
+  assert.deepEqual(sent, [
+    {
+      session: SESSION,
+      step: "last-trouble",
+      chosen: [],
+      firstChosen: ["transport"],
+      shown: ["transport", "price"],
+      text: "",
+      elapsedMs: 4000,
+    },
+  ]);
+});
+
+test("a change that keeps the path empties nothing", () => {
+  const answers = {
+    "last-role": answer("buying"),
+    "last-trouble": answer("price"),
+  };
+  const selling = {
+    ...progress,
+    answers: { ...answers, "last-role": answer("selling") },
+  };
+  assert.deepEqual(
+    withoutAnswersOffPath(answers, selling).answers,
+    selling.answers,
+  );
 });

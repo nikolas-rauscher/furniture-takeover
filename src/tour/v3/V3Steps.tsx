@@ -21,6 +21,7 @@ import {
   visibleV3Steps,
   withEvent,
   withMoment,
+  withoutAnswersOffPath,
   withV3Order,
 } from "./v3Flow";
 import { PILOT_KEY, v3Job } from "./v3Jobs";
@@ -206,11 +207,14 @@ export default function V3Steps({
     if (target.kind === "saved") rememberFinished();
   }
 
-  /** The change that stores the given answers; their saves are queued at once. */
+  /**
+   * The change that stores the given answers and empties those it takes off the path;
+   * the saves of every answer it touches are queued at once.
+   */
   function storeAnswers(answers: Record<string, Given>): Transform {
     const visitMs = performance.now() - arrivedAt.current;
     arrivedAt.current = performance.now();
-    const transform: Transform = (current) =>
+    const record: Transform = (current) =>
       Object.entries(answers).reduce((next, [id, answer]) => {
         const earlier = next.answers[id];
         const recorded = recordV3Answer(
@@ -225,8 +229,12 @@ export default function V3Steps({
           id,
         );
       }, current);
+    const transform: Transform = (current) =>
+      withoutAnswersOffPath(current.answers, record(current));
     const next = transform(progress);
-    Object.keys(answers).forEach((id) => recorder.add(v3Job(next, id)));
+    Object.keys(next.answers)
+      .filter((id) => next.answers[id] !== progress.answers[id])
+      .forEach((id) => recorder.add(v3Job(next, id)));
     return transform;
   }
 

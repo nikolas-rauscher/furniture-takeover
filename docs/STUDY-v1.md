@@ -148,7 +148,7 @@ With a sample of this size the results justify the next test. They are not adopt
 
 Run these in the Supabase SQL editor, which connects with the owner role and can read the study tables. Students and the app's public keys cannot. Each query reads v1 sessions (`survey = 'v1'`) of one script version: replace `pilot-1` with the version of the real run, so pilot answers are left out. Option ids are the ones in `src/tour/tourScript.ts`.
 
-The tables are `takeover_admin.study_sessions` (one row per participant), `takeover_admin.study_answers` (one row per participant and step) and `takeover_admin.study_contacts` (one row per address). A step the participant went back to keeps only its latest answer.
+The tables are `takeover_admin.study_sessions` (one row per participant), `takeover_admin.study_answers` (one row per participant and step) and `takeover_admin.study_contacts` (one row per address). A step the participant went back to keeps only its latest answer. When a change after Back takes a step off the participant's path, such as `far-transport` after a switch from the cheaper to the nearer desk, its answer is saved again empty, and an empty answer counts as not answered.
 
 Eligible participants are students at EPFL or UNIL (`student`) with at least one attempt in the last 12 months (`last-role`). Each query that needs them starts with the same `eligible` block.
 
@@ -190,12 +190,12 @@ order by participants desc;
 
 ### Counts per option for one step
 
-Change the step id. `answered` is the denominator: participants who saved this step. Free text is not part of this query.
+Change the step id. `answered` is the denominator: participants who chose at least one option for this step; a skipped or emptied answer is not counted. Free text is not part of this query.
 
 ```sql
 select option, count(*) as chosen,
   (select count(*) from takeover_admin.study_answers
-    where step = 'last-hard'
+    where step = 'last-hard' and cardinality(chosen) > 0
       and session in (select id from takeover_admin.study_sessions where survey = 'v1' and version = 'pilot-1')) as answered
 from takeover_admin.study_answers a, unnest(a.chosen) as option
 where a.step = 'last-hard'

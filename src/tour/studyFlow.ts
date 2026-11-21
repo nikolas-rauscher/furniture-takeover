@@ -1,7 +1,8 @@
 import { shuffleOptions, type RandomSource } from "./optionOrder.ts";
-import { neighbourStep } from "./stepConditions.ts";
+import { emptiedOffPath, neighbourStep } from "./stepConditions.ts";
 import type { RecordedAnswer, StudyProgress } from "./studyProgress.ts";
 import {
+  isQuestion,
   visibleSteps,
   type AnswerSheet,
   type StepAnswer,
@@ -42,6 +43,23 @@ export const previousStep = (
   answers: AnswerSheet,
   id: string,
 ) => neighbourStep(visibleSteps(steps, answers), id, -1);
+
+/**
+ * The answers of steps that the change from `before` to `after` takes off the
+ * participant's path, emptied, such as `far-transport` once the nearer desk is chosen.
+ */
+export function answersOffPath(
+  steps: readonly StudyStep[],
+  before: AnswerSheet,
+  after: Record<string, RecordedAnswer>,
+): Record<string, RecordedAnswer> {
+  return emptiedOffPath(
+    visibleSteps(steps, before),
+    visibleSteps(steps, after),
+    (step) => (isQuestion(step) ? [step.id] : []),
+    after,
+  );
+}
 
 /**
  * The answer as stored. Time adds up over every visit to the step, and a tab left open

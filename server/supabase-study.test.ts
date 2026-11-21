@@ -443,6 +443,33 @@ test("shared results count the v3 sessions of one wording version and appear fro
   });
 });
 
+test("an answer emptied by going back keeps its first answer and is not counted in the shared results", async (t) => {
+  const { db, asOwner, startV3, saveV3Answer } = await setup(t);
+  const emptied = randomUUID();
+  for (let n = 0; n < STUDY_RESULTS_MINIMUM; n++) {
+    const session = n === 0 ? emptied : randomUUID();
+    await startV3(session);
+    await saveV3Answer(session, "desk", ["nearer"]);
+    if (n === 1) await saveV3Answer(session, "last-trouble", ["price"]);
+  }
+  await saveV3Answer(emptied, "last-trouble", ["transport"]);
+  await saveV3Answer(emptied, "last-trouble", [], ["transport"]);
+  assert.deepEqual(
+    await asOwner(
+      "select chosen, first_chosen from takeover_admin.study_answers where session=$1 and step='last-trouble'",
+      [emptied],
+    ),
+    [{ chosen: [], first_chosen: ["transport"] }],
+  );
+  const { rows } = await db.query<{ r: { trouble: unknown } }>(
+    "select public.study_results('v3-1') as r",
+  );
+  assert.deepEqual(rows[0].r.trouble, {
+    answered: 1,
+    options: [{ option: "price", count: 1 }],
+  });
+});
+
 test("the tables accept every value the wire contract allows", async (t) => {
   const { db, count } = await setup(t);
   for (const survey of STUDY_SURVEYS)

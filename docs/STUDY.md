@@ -194,7 +194,7 @@ Share: "Every answer helps, also from people who never sell anything. Share it?"
 
 One session per participant, created on "Let's go": a random id, `survey = 'v3'`, the wording version (`v3-3` for the pilot, a raised label for the run), the language at the start (`en`, `fr`, `de`), the channel tag, phone or desktop. No name, no IP address, no browser details.
 
-One answer per session and step, replaced when the participant goes back and answers again:
+One answer per session and step, replaced when the participant goes back and answers again. When a change after Back takes a step off the participant's path, such as `last-role` changed to `none` after `last-trouble` was answered, that step's answer is saved again empty: `chosen` and `text` empty, `first_chosen` kept. An empty answer counts as not answered on the results page, in "How others answered" and in the queries below:
 
 | Field | Content |
 | --- | --- |
@@ -359,7 +359,8 @@ with run as (
 )
 select run.source, run.device,
   count(*) as started,
-  count(*) filter (where exists (select 1 from takeover_admin.study_answers a where a.session = run.id)) as answered_any,
+  count(*) filter (where exists (select 1 from takeover_admin.study_answers a
+    where a.session = run.id and (cardinality(a.chosen) > 0 or a.text <> ''))) as answered_any,
   count(*) filter (where exists (select 1 from reached r where r.session = run.id and r.kind = 'core-complete')) as core_complete,
   count(*) filter (where exists (select 1 from reached r where r.session = run.id and r.kind = 'end')) as end_reached,
   count(*) filter (where exists (select 1 from reached r where r.session = run.id and r.kind = 'share')) as shared

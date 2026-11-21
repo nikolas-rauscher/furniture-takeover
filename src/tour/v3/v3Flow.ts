@@ -1,9 +1,10 @@
 import type { StudyEventKind } from "../../../shared/study.ts";
 import type { TourScene } from "../device/sceneMessages.ts";
 import { shuffleOptions, type RandomSource } from "../optionOrder.ts";
-import { isShown, neighbourStep } from "../stepConditions.ts";
+import { emptiedOffPath, isShown, neighbourStep } from "../stepConditions.ts";
 import type { V3Answer, V3Progress } from "./v3Progress.ts";
 import {
+  answerIds,
   DRAFT_DAY_STEP,
   DRAFT_DAYS,
   sceneStepId,
@@ -45,6 +46,24 @@ export function visibleV3Steps(answers: AnswerSheet): V3Step[] {
   });
   const rest = shown.filter((step) => !isTourScene(step));
   return [...rest.slice(0, firstScene), ...ordered, ...rest.slice(firstScene)];
+}
+
+/**
+ * Empties the answers of steps that the change from `before` takes off the participant's
+ * path, such as `last-trouble` once `last-role` becomes `none`. Each keeps its first
+ * answer, its order and its time; the events stay as they were.
+ */
+export function withoutAnswersOffPath(
+  before: AnswerSheet,
+  after: V3Progress,
+): V3Progress {
+  const emptied = emptiedOffPath(
+    visibleV3Steps(before),
+    visibleV3Steps(after.answers),
+    answerIds,
+    after.answers,
+  );
+  return { ...after, answers: { ...after.answers, ...emptied } };
 }
 
 export function v3StepById(id: string): V3Step {
