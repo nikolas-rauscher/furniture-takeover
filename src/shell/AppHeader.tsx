@@ -1,4 +1,5 @@
 import type { RefObject } from "react";
+import { useWindowScrolled } from "../hooks/useWindowScrolled";
 import { CircleHelp, Plus, UserRound } from "@/components/icons";
 import HeaderNav, { headerDestination } from "../components/HeaderNav";
 import { Button } from "../components/ui/button";
@@ -12,7 +13,6 @@ type Badges = {
 
 /** The top bar: brand, destinations, Sell, the intro and settings. */
 export default function AppHeader({
-  scrolled,
   destination,
   settingsOpen,
   badges,
@@ -22,7 +22,6 @@ export default function AppHeader({
   onNavigate,
   onHelp,
 }: {
-  scrolled: boolean;
   destination: Destination;
   settingsOpen: boolean;
   badges: Badges;
@@ -32,6 +31,8 @@ export default function AppHeader({
   onNavigate: (destination: Destination) => void;
   onHelp: () => void;
 }) {
+  // Read here, so only the header renders again when the page leaves its top.
+  const scrolled = useWindowScrolled();
   return (
     <header className="app-header" data-scrolled={scrolled || undefined}>
       <a
