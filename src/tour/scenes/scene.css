@@ -3,6 +3,11 @@ html:has(body[inert]) {
   overflow: hidden;
   scrollbar-width: none;
 }
+/* The page fills its phone even while a held scene shows nothing, so it can tell when
+   the phone is on screen. The phone's height is fixed, so this never changes. */
+body[inert] {
+  min-height: 100vh;
+}
 
 /* The finger: a soft round mark that presses in and fades where it touched. */
 .tour-touch {

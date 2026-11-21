@@ -38,9 +38,19 @@
   box-shadow:
     inset 0 0 0 0.5px rgb(255 255 255 / 0.55),
     inset 0 0 1.5px 1.5px rgb(0 0 0 / 0.18),
-    0 1px 2px rgb(24 28 40 / 0.12),
+    0 1px 2px rgb(24 28 40 / 0.12);
+}
+/* The phone's large soft shadow, on its own layer: drawn once, it is not painted
+   again whenever the screen above it changes. */
+.tour-device-shadow {
+  position: absolute;
+  inset: 0 3px;
+  border-radius: 69px;
+  box-shadow:
     0 22px 44px -14px rgb(24 28 40 / 0.34),
     0 56px 96px -32px rgb(24 28 40 / 0.32);
+  will-change: transform;
+  pointer-events: none;
 }
 .tour-device-bezel {
   height: 100%;

@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -12,6 +13,7 @@ import {
   sceneAddress,
   type TourScene,
 } from "./sceneMessages";
+import { useSceneTurn } from "./sceneDirector";
 import StatusBar from "./StatusBar";
 import "./device.css";
 
@@ -65,19 +67,34 @@ function useFit() {
   return { slot, fit };
 }
 
-/** Passes the scene's mood, clock, camera and end to the page, and the page's replays to the scene. */
+/**
+ * Passes the scene's mood, clock, camera and end to the page, and the page's
+ * replays and its turn to play to the scene.
+ */
 type SceneListeners = Pick<DeviceFrameProps, "onMood" | "onDone" | "onMoment">;
 
 function useSceneLink(
   frame: RefObject<HTMLIFrameElement | null>,
   replay: number,
+  active: boolean,
   { onMood, onDone, onMoment }: SceneListeners,
 ) {
   const [sceneTime, setSceneTime] = useState<Date>();
   const [cameraOpen, setCameraOpen] = useState(false);
+  const turn = useRef(active);
+  const tellTurn = useCallback(() => {
+    const scene = frame.current?.contentWindow;
+    if (scene) command(scene, { kind: turn.current ? "play" : "pause" });
+  }, [frame]);
+  useEffect(() => {
+    turn.current = active;
+    tellTurn();
+  }, [active, tellTurn]);
   useEffect(() => {
     const listen = (event: MessageEvent) => {
       const message = readReport(event, frame.current?.contentWindow ?? null);
+      // A scene starts held and plays once the page says it is its turn.
+      if (message?.kind === "ready") tellTurn();
       if (message?.kind === "mood") onMood?.(message.mood);
       if (message?.kind === "clock") setSceneTime(new Date(message.time));
       if (message?.kind === "camera") setCameraOpen(message.open);
@@ -86,14 +103,14 @@ function useSceneLink(
     };
     window.addEventListener("message", listen);
     return () => window.removeEventListener("message", listen);
-  }, [frame, onMood, onDone, onMoment]);
+  }, [frame, onMood, onDone, onMoment, tellTurn]);
   const played = useRef(replay);
   useEffect(() => {
     if (played.current === replay) return;
     played.current = replay;
     const scene = frame.current?.contentWindow;
-    if (!scene) throw new Error("The scene to replay is not loaded.");
-    command(scene, { kind: "replay" });
+    // A scene whose iframe is not made yet starts from the beginning when it is.
+    if (scene) command(scene, { kind: "replay" });
   }, [frame, replay]);
   return { sceneTime, cameraOpen };
 }
@@ -124,7 +141,8 @@ export default function DeviceFrame({
 }: DeviceFrameProps) {
   const { slot, fit } = useFit();
   const frame = useRef<HTMLIFrameElement>(null);
-  const { sceneTime, cameraOpen } = useSceneLink(frame, replay, {
+  const { near, active } = useSceneTurn(slot);
+  const { sceneTime, cameraOpen } = useSceneLink(frame, replay, active, {
     onMood,
     onDone,
     onMoment,
@@ -146,6 +164,7 @@ export default function DeviceFrame({
         <span className="tour-device-key" data-key="volume-down" />
         <span className="tour-device-key" data-key="power" />
         <span className="tour-device-key" data-key="camera" />
+        <span className="tour-device-shadow" />
         <div className="tour-device-edge">
           <div className="tour-device-bezel">
             <div
@@ -154,18 +173,20 @@ export default function DeviceFrame({
             >
               <StatusBar sceneTime={sceneTime} />
               <span className="tour-device-camera" />
-              <iframe
-                ref={frame}
-                className="tour-device-app"
-                src={sceneAddress(scene, brief)}
-                title={label}
-                tabIndex={-1}
-                aria-hidden="true"
-                style={{
-                  width: SCREEN.width,
-                  height: SCREEN.height - STATUS_BAR - HOME_STRIP,
-                }}
-              />
+              {near && (
+                <iframe
+                  ref={frame}
+                  className="tour-device-app"
+                  src={sceneAddress(scene, brief, true)}
+                  title={label}
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  style={{
+                    width: SCREEN.width,
+                    height: SCREEN.height - STATUS_BAR - HOME_STRIP,
+                  }}
+                />
+              )}
               <span className="tour-device-home" />
             </div>
           </div>

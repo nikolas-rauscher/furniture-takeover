@@ -1,7 +1,12 @@
 import { MotionConfig } from "motion/react";
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import { setStorageScope } from "../../cloud/session";
-import { readCommand, type TourScene } from "../device/sceneMessages";
+import {
+  readCommand,
+  report,
+  type SceneCommand,
+  type TourScene,
+} from "../device/sceneMessages";
 import DealScene from "./DealScene";
 import FindScene from "./FindScene";
 import SellScene from "./SellScene";
@@ -79,17 +84,23 @@ function useShown(onAway: () => void) {
   return { onScreen, shown, setShown };
 }
 
-/** The page's replay starts the scene again at once. */
-function useReplays(restart: () => void) {
-  const latest = useRef(restart);
+/**
+ * The page's commands: a replay starts the scene again at once; pause and play
+ * hold the scene while another phone on the page plays. Once it listens, the
+ * scene says so, and the page answers with whether it may play.
+ */
+function useCommands(on: (kind: SceneCommand["kind"]) => void) {
+  const latest = useRef(on);
   useEffect(() => {
-    latest.current = restart;
-  }, [restart]);
+    latest.current = on;
+  }, [on]);
   useEffect(() => {
     const listen = (event: MessageEvent) => {
-      if (readCommand(event)?.kind === "replay") latest.current();
+      const command = readCommand(event);
+      if (command) latest.current(command.kind);
     };
     window.addEventListener("message", listen);
+    report({ kind: "ready" });
     return () => window.removeEventListener("message", listen);
   }, []);
 }
@@ -116,11 +127,15 @@ function useImagesLoaded(scene: TourScene) {
 export default function ScenePage({
   scene,
   brief,
+  held: heldAtStart,
 }: {
   scene: TourScene;
   /** Plays the short version: faster, and every key moment taps itself. */
   brief: boolean;
+  /** Waits for the page's "play" before the first round. */
+  held: boolean;
 }) {
+  const [held, setHeld] = useState(heldAtStart);
   const [round, setRound] = useState(0);
   const ending = useRef<number>(undefined);
   const Scene = SCENES[scene];
@@ -133,7 +148,11 @@ export default function ScenePage({
   }
   const { onScreen, shown, setShown } = useShown(() => startAfter(round));
   const imagesLoaded = useImagesLoaded(scene);
-  useReplays(() => startAfter(round));
+  useCommands((kind) => {
+    if (kind === "replay") startAfter(round);
+    if (kind === "pause") setHeld(true);
+    if (kind === "play") setHeld(false);
+  });
   useEffect(() => () => window.clearTimeout(ending.current), []);
   useEffect(() => {
     void fade("in");
@@ -159,7 +178,7 @@ export default function ScenePage({
 
   return (
     <MotionConfig reducedMotion="user">
-      {shown && imagesLoaded && (
+      {shown && !held && imagesLoaded && (
         <Scene
           key={round}
           brief={brief}

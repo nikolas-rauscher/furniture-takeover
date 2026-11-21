@@ -10,6 +10,7 @@ import type { PakoMood } from "@/components/onboarding/storyTypes";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { motionBehavior } from "../../uiMotion";
 import DeviceFrame from "../device/DeviceFrame";
+import { SceneDirector } from "../device/sceneDirector";
 import type { TourScene } from "../device/sceneMessages";
 import LanguageSwitch from "../i18n/LanguageSwitch";
 import { useTourText } from "../i18n/TourLanguage";
@@ -220,38 +221,40 @@ export default function Pitch({
   const { pitch } = useTourText();
   return (
     <MotionConfig reducedMotion="user">
-      <div className="tour-page">
-        <Hero look={look} />
-        <main className="tour-main">
-          <div id={HOW_ID} className="tour-sections">
-            <BackAndForthSection />
-            {SECTIONS.map(({ id, scene }) => (
-              <PitchScene
-                key={id}
-                id={id}
-                title={pitch.sections[id].title}
-                sentences={pitch.sections[id].sentences}
-                waitingClass={
-                  look === "app" ? "tour-device-slot" : "tour-phone-waiting"
-                }
-                frame={(play) => (
-                  <SectionFrame
-                    look={look}
-                    title={pitch.sections[id].title}
-                    scene={scene}
-                    play={play}
-                  />
-                )}
-              />
-            ))}
-          </div>
-          <Principles />
-          {studyOpen && <StudyInvite />}
-        </main>
-        <footer className="tour-footer">
-          <p>{pitch.footer}</p>
-        </footer>
-      </div>
+      <SceneDirector>
+        <div className="tour-page">
+          <Hero look={look} />
+          <main className="tour-main">
+            <div id={HOW_ID} className="tour-sections">
+              <BackAndForthSection />
+              {SECTIONS.map(({ id, scene }) => (
+                <PitchScene
+                  key={id}
+                  id={id}
+                  title={pitch.sections[id].title}
+                  sentences={pitch.sections[id].sentences}
+                  waitingClass={
+                    look === "app" ? "tour-device-slot" : "tour-phone-waiting"
+                  }
+                  frame={(play) => (
+                    <SectionFrame
+                      look={look}
+                      title={pitch.sections[id].title}
+                      scene={scene}
+                      play={play}
+                    />
+                  )}
+                />
+              ))}
+            </div>
+            <Principles />
+            {studyOpen && <StudyInvite />}
+          </main>
+          <footer className="tour-footer">
+            <p>{pitch.footer}</p>
+          </footer>
+        </div>
+      </SceneDirector>
     </MotionConfig>
   );
 }

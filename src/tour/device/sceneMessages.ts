@@ -6,6 +6,8 @@ export type TourScene = (typeof TOUR_SCENES)[number];
 
 /** Messages a scene sends to the page around it. */
 export type SceneReport =
+  /** The scene listens for commands now; the page tells it whether to play. */
+  | { source: typeof SOURCE; kind: "ready" }
   | { source: typeof SOURCE; kind: "mood"; mood: PakoMood }
   /** The scene keeps its own clock, such as one that jumps ahead to a pickup. */
   | { source: typeof SOURCE; kind: "clock"; time: string }
@@ -21,8 +23,11 @@ export type SceneReport =
   /** The scene's last key moment has passed. */
   | { source: typeof SOURCE; kind: "done" };
 
-/** Messages the page sends to its scene. */
-export type SceneCommand = { source: typeof SOURCE; kind: "replay" };
+/** Messages the page sends to its scene: start again, or play or wait while another phone plays. */
+export type SceneCommand = {
+  source: typeof SOURCE;
+  kind: "replay" | "play" | "pause";
+};
 
 const SOURCE = "takeover-tour-scene";
 
@@ -48,8 +53,16 @@ export function briefInAddress(search: string) {
   return new URLSearchParams(search).get("pace") === "brief";
 }
 
-export function sceneAddress(scene: TourScene, brief: boolean) {
-  return `/tour?scene=${scene}${brief ? "&pace=brief" : ""}`;
+/** Whether the scene page waits for the page's "play" before it starts. */
+export function heldInAddress(search: string) {
+  return new URLSearchParams(search).get("start") === "held";
+}
+
+export function sceneAddress(scene: TourScene, brief: boolean, held: boolean) {
+  const params = new URLSearchParams({ scene });
+  if (brief) params.set("pace", "brief");
+  if (held) params.set("start", "held");
+  return `/tour?${params}`;
 }
 
 function fromTour(data: unknown): data is { source: string; kind: string } {

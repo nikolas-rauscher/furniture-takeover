@@ -1,7 +1,11 @@
 import { StrictMode, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { globalStylesReady } from "../globalStyles";
-import { briefInAddress, sceneInAddress } from "./device/sceneMessages";
+import {
+  briefInAddress,
+  heldInAddress,
+  sceneInAddress,
+} from "./device/sceneMessages";
 import { initialLanguage } from "./i18n/language";
 import { holdScreenHeight } from "./screenHeight";
 import { TOUR_TEXT } from "./i18n/tourText";
@@ -31,7 +35,11 @@ function loadPage(): Promise<ReactElement> {
   const scene = sceneInAddress(window.location.search);
   if (scene)
     return import("./scenes/ScenePage").then(({ default: ScenePage }) => (
-      <ScenePage scene={scene} brief={briefInAddress(window.location.search)} />
+      <ScenePage
+        scene={scene}
+        brief={briefInAddress(window.location.search)}
+        held={heldInAddress(window.location.search)}
+      />
     ));
   return Promise.all([
     import("./TourPage"),
