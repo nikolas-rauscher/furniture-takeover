@@ -35,7 +35,7 @@ Pako speaks in the first person. Single choice unless marked. "Shuffled" means t
 | Step | Pako says | Options |
 | --- | --- | --- |
 | Invitation | "Hi, I'm Pako! I'm the helper in takeover, a student project at EPFL. I'd like to ask about the last time you bought or sold something second-hand, then show you what we're building. It takes about 4 minutes." | Start · Just show me the tour |
-| Consent | "Before we start": your answers are saved without your name. I also save how long each step takes, which link brought you here and whether you're on a phone or a computer. Your IP address isn't saved with your answers. An email address is optional, at the end, and stored separately. Everything is deleted by {date}. Questions: {contact}. | I'm 18 or older and I agree · No thanks, just show me the tour |
+| Consent | "Before we start": your answers are saved without your name. I also save how long each step takes, which link brought you here and whether you're on a phone or a computer. Your IP address isn't saved with your answers. An email address is optional, at the end, and stored separately. Everything is deleted by {date}. Questions: {contact}. | I agree · No thanks, just show me the tour |
 
 Declining opens the pitch tour. No session is created and nothing is stored.
 
@@ -128,7 +128,7 @@ With a sample of this size the results justify the next test. They are not adopt
 
 ## Data handling
 
-- Nothing is stored before the participant confirms being 18 or older and agrees.
+- Nothing is stored before the participant agrees.
 - Stored per session: a random id, the script version, the channel tag, phone or desktop, and per step the chosen options, the order shown, a short text and the time on the step. No name, no IP address, no browser details.
 - The tab keeps the participant's progress with the script version the session started in. After a new version is deployed, a reload starts a new session instead of continuing the old one.
 - The email address is optional and kept in a separate table. It is linked to a session only if the participant ticks that box. One row per address: the first submission stands, and a later one with the same address changes nothing. Changes go through the contact address.
