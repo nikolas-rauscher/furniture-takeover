@@ -3,7 +3,7 @@
   align-content: start;
   gap: var(--space-group);
   min-height: calc(
-    100dvh - var(--app-header-height) - var(--mobile-nav-height)
+    100svh - var(--app-header-height) - var(--mobile-nav-height)
   );
   padding-block: var(--space-panel);
 }
