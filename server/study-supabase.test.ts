@@ -11,7 +11,6 @@ const start = (session: string = randomUUID()): StudyStart => ({
   language: "de",
   source: "moodle-peer",
   device: "phone",
-  adult: true,
   consent: true,
 });
 
@@ -122,7 +121,6 @@ test("a v1 start request without survey or language reaches the database as v1",
     version: "pilot-1",
     source: "moodle",
     device: "desktop",
-    adult: true,
     consent: true,
   });
   await store().saveAnswer({

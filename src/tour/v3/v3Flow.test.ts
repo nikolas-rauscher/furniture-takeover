@@ -163,7 +163,6 @@ test("answers, events and the session are valid on the wire", () => {
     language: "fr",
     source: "fmel-vortex",
     device: "phone",
-    adult: true,
     consent: true,
   };
   assert.ok(studyStartSchema.safeParse(start).success);

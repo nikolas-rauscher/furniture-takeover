@@ -28,7 +28,6 @@ function sessionJob(progress: V3Progress): SaveJob {
         language: progress.language,
         source: progress.source,
         device: progress.device,
-        adult: true,
         consent: true,
       }),
   };

@@ -162,7 +162,7 @@ export const EN = {
       deleted: (date: string) => `Everything is deleted by ${date}.`,
       questions: "Questions:",
     },
-    agree: "I'm 18 or older and I agree",
+    agree: "I agree",
     decline: "No thanks, just show me the tour",
     progress: "Study progress",
     stepOf: (step: number, total: number) => `Step ${step} of ${total}`,
@@ -392,12 +392,9 @@ export const EN = {
         `Hi, I'm Pako! We're EPFL students building takeover, an app for passing on used stuff around campus. Got ${minutes} minutes? No sign-in. Everyone's welcome, also if you've never bought or sold anything used.`,
       saveTitle: "What we save",
       save: (date: string) =>
-        `Your taps, which screens you see, skip or go back to, and the time per screen, so we can see which questions are unclear. What you type: the optional sentence about your last exchange and the message in the practice chat. The link you came from, your language and whether you use a phone or a computer. No name, no IP address. Deleted by ${date}.`,
-      more: "More",
-      moreText:
-        "Your progress stays in this browser tab until you close it. This browser remembers that you finished, so you aren't asked twice. An email at the end is optional and kept apart from your answers.",
+        `Your answers, which screens you see, skip or go back to, the time per screen, the link you came from, your language and whether you use a phone or a computer. Your progress stays in this tab until you close it, and this browser remembers that you finished. An email at the end is optional and kept apart from your answers. Everything is deleted by ${date}.`,
       questions: "Questions:",
-      go: "Let's go (I'm 18+ and OK with this)",
+      go: "Let's go",
       demo: "Just show me the app",
     },
     steps: {
@@ -605,8 +602,7 @@ export const EN = {
     findingBySeller: "Finding someone who wanted it",
     moveIntro: "Two quick ones about now.",
     firstLookIntro: "Now a first look at takeover.",
-    situationsIntro:
-      "Four quick situations. Nothing here is real. Nothing gets sent or charged.",
+    situationsIntro: "Four quick situations.",
     lastStory: {
       question: "In a sentence: how did it go?",
       label: "Your sentence",
@@ -618,7 +614,7 @@ export const EN = {
         "Pako drafts your messages. Nothing is sent until you tap Send.",
     },
     helperMissing: "The helper option doesn't exist yet.",
-    packMissing: "This pack doesn't exist yet. Nothing is charged.",
+    packMissing: "This pack doesn't exist yet.",
     desk: {
       sameTerms: "Same desk, same condition, pickup this week",
       distance: {

@@ -63,7 +63,6 @@ const startBody = (session: string) => ({
   version: "p1",
   source: "moodle",
   device: "phone",
-  adult: true,
   consent: true,
 });
 const answerBody = (session: string, step = "student", chosen = ["epfl"]) => ({
@@ -162,13 +161,9 @@ test("a study closes on its deletion date without a restart", async (t) => {
   assert.equal(await errorCode(refused), "STUDY_CLOSED");
 });
 
-test("a session needs the adult and consent confirmations", async (t) => {
+test("a session needs the consent confirmation", async (t) => {
   const url = await startServer(t, { study: openStudy(t) });
-  for (const missing of [
-    { adult: false },
-    { consent: false },
-    { adult: undefined },
-  ]) {
+  for (const missing of [{ consent: false }, { consent: undefined }]) {
     const refused = await post(url, STUDY_ROUTES.sessions, {
       ...startBody(randomUUID()),
       ...missing,

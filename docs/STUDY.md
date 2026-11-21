@@ -24,7 +24,7 @@ What the results cannot claim: shares for all EPFL/UNIL students; adoption or fu
 
 ## Participants and recruitment
 
-- Everyone who confirms being 18 or older and agrees takes part. Nobody is filtered by student status, answers, move plans, time windows or response speed.
+- Everyone who agrees takes part. Nobody is filtered by student status, answers, move plans, time windows or response speed.
 - Analysis exclusions, and only these: no consent (no session exists), duplicates (the browser marks a finished survey), sessions without any answer (counted as break-offs).
 - No incentive.
 - Pilot: 3–5 phone runs (iOS and Android) from Mon 23 to Fri 27 Nov 2026 with their own version label. Launch Mon 30 Nov 2026. Close Sun 13 Dec 2026, 23:59.
@@ -53,9 +53,9 @@ Pako asks every question. Wording is neutral; on product questions (`headline` t
 
 | Id | Text | Options |
 | --- | --- | --- |
-| `start` | "Hi, I'm Pako! We're EPFL students building takeover, an app for passing on used stuff around campus. Got {measured} minutes? No sign-in. Everyone's welcome, also if you've never bought or sold anything used." | `go` Let's go (I'm 18+ and OK with this) · `demo` Just show me the app |
+| `start` | "Hi, I'm Pako! We're EPFL students building takeover, an app for passing on used stuff around campus. Got {measured} minutes? No sign-in. Everyone's welcome, also if you've never bought or sold anything used." | `go` Let's go · `demo` Just show me the app |
 
-Consent card "What we save": "Your taps, which screens you see, skip or go back to, and the time per screen, so we can see which questions are unclear. What you type: the optional sentence about your last exchange and the message in the practice chat. The link you came from, your language and whether you use a phone or a computer. No name, no IP address. Deleted by {date}." "More": "Your progress stays in this browser tab until you close it. This browser remembers that you finished, so you aren't asked twice. An email at the end is optional and kept apart from your answers. Questions: {contact}."
+Folded toggle "What we save" below the invitation: "Your answers, which screens you see, skip or go back to, the time per screen, the link you came from, your language and whether you use a phone or a computer. Your progress stays in this tab until you close it, and this browser remembers that you finished. An email at the end is optional and kept apart from your answers. Everything is deleted by {date}. Questions: {contact}."
 
 `demo` opens the tour without a session; nothing is stored. `{date}` and `{contact}` come from `STUDY_DELETE_BY` and `STUDY_CONTACT`.
 
@@ -92,13 +92,13 @@ Pako: "Now a first look at takeover."
 
 ### 4. Situations
 
-Pako: "Four quick situations. Nothing here is real. Nothing gets sent or charged."
+Pako: "Four quick situations."
 
 | Id | Question | Options | After the tap |
 | --- | --- | --- | --- |
 | `move-it` | "You've found a desk you like, 4 km from where you live. Before you agree to buy it: how would you most likely get it home?" | Shuffled: `carry-bike` Carry it or take it by bike · `public-transport` Public transport · `friend-car` Borrow a car, or ask a friend with one · `helper` A helper with a cargo bike, booked in the app: CHF 15 for the whole trip up to 4 km, carried to your door (ground floor or lift; stairs may cost extra) · *last:* `skip-desk` I'd look for one closer instead · `not-sure` Not sure | "The helper option doesn't exist yet." |
 | `desk` | "You need a desk. Here are two that fit. Which one would you go for?" Two cards in the phone, order shuffled, same desk and condition, pickup this week. | `nearer` CHF 45 · 200 m from where you live · `cheaper` CHF 30 · 4 km from where you live · *last:* `neither` Neither | |
-| `pack` | "Imagine you're moving out in two weeks and still have three things to sell, a desk among them. You've used today's 3 free photo drafts in takeover. What would you do?" | Shuffled: `manual` List them myself now, for free · `wait` Wait until tomorrow for new free drafts · `pack` Buy the move-out pack: CHF 5 once, five more photo drafts with price checks, valid 30 days · *last:* `other-way` Something else (another app, a group chat, give them away) · `not-sure` Not sure | "This pack doesn't exist yet. Nothing is charged." |
+| `pack` | "Imagine you're moving out in two weeks and still have three things to sell, a desk among them. You've used today's 3 free photo drafts in takeover. What would you do?" | Shuffled: `manual` List them myself now, for free · `wait` Wait until tomorrow for new free drafts · `pack` Buy the move-out pack: CHF 5 once, five more photo drafts with price checks, valid 30 days · *last:* `other-way` Something else (another app, a group chat, give them away) · `not-sure` Not sure | "This pack doesn't exist yet." |
 
 `draft`, the last core task, in a chat inside the phone:
 

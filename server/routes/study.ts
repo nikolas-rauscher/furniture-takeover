@@ -66,14 +66,10 @@ function parseStudyBody<T>(schema: z.ZodType<T>, body: unknown): T {
   const result = schema.safeParse(body);
   if (result.success) return result.data;
   const consentMissing = result.error.issues.some(
-    ({ path }) => path[0] === "adult" || path[0] === "consent",
+    ({ path }) => path[0] === "consent",
   );
   throw consentMissing
-    ? new AgentError(
-        400,
-        "STUDY_CONSENT_REQUIRED",
-        "Confirm that you are 18 or older and agree before taking part.",
-      )
+    ? new AgentError(400, "STUDY_CONSENT_REQUIRED", "Agree before taking part.")
     : new AgentError(
         400,
         "INVALID_STUDY_REQUEST",

@@ -163,7 +163,7 @@ export const FR: TourText = {
       deleted: (date) => `Tout est supprimé d'ici au ${date}.`,
       questions: "Questions\u00a0:",
     },
-    agree: "J'ai 18 ans ou plus et j'accepte",
+    agree: "J'accepte",
     decline: "Non merci, montre-moi juste la visite",
     progress: "Progression de l'étude",
     stepOf: (step, total) => `Étape ${step} sur ${total}`,
@@ -400,12 +400,9 @@ export const FR: TourText = {
         `Salut, je suis Pako\u00a0! Nous sommes des étudiant·es de l'EPFL et nous construisons takeover, une app pour faire passer des objets d'occasion autour du campus. Tu as ${minutes} minutes\u00a0? Pas d'inscription. Tout le monde est bienvenu, aussi si tu n'as jamais acheté ni vendu d'occasion.`,
       saveTitle: "Ce que nous enregistrons",
       save: (date) =>
-        `Tes choix, les écrans que tu vois, passes ou sur lesquels tu reviens, et le temps par écran, pour voir quelles questions ne sont pas claires. Ce que tu écris\u00a0: la phrase facultative sur ton dernier échange et le message dans le chat d'essai. Le lien par lequel tu es venu·e, ta langue et si tu utilises un téléphone ou un ordinateur. Pas de nom, pas d'adresse IP. Supprimé d'ici au ${date}.`,
-      more: "Plus",
-      moreText:
-        "Ta progression reste dans cet onglet jusqu'à ce que tu le fermes. Ce navigateur se souvient que tu as terminé, pour qu'on ne te le demande pas deux fois. Une adresse e-mail à la fin est facultative et conservée à part de tes réponses.",
+        `Tes réponses, les écrans que tu vois, passes ou sur lesquels tu reviens, le temps par écran, le lien par lequel tu es venu·e, ta langue et si tu utilises un téléphone ou un ordinateur. Ta progression reste dans cet onglet jusqu'à ce que tu le fermes, et ce navigateur se souvient que tu as terminé. Une adresse e-mail à la fin est facultative et conservée à part de tes réponses. Tout est supprimé d'ici au ${date}.`,
       questions: "Questions\u00a0:",
-      go: "C'est parti (j'ai 18 ans ou plus et je suis d'accord)",
+      go: "C'est parti",
       demo: "Montre-moi juste l'app",
     },
     steps: {
@@ -622,8 +619,7 @@ export const FR: TourText = {
     findingBySeller: "Trouver quelqu'un que ça intéressait",
     moveIntro: "Deux petites questions sur maintenant.",
     firstLookIntro: "Maintenant, un premier aperçu de takeover.",
-    situationsIntro:
-      "Quatre courtes situations. Rien ici n'est réel. Rien n'est envoyé ni facturé.",
+    situationsIntro: "Quatre courtes situations.",
     lastStory: {
       question: "En une phrase\u00a0: comment ça s'est passé\u00a0?",
       label: "Ta phrase",
@@ -635,7 +631,7 @@ export const FR: TourText = {
         "Pako rédige tes messages. Rien n'est envoyé tant que tu ne touches pas Envoyer.",
     },
     helperMissing: "L'option coursier n'existe pas encore.",
-    packMissing: "Ce pack n'existe pas encore. Rien n'est facturé.",
+    packMissing: "Ce pack n'existe pas encore.",
     desk: {
       sameTerms: "Même bureau, même état, à récupérer cette semaine",
       distance: {

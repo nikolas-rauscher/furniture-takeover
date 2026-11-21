@@ -68,8 +68,7 @@ export const studyStartSchema = z
     /** Channel tag from the invitation link. */
     source: z.string().regex(/^[a-z0-9][a-z0-9-]{0,23}$/),
     device: z.enum(["phone", "desktop"]),
-    /** A session only exists once the participant confirmed both. */
-    adult: z.literal(true),
+    /** A session only exists once the participant agreed. */
     consent: z.literal(true),
   })
   .refine((start) => start.survey !== "v3" || start.language !== undefined, {

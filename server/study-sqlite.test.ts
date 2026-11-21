@@ -21,7 +21,6 @@ const v1Start = (session: string = randomUUID()): StudyStart => ({
   version: "p1",
   source: "moodle",
   device: "phone",
-  adult: true,
   consent: true,
 });
 const v3Start = (session: string = randomUUID()): StudyStart => ({

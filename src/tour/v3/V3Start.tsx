@@ -6,8 +6,8 @@ import { formatDay } from "../i18n/tourText";
 import StudyShell from "../study/StudyShell";
 import { V3_MINUTES } from "./v3Script";
 
-/** What is saved, in short, with the rest behind "More". */
-function SaveCard({
+/** What is saved, folded away behind a quiet toggle. */
+function SaveDetails({
   contact,
   deleteBy,
 }: {
@@ -17,32 +17,25 @@ function SaveCard({
   const text = useTourText();
   const { start } = text.v3;
   const [open, setOpen] = useState(false);
-  const moreId = useId();
+  const detailsId = useId();
   return (
-    <section
-      className="tour-card tour-consent"
-      aria-labelledby={`${moreId}-title`}
-    >
-      <h2 id={`${moreId}-title`} className="tour-card-title">
-        {start.saveTitle}
-      </h2>
-      <p>{start.save(formatDay(deleteBy, text))}</p>
+    <div className="tour-consent">
       <button
         type="button"
         className="tour-more"
         aria-expanded={open}
-        aria-controls={moreId}
+        aria-controls={detailsId}
         onClick={() => setOpen(!open)}
       >
-        {start.more}
+        {start.saveTitle}
         <ChevronDown
           size={16}
           aria-hidden="true"
           data-open={open || undefined}
         />
       </button>
-      <div id={moreId} hidden={!open}>
-        <p>{start.moreText}</p>
+      <div id={detailsId} hidden={!open}>
+        <p>{start.save(formatDay(deleteBy, text))}</p>
         <p>
           {start.questions}{" "}
           <a className="tour-link" href={`mailto:${contact}`}>
@@ -50,11 +43,11 @@ function SaveCard({
           </a>
         </p>
       </div>
-    </section>
+    </div>
   );
 }
 
-/** One screen: Pako's invitation with the honest duration, and the consent card. */
+/** One screen: Pako's invitation with the honest duration, and what is saved on request. */
 export default function V3Start({
   contact,
   deleteBy,
@@ -88,7 +81,7 @@ export default function V3Start({
         </>
       }
     >
-      <SaveCard contact={contact} deleteBy={deleteBy} />
+      <SaveDetails contact={contact} deleteBy={deleteBy} />
     </StudyShell>
   );
 }

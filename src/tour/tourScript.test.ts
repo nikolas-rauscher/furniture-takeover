@@ -121,7 +121,6 @@ test("the version is valid on the wire", () => {
     version: STUDY_VERSION,
     source: "moodle",
     device: "phone",
-    adult: true,
     consent: true,
   };
   assert.ok(studyStartSchema.safeParse(start).success);

@@ -42,7 +42,6 @@ export function saveJob(progress: StudyProgress, key: string): SaveJob {
           language: progress.language,
           source: progress.source,
           device: progress.device,
-          adult: true,
           consent: true,
         }),
     };

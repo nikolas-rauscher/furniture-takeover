@@ -169,7 +169,7 @@ export const DE: TourText = {
       deleted: (date) => `Alles wird bis zum ${date} gelöscht.`,
       questions: "Fragen:",
     },
-    agree: "Ich bin 18 oder älter und einverstanden",
+    agree: "Einverstanden",
     decline: "Nein danke, zeig mir nur die Tour",
     progress: "Fortschritt der Studie",
     stepOf: (step, total) => `Schritt ${step} von ${total}`,
@@ -400,12 +400,9 @@ export const DE: TourText = {
         `Hallo, ich bin Pako! Wir sind Studierende der EPFL und bauen takeover, eine App, um gebrauchte Sachen rund um den Campus weiterzugeben. Hast du ${minutes} Minuten? Ohne Anmeldung. Alle sind willkommen, auch wenn du noch nie etwas Gebrauchtes gekauft oder verkauft hast.`,
       saveTitle: "Was wir speichern",
       save: (date) =>
-        `Deine Antworten durch Tippen, welche Bildschirme du siehst, überspringst oder zu denen du zurückgehst, und die Zeit pro Bildschirm, damit wir sehen, welche Fragen unklar sind. Was du schreibst: den optionalen Satz über deinen letzten Tausch und die Nachricht im Übungschat. Den Link, über den du gekommen bist, deine Sprache und ob du ein Handy oder einen Computer benutzt. Kein Name, keine IP-Adresse. Gelöscht bis zum ${date}.`,
-      more: "Mehr",
-      moreText:
-        "Dein Fortschritt bleibt in diesem Browser-Tab, bis du ihn schliesst. Dieser Browser merkt sich, dass du fertig bist, damit du nicht zweimal gefragt wirst. Eine E-Mail-Adresse am Schluss ist optional und wird getrennt von deinen Antworten aufbewahrt.",
+        `Deine Antworten, welche Bildschirme du siehst, überspringst oder zu denen du zurückgehst, die Zeit pro Bildschirm, den Link, über den du gekommen bist, deine Sprache und ob du ein Handy oder einen Computer benutzt. Dein Fortschritt bleibt in diesem Tab, bis du ihn schliesst, und dieser Browser merkt sich, dass du fertig bist. Eine E-Mail-Adresse am Schluss ist optional und wird getrennt von deinen Antworten aufbewahrt. Alles wird bis zum ${date} gelöscht.`,
       questions: "Fragen:",
-      go: "Los geht's (ich bin 18+ und einverstanden)",
+      go: "Los geht's",
       demo: "Zeig mir nur die App",
     },
     steps: {
@@ -615,8 +612,7 @@ export const DE: TourText = {
     findingBySeller: "Jemanden finden, der es wollte",
     moveIntro: "Zwei kurze Fragen zu jetzt.",
     firstLookIntro: "Jetzt ein erster Blick auf takeover.",
-    situationsIntro:
-      "Vier kurze Situationen. Nichts hier ist echt. Nichts wird gesendet oder verrechnet.",
+    situationsIntro: "Vier kurze Situationen.",
     lastStory: {
       question: "In einem Satz: Wie ist es gelaufen?",
       label: "Dein Satz",
@@ -628,7 +624,7 @@ export const DE: TourText = {
         "Pako entwirft deine Nachrichten. Nichts wird gesendet, bis du auf Senden tippst.",
     },
     helperMissing: "Den Kurier gibt es noch nicht.",
-    packMissing: "Dieses Paket gibt es noch nicht. Nichts wird verrechnet.",
+    packMissing: "Dieses Paket gibt es noch nicht.",
     desk: {
       sameTerms:
         "Gleicher Schreibtisch, gleicher Zustand, Abholung diese Woche",
