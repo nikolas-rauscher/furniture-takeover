@@ -218,7 +218,7 @@ One session per participant, created on "Let's go": a random id, `survey = 'v3'`
 
 The tab keeps the participant's progress with the wording version the session started in. A reload continues the session only in that version: after a new version is deployed, the progress is set aside and the survey starts again with a new session and the line "The survey was updated, so it starts again."
 
-One answer per session and step, replaced when the participant goes back and answers again. When a change after Back takes a step off the participant's path, such as `last-role` changed to `none` after `last-trouble` was answered, that step's answer is saved again empty: `chosen` and `text` empty, `first_chosen` kept. An empty answer counts as not answered on the results page, in "How others answered" and in the queries below:
+One answer per session and step, replaced when the participant goes back and answers again. When a change after Back takes a step off the participant's path, such as `last-role` changed to `none` after `last-trouble` was answered, that step's answer is saved again empty: `chosen` and `text` empty, `first_chosen` kept. The same happens when such a change alters the wording an answer was given under: the `helped-*` answers when `last-role` changes between an attempt and `none`, and a `last-trouble` answer holding `finding` when the side changes between buying or getting and selling or giving away. Every save carries a `revision` that the client raises; the server keeps the newest and ignores an older write, such as one still in flight from before a reload. An empty answer counts as not answered on the results page, in "How others answered" and in the queries below:
 
 | Field | Content |
 | --- | --- |

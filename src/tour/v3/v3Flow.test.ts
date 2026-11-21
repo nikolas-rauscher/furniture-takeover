@@ -514,3 +514,40 @@ test("each ladder price counts as asked once, from the moment it shows", () => {
   const done = at("chf-8", { "pack-chf-8": "yes" });
   assert.deepEqual(shownSteps(done), [], "nothing left to show");
 });
+
+test("a feature answered as tried is emptied when the participant turns out never to have tried", () => {
+  const before = {
+    "last-role": answer("selling"),
+    "helped-find": answer("yes"),
+  };
+  const after = withoutAnswersOffPath(before, {
+    ...progress,
+    answers: { ...before, "last-role": answer("none") },
+  });
+  assert.deepEqual(after.answers["helped-find"].chosen, []);
+  assert.deepEqual(after.answers["helped-find"].firstChosen, ["yes"]);
+  assert.equal(after.answers["helped-find"].revision, 2);
+});
+
+test("`finding` is emptied when the role changes its meaning; other obstacles stay", () => {
+  const before = {
+    "last-role": answer("buying"),
+    "last-trouble": answer("finding"),
+  };
+  const selling = withoutAnswersOffPath(before, {
+    ...progress,
+    answers: { ...before, "last-role": answer("selling") },
+  });
+  assert.deepEqual(selling.answers["last-trouble"].chosen, []);
+  const transport = { ...before, "last-trouble": answer("transport") };
+  const kept = withoutAnswersOffPath(transport, {
+    ...progress,
+    answers: { ...transport, "last-role": answer("selling") },
+  });
+  assert.equal(kept.answers["last-trouble"], transport["last-trouble"]);
+  const sameSide = withoutAnswersOffPath(before, {
+    ...progress,
+    answers: { ...before, "last-role": answer("getting-free") },
+  });
+  assert.equal(sameSide.answers["last-trouble"], before["last-trouble"]);
+});

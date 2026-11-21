@@ -153,6 +153,23 @@ export const triedBefore = (
   answers: Record<string, { chosen: readonly string[] }>,
 ) => (answers[TRIED.step]?.chosen ?? []).some((id) => TRIED.anyOf.includes(id));
 
+/**
+ * The wording an answer was given under, where an earlier answer changes it: whether a
+ * feature "would have helped" or "would help", and which side the pooled `finding`
+ * obstacle names. Null where the words do not depend on earlier answers.
+ */
+export function wordingOf(
+  id: string,
+  answers: Record<string, { chosen: readonly string[] }>,
+  chosen: readonly string[],
+): string | null {
+  if (id.startsWith("helped-"))
+    return triedBefore(answers) ? "tried" : "never-tried";
+  if (id === "last-trouble" && chosen.includes("finding"))
+    return wasBuying(answers[TRIED.step]?.chosen[0]) ? "buyer" : "seller";
+  return null;
+}
+
 /** Whether the participant was buying or getting, which changes one obstacle's words. */
 export const wasBuying = (role: string | undefined) =>
   role !== undefined && BUYING.includes(role);

@@ -15,6 +15,7 @@ import {
   type V3Section,
   type V3Step,
   packAnswerStep,
+  wordingOf,
 } from "./v3Script.ts";
 
 /** The contract's limit for the time on one step. */
@@ -51,20 +52,42 @@ export function visibleV3Steps(answers: AnswerSheet): V3Step[] {
 }
 
 /**
+ * Answers whose wording changed with an earlier answer, so the participant never
+ * answered them as they now read: they are emptied like answers off the path.
+ */
+function emptiedByWording(before: AnswerSheet, after: AnswerSheet) {
+  const emptied: AnswerSheet = {};
+  for (const [id, answer] of Object.entries(after)) {
+    const given = answer.chosen.length > 0 || answer.text !== "";
+    if (
+      given &&
+      wordingOf(id, before, answer.chosen) !==
+        wordingOf(id, after, answer.chosen)
+    )
+      emptied[id] = { ...answer, chosen: [], text: "" };
+  }
+  return emptied;
+}
+
+/**
  * Empties the answers of steps that the change from `before` takes off the participant's
- * path, such as `last-trouble` once `last-role` becomes `none`. Each keeps its first
- * answer, its order and its time; the events stay as they were.
+ * path, such as `last-trouble` once `last-role` becomes `none`, and of steps whose wording
+ * the change alters, such as `helped-find` between tried and never tried. Each keeps its
+ * first answer, its order and its time; the events stay as they were.
  */
 export function withoutAnswersOffPath(
   before: AnswerSheet,
   after: V3Progress,
 ): V3Progress {
-  const emptied = emptiedOffPath(
-    visibleV3Steps(before),
-    visibleV3Steps(after.answers),
-    answerIds,
-    after.answers,
-  );
+  const emptied = {
+    ...emptiedByWording(before, after.answers),
+    ...emptiedOffPath(
+      visibleV3Steps(before),
+      visibleV3Steps(after.answers),
+      answerIds,
+      after.answers,
+    ),
+  };
   // An emptied answer is a new save, so it outranks the answer it replaces.
   const raised = Object.fromEntries(
     Object.entries(emptied).map(([id, answer]) => [
