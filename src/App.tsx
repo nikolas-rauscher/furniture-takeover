@@ -734,7 +734,6 @@ export default function App({
 
       <AppFooter
         destination={currentDestination}
-        pageKey={pageKey}
         badges={{
           unreadMatches: watches.unread,
           unreadMessages: messages.unread,
