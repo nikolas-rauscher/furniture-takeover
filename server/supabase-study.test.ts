@@ -137,22 +137,26 @@ test("an answer or linked contact for an unknown session is refused with a named
   assert.equal(await count("study_contacts"), 0);
 });
 
-test("a contact is stored once per address and unlinked when its session is deleted", async (t) => {
-  const { asOwner, startSession, saveContact, count } = await setup(t);
+test("a contact is stored once per address, kept as first sent, and unlinked when its session is deleted", async (t) => {
+  const { db, asOwner, startSession, saveContact, count } = await setup(t);
   const session = randomUUID();
   await startSession(session);
-  await saveContact("Ada@Epfl.ch");
-  await saveContact(" ada@epfl.ch ", session);
+  await saveContact("Ada@Epfl.ch", session);
+  await db.query("select public.study_save_contact($1,false,null)", [
+    " ada@epfl.ch ",
+  ]);
   assert.equal(await count("study_contacts"), 1);
+  const contacts = () =>
+    asOwner("select email, pilot, session from takeover_admin.study_contacts");
+  assert.deepEqual(await contacts(), [
+    { email: "ada@epfl.ch", pilot: true, session },
+  ]);
   await asOwner("delete from takeover_admin.study_sessions where id=$1", [
     session,
   ]);
-  assert.deepEqual(
-    await asOwner(
-      "select email, pilot, session from takeover_admin.study_contacts",
-    ),
-    [{ email: "ada@epfl.ch", pilot: true, session: null }],
-  );
+  assert.deepEqual(await contacts(), [
+    { email: "ada@epfl.ch", pilot: true, session: null },
+  ]);
 });
 
 test("deleting a session deletes its answers", async (t) => {
@@ -190,8 +194,8 @@ test("the limits on answers, sessions and contacts are enforced in SQL", async (
      select 'p'||n||'@epfl.ch',false from generate_series(1,$1) as n`,
     [STUDY_LIMITS.contacts],
   );
-  await saveContact("p1@epfl.ch");
-  await assert.rejects(saveContact("new@epfl.ch"), /study_contact_limit/);
+  for (const email of ["p1@epfl.ch", "new@epfl.ch"])
+    await assert.rejects(saveContact(email), /study_contact_limit/);
 });
 
 const STUDY_FUNCTIONS = [
@@ -331,7 +335,7 @@ test("events are stored once per sequence number, checked, and capped per sessio
   assert.equal(await count("study_events"), STUDY_LIMITS.eventsPerSession);
 });
 
-test("a pilot form is stored once per address, without a session, and capped", async (t) => {
+test("a pilot form is stored once per address as first sent, without a session, and capped", async (t) => {
   const { asOwner, savePilot, count } = await setup(t);
   await savePilot("Ada@Epfl.ch");
   await savePilot(" ada@epfl.ch ", "both");
@@ -342,7 +346,7 @@ test("a pilot form is stored once per address, without a session, and capped", a
     [
       {
         email: "ada@epfl.ch",
-        role: "both",
+        role: "seller",
         weeks: ["2027-02-01"],
         items: ["furniture"],
         join_pilot: true,
@@ -364,8 +368,8 @@ test("a pilot form is stored once per address, without a session, and capped", a
     [STUDY_LIMITS.pilot],
   );
   assert.equal(await count("study_pilot"), STUDY_LIMITS.pilot);
-  await savePilot("p2@epfl.ch");
-  await assert.rejects(savePilot("new@epfl.ch"), /study_pilot_limit/);
+  for (const email of ["p2@epfl.ch", "new@epfl.ch"])
+    await assert.rejects(savePilot(email), /study_pilot_limit/);
 });
 
 test("withdrawing removes the session with its answers and events and can be repeated", async (t) => {

@@ -197,38 +197,33 @@ export function createSqliteStudyStore(
           throw namedStudyErrors.study_event_limit;
       });
     },
+    // A full list refuses every address, listed or not, so the answer never tells.
     saveContact(input: StudyContact) {
       inTransaction(() => {
-        const email = normalizeEmail(input.email);
         if (input.session !== null) requireSession(input.session);
-        if (
-          !exists("study_contacts WHERE email = ?", email) &&
-          count("study_contacts") >= STUDY_LIMITS.contacts
-        )
+        if (count("study_contacts") >= STUDY_LIMITS.contacts)
           throw namedStudyErrors.study_contact_limit;
         db.prepare(
           `INSERT INTO study_contacts (email, pilot, session, created_at) VALUES (?, ?, ?, ?)
-           ON CONFLICT (email) DO UPDATE SET pilot = excluded.pilot, session = excluded.session`,
-        ).run(email, input.pilot ? 1 : 0, input.session, now());
+           ON CONFLICT (email) DO NOTHING`,
+        ).run(
+          normalizeEmail(input.email),
+          input.pilot ? 1 : 0,
+          input.session,
+          now(),
+        );
       });
     },
     savePilot(input: StudyPilot) {
       inTransaction(() => {
-        const email = normalizeEmail(input.email);
-        if (
-          !exists("study_pilot WHERE email = ?", email) &&
-          count("study_pilot") >= STUDY_LIMITS.pilot
-        )
+        if (count("study_pilot") >= STUDY_LIMITS.pilot)
           throw namedStudyErrors.study_pilot_limit;
         db.prepare(
           `INSERT INTO study_pilot
              (email, role, house, weeks, items, join_pilot, later_email, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-           ON CONFLICT (email) DO UPDATE SET role = excluded.role, house = excluded.house,
-             weeks = excluded.weeks, items = excluded.items,
-             join_pilot = excluded.join_pilot, later_email = excluded.later_email`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (email) DO NOTHING`,
         ).run(
-          email,
+          normalizeEmail(input.email),
           input.role,
           input.house,
           JSON.stringify(input.weeks),

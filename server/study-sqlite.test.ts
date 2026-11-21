@@ -255,13 +255,13 @@ test("events stop at the limit per session, and a refused batch stores none of i
   });
 });
 
-test("a contact is stored once per address, with or without a session", async () => {
+test("a contact is stored once per address, and a later submission for it changes nothing", async () => {
   await withDatabase((path) => {
     const store = createSqliteStudyStore(path);
     const { session } = v1Start();
     store.start(v1Start(session));
-    store.saveContact(contact("Ada@Epfl.ch"));
-    store.saveContact({ ...contact("ada@epfl.ch", session), pilot: true });
+    store.saveContact({ ...contact("Ada@Epfl.ch", session), pilot: true });
+    store.saveContact(contact("ada@epfl.ch"));
     store.saveContact(contact("bo@unil.ch"));
     store.close?.();
     assert.deepEqual(
@@ -277,7 +277,7 @@ test("a contact is stored once per address, with or without a session", async ()
   });
 });
 
-test("a pilot form is stored once per address and a second form replaces it", async () => {
+test("a pilot form is stored once per address, and a later form for it changes nothing", async () => {
   await withDatabase((path) => {
     const store = createSqliteStudyStore(path);
     store.savePilot(pilot("Ada@Epfl.ch"));
@@ -285,6 +285,7 @@ test("a pilot form is stored once per address and a second form replaces it", as
       ...pilot("ada@epfl.ch"),
       role: "both",
       weeks: [],
+      joinPilot: false,
       laterEmail: true,
     });
     store.close?.();
@@ -296,12 +297,12 @@ test("a pilot form is stored once per address and a second form replaces it", as
       [
         {
           email: "ada@epfl.ch",
-          role: "both",
+          role: "seller",
           house: "atrium",
-          weeks: "[]",
+          weeks: '["2027-02-01"]',
           items: '["furniture","bike"]',
           join_pilot: 1,
-          later_email: 1,
+          later_email: 0,
         },
       ],
     );
@@ -396,7 +397,7 @@ test("a demo file from before v3 gets the new columns and keeps its sessions as 
   });
 });
 
-test("answers, sessions, contacts and pilot forms stop at their limits; replacing does not count", async () => {
+test("answers, sessions, contacts and pilot forms stop at their limits; a full list refuses listed addresses too", async () => {
   await withDatabase((path) => {
     const store = createSqliteStudyStore(path);
     const { session } = v1Start();
@@ -434,14 +435,14 @@ test("answers, sessions, contacts and pilot forms stop at their limits; replacin
     assert.throws(() => full.start(v1Start()), {
       code: "STUDY_SESSION_LIMIT",
     });
-    full.saveContact({ ...contact("p0@epfl.ch"), pilot: true });
-    assert.throws(() => full.saveContact(contact("new@epfl.ch")), {
-      code: "STUDY_CONTACT_LIMIT",
-    });
-    full.savePilot(pilot("p0@epfl.ch"));
-    assert.throws(() => full.savePilot(pilot("new@epfl.ch")), {
-      code: "STUDY_PILOT_LIMIT",
-    });
+    for (const email of ["p0@epfl.ch", "new@epfl.ch"]) {
+      assert.throws(() => full.saveContact(contact(email)), {
+        code: "STUDY_CONTACT_LIMIT",
+      });
+      assert.throws(() => full.savePilot(pilot(email)), {
+        code: "STUDY_PILOT_LIMIT",
+      });
+    }
     full.close?.();
   });
 });

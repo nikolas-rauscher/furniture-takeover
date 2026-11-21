@@ -360,6 +360,40 @@ test("the pilot form needs one ticked box and known houses, weeks and items", as
   }
 });
 
+test("a repeated address gets the same answer as a new one and changes nothing", async (t) => {
+  const study = openStudy(t);
+  const url = await startServer(t, { study });
+  const session = randomUUID();
+  await post(url, STUDY_ROUTES.sessions, startBody(session));
+  const reply = async (route: string, body: unknown) => {
+    const response = await post(url, route, body);
+    return { status: response.status, body: await response.text() };
+  };
+  const saved = { status: 200, body: JSON.stringify({ saved: true }) };
+  const later = { ...pilotBody, email: "ADA@epfl.ch", joinPilot: false };
+  assert.deepEqual(await reply(STUDY_ROUTES.pilot, pilotBody), saved);
+  assert.deepEqual(await reply(STUDY_ROUTES.pilot, later), saved);
+  const contact = { email: "bo@unil.ch", pilot: true, session };
+  assert.deepEqual(await reply(STUDY_ROUTES.contacts, contact), saved);
+  assert.deepEqual(
+    await reply(STUDY_ROUTES.contacts, {
+      ...contact,
+      pilot: false,
+      session: null,
+    }),
+    saved,
+  );
+  const { pilot } = await study.store.reportRows(undefined);
+  assert.deepEqual(pilot, [
+    {
+      house: "triaudes",
+      weeks: ["2026-12-21", "2027-02-08"],
+      joinPilot: true,
+      laterEmail: true,
+    },
+  ]);
+});
+
 test("withdrawing removes a session and answers the same when repeated", async (t) => {
   const url = await startServer(t, { study: openStudy(t) });
   const session = randomUUID();

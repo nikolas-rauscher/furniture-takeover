@@ -180,6 +180,8 @@ Pako: "We're testing takeover with real items in a few FMEL houses. Want a spot?
 
 Send needs at least one tick. A sign-up counts only with the first tick, later-email permission only with the second. Strong interest: signed up, at least one week and one item. It sets the order of re-contact; everyone who signs up is contacted. Pilot capacity: up to 10 real exchanges of items a student can carry or move with a bike trailer.
 
+One form per address: the first one stands, and a later form with the same address changes nothing. The page answers both the same way, so it does not show whether an address is already listed. Changes, such as other weeks or leaving the list, go through the contact address. Addresses are not verified: before the pilot, the team writes once to each address and contacts only the addresses that confirm.
+
 ### 8. End
 
 Pako: "Thanks! That helps us decide what to build next."

@@ -109,35 +109,30 @@ begin
  then raise exception 'study_event_limit'; end if;
 end $$;
 
--- One row per address; a second submission updates the pilot flag and the link to a session.
+-- One row per address, and the first submission stands: a later one with the same address
+-- changes nothing and returns the same, so a caller cannot tell whether an address is listed.
+-- A full list refuses every address for the same reason.
 create function public.study_save_contact(p_email text,p_pilot boolean,p_session uuid) returns void
 language plpgsql security definer set search_path='' as $$
-declare address text:=lower(btrim(p_email));
 begin
  perform pg_advisory_xact_lock(hashtext('takeover_admin.study_contacts'));
  if p_session is not null and not exists(select 1 from takeover_admin.study_sessions where id=p_session)
  then raise exception 'study_session_unknown'; end if;
- if not exists(select 1 from takeover_admin.study_contacts where email=address)
-  and (select count(*) from takeover_admin.study_contacts)>=2000
- then raise exception 'study_contact_limit'; end if;
- insert into takeover_admin.study_contacts(email,pilot,session) values(address,p_pilot,p_session)
- on conflict(email) do update set pilot=excluded.pilot,session=excluded.session;
+ if (select count(*) from takeover_admin.study_contacts)>=2000 then raise exception 'study_contact_limit'; end if;
+ insert into takeover_admin.study_contacts(email,pilot,session) values(lower(btrim(p_email)),p_pilot,p_session)
+ on conflict(email) do nothing;
 end $$;
 
--- One row per address; a second form replaces the first.
+-- One form per address, and the first one stands, as for the contacts above.
 create function public.study_save_pilot(p_email text,p_role text,p_house text,p_weeks text[],p_items text[],
  p_join_pilot boolean,p_later_email boolean)
 returns void language plpgsql security definer set search_path='' as $$
-declare address text:=lower(btrim(p_email));
 begin
  perform pg_advisory_xact_lock(hashtext('takeover_admin.study_pilot'));
- if not exists(select 1 from takeover_admin.study_pilot where email=address)
-  and (select count(*) from takeover_admin.study_pilot)>=2000
- then raise exception 'study_pilot_limit'; end if;
+ if (select count(*) from takeover_admin.study_pilot)>=2000 then raise exception 'study_pilot_limit'; end if;
  insert into takeover_admin.study_pilot(email,role,house,weeks,items,join_pilot,later_email)
- values(address,p_role,p_house,p_weeks,p_items,p_join_pilot,p_later_email)
- on conflict(email) do update set role=excluded.role,house=excluded.house,weeks=excluded.weeks,
-  items=excluded.items,join_pilot=excluded.join_pilot,later_email=excluded.later_email;
+ values(lower(btrim(p_email)),p_role,p_house,p_weeks,p_items,p_join_pilot,p_later_email)
+ on conflict(email) do nothing;
 end $$;
 
 -- "Remove my answers": the session goes with its answers and events. A second call changes nothing.
