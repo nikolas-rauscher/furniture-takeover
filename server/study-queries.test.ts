@@ -353,27 +353,55 @@ test("the v3 results queries run on v3 sessions of the named version only", asyn
     ],
   );
   assert.deepEqual(
-    rowsOf(await query("d4-ladder"), "price", "start_price", "yes", "asked"),
+    rowsOf(
+      await query("d4-ladder"),
+      "price",
+      "start_price",
+      "subgroup",
+      "yes",
+      "asked",
+    ),
     [
-      ["chf-5", "all", 1, 2],
-      ["chf-5", "chf-5", 1, 2],
-      ["chf-8", "all", 0, 1],
-      ["chf-8", "chf-5", 0, 1],
+      ["chf-5", "all", "all", 1, 2],
+      ["chf-5", "all", "moving-by-june", 1, 1],
+      ["chf-5", "all", "rest", 0, 1],
+      ["chf-5", "chf-5", "all", 1, 2],
+      ["chf-8", "all", "all", 0, 1],
+      ["chf-8", "all", "moving-by-june", 0, 1],
+      ["chf-8", "chf-5", "all", 0, 1],
     ],
   );
   assert.deepEqual(
-    rowsOf(await query("d9-pay-model"), "model", "chosen", "answered"),
+    rowsOf(
+      await query("d9-pay-model"),
+      "subgroup",
+      "model",
+      "chosen",
+      "answered",
+    ),
     [
-      ["move-pack", 1, "2"],
-      ["none", 1, "2"],
+      ["all", "move-pack", 1, "2"],
+      ["all", "none", 1, "2"],
+      ["epfl-unil", "move-pack", 1, "1"],
+      ["rest", "none", 1, "1"],
     ],
   );
   assert.deepEqual(
-    rowsOf(await query("d10-delivery"), "item", "answer", "chosen", "answered"),
+    rowsOf(
+      await query("d10-delivery"),
+      "item",
+      "subgroup",
+      "answer",
+      "chosen",
+      "answered",
+    ),
     [
-      ["delivery-pref", "if-priced", 1, "2"],
-      ["delivery-pref", "pick-up", 1, "2"],
-      ["delivery-worth", "10-20", 1, "1"],
+      ["delivery-pref", "all", "if-priced", 1, "2"],
+      ["delivery-pref", "all", "pick-up", 1, "2"],
+      ["delivery-pref", "furniture", "if-priced", 1, "1"],
+      ["delivery-pref", "rest", "pick-up", 1, "1"],
+      ["delivery-worth", "all", "10-20", 1, "1"],
+      ["delivery-worth", "furniture", "10-20", 1, "1"],
     ],
   );
   assert.deepEqual(
@@ -444,12 +472,23 @@ test("the v3 results queries run on v3 sessions of the named version only", asyn
     ["rest", "none"],
   ]);
   assert.deepEqual(
-    rowsOf(await query("d11-wanted"), "step", "answer", "chosen", "answered"),
+    rowsOf(
+      await query("d11-wanted"),
+      "step",
+      "subgroup",
+      "answer",
+      "chosen",
+      "answered",
+    ),
     [
-      ["wanted-react", "rather-not", 1, "2"],
-      ["wanted-react", "snap", 1, "2"],
-      ["wanted-share", "no", 1, "2"],
-      ["wanted-share", "yes", 1, "2"],
+      ["wanted-react", "all", "rather-not", 1, "2"],
+      ["wanted-react", "all", "snap", 1, "2"],
+      ["wanted-react", "fmel", "snap", 1, "1"],
+      ["wanted-react", "rest", "rather-not", 1, "1"],
+      ["wanted-share", "all", "no", 1, "2"],
+      ["wanted-share", "all", "yes", 1, "2"],
+      ["wanted-share", "fmel", "yes", 1, "1"],
+      ["wanted-share", "rest", "no", 1, "1"],
     ],
   );
   assert.equal(queries.size, 20);

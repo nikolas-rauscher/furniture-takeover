@@ -588,7 +588,7 @@ order by subgroup, chosen desc, option;
 
 ### D4 Pack price ladder
 
-Acceptance per price over everyone shown that price, in total and by the price shown first. A participant who left while a price was on screen counts there as not yes; the answers are joined to the exposures.
+Acceptance per price over everyone shown that price, in total, by the price shown first, and for those moving by June against the rest. A participant who left while a price was on screen counts there as not yes; the answers are joined to the exposures.
 
 ```sql
 -- d4-ladder
@@ -601,17 +601,22 @@ with run as (
   group by e.session, e.step
 ), starts as (
   select distinct on (session) session, step as start from exposures order by session, seq
+), moving as (
+  select a.session from takeover_admin.study_answers a join run on run.id = a.session
+  where a.step = 'move' and a.chosen && array['move-feb', 'move-jun']
 ), asked as (
-  select substring(x.step from 6) as price, substring(s.start from 6) as start, a.chosen[1] as answer
+  select substring(x.step from 6) as price, substring(s.start from 6) as start,
+    case when x.session in (select session from moving) then 'moving-by-june' else 'rest' end as part,
+    a.chosen[1] as answer
   from exposures x
   join starts s on s.session = x.session
   left join takeover_admin.study_answers a on a.session = x.session and a.step = x.step
 )
-select price, coalesce(start, 'all') as start_price,
+select price, coalesce(start, 'all') as start_price, coalesce(part, 'all') as subgroup,
   count(*) filter (where answer = 'yes') as yes, count(*) as asked
 from asked
-group by grouping sets ((price), (price, start))
-order by price, start_price;
+group by grouping sets ((price), (price, start), (price, part))
+order by price, start_price, subgroup;
 ```
 
 ### D5a Delegation
@@ -743,56 +748,85 @@ order by chosen desc, option;
 
 ### D9 Pay model
 
+All participants, and EPFL/UNIL students against the rest.
+
 ```sql
 -- d9-pay-model
 with run as (
   select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v3-1'
+), subgroup as (
+  select a.session from takeover_admin.study_answers a join run on run.id = a.session
+  where a.step = 'who' and a.chosen && array['epfl', 'unil']
+), answers as (
+  select a.chosen[1] as model,
+    case when a.session in (select session from subgroup) then 'epfl-unil' else 'rest' end as part
+  from takeover_admin.study_answers a join run on run.id = a.session
+  where a.step = 'pay-model' and cardinality(a.chosen) > 0
 )
-select a.chosen[1] as model, count(*) as chosen, sum(count(*)) over () as answered
-from takeover_admin.study_answers a join run on run.id = a.session
-where a.step = 'pay-model' and cardinality(a.chosen) > 0
-group by model
-order by chosen desc, model;
+select coalesce(part, 'all') as subgroup, model, count(*) as chosen,
+  sum(count(*)) over (partition by coalesce(part, 'all')) as answered
+from answers
+group by grouping sets ((model), (part, model))
+order by subgroup, chosen desc, model;
 ```
 
 ### D10 Delivery
 
-`delivery-worth` is counted among those who answered `if-priced` or `always`; its median band comes from these counts.
+`delivery-worth` is counted among those who answered `if-priced` or `always`, with `not-sure` left out, so its median band comes straight from these counts. Both items are also shown for those whose last item was furniture against the rest.
 
 ```sql
 -- d10-delivery
 with run as (
   select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v3-1'
+), furniture as (
+  select a.session from takeover_admin.study_answers a join run on run.id = a.session
+  where a.step = 'last-item' and a.chosen && array['furniture']
 ), prefs as (
-  select a.session, a.chosen[1] as pref
+  select a.session, a.chosen[1] as pref,
+    case when a.session in (select session from furniture) then 'furniture' else 'rest' end as part
   from takeover_admin.study_answers a join run on run.id = a.session
   where a.step = 'delivery-pref' and cardinality(a.chosen) > 0
+), worth as (
+  -- The median's input: bands only, `not-sure` left out.
+  select w.chosen[1] as band, p.part
+  from takeover_admin.study_answers w join prefs p on p.session = w.session
+  where w.step = 'delivery-worth' and p.pref in ('if-priced', 'always')
+    and cardinality(w.chosen) > 0 and w.chosen[1] <> 'not-sure'
 )
-select 'delivery-pref' as item, pref as answer, count(*) as chosen,
-  sum(count(*)) over () as answered
+select 'delivery-pref' as item, coalesce(part, 'all') as subgroup, pref as answer,
+  count(*) as chosen, sum(count(*)) over (partition by coalesce(part, 'all')) as answered
 from prefs
-group by pref
+group by grouping sets ((pref), (part, pref))
 union all
-select 'delivery-worth', w.chosen[1], count(*), sum(count(*)) over ()
-from takeover_admin.study_answers w join prefs p on p.session = w.session
-where w.step = 'delivery-worth' and p.pref in ('if-priced', 'always') and cardinality(w.chosen) > 0
-group by w.chosen[1]
-order by item, answer;
+select 'delivery-worth', coalesce(part, 'all'), band,
+  count(*), sum(count(*)) over (partition by coalesce(part, 'all'))
+from worth
+group by grouping sets ((band), (part, band))
+order by item, subgroup, answer;
 ```
 
 ### D11 Wanted nearby
+
+All participants, and FMEL residents against the rest.
 
 ```sql
 -- d11-wanted
 with run as (
   select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v3-1'
+), fmel as (
+  select a.session from takeover_admin.study_answers a join run on run.id = a.session
+  where a.step = 'housing' and a.chosen && array['fmel']
+), answers as (
+  select a.step, a.chosen[1] as answer,
+    case when a.session in (select session from fmel) then 'fmel' else 'rest' end as part
+  from takeover_admin.study_answers a join run on run.id = a.session
+  where a.step in ('wanted-react', 'wanted-share') and cardinality(a.chosen) > 0
 )
-select a.step, a.chosen[1] as answer, count(*) as chosen,
-  sum(count(*)) over (partition by a.step) as answered
-from takeover_admin.study_answers a join run on run.id = a.session
-where a.step in ('wanted-react', 'wanted-share') and cardinality(a.chosen) > 0
-group by a.step, answer
-order by a.step, chosen desc, answer;
+select step, coalesce(part, 'all') as subgroup, answer, count(*) as chosen,
+  sum(count(*)) over (partition by step, coalesce(part, 'all')) as answered
+from answers
+group by grouping sets ((step, answer), (step, part, answer))
+order by step, subgroup, chosen desc, answer;
 ```
 
 ### Deleting the data
