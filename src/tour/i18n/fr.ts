@@ -407,13 +407,46 @@ export const FR: TourText = {
     },
     start: {
       bubble: (minutes) =>
-        `Salut, je suis Pako\u00a0! Nous sommes des étudiant·es de l'EPFL et nous construisons takeover, une app pour faire passer des objets d'occasion autour du campus. Tu décris ce qu'il te faut ou tu prends en photo ce que tu vends, j'écris l'annonce ou l'offre, et tu conviens d'un retrait avec des étudiant·es près de chez toi. Tu as ${minutes} minutes\u00a0? Pas d'inscription. Tout le monde est bienvenu, aussi si tu n'as jamais acheté ni vendu d'occasion.`,
+        `Salut, je suis Pako\u00a0! Nous sommes des étudiant·es de l'EPFL et nous construisons takeover, une app pour faire passer des objets d'occasion autour du campus. Tu as ${minutes} minutes\u00a0? Pas d'inscription. Tout le monde est bienvenu, aussi si tu n'as jamais acheté ni vendu d'occasion.`,
       saveTitle: "Ce que nous enregistrons",
       save: (date) =>
         `Tes réponses, les écrans que tu vois, passes ou sur lesquels tu reviens, le temps par écran, le lien par lequel tu es venu·e, ta langue et si tu utilises un téléphone ou un ordinateur. Ta progression reste dans cet onglet jusqu'à ce que tu le fermes, et ce navigateur se souvient que tu as terminé. Une adresse e-mail à la fin est facultative et conservée à part de tes réponses. Tout est supprimé d'ici au ${date}.`,
       questions: "Questions\u00a0:",
       go: "C'est parti",
       demo: "Montre-moi juste l'app",
+    },
+    whatIs: {
+      bubble: "Voici ce que fait takeover.",
+      title: "Qu'est-ce que takeover\u00a0?",
+      find: {
+        title: "Trouver",
+        text: "Décris ce qu'il te faut, et je cherche parmi les annonces d'étudiant·es près de chez toi.",
+      },
+      sell: {
+        title: "Vendre",
+        text: "Prends une photo, et j'écris l'annonce avec un prix suggéré.",
+      },
+      agree: {
+        title: "Se mettre d'accord",
+        text: "Fixez le prix et l'heure du retrait dans le chat, puis retrouvez-vous sur le campus.",
+      },
+      nextTitle: "Ce qui suit",
+      next: [
+        "Ta dernière expérience avec l'occasion",
+        "Un rapide coup d'œil à l'app",
+        "Quelques courtes situations",
+      ],
+      duration: (minutes) => `Environ ${minutes} minutes`,
+    },
+    situations: {
+      label: (current, total) => `Situation ${current} sur ${total}`,
+      pickOne: "Choisis une réponse.",
+      "move-it": "Tu as trouvé un bureau qui te plaît, à 4 km de chez toi.",
+      desk: "Il te faut un bureau, et deux conviennent dans l'app.",
+      pack: (free) =>
+        `Tu déménages dans deux semaines et il te reste trois choses à vendre, dont un bureau. Tu as utilisé les ${free} brouillons photo gratuits du jour dans takeover.`,
+      draft: "Tu achètes un bureau à Mia. Le prix et le lieu te conviennent.",
+      draftTask: "Réponds à Mia, puis choisis quoi faire du brouillon de Pako.",
     },
     steps: {
       who: {
@@ -546,7 +579,7 @@ export const FR: TourText = {
       },
       "move-it": {
         question:
-          "Tu as trouvé un bureau qui te plaît, à 4 km de chez toi. Avant d'accepter de l'acheter\u00a0: comment le ramènerais-tu probablement chez toi\u00a0?",
+          "Avant d'accepter de l'acheter\u00a0: comment le ramènerais-tu probablement chez toi\u00a0?",
         options: {
           "carry-bike": "Je le porte ou je le prends à vélo",
           "public-transport": "En transports publics",
@@ -559,8 +592,7 @@ export const FR: TourText = {
         },
       },
       desk: {
-        question:
-          "Il te faut un bureau. En voici deux qui conviennent. Lequel choisirais-tu\u00a0?",
+        question: "Lequel choisirais-tu\u00a0?",
         options: {
           nearer: "CHF 45",
           cheaper: "CHF 30",
@@ -568,8 +600,7 @@ export const FR: TourText = {
         },
       },
       pack: {
-        question: (free) =>
-          `Imagine que tu déménages dans deux semaines et qu'il te reste trois choses à vendre, dont un bureau. Tu as utilisé les ${free} brouillons photo gratuits du jour dans takeover. Que ferais-tu\u00a0?`,
+        question: "Que ferais-tu\u00a0?",
         options: {
           manual: "Je les publie moi-même maintenant, gratuitement",
           wait: "J'attends demain pour de nouveaux brouillons gratuits",
@@ -665,8 +696,7 @@ export const FR: TourText = {
       listLabel: "Deux bureaux dans l'app",
     },
     draft: {
-      intro:
-        "Dernière question. Imagine que tu achètes ce bureau. Le prix et le lieu te conviennent.",
+      intro: "Choisis le jour qui te convient dans le chat avec Mia.",
       chatLabel: "Chat d'essai avec Mia",
       listing: {
         title: "Bureau blanc",
@@ -686,29 +716,18 @@ export const FR: TourText = {
       confirm: "17h30, c'est bon. Envoie-moi une offre et je confirme.",
       typing: (name) => `${name} est en train d'écrire`,
       offerReady: "Voici ton offre.",
-      offer:
-        "Salut Mia\u00a0! J'aimerais ton bureau blanc pour CHF 40. Je peux venir le chercher vendredi à 17h30 au Rolex Learning Center.",
+      offer: (day) =>
+        `Salut Mia\u00a0! J'aimerais ton bureau blanc pour CHF 40. Je peux venir le chercher ${day.toLowerCase()} à 17h30 au Rolex Learning Center.`,
       offerTitle: "Brouillon d'offre",
-      send: "Envoyer l'offre",
-      edit: "Modifier",
-      dontSend: "Ne pas envoyer",
+      question: "Que ferais-tu de ce brouillon\u00a0?",
+      sendAsIs: "L'envoyer tel quel",
+      change: "Modifier quelque chose d'abord",
+      own: "Écrire le mien",
+      ownLabel: "Ton message à Mia",
+      send: "Envoyer",
+      dontSend: "Ne pas l'envoyer",
       editLabel: "Ton offre à Mia",
       notSent: "Tu n'as pas envoyé l'offre.",
-    },
-    reveal: {
-      text: (date) =>
-        `Une chose à propos de l'offre\u00a0: nous avons volontairement mis vendredi dans le brouillon alors que tu avais choisi un autre jour, pour voir comment les gens utilisent les messages proposés. Merci de ne pas en parler à d'autres avant le ${date}, pour que ça reste équitable.`,
-      remove: "Supprimer mes réponses",
-      confirmTitle: "Supprimer toutes tes réponses\u00a0?",
-      confirmText:
-        "Tout ce que tu as répondu dans ce sondage est supprimé. C'est irréversible.",
-      keep: "Les garder",
-      removing: "Suppression de tes réponses…",
-      removeFailed:
-        "Tes réponses n'ont pas pu être supprimées. Vérifie ta connexion et réessaie.",
-      removedTitle: "Tes réponses sont supprimées.",
-      removedText:
-        "Merci d'avoir essayé le sondage. Tu peux quand même voir l'app.",
     },
     saved: "C'est fait\u00a0! Tes réponses sont enregistrées.",
     savedSaving: "C'est fait\u00a0! J'enregistre tes dernières réponses.",

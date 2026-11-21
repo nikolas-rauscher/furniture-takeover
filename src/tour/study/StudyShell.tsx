@@ -34,6 +34,8 @@ export type StudyShellProps = {
   onKeyDown?: (event: KeyboardEvent<HTMLElement>) => void;
   /** Also focus the first step, when the shell replaces a screen the participant acted on. */
   focusFirst?: boolean;
+  /** The body holds text only, so a keyboard user scrolls it by focusing the body itself. */
+  readOnly?: boolean;
   children: ReactNode;
 };
 
@@ -53,10 +55,12 @@ export default function StudyShell({
   direction,
   onKeyDown,
   focusFirst = false,
+  readOnly = false,
   children,
 }: StudyShellProps) {
   const { common } = useTourText();
-  const scrollsAlone = arrangement === "beside" || layout === "hero";
+  const scrollsAlone =
+    arrangement === "beside" || layout === "hero" || readOnly;
   const reduced = useReducedMotion() === true;
   const visibleArea = useVisibleArea();
   const body = useRef<HTMLDivElement>(null);

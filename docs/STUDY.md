@@ -15,13 +15,13 @@ Setting: a course project. Dates, prices and the pilot are hypothetical; nothing
 | D2 | Problem to test first in the pilot | `last-trouble` | What breaks down in real pilot exchanges |
 | D3 | Transport help | `move-it`, helper option | Real bookings at a quoted price |
 | D4 | Paid pack in the spring pilot | `pack` | Share of real movers who reach the free limit, and how many buy |
-| D5a | Check step for drafts | `draft`: sent offers with a wrong day | Wrong details in real pilot messages |
+| D5a | Pako's draft as the default way to write an offer (delegation) | `draft`: sent as it is, changed, own message, not sent | Share of pilot offers sent from Pako's draft |
 | D5b | Opt-in for short updates | `sending`: `short-updates` or `replies-too` | Opt-in uptake in the pilot |
 | D6 | Poster lines | `headline` | Scans per line in the poster test |
 | D7 | Which features the pilot and the onboarding lead with | `helped-find`, `helped-sell`, `helped-deal`, `try-first` | Which features pilot users open and finish |
 | D8 | Barriers the pilot plan must answer | `stop` | Reasons pilot volunteers give for dropping out |
 
-What the results cannot claim: shares for all EPFL/UNIL students; adoption or future use; real willingness to pay, a price or revenue; anything about the word "AI"; how much a check step would help; real-world draft error rates; differences between small subgroups; that the tour works.
+What the results cannot claim: shares for all EPFL/UNIL students; adoption or future use; real willingness to pay, a price or revenue; anything about the word "AI"; how carefully people read drafts in real use; differences between small subgroups; that the tour works.
 
 ## Participants and recruitment
 
@@ -44,7 +44,7 @@ Each QR code encodes the full `/tour?s=<tag>` link of the deployment.
 
 Invitation (chat): "Hi all, we're EPFL students building takeover, an app for passing on used stuff around campus. Could you do our {measured}-minute phone survey? No sign-in, everyone welcome, also if you've never bought or sold anything used. {link}". For `moodle-peer`: "The app demo is at the end, or directly via 'Just show me the app'."
 
-`{measured}` is 4 until the pilot measures the median time from start to reveal; it is then rounded up.
+`{measured}` is 5 until the pilot measures the median time from start to the saved core; it is then rounded up.
 
 ## Script
 
@@ -54,11 +54,22 @@ Pako asks every question. Wording is neutral; on product questions (`headline` t
 
 | Id | Text | Options |
 | --- | --- | --- |
-| `start` | "Hi, I'm Pako! We're EPFL students building takeover, an app for passing on used stuff around campus. You describe what you need or snap a photo of what you sell, I write the listing or the offer, and you agree on a pickup with students nearby. Got {measured} minutes? No sign-in. Everyone's welcome, also if you've never bought or sold anything used." | `go` Let's go · `demo` Just show me the app |
+| `start` | "Hi, I'm Pako! We're EPFL students building takeover, an app for passing on used stuff around campus. Got {measured} minutes? No sign-in. Everyone's welcome, also if you've never bought or sold anything used." | `go` Let's go · `demo` Just show me the app |
 
 Folded toggle "What we save" below the invitation: "Your answers, which screens you see, skip or go back to, the time per screen, the link you came from, your language and whether you use a phone or a computer. Your progress stays in this tab until you close it, and this browser remembers that you finished. An email at the end is optional and kept apart from your answers. Everything is deleted by {date}. Questions: {contact}."
 
-`demo` opens the tour without a session; nothing is stored. `{date}` and `{contact}` come from `STUDY_DELETE_BY` and `STUDY_CONTACT`.
+`demo` opens the tour without a session; nothing is stored. `{date}` and `{contact}` come from `STUDY_DELETE_BY` and `STUDY_CONTACT`. A participant who wants their answers deleted writes to the contact.
+
+Then one screen, `what-is`, before the first question. It says what the app does and names no problem, so the questions about the last attempt stay unprimed.
+
+| Part | Text |
+| --- | --- |
+| Pako | "Here's what takeover does." |
+| Title | "What is takeover?" |
+| Three lines, with the intro's find, sell and handshake pictures | **Find** Describe what you need, and I look through listings from students nearby. · **Sell** Take a photo, and I write the listing with a suggested price. · **Agree** Settle the price and a pickup time in the chat, then meet on campus. |
+| Card "What happens next" | 1. Your last experience with second-hand · 2. A quick look at the app · 3. A few short situations · "About {measured} minutes" |
+
+Button Continue. Nothing is stored on this screen apart from its events.
 
 ### 1. You
 
@@ -107,32 +118,31 @@ Changed in `v3-2`: the scenes, the `helped-*` questions and `stop` are new; `try
 
 ### 4. Situations
 
-Pako: "Four quick situations."
+Pako: "Four quick situations." Each situation opens with a context card: "Situation {n} of 4", one sentence on the scenario, and what to do ("Pick one."). Pako then asks the question.
 
-| Id | Question | Options | After the tap |
-| --- | --- | --- | --- |
-| `move-it` | "You've found a desk you like, 4 km from where you live. Before you agree to buy it: how would you most likely get it home?" | Shuffled: `carry-bike` Carry it or take it by bike · `public-transport` Public transport · `friend-car` Borrow a car, or ask a friend with one · `helper` A helper with a cargo bike, booked in the app: CHF 15 for the whole trip up to 4 km, carried to your door (ground floor or lift; stairs may cost extra) · *last:* `skip-desk` I'd look for one closer instead · `not-sure` Not sure | "The helper option doesn't exist yet." |
-| `desk` | "You need a desk. Here are two that fit. Which one would you go for?" Two cards in the phone, order shuffled, same desk and condition, pickup this week. | `nearer` CHF 45 · 200 m from where you live · `cheaper` CHF 30 · 4 km from where you live · *last:* `neither` Neither | |
-| `pack` | "Imagine you're moving out in two weeks and still have three things to sell, a desk among them. You've used today's 3 free photo drafts in takeover. What would you do?" | Shuffled: `manual` List them myself now, for free · `wait` Wait until tomorrow for new free drafts · `pack` Buy the move-out pack: CHF 5 once, five more photo drafts with price checks, valid 30 days · *last:* `other-way` Something else (another app, a group chat, give them away) · `not-sure` Not sure | "This pack doesn't exist yet." |
+| Id | Card | Question | Options | After the tap |
+| --- | --- | --- | --- | --- |
+| `move-it` | "Situation 1 of 4. You've found a desk you like, 4 km from where you live. Pick one." | "Before you agree to buy it: how would you most likely get it home?" | Shuffled: `carry-bike` Carry it or take it by bike · `public-transport` Public transport · `friend-car` Borrow a car, or ask a friend with one · `helper` A helper with a cargo bike, booked in the app: CHF 15 for the whole trip up to 4 km, carried to your door (ground floor or lift; stairs may cost extra) · *last:* `skip-desk` I'd look for one closer instead · `not-sure` Not sure | "The helper option doesn't exist yet." |
+| `desk` | "Situation 2 of 4. You need a desk, and two in the app fit. Pick one." | "Which one would you go for?" Two cards in the phone, order shuffled, same desk and condition, pickup this week. | `nearer` CHF 45 · 200 m from where you live · `cheaper` CHF 30 · 4 km from where you live · *last:* `neither` Neither | |
+| `pack` | "Situation 3 of 4. You're moving out in two weeks and still have three things to sell, a desk among them. You've used today's 3 free photo drafts in takeover. Pick one." | "What would you do?" | Shuffled: `manual` List them myself now, for free · `wait` Wait until tomorrow for new free drafts · `pack` Buy the move-out pack: CHF 5 once, five more photo drafts with price checks, valid 30 days · *last:* `other-way` Something else (another app, a group chat, give them away) · `not-sure` Not sure | "This pack doesn't exist yet." |
 
-`draft`, the last core task, in a chat inside the phone:
+`draft`, the last core task, in a chat inside the phone. It measures delegation: whether people send Pako's draft as it is, change it, write their own or send nothing. The draft matches the participant's own choices; nothing in it is wrong on purpose.
 
-1. Pako: "Last one. Imagine you're buying this desk. The price and the place suit you."
-2. Listing card: "White desk · 120 × 60 cm · CHF 40 · Pickup: EPFL, Rolex Learning Center · Mia".
-3. Mia: "Hi! The desk is still available. Which day could you pick it up? I'm free from 17:00."
-4. `draft-day`, chips in shuffled order: `sat` Saturday · `sun` Sunday. The participant's bubble: "{Day} works for me, 17:30?"
-5. Mia: "17:30 is fine. Send me an offer and I'll confirm."
-6. Pako, after about 1 s of typing: "Here's your offer."
-7. Draft: "Hi Mia! I'd like your white desk for CHF 40. I can pick it up on Friday at 17:30 at the Rolex Learning Center."
-8. Three equal buttons: `send` Send offer · `edit` Edit (the text becomes editable, then Send offer) · `dont-send` Don't send.
+1. Card: "Situation 4 of 4. You're buying a desk from Mia. The price and the place suit you. Answer Mia, then pick what to do with Pako's draft."
+2. Pako: "Pick the day that suits you in the chat with Mia."
+3. Listing card: "White desk · 120 × 60 cm · CHF 40 · Pickup: EPFL, Rolex Learning Center · Mia".
+4. Mia: "Hi! The desk is still available. Which day could you pick it up? I'm free from 17:00."
+5. `draft-day`, chips in shuffled order: `sat` Saturday · `sun` Sunday. The participant's bubble: "{Day} works for me, 17:30?"
+6. Mia: "17:30 is fine. Send me an offer and I'll confirm."
+7. Pako, after about 1 s of typing: "Here's your offer."
+8. Draft: "Hi Mia! I'd like your white desk for CHF 40. I can pick it up on {Day} at 17:30 at the Rolex Learning Center."
+9. "What would you do with this draft?" Four equal buttons: `send` Send as it is · `change` Change something first (the draft becomes editable, then Send) · `own` Write my own (an empty message, then Send) · `dont-send` Not send it. While writing, "Not send it" stays available.
 
-Price, place and time match the chat; only the day is wrong.
+Then Pako: "Done! Your answers are saved." (event `core-complete`).
 
-### 5. Reveal
+Changed in `v3-3`: the `what-is` screen and the context cards are new; the draft no longer plants a wrong day, so the reveal screen and its "Remove my answers" link are gone.
 
-Right after the draft decision. Pako: "One thing about the offer: we deliberately put Friday in the draft after you chose a different day, to see how people use suggested messages. Please don't tell others before 13 December, so it stays fair." Link "Remove my answers" (deletes the session). Button Continue. Then Pako: "Done! Your answers are saved." (event `core-complete`).
-
-### 6. About you (optional)
+### 5. About you (optional)
 
 Pako: "Last bit, all optional: it helps us understand who answered." Two rows per screen, each with Skip.
 
@@ -145,14 +155,14 @@ Pako: "Last bit, all optional: it helps us understand who answered." Two rows pe
 
 Then two equal buttons, saved as the answer to step `peek`: `finish` Finish · `tour` See the full scenes (optional).
 
-### 7. Optional tour
+### 6. Optional tour
 
 | Id | Content |
 | --- | --- |
 | `scene-pick` | "What would you like to see first?" Shuffled: `sell` Sell from a photo · `deal` Agree on a pickup · `find` Find something. |
 | `tour-sell`, `tour-deal`, `tour-find` | The full app scenes in the phone, with key moments the participant can tap. Next is available from the start; Replay; "Skip the rest". |
 
-### 8. Pilot form (EPFL/UNIL students only)
+### 7. Pilot form (EPFL/UNIL students only)
 
 Shown after Finish or after the tour to participants who answered `epfl` or `unil`. Stored in its own table without a session, so it cannot be linked to answers.
 
@@ -170,7 +180,7 @@ Pako: "We're testing takeover with real items in a few FMEL houses. Want a spot?
 
 Send needs at least one tick. A sign-up counts only with the first tick, later-email permission only with the second. Strong interest: signed up, at least one week and one item. It sets the order of re-contact; everyone who signs up is contacted. Pilot capacity: up to 10 real exchanges of items a student can carry or move with a bike trailer.
 
-### 9. End
+### 8. End
 
 Pako: "Thanks! That helps us decide what to build next."
 
@@ -180,7 +190,7 @@ Share: "Every answer helps, also from people who never sell anything. Share it?"
 
 ## What is stored
 
-One session per participant, created on "Let's go": a random id, `survey = 'v3'`, the wording version (`v3-2` for the pilot, a raised label for the run), the language at the start (`en`, `fr`, `de`), the channel tag, phone or desktop. No name, no IP address, no browser details.
+One session per participant, created on "Let's go": a random id, `survey = 'v3'`, the wording version (`v3-3` for the pilot, a raised label for the run), the language at the start (`en`, `fr`, `de`), the channel tag, phone or desktop. No name, no IP address, no browser details.
 
 One answer per session and step, replaced when the participant goes back and answers again:
 
@@ -192,16 +202,17 @@ One answer per session and step, replaced when the participant goes back and ans
 | `text` | `last-story`, the `gender` self-description, the `stop` "Something else" text, or the offer as sent |
 | `elapsed_ms` | Time on screen |
 
-`draft` is saved at the first button tap with `chosen` = the action, then again with the final code:
+`draft` is saved when a writing option is tapped, with `chosen` = that option, then again with the final code:
 
 | `chosen` | Meaning |
 | --- | --- |
-| `sent-unchanged` | Sent without editing; `text` = the draft |
-| `sent-edited` | Edited, then sent; `text` = the edited message |
-| `not-sent` | Don't send, directly or after editing |
-| `edit` | Edit tapped, no decision yet (unfinished if it stays so) |
+| `sent-unchanged` | Sent as Pako drafted it, directly or after opening it for changes; `text` = the draft |
+| `sent-changed` | Changed, then sent; `text` = the changed message |
+| `sent-own` | Own message written and sent; `text` = the message |
+| `not-sent` | Not sent, directly or after starting to write |
+| `change`, `own` | Started writing, no decision yet (unfinished if it stays so) |
 
-`first_chosen` holds the first action (`send`, `edit` or `dont-send`); `draft-day` holds the chosen day.
+`first_chosen` holds the option picked first (`send`, `change`, `own` or `dont-send`); `draft-day` holds the chosen day.
 
 Events, sent in batches and stored once per sequence number:
 
@@ -243,7 +254,7 @@ Count cutoffs (unrounded Wilson bounds):
 | `last-trouble` top named ≥ 25% | D2 | tried | 10 | 15 | 25 | 50 |
 | `move-it` helper: go ≥ / deprioritise ≤ | D3 | answered | 11 / 1 | 15 / 3 | 22 / 8 | 40 / 20 |
 | `pack`: go ≥ / no payment ≤ | D4 | answered | 14 / 3 | 19 / 6 | 29 / 12 | 53 / 30 |
-| `draft` wrong day ≥ | D5a | completed decisions | 5 | 7 | 10 | 17 |
+| `draft` sent as it is: keep ≥ / as it is + changed: optional ≤ | D5a | completed decisions | 27 / 13 | 38 / 22 | 60 / 40 | 114 / 86 |
 | `sending` short-updates + replies-too: go ≥ / keep manual ≤ | D5b | answered | 27 / 13 | 38 / 22 | 60 / 40 | 114 / 86 |
 | `helped-*` yes: keep ≥ / yes + partly: deprioritise ≤ | D7 | tried, answered | 23 / 6 | 32 / 11 | 50 / 21 | 94 / 47 |
 | `try-first` top feature ≥ 25% | D7 | answered | 10 | 15 | 25 | 50 |
@@ -251,17 +262,9 @@ Count cutoffs (unrounded Wilson bounds):
 | `stop` one barrier, lower bound ≥ 25% | D8 | answered | 16 | 22 | 34 | 63 |
 | `stop` nothing ≥ 40% | D8 | answered | 16 | 24 | 40 | 80 |
 
-Draft coding, over completed decisions (`sent-unchanged`, `sent-edited`, `not-sent`):
+Delegation, over completed decisions (`sent-unchanged`, `sent-changed`, `sent-own`, `not-sent`); unfinished drafts (`change` or `own` as final state) are reported over everyone shown the task.
 
-| Code | Meaning |
-| --- | --- |
-| `day-correct` | Sent; proposes the chosen day and no other |
-| `day-wrong` | Sent; proposes another day. Every `sent-unchanged` |
-| `day-missing` | Sent; no day, or unclear |
-| `not-sent` | `not-sent` |
-| `unfinished` | `edit` as final state; reported over everyone shown the task |
-
-Two team members code every `sent-edited` text and `last-story` independently; agreement (% and Cohen's κ) is reported before disagreements are settled. Edits, refusals and missing days do not show that someone noticed the error.
+Two team members code every `sent-changed` and `sent-own` text (what was changed or added) and `last-story` independently; agreement (% and Cohen's κ) is reported before disagreements are settled.
 
 ## Pre-registration
 
@@ -274,12 +277,12 @@ Frozen with a date before the first invitation, together with the script and the
 | D2 | (1) Nothing ≥ 40% → problem weaker than believed, no nomination. (2) Else top named obstacle ≥ 25% and no tie → nominate it for the pilot. (3) Else open. | Buyers and sellers separately |
 | D3 | Helper lower bound ≥ 15% → partner quote and a real booking offer in the pilot. Upper bound < 15% → deprioritise this offer. Else open. 15% is a team threshold. | Furniture subgroup |
 | D4 | Pack lower bound > 20.6% (break-even: 33 packs from 160 movers) → offer a real paid pack in February. Upper bound < 20.6% → no student payment in the pilot. Else open. | Moving by June |
-| D5a | Wrong-day sends ÷ completed decisions, lower bound ≥ 5% → test a check step. Else open; report the upper bound. | Unfinished; first vs final action |
+| D5a | `sent-unchanged` lower bound > 50% → keep Pako's draft as the default for offers and test one-tap sending in the pilot. `sent-unchanged` + `sent-changed` upper bound < 50% → make the draft optional; offers start from an empty message. Else open. | `sent-own` and `not-sent` separately; unfinished; first vs final choice |
 | D5b | `short-updates` + `replies-too` lower bound > 50% → prototype the opt-in. Upper bound < 50% → keep "you tap every send". Else open. | Each option separately; by draft code |
 | D5c | Dropped in `v3-2`: the comprehension item was merged into `sending`. The sentence stays as it is. | |
 | D6 | The two most chosen lines go to the poster test; a tie for second sends all tied lines. `none` chosen most → no shortlist, rewrite the lines. | EPFL/UNIL counts |
 | D7 | Per feature, over participants who tried (`na` stays in the denominator): `yes` lower bound ≥ 40% → keep the feature as shown in the pilot. `yes` + `partly` upper bound < 30% → deprioritise it in the pilot and the onboarding. Else open. `try-first`: the most chosen feature with ≥ 25% and no tie leads the onboarding; `none` + `need-more` ≥ 40% → rewrite how the features are introduced. 40% and 30% are team thresholds. | Never-tried answers ("Would this help you?") descriptively; scenes skipped vs played |
-| D8 | Each barrier with a lower bound ≥ 25% gets a named counter-measure in the pilot plan (for example `nobody-nearby` → one house at a time, `ai-mistakes` → the check step of D5a, `prefer-groups` → posting listings into existing groups). `nothing` ≥ 40% → no main barrier. Else open. Several barriers per participant; the denominator is participants who answered. | "Something else" texts, coded like `last-story` |
+| D8 | Each barrier with a lower bound ≥ 25% gets a named counter-measure in the pilot plan (for example `nobody-nearby` → one house at a time, `ai-mistakes` → a check of the details before a draft is sent, `prefer-groups` → posting listings into existing groups). `nothing` ≥ 40% → no main barrier. Else open. Several barriers per participant; the denominator is participants who answered. | "Something else" texts, coded like `last-story` |
 
 ## Threats to validity
 
@@ -292,7 +295,6 @@ Frozen with a date before the first invitation, together with the script and the
 | Short scenes as the stimulus | `helped-*`, `stop`, `try-first` | Pako's line says what each scene shows; Replay; skipped scenes are logged | A 12-second demo, not use: answers describe a first impression |
 | Two wordings of one question | `helped-*` | Tried and never tried reported apart | The two groups' answers are not comparable |
 | Imagined vs real behaviour | `draft`, `pack`, `move-it`, `desk` | Every "go" leads to a real test | Stated choices run high |
-| Planted error spreading | `draft` | Share text does not mention it; reveal asks for silence; leak check | If the rate drifts by day, report both |
 | Shown results | Later participants | Only after the core, two items, from 20 answers | |
 | Three languages | All | One dictionary per language with equivalent meaning; language stored per session | Small wording differences between languages; report n per language |
 | Two versions running | v1 and v3 | Each session stores its version; analysed separately | Channels may favour one link |
@@ -323,7 +325,7 @@ Every block: k of n with the denominator named, the range, the rule and its outc
 
 ## Before launch
 
-1. Pilot done (it runs `v3-2`); wording and `{measured}` fixed; wording version raised for the run.
+1. Pilot done (it runs `v3-3`); wording and `{measured}` fixed; wording version raised for the run.
 2. This protocol frozen with a date.
 3. Pilot sessions deleted, so they do not count in "How others answered".
 4. `STUDY_CONTACT` and `STUDY_DELETE_BY` set on the deployment.
@@ -335,7 +337,7 @@ Every block: k of n with the denominator named, the range, the rule and its outc
 
 Admins see the counts in the app under Admin → Study, read through `GET /api/study/report`. In account mode the server passes the signed-in user to `study_report_rows`, which refuses anyone not in `public.admins`; the server calls it with its service key. In the local demo the admin area opens in developer mode, as the rest of it does.
 
-The page shows one wording version at a time, the newest first: sessions per UTC day and channel, how many sessions reached each core screen, the last screen of those who left before the core was saved, counts per option over the participants who answered (skips excluded), typed answers sorted alphabetically without session ids (the offers of `draft` are left out; query D5a lists them) and pilot sign-ups per house and week. Any breakdown count from 1 to 4 shows as "<5". Decision outcomes come from the queries below.
+The page shows one wording version at a time, the newest first: sessions per UTC day and channel, how many sessions reached each core screen, the last screen of those who left before the core was saved, counts per option over the participants who answered (skips excluded), typed answers sorted alphabetically without session ids (offers sent as Pako drafted them are left out) and pilot sign-ups per house and week. Any breakdown count from 1 to 4 shows as "<5". Decision outcomes come from the queries below.
 
 ## Results queries
 
@@ -564,9 +566,7 @@ group by grouping sets ((option), (part, option))
 order by subgroup, chosen desc, option;
 ```
 
-### D5a Draft decisions
-
-Wrong-day sends = `sent-unchanged` plus the `sent-edited` texts coded `day-wrong`.
+### D5a Delegation
 
 ```sql
 -- d5a-draft
@@ -578,7 +578,8 @@ with run as (
   where a.step = 'draft'
 )
 select final, first, count(*) as participants,
-  (select count(*) from draft where final in ('sent-unchanged', 'sent-edited', 'not-sent')) as completed_decisions,
+  (select count(*) from draft
+    where final in ('sent-unchanged', 'sent-changed', 'sent-own', 'not-sent')) as completed_decisions,
   (select count(distinct e.session) from takeover_admin.study_events e join run on run.id = e.session
     where e.kind = 'shown' and e.step = 'draft') as shown_task
 from draft
@@ -586,18 +587,18 @@ group by final, first
 order by final, first;
 ```
 
-### D5a Edited offers to code
+### D5a Changed and own offers to code
 
 ```sql
 -- d5a-texts
 with run as (
   select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v3-1'
 )
-select a.session, d.chosen[1] as chosen_day, a.text
+select a.session, a.chosen[1] as final, d.chosen[1] as chosen_day, a.text
 from takeover_admin.study_answers a
 join run on run.id = a.session
 left join takeover_admin.study_answers d on d.session = a.session and d.step = 'draft-day'
-where a.step = 'draft' and a.chosen[1] = 'sent-edited'
+where a.step = 'draft' and a.chosen[1] in ('sent-changed', 'sent-own')
 order by a.saved_at;
 ```
 
@@ -690,24 +691,6 @@ select option, count(*) as chosen, (select count(*) from answered) as answered
 from answered cross join unnest(answered.chosen) as option
 group by option
 order by chosen desc, option;
-```
-
-### S Leak check
-
-Unchanged sends by fieldwork day (database time zone) and for shared links.
-
-```sql
--- leak
-with run as (
-  select id, source from takeover_admin.study_sessions where survey = 'v3' and version = 'v3-1'
-)
-select a.saved_at::date as day, run.source = 'friend' as shared_link,
-  count(*) filter (where a.chosen[1] in ('sent-unchanged', 'sent-edited', 'not-sent')) as completed_decisions,
-  count(*) filter (where a.chosen[1] = 'sent-unchanged') as sent_unchanged
-from takeover_admin.study_answers a join run on run.id = a.session
-where a.step = 'draft'
-group by day, shared_link
-order by day, shared_link;
 ```
 
 ### Deleting the data

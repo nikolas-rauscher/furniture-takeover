@@ -1,5 +1,6 @@
 import DeviceFrame from "../device/DeviceFrame";
 import { useTourText } from "../i18n/TourLanguage";
+import type { TourText } from "../i18n/en";
 import ChoiceStep from "../study/ChoiceStep";
 import { SaveStatus } from "../study/StudyEnd";
 import TextAnswer from "../study/TextAnswer";
@@ -7,9 +8,15 @@ import AboutRows from "./AboutRows";
 import DeskTask from "./DeskTask";
 import DraftChat from "./DraftChat";
 import PilotForm from "./PilotForm";
-import RevealContent from "./RevealContent";
 import type { Given, StepContext } from "./stepContext";
-import { STORY_MAX, type V3ChoiceStep } from "./v3Script";
+import {
+  FREE_DRAFTS,
+  SITUATIONS,
+  STORY_MAX,
+  type V3ChoiceStep,
+  type V3Step,
+} from "./v3Script";
+import WhatIsTakeover from "./WhatIsTakeover";
 import { optionsOf, questionOf } from "./v3Words";
 import V3End from "./V3End";
 
@@ -65,8 +72,48 @@ function SavedContent({ context }: { context: StepContext }) {
   );
 }
 
-/** The body of one v3 step; Pako's line and the main buttons live in the shell. */
+/** The situation's one sentence, as the step's context card tells it. */
+function scenarioOf(step: V3Step, text: TourText["v3"]["situations"]) {
+  switch (step.id) {
+    case "move-it":
+    case "desk":
+    case "draft":
+      return text[step.id];
+    case "pack":
+      return text.pack(FREE_DRAFTS);
+    default:
+      throw new Error(`Step ${step.id} is not a situation.`);
+  }
+}
+
+/** Opens each situation: which one it is, the scenario, and what to do. */
+function SituationCard({ step, place }: { step: V3Step; place: number }) {
+  const { situations } = useTourText().v3;
+  return (
+    <div className="tour-card tour-situation">
+      <p className="tour-eyebrow">{situations.label(place, SITUATIONS)}</p>
+      <p className="tour-situation-text">{scenarioOf(step, situations)}</p>
+      <p className="tour-situation-task">
+        {step.kind === "draft" ? situations.draftTask : situations.pickOne}
+      </p>
+    </div>
+  );
+}
+
+/** The body of one v3 step, opened by its context card when it is a situation. */
 export default function V3StepContent({ context }: { context: StepContext }) {
+  const { step } = context;
+  if (step.situation === undefined) return <StepBody context={context} />;
+  return (
+    <>
+      <SituationCard step={step} place={step.situation} />
+      <StepBody context={context} />
+    </>
+  );
+}
+
+/** Pako's line and the main buttons live in the shell. */
+function StepBody({ context }: { context: StepContext }) {
   const text = useTourText();
   const { step } = context;
   const story = (answer: Given) => context.answer(step.id, answer);
@@ -87,8 +134,8 @@ export default function V3StepContent({ context }: { context: StepContext }) {
       return <DeskTask step={step} context={context} />;
     case "draft":
       return <DraftChat context={context} />;
-    case "reveal":
-      return <RevealContent context={context} />;
+    case "about-app":
+      return <WhatIsTakeover />;
     case "saved":
       return <SavedContent context={context} />;
     case "about":

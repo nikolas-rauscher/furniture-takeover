@@ -399,13 +399,47 @@ export const EN = {
     },
     start: {
       bubble: (minutes: number) =>
-        `Hi, I'm Pako! We're EPFL students building takeover, an app for passing on used stuff around campus. You describe what you need or snap a photo of what you sell, I write the listing or the offer, and you agree on a pickup with students nearby. Got ${minutes} minutes? No sign-in. Everyone's welcome, also if you've never bought or sold anything used.`,
+        `Hi, I'm Pako! We're EPFL students building takeover, an app for passing on used stuff around campus. Got ${minutes} minutes? No sign-in. Everyone's welcome, also if you've never bought or sold anything used.`,
       saveTitle: "What we save",
       save: (date: string) =>
         `Your answers, which screens you see, skip or go back to, the time per screen, the link you came from, your language and whether you use a phone or a computer. Your progress stays in this tab until you close it, and this browser remembers that you finished. An email at the end is optional and kept apart from your answers. Everything is deleted by ${date}.`,
       questions: "Questions:",
       go: "Let's go",
       demo: "Just show me the app",
+    },
+    whatIs: {
+      bubble: "Here's what takeover does.",
+      title: "What is takeover?",
+      find: {
+        title: "Find",
+        text: "Describe what you need, and I look through listings from students nearby.",
+      },
+      sell: {
+        title: "Sell",
+        text: "Take a photo, and I write the listing with a suggested price.",
+      },
+      agree: {
+        title: "Agree",
+        text: "Settle the price and a pickup time in the chat, then meet on campus.",
+      },
+      nextTitle: "What happens next",
+      next: [
+        "Your last experience with second-hand",
+        "A quick look at the app",
+        "A few short situations",
+      ],
+      duration: (minutes: number) => `About ${minutes} minutes`,
+    },
+    situations: {
+      label: (current: number, total: number) =>
+        `Situation ${current} of ${total}`,
+      pickOne: "Pick one.",
+      "move-it": "You've found a desk you like, 4 km from where you live.",
+      desk: "You need a desk, and two in the app fit.",
+      pack: (free: number) =>
+        `You're moving out in two weeks and still have three things to sell, a desk among them. You've used today's ${free} free photo drafts in takeover.`,
+      draft: "You're buying a desk from Mia. The price and the place suit you.",
+      draftTask: "Answer Mia, then pick what to do with Pako's draft.",
     },
     steps: {
       who: {
@@ -534,7 +568,7 @@ export const EN = {
       },
       "move-it": {
         question:
-          "You've found a desk you like, 4 km from where you live. Before you agree to buy it: how would you most likely get it home?",
+          "Before you agree to buy it: how would you most likely get it home?",
         options: {
           "carry-bike": "Carry it or take it by bike",
           "public-transport": "Public transport",
@@ -546,13 +580,11 @@ export const EN = {
         },
       },
       desk: {
-        question:
-          "You need a desk. Here are two that fit. Which one would you go for?",
+        question: "Which one would you go for?",
         options: { nearer: "CHF 45", cheaper: "CHF 30", neither: "Neither" },
       },
       pack: {
-        question: (free: number) =>
-          `Imagine you're moving out in two weeks and still have three things to sell, a desk among them. You've used today's ${free} free photo drafts in takeover. What would you do?`,
+        question: "What would you do?",
         options: {
           manual: "List them myself now, for free",
           wait: "Wait until tomorrow for new free drafts",
@@ -646,8 +678,7 @@ export const EN = {
       listLabel: "Two desks in the app",
     },
     draft: {
-      intro:
-        "Last one. Imagine you're buying this desk. The price and the place suit you.",
+      intro: "Pick the day that suits you in the chat with Mia.",
       chatLabel: "Practice chat with Mia",
       listing: {
         title: "White desk",
@@ -667,28 +698,18 @@ export const EN = {
       confirm: "17:30 is fine. Send me an offer and I'll confirm.",
       typing: (name: string) => `${name} is typing`,
       offerReady: "Here's your offer.",
-      offer:
-        "Hi Mia! I'd like your white desk for CHF 40. I can pick it up on Friday at 17:30 at the Rolex Learning Center.",
+      offer: (day: string) =>
+        `Hi Mia! I'd like your white desk for CHF 40. I can pick it up on ${day} at 17:30 at the Rolex Learning Center.`,
       offerTitle: "Offer draft",
-      send: "Send offer",
-      edit: "Edit",
-      dontSend: "Don't send",
+      question: "What would you do with this draft?",
+      sendAsIs: "Send as it is",
+      change: "Change something first",
+      own: "Write my own",
+      ownLabel: "Your message to Mia",
+      send: "Send",
+      dontSend: "Not send it",
       editLabel: "Your offer to Mia",
       notSent: "You didn't send the offer.",
-    },
-    reveal: {
-      text: (date: string) =>
-        `One thing about the offer: we deliberately put Friday in the draft after you chose a different day, to see how people use suggested messages. Please don't tell others before ${date}, so it stays fair.`,
-      remove: "Remove my answers",
-      confirmTitle: "Remove all your answers?",
-      confirmText:
-        "Everything you answered in this survey is deleted. This can't be undone.",
-      keep: "Keep them",
-      removing: "Removing your answers…",
-      removeFailed:
-        "Your answers couldn't be removed. Check your connection and try again.",
-      removedTitle: "Your answers are removed.",
-      removedText: "Thanks for trying the survey. You can still see the app.",
     },
     saved: "Done! Your answers are saved.",
     savedSaving: "Done! I'm saving your last answers.",

@@ -39,8 +39,7 @@
 .tour-more svg[data-open] {
   rotate: 180deg;
 }
-.tour-more:focus-visible,
-.tour-link-button:focus-visible {
+.tour-more:focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: 6px;
@@ -206,38 +205,6 @@
   justify-content: center;
   min-height: 48px;
 }
-.tour-draft-actions-equal {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-.tour-draft-actions-equal .button {
-  grid-column: auto;
-  padding-inline: 8px;
-}
-@media (max-width: 340px) {
-  .tour-draft-actions-equal {
-    grid-template-columns: 1fr;
-  }
-}
-
-.tour-link-button {
-  align-self: flex-start;
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  cursor: pointer;
-}
-.tour-confirm {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.tour-confirm .tour-card-title:focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
 .tour-about {
   display: flex;
   flex-direction: column;
@@ -377,4 +344,84 @@
   height: auto;
   white-space: normal;
   text-align: center;
+}
+
+/* Situations: a context card says which one, the scenario and what to do. */
+.tour-situation {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+}
+.tour-situation .tour-eyebrow {
+  margin: 0;
+}
+.tour-situation-text {
+  margin: 0;
+  line-height: 1.5;
+}
+.tour-situation-task {
+  margin: 0;
+  font-weight: 700;
+}
+
+/* The draft step: the offer, the question, and four equal choices. */
+.tour-draft-question {
+  margin: 4px 0 0;
+  font-size: var(--type-label);
+  font-weight: 700;
+}
+.tour-draft-choices {
+  display: grid;
+  gap: 10px;
+}
+.tour-draft-choices .button {
+  justify-content: center;
+  min-height: 48px;
+}
+
+/* What is takeover: three features with the intro's pictures, then the plan. */
+.tour-what-is {
+  display: grid;
+  gap: 16px;
+}
+.tour-what-is-title {
+  margin: 0 0 10px;
+  font-size: var(--type-label);
+  font-weight: 750;
+}
+.tour-what-is-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tour-what-is-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.tour-what-is-item .tour-principle-icon {
+  flex: none;
+  margin: 0;
+}
+.tour-what-is-item p {
+  margin: 0;
+  line-height: 1.45;
+}
+.tour-next {
+  padding: 14px 16px;
+}
+.tour-next-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 22px;
+  line-height: 1.45;
+}
+.tour-next-time {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: var(--type-support);
+  font-weight: 650;
 }

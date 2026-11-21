@@ -7,7 +7,6 @@ import type { PakoMood } from "@/components/onboarding/storyTypes";
 import type { StudyPilot } from "../../../shared/study.ts";
 import { useTourText } from "../i18n/TourLanguage";
 import type { TourText } from "../i18n/en";
-import { formatDay } from "../i18n/tourText";
 import { pickOption } from "../study/ChoiceStep";
 import StudyShell from "../study/StudyShell";
 import type { Recorder } from "../study/useRecorder";
@@ -23,14 +22,9 @@ import {
   withEvent,
   withV3Order,
 } from "./v3Flow";
-import { PILOT_KEY, v3Job, WITHDRAW_KEY } from "./v3Jobs";
+import { PILOT_KEY, v3Job } from "./v3Jobs";
 import { rememberFinished, type V3Progress } from "./v3Progress";
-import {
-  PEEK_STEP,
-  V3_CLOSES,
-  type V3ChoiceStep,
-  type V3Step,
-} from "./v3Script";
+import { PEEK_STEP, type V3ChoiceStep, type V3Step } from "./v3Script";
 import { optionsOf, questionOf } from "./v3Words";
 import SectionStrip from "./SectionStrip";
 import type { Given, SceneState, StepContext } from "./stepContext";
@@ -50,10 +44,10 @@ const keep: Transform = (progress) => progress;
 
 function moodFor(step: V3Step): PakoMood {
   switch (step.kind) {
+    case "about-app":
+      return "wave";
     case "story":
       return "listen";
-    case "reveal":
-      return "think";
     case "saved":
       return "cheer";
     case "pilot":
@@ -85,6 +79,8 @@ function bubbleFor(
 ): GuideBubble | undefined {
   const { v3 } = text;
   switch (step.kind) {
+    case "about-app":
+      return { id: step.id, text: v3.whatIs.bubble };
     case "choice":
       return {
         id: step.id,
@@ -97,8 +93,6 @@ function bubbleFor(
       return { id: step.id, text: v3.steps.desk.question };
     case "draft":
       return { id: step.id, text: v3.draft.intro };
-    case "reveal":
-      return { id: step.id, text: v3.reveal.text(formatDay(V3_CLOSES, text)) };
     case "about":
       return { id: step.id, text: v3.about.intro };
     case "scene":
@@ -290,12 +284,6 @@ export default function V3Steps({
     goTo(nextV3(progress.answers, step.id), 1, transform);
   }
 
-  function withdraw() {
-    const transform: Transform = (current) => ({ ...current, withdrawn: true });
-    setProgress(transform);
-    recorder.add(v3Job(transform(progress), WITHDRAW_KEY));
-  }
-
   const context: StepContext = {
     step,
     progress,
@@ -323,7 +311,6 @@ export default function V3Steps({
     saveNow: (id, given) => setProgress(storeAnswers({ [id]: given })),
     draftDone: (given) => proceed({ [step.id]: given }),
     sendPilot,
-    withdraw,
     retry: recorder.retry,
     log,
     onMood: setMood,
@@ -363,10 +350,7 @@ export default function V3Steps({
   }
 
   const bubble = bubbleFor(step, text, progress.answers);
-  const strip =
-    step.section !== undefined ||
-    step.kind === "reveal" ||
-    step.kind === "saved";
+  const strip = step.section !== undefined || step.kind === "saved";
   const header =
     step.kind === "end" ? undefined : (
       <>
@@ -396,6 +380,7 @@ export default function V3Steps({
       direction={direction}
       onKeyDown={handleKeyDown}
       focusFirst
+      readOnly={step.kind === "about-app"}
     >
       <V3StepContent context={context} />
     </StudyShell>

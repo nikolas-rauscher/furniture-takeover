@@ -407,13 +407,48 @@ export const DE: TourText = {
     },
     start: {
       bubble: (minutes) =>
-        `Hallo, ich bin Pako! Wir sind Studierende der EPFL und bauen takeover, eine App, um gebrauchte Sachen rund um den Campus weiterzugeben. Du beschreibst, was du brauchst, oder fotografierst, was du verkaufst, ich schreibe das Inserat oder das Angebot, und du machst die Abholung mit Studierenden in der Nähe aus. Hast du ${minutes} Minuten? Ohne Anmeldung. Alle sind willkommen, auch wenn du noch nie etwas Gebrauchtes gekauft oder verkauft hast.`,
+        `Hallo, ich bin Pako! Wir sind Studierende der EPFL und bauen takeover, eine App, um gebrauchte Sachen rund um den Campus weiterzugeben. Hast du ${minutes} Minuten? Ohne Anmeldung. Alle sind willkommen, auch wenn du noch nie etwas Gebrauchtes gekauft oder verkauft hast.`,
       saveTitle: "Was wir speichern",
       save: (date) =>
         `Deine Antworten, welche Bildschirme du siehst, überspringst oder zu denen du zurückgehst, die Zeit pro Bildschirm, den Link, über den du gekommen bist, deine Sprache und ob du ein Handy oder einen Computer benutzt. Dein Fortschritt bleibt in diesem Tab, bis du ihn schliesst, und dieser Browser merkt sich, dass du fertig bist. Eine E-Mail-Adresse am Schluss ist optional und wird getrennt von deinen Antworten aufbewahrt. Alles wird bis zum ${date} gelöscht.`,
       questions: "Fragen:",
       go: "Los geht's",
       demo: "Zeig mir nur die App",
+    },
+    whatIs: {
+      bubble: "Das macht takeover.",
+      title: "Was ist takeover?",
+      find: {
+        title: "Finden",
+        text: "Beschreib, was du brauchst, und ich suche in Inseraten von Studierenden in deiner Nähe.",
+      },
+      sell: {
+        title: "Verkaufen",
+        text: "Mach ein Foto, und ich schreibe das Inserat mit einem Preisvorschlag.",
+      },
+      agree: {
+        title: "Einigen",
+        text: "Legt im Chat Preis und Abholzeit fest und trefft euch auf dem Campus.",
+      },
+      nextTitle: "Wie es weitergeht",
+      next: [
+        "Deine letzte Erfahrung mit Gebrauchtem",
+        "Ein kurzer Blick auf die App",
+        "Ein paar kurze Situationen",
+      ],
+      duration: (minutes) => `Etwa ${minutes} Minuten`,
+    },
+    situations: {
+      label: (current, total) => `Situation ${current} von ${total}`,
+      pickOne: "Wähle eine Antwort.",
+      "move-it":
+        "Du hast einen Schreibtisch gefunden, der dir gefällt, 4 km von deinem Wohnort entfernt.",
+      desk: "Du brauchst einen Schreibtisch, und zwei in der App passen.",
+      pack: (free) =>
+        `Du ziehst in zwei Wochen aus und hast noch drei Sachen zu verkaufen, darunter einen Schreibtisch. Die ${free} kostenlosen Fotoentwürfe von heute in takeover hast du aufgebraucht.`,
+      draft: "Du kaufst Mia einen Schreibtisch ab. Preis und Ort passen dir.",
+      draftTask:
+        "Antworte Mia und wähle dann, was du mit Pakos Entwurf machst.",
     },
     steps: {
       who: {
@@ -545,7 +580,7 @@ export const DE: TourText = {
       },
       "move-it": {
         question:
-          "Du hast einen Schreibtisch gefunden, der dir gefällt, 4 km von deinem Wohnort entfernt. Bevor du zusagst: Wie würdest du ihn am ehesten nach Hause bringen?",
+          "Bevor du zusagst: Wie würdest du ihn am ehesten nach Hause bringen?",
         options: {
           "carry-bike": "Tragen oder mit dem Velo",
           "public-transport": "Mit dem ÖV",
@@ -557,13 +592,11 @@ export const DE: TourText = {
         },
       },
       desk: {
-        question:
-          "Du brauchst einen Schreibtisch. Hier sind zwei passende. Welchen würdest du nehmen?",
+        question: "Welchen würdest du nehmen?",
         options: { nearer: "CHF 45", cheaper: "CHF 30", neither: "Keinen" },
       },
       pack: {
-        question: (free) =>
-          `Stell dir vor, du ziehst in zwei Wochen aus und hast noch drei Sachen zu verkaufen, darunter einen Schreibtisch. Du hast die ${free} kostenlosen Fotoentwürfe von heute in takeover aufgebraucht. Was würdest du tun?`,
+        question: "Was würdest du tun?",
         options: {
           manual: "Sie jetzt selbst inserieren, kostenlos",
           wait: "Bis morgen auf neue kostenlose Entwürfe warten",
@@ -659,8 +692,7 @@ export const DE: TourText = {
       listLabel: "Zwei Schreibtische in der App",
     },
     draft: {
-      intro:
-        "Die letzte. Stell dir vor, du kaufst diesen Schreibtisch. Preis und Ort passen dir.",
+      intro: "Wähle im Chat mit Mia den Tag, der dir passt.",
       chatLabel: "Übungschat mit Mia",
       listing: {
         title: "Weisser Schreibtisch",
@@ -680,29 +712,18 @@ export const DE: TourText = {
       confirm: "17:30 passt. Schick mir ein Angebot, dann bestätige ich.",
       typing: (name) => `${name} schreibt`,
       offerReady: "Hier ist dein Angebot.",
-      offer:
-        "Hallo Mia! Ich hätte gern deinen weissen Schreibtisch für CHF 40. Ich kann ihn am Freitag um 17:30 beim Rolex Learning Center abholen.",
+      offer: (day) =>
+        `Hallo Mia! Ich hätte gern deinen weissen Schreibtisch für CHF 40. Ich kann ihn am ${day} um 17:30 beim Rolex Learning Center abholen.`,
       offerTitle: "Angebotsentwurf",
-      send: "Angebot senden",
-      edit: "Bearbeiten",
+      question: "Was würdest du mit diesem Entwurf machen?",
+      sendAsIs: "So senden",
+      change: "Erst etwas ändern",
+      own: "Selbst schreiben",
+      ownLabel: "Deine Nachricht an Mia",
+      send: "Senden",
       dontSend: "Nicht senden",
       editLabel: "Dein Angebot an Mia",
       notSent: "Du hast das Angebot nicht gesendet.",
-    },
-    reveal: {
-      text: (date) =>
-        `Eine Sache zum Angebot: Wir haben absichtlich Freitag in den Entwurf geschrieben, nachdem du einen anderen Tag gewählt hattest, um zu sehen, wie Leute vorgeschlagene Nachrichten nutzen. Bitte erzähl es anderen nicht vor dem ${date}, damit es fair bleibt.`,
-      remove: "Meine Antworten löschen",
-      confirmTitle: "Alle deine Antworten löschen?",
-      confirmText:
-        "Alles, was du in dieser Umfrage beantwortet hast, wird gelöscht. Das lässt sich nicht rückgängig machen.",
-      keep: "Behalten",
-      removing: "Deine Antworten werden gelöscht…",
-      removeFailed:
-        "Deine Antworten konnten nicht gelöscht werden. Prüfe deine Verbindung und versuche es nochmals.",
-      removedTitle: "Deine Antworten sind gelöscht.",
-      removedText:
-        "Danke, dass du die Umfrage ausprobiert hast. Du kannst dir die App trotzdem ansehen.",
     },
     saved: "Fertig! Deine Antworten sind gespeichert.",
     savedSaving: "Fertig! Ich speichere deine letzten Antworten.",

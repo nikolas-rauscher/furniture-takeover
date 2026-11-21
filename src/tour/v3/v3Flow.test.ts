@@ -23,6 +23,8 @@ import type { V3Answer, V3Progress } from "./v3Progress.ts";
 import {
   answerIds,
   DRAFT_DAY_STEP,
+  DRAFT_DAYS,
+  SITUATIONS,
   V3_STEPS,
   V3_VERSION,
   type V3ChoiceStep,
@@ -51,7 +53,6 @@ const progress: V3Progress = {
   events: [],
   queuedEvents: 0,
   pilot: null,
-  withdrawn: false,
 };
 
 const ids = (answers: V3Progress["answers"]) =>
@@ -77,7 +78,7 @@ test("someone who tried answers the details; someone who did not gets one reason
 test("with the start screen, the core has 24 screens after an attempt and 21 without", () => {
   const core = (role: string) => {
     const shown = ids({ "last-role": answer(role) });
-    return shown.slice(0, shown.indexOf("reveal") + 1).length;
+    return shown.slice(0, shown.indexOf("draft") + 1).length;
   };
   assert.equal(core("buying") + 1, 24);
   assert.equal(core("none") + 1, 21);
@@ -107,7 +108,7 @@ test("the core shows each feature briefly, then asks whether it would have helpe
 test("the results page reads its funnel along the core screens of the script", () => {
   const core = V3_STEPS.slice(
     0,
-    V3_STEPS.findIndex((step) => step.kind === "reveal") + 1,
+    V3_STEPS.findIndex((step) => step.kind === "draft") + 1,
   );
   assert.deepEqual(
     core.map((step) => step.id),
@@ -153,12 +154,13 @@ test("only EPFL and UNIL students see the pilot form; students see their studies
   assert.ok(!ids({ who: answer("no") }).includes("about-studies"));
 });
 
-test("back stops before the first question, at the reveal and after the core", () => {
+test("back stops before the first screen and after the core", () => {
   const steps = visibleV3Steps({});
-  for (const id of ["who", "reveal", "saved", "about-you", "end"])
+  for (const id of ["what-is", "saved", "about-you", "end"])
     assert.equal(canGoBack(steps, v3StepById(id)), false, id);
   assert.equal(canGoBack(steps, v3StepById("draft")), true);
-  assert.equal(nextV3({}, "draft").id, "reveal");
+  assert.equal(canGoBack(steps, v3StepById("who")), true);
+  assert.equal(nextV3({}, "draft").id, "saved");
 });
 
 test("the first answer stays when the step is answered again", () => {
@@ -241,9 +243,30 @@ test("answers, events and the session are valid on the wire", () => {
   assert.ok(studyEventsSchema.safeParse(batch).success);
 });
 
-test("nothing is recorded after the participant withdrew", () => {
-  const withdrawn = { ...progress, withdrawn: true };
-  assert.equal(withEvent(withdrawn, "shown", "who"), withdrawn);
+test("Pako's offer names the day the participant picked, in every language", () => {
+  for (const text of Object.values(TOUR_TEXT))
+    for (const day of DRAFT_DAYS) {
+      const words = text.v3.draft.days[day];
+      assert.match(
+        text.v3.draft.offer(words),
+        new RegExp(words, "i"),
+        `${day} in ${text.v3.draft.chatLabel}`,
+      );
+    }
+});
+
+test("each situation opens with its place among the four", () => {
+  const situations = V3_STEPS.filter((step) => step.situation !== undefined);
+  assert.deepEqual(
+    situations.map((step) => [step.id, step.situation]),
+    [
+      ["move-it", 1],
+      ["desk", 2],
+      ["pack", 3],
+      ["draft", 4],
+    ],
+  );
+  assert.equal(situations.length, SITUATIONS);
 });
 
 test("sections close in order and are all done after the core", () => {
@@ -254,7 +277,7 @@ test("sections close in order and are all done after the core", () => {
     situations: "next",
   });
   assert.ok(
-    Object.values(sectionStates(v3StepById("reveal"))).every(
+    Object.values(sectionStates(v3StepById("saved"))).every(
       (state) => state === "done",
     ),
   );

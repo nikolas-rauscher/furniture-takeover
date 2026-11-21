@@ -41,7 +41,6 @@ export type StepContext = {
   saveNow: (id: string, answer: Given) => void;
   draftDone: (answer: Given) => void;
   sendPilot: (pilot: StudyPilot) => void;
-  withdraw: () => void;
   retry: () => void;
   log: (kind: StudyEventKind, detail?: string) => void;
   onMood: (mood: PakoMood) => void;

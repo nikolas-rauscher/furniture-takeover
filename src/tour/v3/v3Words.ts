@@ -2,12 +2,7 @@ import type { TourText } from "../i18n/en.ts";
 import { orderOptions } from "../optionOrder.ts";
 import type { StudyOption } from "../tourScript.ts";
 import type { V3Progress } from "./v3Progress.ts";
-import {
-  FREE_DRAFTS,
-  triedBefore,
-  wasBuying,
-  type V3ChoiceStep,
-} from "./v3Script.ts";
+import { triedBefore, wasBuying, type V3ChoiceStep } from "./v3Script.ts";
 
 /**
  * A step's question in the page's language. Whether a feature would have helped
@@ -19,8 +14,7 @@ export function questionOf(
   answers: V3Progress["answers"],
 ): string {
   if (step.feature && !triedBefore(answers)) return text.v3.helpedNeverTried;
-  const { question } = text.v3.steps[step.id];
-  return typeof question === "function" ? question(FREE_DRAFTS) : question;
+  return text.v3.steps[step.id].question;
 }
 
 function labelOf(

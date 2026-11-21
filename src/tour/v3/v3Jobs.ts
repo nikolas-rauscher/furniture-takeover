@@ -5,14 +5,12 @@ import {
   saveEvents,
   sendPilot,
   startSession,
-  withdrawSession,
 } from "../studyApi.ts";
 import type { V3Progress } from "./v3Progress.ts";
 import { V3_VERSION } from "./v3Script.ts";
 
 export const SESSION_KEY = "session";
 export const PILOT_KEY = "pilot";
-export const WITHDRAW_KEY = "withdraw";
 const EVENTS_KEY = /^events-(\d+)-(\d+)$/;
 
 const eventsKey = (from: number, to: number) => `events-${from}-${to}`;
@@ -71,8 +69,6 @@ function answerJob(progress: V3Progress, step: string): SaveJob {
 export function v3Job(progress: V3Progress, key: string): SaveJob {
   if (key === SESSION_KEY) return sessionJob(progress);
   if (key === PILOT_KEY) return pilotJob(progress);
-  if (key === WITHDRAW_KEY)
-    return { key, send: () => withdrawSession(progress.session) };
   const range = EVENTS_KEY.exec(key);
   if (range) return eventsJob(progress, Number(range[1]), Number(range[2]));
   return answerJob(progress, key);

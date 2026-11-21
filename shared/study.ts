@@ -221,6 +221,7 @@ export const studyResultsSchema = z.discriminatedUnion("ready", [
  * its funnel along this list; the client's script test keeps the two in step.
  */
 export const STUDY_V3_CORE_SCREENS = [
+  "what-is",
   "who",
   "last-role",
   "last-item",
@@ -244,7 +245,6 @@ export const STUDY_V3_CORE_SCREENS = [
   "desk",
   "pack",
   "draft",
-  "reveal",
 ] as const;
 
 /** On the results page, a breakdown cell with fewer answers than this is hidden. */

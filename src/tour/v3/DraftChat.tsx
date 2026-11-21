@@ -1,5 +1,5 @@
 import { useReducedMotion } from "motion/react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { useTourText } from "../i18n/TourLanguage";
 import TextAnswer from "../study/TextAnswer";
@@ -10,22 +10,27 @@ import {
   type DraftAction,
   type DraftDay,
   type DraftResult,
+  type DraftWriting,
 } from "./v3Script";
 
 /**
  * How the chat unfolds after the day is picked: Mia answers, Pako drafts the offer,
- * the participant decides, and the decision shows before the next step.
+ * the participant decides what to do with it, maybe writes, and the result shows.
  */
 type Phase =
-  "ask" | "mia-typing" | "pako-typing" | "decide" | "edit" | "decided";
+  "ask" | "mia-typing" | "pako-typing" | "decide" | "write" | "decided";
 
 const PAUSE_MS = { "mia-typing": 1100, "pako-typing": 1000 } as const;
 const REDUCED_PAUSE_MS = 250;
-/** The sent message stays in view this long before the reveal. */
+/** The sent message stays in view this long before the next step. */
 const DECIDED_MS = 1100;
 
 function isDay(value: string | undefined): value is DraftDay {
   return DRAFT_DAYS.some((day) => day === value);
+}
+
+function isWriting(value: string | undefined): value is DraftWriting {
+  return value === "change" || value === "own";
 }
 
 function Bubble({
@@ -51,12 +56,23 @@ function Bubble({
 function resumed(
   day: string | undefined,
   action: string | undefined,
-): { day?: DraftDay; phase: Phase } {
+): { day?: DraftDay; phase: Phase; writing?: DraftWriting } {
   if (!isDay(day)) return { phase: "ask" };
-  return { day, phase: action === "edit" ? "edit" : "decide" };
+  if (isWriting(action)) return { day, phase: "write", writing: action };
+  return { day, phase: "decide" };
 }
 
-/** Task: Mia's chat, the day agreed, and Pako's offer draft with Friday planted in it. */
+/** What sending the written message records: Pako's words kept, changed, or replaced. */
+function sentResult(
+  writing: DraftWriting,
+  message: string,
+  offer: string,
+): DraftResult {
+  if (writing === "own") return "sent-own";
+  return message === offer ? "sent-unchanged" : "sent-changed";
+}
+
+/** Task: Mia's chat, the day agreed, and what to do with Pako's offer for that day. */
 export default function DraftChat({ context }: { context: StepContext }) {
   const { draft } = useTourText().v3;
   const reduced = useReducedMotion() === true;
@@ -66,11 +82,18 @@ export default function DraftChat({ context }: { context: StepContext }) {
   );
   const [day, setDay] = useState<DraftDay | undefined>(start.day);
   const [phase, setPhase] = useState<Phase>(start.phase);
-  const [message, setMessage] = useState(draft.offer);
+  const [writing, setWriting] = useState<DraftWriting | undefined>(
+    start.writing,
+  );
+  const offer = day ? draft.offer(draft.days[day]) : "";
+  const [message, setMessage] = useState(
+    start.writing === "change" ? offer : "",
+  );
   const [decision, setDecision] = useState<Given | null>(null);
   const done = useRef(context.draftDone);
   const log = useRef<HTMLDivElement>(null);
-  const offer = useRef<HTMLDivElement>(null);
+  const offerCard = useRef<HTMLDivElement>(null);
+  const questionId = useId();
   const order = orders[DRAFT_DAY_STEP] ?? DRAFT_DAYS;
 
   useEffect(() => {
@@ -87,7 +110,7 @@ export default function DraftChat({ context }: { context: StepContext }) {
     done.current = context.draftDone;
   }, [context.draftDone]);
 
-  // The decision stays in view briefly, then the reveal follows.
+  // The decision stays in view briefly, then the next step follows.
   useEffect(() => {
     if (!decision) return;
     const timer = window.setTimeout(
@@ -97,9 +120,9 @@ export default function DraftChat({ context }: { context: StepContext }) {
     return () => window.clearTimeout(timer);
   }, [decision, reduced]);
 
-  // The offer takes focus once it appears, so it is read before the buttons.
+  // The offer takes focus once it appears, so it is read before the choices.
   useEffect(() => {
-    if (phase === "decide") offer.current?.focus();
+    if (phase === "decide") offerCard.current?.focus();
   }, [phase]);
 
   function pickDay(picked: DraftDay) {
@@ -109,7 +132,7 @@ export default function DraftChat({ context }: { context: StepContext }) {
     log.current?.focus();
   }
 
-  /** The final answer; a decision on the untouched draft names its button as the first. */
+  /** The final answer; a decision straight from the choices names that choice as the first. */
   function decide(result: DraftResult, text: string, first?: DraftAction) {
     setPhase("decided");
     log.current?.focus();
@@ -120,9 +143,12 @@ export default function DraftChat({ context }: { context: StepContext }) {
     });
   }
 
-  function edit() {
-    setPhase("edit");
-    context.saveNow("draft", { chosen: ["edit"], text: "" });
+  /** Opens the message for writing; the choice is saved as the first answer at once. */
+  function write(choice: DraftWriting) {
+    setWriting(choice);
+    setMessage(choice === "change" ? offer : "");
+    setPhase("write");
+    context.saveNow("draft", { chosen: [choice], text: "" });
   }
 
   const after = (shown: Phase[]) => shown.includes(phase);
@@ -164,7 +190,7 @@ export default function DraftChat({ context }: { context: StepContext }) {
         {phase === "mia-typing" && (
           <p className="tour-chat-typing">{draft.typing(draft.mia)}</p>
         )}
-        {after(["pako-typing", "decide", "edit", "decided"]) && (
+        {after(["pako-typing", "decide", "write", "decided"]) && (
           <Bubble from="mia" name={draft.mia}>
             {draft.confirm}
           </Bubble>
@@ -172,7 +198,7 @@ export default function DraftChat({ context }: { context: StepContext }) {
         {phase === "pako-typing" && (
           <p className="tour-chat-typing">{draft.typing(draft.pako)}</p>
         )}
-        {after(["decide", "edit", "decided"]) && (
+        {after(["decide", "write", "decided"]) && (
           <Bubble from="pako" name={draft.pako}>
             {draft.offerReady}
           </Bubble>
@@ -206,23 +232,36 @@ export default function DraftChat({ context }: { context: StepContext }) {
       {phase === "decide" && (
         <>
           <div
-            ref={offer}
+            ref={offerCard}
             className="tour-card tour-draft"
             tabIndex={-1}
             aria-label={draft.offerTitle}
           >
             <p className="tour-eyebrow">{draft.offerTitle}</p>
-            <p className="tour-message">{draft.offer}</p>
+            <p className="tour-message">{offer}</p>
           </div>
-          <div className="tour-draft-actions tour-draft-actions-equal">
+          <p id={questionId} className="tour-draft-question">
+            {draft.question}
+          </p>
+          <div
+            className="tour-draft-choices"
+            role="group"
+            aria-labelledby={questionId}
+          >
             <Button
               className="button secondary"
-              onClick={() => decide("sent-unchanged", draft.offer, "send")}
+              onClick={() => decide("sent-unchanged", offer, "send")}
             >
-              {draft.send}
+              {draft.sendAsIs}
             </Button>
-            <Button className="button secondary" onClick={edit}>
-              {draft.edit}
+            <Button
+              className="button secondary"
+              onClick={() => write("change")}
+            >
+              {draft.change}
+            </Button>
+            <Button className="button secondary" onClick={() => write("own")}>
+              {draft.own}
             </Button>
             <Button
               className="button secondary"
@@ -233,10 +272,10 @@ export default function DraftChat({ context }: { context: StepContext }) {
           </div>
         </>
       )}
-      {phase === "edit" && (
+      {phase === "write" && writing && (
         <>
           <TextAnswer
-            label={draft.editLabel}
+            label={writing === "change" ? draft.editLabel : draft.ownLabel}
             value={message}
             onChange={setMessage}
             autoFocus
@@ -245,7 +284,12 @@ export default function DraftChat({ context }: { context: StepContext }) {
             <Button
               className="button primary"
               disabled={message.trim() === ""}
-              onClick={() => decide("sent-edited", message.trim())}
+              onClick={() =>
+                decide(
+                  sentResult(writing, message.trim(), offer),
+                  message.trim(),
+                )
+              }
             >
               {draft.send}
             </Button>

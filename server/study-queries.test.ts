@@ -136,7 +136,7 @@ const PARTICIPANTS: Participant[] = [
       desk: ["nearer"],
       pack: ["pack"],
       "draft-day": ["sat"],
-      draft: { chosen: ["sent-edited"], first: ["edit"] },
+      draft: { chosen: ["sent-changed"], first: ["change"] },
     },
     draftText: "Hi Mia! I can pick it up on Saturday at 17:30.",
     events: [
@@ -167,8 +167,9 @@ const PARTICIPANTS: Participant[] = [
       "move-it": ["carry-bike"],
       desk: ["cheaper"],
       pack: ["manual"],
-      draft: ["sent-unchanged"],
+      draft: { chosen: ["sent-own"], first: ["own"] },
     },
+    draftText: "Hi, is Sunday at 18:00 possible?",
     events: [
       ["shown", "who"],
       ["shown", "last-role"],
@@ -349,13 +350,17 @@ test("the v3 results queries run on v3 sessions of the named version only", asyn
       "shown_task",
     ),
     [
-      ["sent-edited", "edit", 1, 2, 1],
-      ["sent-unchanged", "sent-unchanged", 1, 2, 1],
+      ["sent-changed", "change", 1, 2, 1],
+      ["sent-own", "own", 1, 2, 1],
     ],
   );
-  assert.deepEqual(rowsOf(await query("d5a-texts"), "chosen_day", "text"), [
-    ["sat", "Hi Mia! I can pick it up on Saturday at 17:30."],
-  ]);
+  assert.deepEqual(
+    rowsOf(await query("d5a-texts"), "final", "chosen_day", "text"),
+    [
+      ["sent-changed", "sat", "Hi Mia! I can pick it up on Saturday at 17:30."],
+      ["sent-own", null, "Hi, is Sunday at 18:00 possible?"],
+    ],
+  );
   assert.deepEqual(
     rowsOf(await query("d5b-sending"), "answer", "chosen", "answered"),
     [
@@ -402,19 +407,7 @@ test("the v3 results queries run on v3 sessions of the named version only", asyn
     ["epfl-unil", "h-photo"],
     ["rest", "none"],
   ]);
-  assert.deepEqual(
-    rowsOf(
-      await query("leak"),
-      "shared_link",
-      "completed_decisions",
-      "sent_unchanged",
-    ),
-    [
-      [false, 1, 0],
-      [true, 1, 1],
-    ],
-  );
-  assert.equal(queries.size, 18);
+  assert.equal(queries.size, 17);
 
   await runDeletion(run, deletion);
   for (const table of [

@@ -58,17 +58,13 @@ export const nextV3 = (answers: AnswerSheet, id: string) =>
 export const previousV3 = (answers: AnswerSheet, id: string) =>
   neighbourStep(visibleV3Steps(answers), id, -1);
 
-/**
- * Back is offered except where it would undo what the participant has seen: before
- * the first question, once the draft is revealed, and once the core is saved.
- */
+/** Back is offered except before the first screen and once the core is saved. */
 export function canGoBack(steps: readonly V3Step[], step: V3Step): boolean {
   const index = steps.findIndex((candidate) => candidate.id === step.id);
   const firstAfterCore = steps.findIndex(
     (candidate) => candidate.kind === "about",
   );
-  const blocked =
-    step.kind === "reveal" || step.kind === "saved" || step.kind === "end";
+  const blocked = step.kind === "saved" || step.kind === "end";
   return index > 0 && !blocked && index !== firstAfterCore;
 }
 
@@ -143,7 +139,7 @@ export function answerEvent(
   return same ? "answered" : "changed";
 }
 
-/** Adds an event at the end of the record, unless the participant withdrew. */
+/** Adds an event at the end of the record. */
 export function withEvent(
   progress: V3Progress,
   kind: StudyEventKind,
@@ -151,7 +147,6 @@ export function withEvent(
   detail: string | null = null,
   at: Date = new Date(),
 ): V3Progress {
-  if (progress.withdrawn) return progress;
   const event = {
     seq: progress.events.length,
     kind,

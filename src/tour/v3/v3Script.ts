@@ -9,11 +9,9 @@ import type { TourText } from "../i18n/en.ts";
 import type { StepCondition } from "../stepConditions.ts";
 
 /** Raised whenever a question, an option or its wording changes. */
-export const V3_VERSION = "v3-2";
+export const V3_VERSION = "v3-3";
 /** The time the start screen and the share text name, rounded up from the core's estimate. */
 export const V3_MINUTES = 5;
-/** The participant is asked not to talk about the planted error before this day. */
-export const V3_CLOSES = "2026-12-13";
 /** Free photo drafts a day in the pack situation. */
 export const FREE_DRAFTS = 3;
 /** The one open sentence is shorter than what the server accepts. */
@@ -38,6 +36,8 @@ type Base = {
   when?: StepCondition;
   /** The part of the core the step belongs to; steps after the core have none. */
   section?: V3Section;
+  /** Its place among the situations; a context card opens the step. */
+  situation?: number;
 };
 
 export type V3ChoiceStep = Base & {
@@ -64,11 +64,11 @@ export type V3ChoiceStep = Base & {
 };
 
 export type V3Step =
+  | (Base & { kind: "about-app" })
   | V3ChoiceStep
   | (Base & { kind: "story" })
   | (Base & { kind: "desk"; options: readonly string[] })
   | (Base & { kind: "draft" })
-  | (Base & { kind: "reveal" })
   | (Base & { kind: "saved" })
   | (Base & { kind: "about"; rows: readonly V3ChoiceStep[] })
   | (Base & {
@@ -84,10 +84,18 @@ export type V3Step =
 export const DRAFT_DAY_STEP = "draft-day";
 export const DRAFT_DAYS = ["sat", "sun"] as const;
 export type DraftDay = (typeof DRAFT_DAYS)[number];
-/** The first button tapped on the offer, kept as the draft's first answer. */
-export type DraftAction = "send" | "edit" | "dont-send";
-/** The draft's final answer; `edit` stays the final answer when nothing was decided. */
-export type DraftResult = "sent-unchanged" | "sent-edited" | "not-sent";
+/** The option picked first for Pako's draft, kept as the draft's first answer. */
+export type DraftAction = "send" | "change" | "own" | "dont-send";
+/** The options that open the message for writing. */
+export type DraftWriting = Extract<DraftAction, "change" | "own">;
+/**
+ * The draft's final answer. `change` or `own` stays the final answer when the
+ * participant started writing and decided nothing.
+ */
+export type DraftResult =
+  "sent-unchanged" | "sent-changed" | "sent-own" | "not-sent";
+/** How many situations part 4 holds, for its context cards. */
+export const SITUATIONS = 4;
 
 /** Pressed at the end of "About you": finish, or watch the optional tour first. */
 export const PEEK_STEP = "peek";
@@ -156,6 +164,7 @@ function featureSteps(scene: TourScene): V3Step[] {
 }
 
 export const V3_STEPS: readonly V3Step[] = [
+  { kind: "about-app", id: "what-is", section: "you" },
   choice("who", ["epfl", "unil", "other-school", "no"], { section: "you" }),
   choice(
     "last-role",
@@ -279,6 +288,7 @@ export const V3_STEPS: readonly V3Step[] = [
     ],
     {
       section: "situations",
+      situation: 1,
       intro: "situationsIntro",
       product: true,
       shuffle: true,
@@ -290,17 +300,18 @@ export const V3_STEPS: readonly V3Step[] = [
     kind: "desk",
     id: "desk",
     section: "situations",
+    situation: 2,
     options: ["nearer", "cheaper", "neither"],
   },
   choice("pack", ["manual", "wait", "pack", "other-way", "not-sure"], {
     section: "situations",
+    situation: 3,
     product: true,
     shuffle: true,
     fixedLast: 2,
     disclosure: "packMissing",
   }),
-  { kind: "draft", id: "draft", section: "situations" },
-  { kind: "reveal", id: "reveal" },
+  { kind: "draft", id: "draft", section: "situations", situation: 4 },
   { kind: "saved", id: "saved" },
   {
     kind: "about",

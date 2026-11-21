@@ -33,8 +33,6 @@ export type V3Progress = {
   /** Events already handed to the save queue. */
   queuedEvents: number;
   pilot: StudyPilot | null;
-  /** The participant removed their answers; nothing more is recorded. */
-  withdrawn: boolean;
 };
 
 /** As kept in session storage, with the saves the server has not confirmed yet. */

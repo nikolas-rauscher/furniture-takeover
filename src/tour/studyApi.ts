@@ -7,7 +7,6 @@ import {
   studyPilotSchema,
   studyResultsSchema,
   studyStartSchema,
-  studyWithdrawalSchema,
   type StudyAnswer,
   type StudyConfig,
   type StudyContact,
@@ -74,14 +73,6 @@ export function sendPilot(pilot: StudyPilot) {
     STUDY_ROUTES.pilot,
     studyPilotSchema.parse(pilot),
     "send the pilot sign-up",
-  );
-}
-
-export function withdrawSession(session: string) {
-  return post(
-    STUDY_ROUTES.withdrawals,
-    studyWithdrawalSchema.parse({ session }),
-    "remove the answers",
   );
 }
 

@@ -20,8 +20,8 @@ function endsAbout(context: StepContext) {
 
 /** The main buttons of a v3 step. */
 export default function V3Footer({ context }: { context: StepContext }) {
-  const { common, v3, notices } = useTourText();
-  const { step, given, progress } = context;
+  const { common, v3 } = useTourText();
+  const { step, given } = context;
   const primary = "button primary large";
   const quiet = "button quiet large";
 
@@ -30,18 +30,7 @@ export default function V3Footer({ context }: { context: StepContext }) {
     case "pilot":
     case "end":
       return null;
-    case "reveal":
-      if (progress.withdrawn)
-        return (
-          <Button className={primary} onClick={context.onShowPitch}>
-            {notices.showTour}
-          </Button>
-        );
-      return (
-        <Button className={primary} onClick={context.moveOn}>
-          {common.continue}
-        </Button>
-      );
+    case "about-app":
     case "saved":
       return (
         <Button className={primary} onClick={context.moveOn}>

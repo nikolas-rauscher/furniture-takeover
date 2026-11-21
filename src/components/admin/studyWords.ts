@@ -23,12 +23,14 @@ const RECORDED: Record<string, Words> = {
     options: EN.v3.draft.days,
   },
   draft: {
-    question: "Offer draft with the planted day",
+    question: "What participants did with Pako's offer draft",
     options: {
-      "sent-unchanged": "Sent unchanged",
-      "sent-edited": "Sent after editing",
+      "sent-unchanged": "Sent as it is",
+      "sent-changed": "Changed, then sent",
+      "sent-own": "Wrote their own",
       "not-sent": "Not sent",
-      edit: "Edit tapped, nothing decided",
+      change: "Started changing, nothing decided",
+      own: "Started their own, nothing decided",
     },
   },
   peek: {
@@ -42,24 +44,25 @@ const SHOWN: Record<string, string> = {
   "app-find": `Scene: ${EN.scenes.find.title}`,
   "app-sell": `Scene: ${EN.scenes.sell.title}`,
   "app-deal": `Scene: ${EN.scenes.deal.title}`,
-  reveal: "Reveal of the planted day",
+  "what-is": "What is takeover?",
 };
 
 function wordsOf(step: string): Words | undefined {
   const steps: Record<
     string,
-    {
-      question: string | ((free: number) => string);
-      options: Record<string, string>;
-    }
+    { question: string; options: Record<string, string> }
   > = EN.v3.steps;
   const words = steps[step];
   if (RECORDED[step] || !words) return RECORDED[step];
-  const { question, options } = words;
-  return {
-    question: typeof question === "function" ? question(FREE_DRAFTS) : question,
-    options,
-  };
+  return words;
+}
+
+/** A situation's scenario, which the participant read on its card before the question. */
+function scenarioOf(step: string): string | undefined {
+  const { situations } = EN.v3;
+  if (step === "pack") return situations.pack(FREE_DRAFTS);
+  if (step === "move-it" || step === "desk") return situations[step];
+  return undefined;
 }
 
 /** The feature a "would it have helped" question follows, named for the admin. */
@@ -78,9 +81,9 @@ export function questionLabel(step: string): string {
   const words = wordsOf(step);
   if (!words) return SHOWN[step] ?? step;
   const feature = step.startsWith("helped-") ? featureOf(step) : undefined;
-  return feature
-    ? `${EN.scenes[feature].title}: ${words.question}`
-    : words.question;
+  if (feature) return `${EN.scenes[feature].title}: ${words.question}`;
+  const scenario = scenarioOf(step);
+  return scenario ? `${scenario} ${words.question}` : words.question;
 }
 
 export function optionLabel(step: string, option: string): string {

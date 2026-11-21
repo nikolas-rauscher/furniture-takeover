@@ -46,8 +46,10 @@ export type StudyReportRows = z.infer<typeof studyReportRowsSchema>;
 type Session = StudyReportRows["sessions"][number];
 type Answer = StudyReportRows["answers"][number];
 
-/** The draft task's offer is the same template for everyone, so its text is not listed. */
-const UNLISTED_TEXTS = new Set(["draft"]);
+/** An offer sent as Pako drafted it is Pako's text, so only changed or own offers are listed. */
+const isParticipantText = (answer: Answer) =>
+  answer.text !== "" &&
+  !(answer.step === "draft" && answer.chosen.includes("sent-unchanged"));
 
 /** A count between 1 and the minimum is hidden, so a small group cannot be singled out. */
 const shown = (count: number) =>
@@ -124,9 +126,7 @@ function questions(answers: readonly Answer[]) {
 }
 
 function texts(answers: readonly Answer[]) {
-  const typed = answers.filter(
-    (answer) => answer.text !== "" && !UNLISTED_TEXTS.has(answer.step),
-  );
+  const typed = answers.filter(isParticipantText);
   const bySteps = groupBy(typed, (answer) => answer.step);
   return [...bySteps.keys()].sort(inSurveyOrder).map((step) => ({
     step,

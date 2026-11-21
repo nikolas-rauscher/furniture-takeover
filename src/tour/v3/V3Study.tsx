@@ -30,7 +30,6 @@ function firstProgress(source: string, language: StudyLanguage): V3Progress {
     events: [],
     queuedEvents: 0,
     pilot: null,
-    withdrawn: false,
   };
   return withEvent(withV3Order(started, first), "shown", first.id);
 }
@@ -44,7 +43,7 @@ function useEventFlush(
   recorder: Recorder,
 ) {
   useEffect(() => {
-    if (!progress || progress.withdrawn) return;
+    if (!progress) return;
     const end = progress.events.length;
     if (end === progress.queuedEvents) return;
     const flush = () => {

@@ -77,7 +77,8 @@ test("questions count chosen options over the participants who answered", () => 
         answer("stop", ["other"], "Too far from my flat"),
         answer("stop", [], ""),
         answer("who", ["epfl"]),
-        answer("draft", ["sent-edited"], "Hi Mia! Saturday"),
+        answer("draft", ["sent-unchanged"], "Hi Mia! Saturday"),
+        answer("draft", ["sent-own"], "Hi, Saturday at 18:00?"),
         answer("last-story", [], "Sold it in a day"),
         answer("last-story", [], "Buyer never came"),
       ],
@@ -100,6 +101,7 @@ test("questions count chosen options over the participants who answered", () => 
   assert.deepEqual(report.texts, [
     { step: "last-story", texts: ["Buyer never came", "Sold it in a day"] },
     { step: "stop", texts: ["Too far from my flat"] },
+    { step: "draft", texts: ["Hi, Saturday at 18:00?"] },
   ]);
 });
 
