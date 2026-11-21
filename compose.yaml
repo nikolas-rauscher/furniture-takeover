@@ -1,0 +1,15 @@
+# The app on one machine behind a Cloudflare Tunnel: no open ports, HTTPS on the
+# team's own domain. Secrets live in .env next to this file, never in the image.
+services:
+  app:
+    build: .
+    env_file: .env
+    restart: unless-stopped
+  tunnel:
+    image: cloudflare/cloudflared:2026.11.0
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    restart: unless-stopped
+    depends_on:
+      - app
