@@ -19,6 +19,12 @@ alter table takeover_admin.study_pilot drop column role;
 alter table takeover_admin.study_pilot add constraint study_pilot_early_details
  check(try_early=(cardinality(roles)>0 and place is not null));
 
+-- Each form names the wording version of the survey it ends, so the try-early rate divides
+-- forms and finishers of the same version. It is the same for everyone in a run; forms from
+-- before v4 have none.
+alter table takeover_admin.study_pilot add column version text
+ check(version ~ '^[a-z0-9][a-z0-9.-]{0,19}$');
+
 -- The longest option list, last-trouble for sellers, has 13 options.
 alter table takeover_admin.study_answers drop constraint study_answers_chosen_check;
 alter table takeover_admin.study_answers drop constraint study_answers_first_chosen_check;
@@ -30,28 +36,28 @@ alter table takeover_admin.study_answers add constraint study_answers_first_chos
 alter table takeover_admin.study_answers add constraint study_answers_shown_max
  check(cardinality(shown)<=16);
 
--- The save function takes the new tick and the roles; the old signature goes.
+-- The save function takes the new tick, the roles and the version; the old signature goes.
 drop function public.study_save_pilot(text,boolean,boolean,boolean,text,text);
 create function public.study_save_pilot(p_email text,p_launch_news boolean,p_try_early boolean,
- p_interview boolean,p_future_surveys boolean,p_roles text[],p_place text)
+ p_interview boolean,p_future_surveys boolean,p_roles text[],p_place text,p_version text)
 returns void language plpgsql security definer set search_path='' as $$
 begin
  perform pg_advisory_xact_lock(hashtext('takeover_admin.study_pilot'));
  if (select count(*) from takeover_admin.study_pilot)>=2000 then raise exception 'study_pilot_limit'; end if;
- insert into takeover_admin.study_pilot(email,launch_news,try_early,interview,future_surveys,roles,place)
- values(lower(btrim(p_email)),p_launch_news,p_try_early,p_interview,p_future_surveys,p_roles,p_place)
+ insert into takeover_admin.study_pilot(email,launch_news,try_early,interview,future_surveys,roles,place,version)
+ values(lower(btrim(p_email)),p_launch_news,p_try_early,p_interview,p_future_surveys,p_roles,p_place,p_version)
  on conflict(email) do nothing;
 end $$;
-revoke all on function public.study_save_pilot(text,boolean,boolean,boolean,boolean,text[],text)
+revoke all on function public.study_save_pilot(text,boolean,boolean,boolean,boolean,text[],text,text)
  from public,anon,authenticated;
-grant execute on function public.study_save_pilot(text,boolean,boolean,boolean,boolean,text[],text)
+grant execute on function public.study_save_pilot(text,boolean,boolean,boolean,boolean,text[],text,text)
  to service_role;
 
 -- v4 shows no counts at the end of the survey, and v3's counts were read off the desk task,
 -- which v4 drops.
 drop function public.study_results(text);
 
--- The admin rows carry the new tick and the roles; everything else is as in 202611210001_study.sql.
+-- The admin rows carry the new tick, the roles and the version; everything else is as in 202611210001_study.sql.
 create or replace function public.study_report_rows(p_user uuid) returns jsonb
 language plpgsql stable security definer set search_path='' as $$
 begin
@@ -74,7 +80,7 @@ begin
    where s.survey='v3'),'[]'::jsonb),
   'pilot',coalesce((select jsonb_agg(jsonb_build_object(
     'launchNews',p.launch_news,'tryEarly',p.try_early,'interview',p.interview,
-    'futureSurveys',p.future_surveys,'roles',to_jsonb(p.roles),'place',p.place))
+    'futureSurveys',p.future_surveys,'roles',to_jsonb(p.roles),'place',p.place,'version',p.version))
    from takeover_admin.study_pilot p),'[]'::jsonb));
 end $$;
 

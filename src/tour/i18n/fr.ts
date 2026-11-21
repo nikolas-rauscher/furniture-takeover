@@ -393,7 +393,7 @@ export const FR: TourText = {
       "last-time": "Ton expérience",
       home: "Chez toi",
       "the-app": "L’app",
-      price: "Les prix, et toi",
+      price: "Le prix, et toi",
     },
     progress: "Parties du sondage",
     lastPart: "Dernière partie",
@@ -443,10 +443,10 @@ export const FR: TourText = {
         text: "Si tu cherches quelque chose, tu publies ce dont tu as besoin. Tou·tes les étudiant·es à proximité qui utilisent takeover le voient.",
       },
       delegate: {
-        text: "Imagine maintenant une autre situation\u202f: Pako agit en ton nom. Tu ne vois les messages qu’après leur envoi.",
+        text: "Imagine maintenant que tu vends quelque chose et que Pako peut agir seul. Il envoie des messages en ton nom\u202f; tu ne les vois qu’après.",
       },
       price: {
-        text: "Chercher, publier une annonce et envoyer des messages, c’est gratuit. Pako t’aide gratuitement quelques fois par jour. Une aide = Pako rédige une annonce ou un message. Seule l’aide supplémentaire de Pako serait payante.",
+        text: "Chercher, publier une annonce et envoyer des messages, c’est gratuit. Pako rédige gratuitement quelques annonces ou messages par jour. Chaque brouillon compte une fois. Seule l’aide supplémentaire de Pako serait payante.",
       },
     },
     wantedPost: {
@@ -510,7 +510,7 @@ export const FR: TourText = {
         options: {
           "moving-in": "Oui, j’emménageais",
           "moving-out": "Oui, je quittais mon logement",
-          both: "Les deux",
+          both: "Oui, les deux",
           "no-move": "Non",
         },
       },
@@ -529,8 +529,10 @@ export const FR: TourText = {
         options: { yes: "Oui", no: "Non", ongoing: "C’est encore en cours" },
       },
       "last-trouble": {
-        question: "Qu’est-ce qui a été le plus pénible\u202f?",
+        question:
+          "Lors de cette tentative, qu’est-ce qui t’a posé problème, s’il y a eu quelque chose\u202f?",
         options: {
+          nothing: "Rien n’a posé problème",
           finding: "Trouver quelque chose qui convient",
           gone: "L’objet était déjà parti",
           "agree-price": "Se mettre d’accord sur un prix",
@@ -545,7 +547,6 @@ export const FR: TourText = {
           transport: "Le transport",
           trust: "Faire confiance à l’autre personne",
           other: "Autre chose",
-          nothing: "Rien n’a été pénible",
           "cant-recall": "Je ne sais plus",
         },
       },
@@ -563,7 +564,7 @@ export const FR: TourText = {
       },
       "last-messages": {
         question:
-          "Combien de messages ont été échangés au total, à peu près, avec tout le monde\u202f?",
+          "En tout, environ combien de messages as-tu échangés, toutes personnes confondues\u202f?",
         options: {
           none: "Aucun",
           "1-5": "1–5",
@@ -582,6 +583,11 @@ export const FR: TourText = {
           "over-10": "Plus de 10",
         },
       },
+      "idle-release": {
+        question:
+          "Envisagerais-tu de vendre ou de donner au moins un de ces objets\u202f?",
+        options: { yes: "Oui", no: "Non", unsure: "Je ne sais pas" },
+      },
       "idle-why": {
         question: "Pourquoi les as-tu encore\u202f?",
         options: {
@@ -590,8 +596,9 @@ export const FR: TourText = {
             "Les messages et les rendez\u2011vous, c’est trop pénible",
           transport: "Je ne peux pas les transporter",
           "not-worth": "Ça ne vaut pas la peine pour ce que ça rapporte",
-          "dont-know-where": "Je ne sais pas à qui je pourrais les proposer",
+          "dont-know-whom": "Je ne sais pas à qui je pourrais les proposer",
           "might-need": "J’en aurai peut-être encore besoin",
+          keep: "Je préfère les garder",
           "not-yet": "Je n’ai pas encore pris le temps",
           other: "Autre chose",
         },
@@ -606,7 +613,8 @@ export const FR: TourText = {
         },
       },
       "wanted-react": {
-        question: "Tu as une lampe dont tu n’as pas besoin. Que fais-tu\u202f?",
+        question:
+          "Tu as une lampe de bureau en trop, comme celle qui est recherchée. Que ferais-tu le plus probablement\u202f?",
         options: {
           "offer-now": "La proposer maintenant",
           "offer-later": "La proposer plus tard",
@@ -622,12 +630,12 @@ export const FR: TourText = {
         question:
           "Qu’est-ce que Pako aurait le droit de faire sans te demander\u202f? Tu peux en choisir plusieurs.",
         options: {
+          none: "Rien de tout ça",
           "answer-questions": "Répondre aux questions sur l’objet",
           "suggest-time": "Proposer une heure pour venir chercher l’objet",
           remind: "Rappeler le rendez\u2011vous à l’autre personne",
           negotiate: "Négocier le prix",
           "accept-offer": "Accepter une offre",
-          none: "Rien de tout ça",
         },
       },
       "pay-model": {
@@ -635,7 +643,7 @@ export const FR: TourText = {
         options: {
           free: "Gratuit",
           "seller-fee": "Commission par vente",
-          "pay-once": "Pack de 5",
+          "pack-5": "Pack de 5",
           monthly: "Abonnement mensuel",
           "not-sure": "Je ne sais pas",
         },
@@ -643,7 +651,7 @@ export const FR: TourText = {
       age: {
         question: "Quel âge as-tu\u202f?",
         options: {
-          "under-18": "Moins de 18",
+          "under-18": "Moins de 18 ans",
           "18-20": "18–20",
           "21-23": "21–23",
           "24-26": "24–26",
@@ -682,9 +690,9 @@ export const FR: TourText = {
           help: "illimitée",
           pay: "5\u00a0% du prix de vente, seulement si tu vends quelque chose (CHF\u00a02 sur CHF\u00a040)",
         },
-        "pay-once": {
+        "pack-5": {
           price: "CHF\u00a05",
-          help: "Pako rédige 5 annonces en plus",
+          help: "5 brouillons en plus",
           pay: "CHF\u00a05 une fois",
         },
         monthly: {

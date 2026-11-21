@@ -67,6 +67,7 @@ test("the Supabase transport calls the study functions with the service key", as
     futureSurveys: true,
     roles: ["buy"],
     place: "flat",
+    version: "v4-1",
   });
   await study.withdraw({ session });
   assert.deepEqual(
@@ -111,6 +112,7 @@ test("the Supabase transport calls the study functions with the service key", as
     p_future_surveys: true,
     p_roles: ["buy"],
     p_place: "flat",
+    p_version: "v4-1",
   });
   assert.deepEqual(bodyOf(calls[5]), { p_session: session });
 });

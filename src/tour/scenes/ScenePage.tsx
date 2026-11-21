@@ -1,4 +1,4 @@
-import { MotionConfig } from "motion/react";
+import { MotionConfig, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import { setStorageScope } from "../../cloud/session";
 import {
@@ -35,6 +35,11 @@ function pageRoot() {
 }
 
 /** The whole screen fades in at the start of a round, and out before the next. */
+/** Keeps the page out of sight until its round ends. */
+function hide() {
+  pageRoot().animate({ opacity: [0, 0] }, { duration: 0, fill: "forwards" });
+}
+
 function fade(direction: "in" | "out") {
   return pageRoot().animate(
     { opacity: direction === "in" ? [0, 1] : [1, 0] },
@@ -119,7 +124,8 @@ function useImagesLoaded(scene: TourScene) {
 
 /**
  * One app scene inside the tour's phone: it starts once on screen, holds its
- * end, fades out and starts over, or waits off screen until it is seen again.
+ * end, fades out and starts over, or waits off screen until it is seen again. With
+ * reduced motion the short version shows only its last screen and keeps it.
  * Leaving the screen stops a round; the scene starts over on its return.
  * Its images load first, so none appears late.
  * Only its key moments answer the visitor's taps; nothing in it can be focused.
@@ -140,6 +146,9 @@ export default function ScenePage({
   const [round, setRound] = useState(0);
   const ending = useRef<number>(undefined);
   const Scene = SCENES[scene];
+  // With reduced motion the short version opens on its outcome: the round plays out of
+  // sight and its last screen stays.
+  const opensOnOutcome = useReducedMotion() === true && brief;
 
   /** Starts the scene again unless a replay already started a newer round. */
   function startAfter(finished: number) {
@@ -162,8 +171,9 @@ export default function ScenePage({
   });
   useEffect(() => () => window.clearTimeout(ending.current), []);
   useEffect(() => {
-    void fade("in");
-  }, [round]);
+    if (opensOnOutcome) hide();
+    else void fade("in");
+  }, [round, opensOnOutcome]);
 
   /** Fades the round out and starts the next one, after `holdMs` on its last screen. */
   function next(holdMs: number) {
@@ -190,7 +200,7 @@ export default function ScenePage({
           key={round}
           brief={brief}
           still={held}
-          onEnd={() => next(END_HOLD_MS)}
+          onEnd={() => (opensOnOutcome ? void fade("in") : next(END_HOLD_MS))}
           onFail={fail}
         />
       )}

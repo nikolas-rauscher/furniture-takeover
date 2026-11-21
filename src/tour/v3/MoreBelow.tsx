@@ -3,8 +3,8 @@ import { createPortal } from "react-dom";
 import { ChevronDown } from "@/components/icons";
 import { useTourText } from "../i18n/TourLanguage";
 
-/** The share of the last item that counts as seen, so a sliver at the edge still cues. */
-const SEEN = 0.6;
+/** The share of the last item that counts as seen: a clipped last answer still cues. */
+const SEEN = 0.95;
 
 /**
  * A hint that more follows, shown in the footer while the step's last item is mostly out

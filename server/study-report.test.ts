@@ -132,13 +132,18 @@ test("the form at the end counts each tick; those who try early are counted per 
     futureSurveys: false,
     roles: [],
     place: null,
+    version: "v3-2",
     ...overrides,
   });
   const early = (place: Form["place"], roles: Form["roles"]) =>
     form({ tryEarly: true, place, roles });
   const { pilot } = buildStudyReport(
     rows({
+      sessions: [session()],
       pilot: [
+        // A form from another wording version is counted with that version only.
+        form({ version: "v3-1" }),
+        form({ version: null }),
         ...times(5, () => early("vortex", ["sell"])),
         early("vortex", ["get-free"]),
         early("flat", ["buy", "give-away"]),

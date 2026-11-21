@@ -188,6 +188,11 @@ export const studyPilotSchema = z
     /** Everything they would try; empty unless they want to try takeover early. */
     roles: z.array(z.enum(STUDY_PILOT_ROLES)).max(STUDY_PILOT_ROLES.length),
     place: z.enum(STUDY_PILOT_PLACES).nullable(),
+    /**
+     * The wording version of the survey it ends, so its counts match that version's
+     * finishers. The same for everyone in a run, so it identifies nobody.
+     */
+    version: studyVersionSchema,
   })
   .refine(
     (form) =>
@@ -228,6 +233,7 @@ export const STUDY_V3_CORE_SCREENS = [
   "last-messages",
   "part-home",
   "idle-items",
+  "idle-release",
   "idle-why",
   "move",
   "part-the-app",

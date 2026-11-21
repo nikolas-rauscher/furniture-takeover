@@ -63,6 +63,7 @@ const pilot = (email: string): StudyPilot => ({
   futureSurveys: false,
   roles: ["sell"],
   place: "atrium",
+  version: "v4-1",
 });
 
 async function withDatabase(run: (path: string) => void) {

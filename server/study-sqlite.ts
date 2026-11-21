@@ -41,7 +41,7 @@ const SCHEMA = `PRAGMA foreign_keys = ON;
   CREATE TABLE IF NOT EXISTS study_pilot (
     email TEXT PRIMARY KEY, launch_news INTEGER NOT NULL, try_early INTEGER NOT NULL,
     future_surveys INTEGER NOT NULL, place TEXT, created_at TEXT NOT NULL,
-    interview INTEGER NOT NULL DEFAULT 0, roles TEXT NOT NULL DEFAULT '[]'
+    interview INTEGER NOT NULL DEFAULT 0, roles TEXT NOT NULL DEFAULT '[]', version TEXT
   )`;
 
 /**
@@ -55,6 +55,7 @@ const COLUMNS_ADDED_LATER = [
   ["study_answers", "revision", "INTEGER NOT NULL DEFAULT 0"],
   ["study_pilot", "interview", "INTEGER NOT NULL DEFAULT 0"],
   ["study_pilot", "roles", "TEXT NOT NULL DEFAULT '[]'"],
+  ["study_pilot", "version", "TEXT"],
 ] as const;
 
 /** A v3 file's one role per form becomes the roles it stands for, as in Postgres. */
@@ -214,8 +215,8 @@ export function createSqliteStudyStore(
           throw namedStudyErrors.study_pilot_limit;
         db.prepare(
           `INSERT INTO study_pilot
-             (email, launch_news, try_early, interview, future_surveys, roles, place, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (email) DO NOTHING`,
+             (email, launch_news, try_early, interview, future_surveys, roles, place, version, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (email) DO NOTHING`,
         ).run(
           normalizeEmail(input.email),
           input.launchNews ? 1 : 0,
@@ -224,6 +225,7 @@ export function createSqliteStudyStore(
           input.futureSurveys ? 1 : 0,
           JSON.stringify(input.roles),
           input.place,
+          input.version,
           now(),
         );
       });
@@ -269,7 +271,7 @@ export function createSqliteStudyStore(
         }));
       const pilot = db
         .prepare(
-          "SELECT launch_news, try_early, interview, future_surveys, roles, place FROM study_pilot",
+          "SELECT launch_news, try_early, interview, future_surveys, roles, place, version FROM study_pilot",
         )
         .all()
         .map((row) => ({
@@ -279,6 +281,7 @@ export function createSqliteStudyStore(
           futureSurveys: row.future_surveys === 1,
           roles: JSON.parse(String(row.roles)),
           place: row.place,
+          version: row.version,
         }));
       return studyReportRowsSchema.parse({ sessions, answers, pilot });
     },

@@ -60,12 +60,18 @@ type DealState = {
   card: DealCardStage;
 };
 
-/** A pickup on the next full half hour at least three hours ahead, so the deal can be booked. */
+/** The scene's own clock starts at 14:00 today, so its pickup is the same at any hour. */
+function sceneStart() {
+  const start = new Date();
+  start.setHours(14, 0, 0, 0);
+  return start;
+}
+
+/** The pickup the caption names: 17:30 the same day, ahead enough to be booked. */
 function pickupTime(from: Date) {
-  const halfHour = 30 * MINUTE;
-  return new Date(
-    Math.ceil((from.getTime() + 180 * MINUTE) / halfHour) * halfHour,
-  );
+  const pickup = new Date(from);
+  pickup.setHours(17, 30, 0, 0);
+  return pickup;
 }
 
 function offerTerms(pickupAt: Date): DealTerms {
@@ -266,7 +272,7 @@ function useDealCardStage(stage: DealCardStage) {
 
 /** Agree and pick up: Noah's offer arrives, Léa confirms, the pickup counts down, Picked up and Mark sold. */
 export default function DealScene(round: SceneProps) {
-  const [start] = useState(() => new Date());
+  const [start] = useState(sceneStart);
   const [beats] = useState(() => dealBeats(pickupTime(start)));
   const { state, setState, marks } = useSceneScript<DealState>(
     () => ({

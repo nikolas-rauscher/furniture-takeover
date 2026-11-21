@@ -429,10 +429,10 @@ export const EN = {
         text: "If you're looking for something, you post what you need. All students nearby who use takeover can see it.",
       },
       delegate: {
-        text: "Now imagine a different setting: Pako acts in your name. You see the messages only after they're sent.",
+        text: "Now imagine you are selling something and Pako may act on its own. It sends messages in your name; you see them only afterwards.",
       },
       price: {
-        text: "Searching, listing and messaging are free. Pako helps you a few times a day for free. One help = Pako drafts one listing or message. Only extra help from Pako would cost something.",
+        text: "Searching, listing and messaging are free. Pako drafts a few listings or messages a day for free. Each draft counts once. Only extra help from Pako would cost something.",
       },
     },
     wantedPost: {
@@ -464,7 +464,7 @@ export const EN = {
         options: {
           fmel: "In an FMEL residence",
           "other-res": "In another student residence",
-          flat: "Shared or own flat or studio (not a residence)",
+          flat: "Flat, flat-share or studio (not a student residence)",
           family: "With my family",
           elsewhere: "Somewhere else",
         },
@@ -496,7 +496,7 @@ export const EN = {
         options: {
           "moving-in": "Yes, moving in",
           "moving-out": "Yes, moving out",
-          both: "Both moving out and in",
+          both: "Yes, both (moving out and in)",
           "no-move": "No",
         },
       },
@@ -507,7 +507,7 @@ export const EN = {
           "chat-group": "WhatsApp or Telegram group",
           facebook: "Facebook Marketplace",
           anibis: "Anibis, Tutti or Ricardo",
-          other: "Other",
+          other: "Somewhere else",
         },
       },
       "last-outcome": {
@@ -515,8 +515,9 @@ export const EN = {
         options: { yes: "Yes", no: "No", ongoing: "Still in progress" },
       },
       "last-trouble": {
-        question: "What was the most annoying part?",
+        question: "What, if anything, was difficult about this attempt?",
         options: {
+          nothing: "Nothing was difficult",
           finding: "Finding something suitable",
           gone: "The item was already gone",
           "agree-price": "Agreeing on a price",
@@ -531,7 +532,6 @@ export const EN = {
           transport: "Transport",
           trust: "Trusting the other person",
           other: "Something else",
-          nothing: "Nothing was annoying",
           "cant-recall": "Can't remember",
         },
       },
@@ -568,6 +568,10 @@ export const EN = {
           "over-10": "More than 10",
         },
       },
+      "idle-release": {
+        question: "Would you consider selling or giving away any of these?",
+        options: { yes: "Yes", no: "No", unsure: "Unsure" },
+      },
       "idle-why": {
         question: "Why do you still have them?",
         options: {
@@ -575,8 +579,9 @@ export const EN = {
           "messages-hassle": "Messages and scheduling are too much hassle",
           transport: "I can't transport them",
           "not-worth": "Not worth the effort for the money",
-          "dont-know-where": "I don't know who I could offer them to",
+          "dont-know-whom": "I don't know who I could offer them to",
           "might-need": "I might still need them",
+          keep: "I'd rather keep them",
           "not-yet": "I haven't got round to it",
           other: "Other",
         },
@@ -608,12 +613,12 @@ export const EN = {
         question:
           "What would you let Pako do without checking with you first? You can choose several.",
         options: {
+          none: "None of these",
           "answer-questions": "Answer questions about the item",
           "suggest-time": "Suggest a pickup time",
           remind: "Remind the other person about the pickup",
           negotiate: "Negotiate the price",
           "accept-offer": "Accept an offer",
-          none: "None of these",
         },
       },
       "pay-model": {
@@ -621,7 +626,7 @@ export const EN = {
         options: {
           free: "Free",
           "seller-fee": "Fee per sale",
-          "pay-once": "Pack of 5",
+          "pack-5": "Pack of 5",
           monthly: "Monthly subscription",
           "not-sure": "Not sure",
         },
@@ -664,9 +669,9 @@ export const EN = {
           help: "unlimited",
           pay: "5% of the sale price, only if you sell something (CHF\u00a02 on CHF\u00a040)",
         },
-        "pay-once": {
+        "pack-5": {
           price: "CHF 5",
-          help: "Pako drafts 5 extra listings",
+          help: "5 extra drafts",
           pay: "CHF 5 once",
         },
         monthly: {

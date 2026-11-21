@@ -56,7 +56,7 @@ async function setup(t: TestContext) {
     ]);
   const savePilot = (email: string, roles = ["sell"]) =>
     db.query(
-      "select public.study_save_pilot($1,false,true,false,false,$2,'atrium')",
+      "select public.study_save_pilot($1,false,true,false,false,$2,'atrium','v4-1')",
       [email, roles],
     );
   const saveContact = (email: string, session: string | null = null) =>
@@ -199,7 +199,7 @@ const STUDY_FUNCTIONS = [
   "public.study_save_answer(gen_random_uuid(),'who','{}','{}','{}','',0)",
   "public.study_save_events(gen_random_uuid(),'[]'::jsonb)",
   "public.study_save_contact('a@epfl.ch',true,null)",
-  "public.study_save_pilot('a@epfl.ch',true,false,false,false,null,null)",
+  "public.study_save_pilot('a@epfl.ch',true,false,false,false,'{}',null,'v4-1')",
   "public.study_withdraw(gen_random_uuid())",
   "public.study_report_rows(gen_random_uuid())",
 ];
@@ -353,14 +353,14 @@ test("a form at the end is stored once per address as first sent, without a sess
   await assert.rejects(savePilot("bo@unil.ch", ["seller"]), /check/);
   // Roles and place come with trying early and only with it; one tick is needed.
   for (const call of [
-    "select public.study_save_pilot('cy@epfl.ch',true,true,false,false,'{}',null)",
-    "select public.study_save_pilot('cy@epfl.ch',true,false,false,false,'{buy}','flat')",
-    "select public.study_save_pilot('cy@epfl.ch',false,false,false,false,'{}',null)",
+    "select public.study_save_pilot('cy@epfl.ch',true,true,false,false,'{}',null,'v4-1')",
+    "select public.study_save_pilot('cy@epfl.ch',true,false,false,false,'{buy}','flat','v4-1')",
+    "select public.study_save_pilot('cy@epfl.ch',false,false,false,false,'{}',null,'v4-1')",
   ])
     await assert.rejects(db.query(call), /check/);
   // The interview tick alone is enough.
   await db.query(
-    "select public.study_save_pilot('dee@epfl.ch',false,false,true,false,'{}',null)",
+    "select public.study_save_pilot('dee@epfl.ch',false,false,true,false,'{}',null,'v4-1')",
   );
   assert.equal(await count("study_pilot"), 2);
   assert.deepEqual(
@@ -437,7 +437,7 @@ test("the tables accept every value the wire contract allows", async (t) => {
   for (const role of STUDY_PILOT_ROLES)
     for (const place of STUDY_PILOT_PLACES)
       await db.query(
-        "select public.study_save_pilot($1,true,true,true,true,$2,$3)",
+        "select public.study_save_pilot($1,true,true,true,true,$2,$3,'v4-1')",
         [`${role}-${place}@epfl.ch`, [role], place],
       );
   assert.equal(await count("study_events"), STUDY_EVENT_KINDS.length);
@@ -488,6 +488,7 @@ test("the results page rows are for admins and carry no session ids or emails", 
       futureSurveys: false,
       roles: ["sell"],
       place: "atrium",
+      version: "v4-1",
     },
   ]);
   const body = JSON.stringify(rows[0].r);

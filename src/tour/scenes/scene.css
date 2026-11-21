@@ -170,3 +170,9 @@ html[data-deal-card="rising"] .thread-after > .thread-deal {
     opacity: 0;
   }
 }
+
+/* The scenes stand for the app with an account, so My listings shows no note that the
+   listing stays on this device. */
+body[inert] .selling-progress {
+  display: none;
+}

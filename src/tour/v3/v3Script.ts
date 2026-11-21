@@ -11,7 +11,7 @@ import type { StepCondition } from "../stepConditions.ts";
 /** Raised whenever a question, an option or its wording changes. */
 export const V3_VERSION = "v4-1";
 /** The time the start screen and the share text name, rounded up from the core's estimate. */
-export const V3_MINUTES = 6;
+export const V3_MINUTES = 7;
 
 /** The four parts of the survey; each opens with a screen that says what it asks. */
 export const V3_SECTIONS = ["last-time", "home", "the-app", "price"] as const;
@@ -43,9 +43,15 @@ export type V3ChoiceStep = Base & {
    * belong to. An option not listed here is offered to everyone.
    */
   onlyFor?: Readonly<Record<string, readonly string[]>>;
-  /** Options shuffled once per participant; the last `fixedLast` stay below. */
+  /**
+   * Options shuffled once per participant; the first `fixedFirst` stay above and the
+   * last `fixedLast` below.
+   */
   shuffle: boolean;
+  fixedFirst: number;
   fixedLast: number;
+  /** Dense answer cards, so every answer shows on entry on a phone or a low screen. */
+  compact?: boolean;
   /** The context Pako gives before the question, which then sits above the answers. */
   card?: CardId;
   /** A product question: Pako keeps a neutral face whatever is picked. */
@@ -68,6 +74,7 @@ export type V3Step =
 
 /** The day picked in the draft chat is stored as an answer of its own. */
 export const DRAFT_DAY_STEP = "draft-day";
+/** The days Mia offers, in the order of the week. */
 export const DRAFT_DAYS = ["sat", "sun"] as const;
 export type DraftDay = (typeof DRAFT_DAYS)[number];
 /**
@@ -123,6 +130,10 @@ const HAS_IDLE_ITEMS: StepCondition = {
   step: "idle-items",
   anyOf: ["1-3", "4-10", "over-10"],
 };
+const WOULD_RELEASE: StepCondition = {
+  step: "idle-release",
+  anyOf: ["yes", "unsure"],
+};
 
 function choice(
   id: ChoiceStepId,
@@ -134,6 +145,7 @@ function choice(
     id,
     options,
     shuffle: false,
+    fixedFirst: 0,
     fixedLast: 0,
     product: false,
     ...extra,
@@ -167,7 +179,7 @@ export const V3_STEPS: readonly V3Step[] = [
   choice(
     "last-role",
     ["buying", "getting-free", "selling", "giving-away", "none"],
-    { section: "last-time", card: "lastTime" },
+    { section: "last-time", card: "lastTime", compact: true },
   ),
   choice(
     "last-item",
@@ -194,10 +206,12 @@ export const V3_STEPS: readonly V3Step[] = [
     section: "last-time",
     when: TRIED,
   }),
-  // Each side sees its own obstacles; the shared ones and the last three are offered to all.
+  // Each side sees its own obstacles; the shared ones and the fixed ones are offered to all.
+  // "Nothing" comes first, so nobody has to read every obstacle to say there was none.
   choice(
     "last-trouble",
     [
+      "nothing",
       "finding",
       "gone",
       "agree-price",
@@ -212,14 +226,14 @@ export const V3_STEPS: readonly V3Step[] = [
       "transport",
       "trust",
       "other",
-      "nothing",
       "cant-recall",
     ],
     {
       section: "last-time",
       when: TRIED,
       shuffle: true,
-      fixedLast: 3,
+      fixedFirst: 1,
+      fixedLast: 2,
       onlyFor: {
         finding: BUYING,
         gone: BUYING,
@@ -252,6 +266,11 @@ export const V3_STEPS: readonly V3Step[] = [
   choice("idle-items", ["none", "1-3", "4-10", "over-10"], {
     section: "home",
   }),
+  // Only things the participant would let go count as supply; the reasons follow from there.
+  choice("idle-release", ["yes", "no", "unsure"], {
+    section: "home",
+    when: HAS_IDLE_ITEMS,
+  }),
   choice(
     "idle-why",
     [
@@ -259,14 +278,15 @@ export const V3_STEPS: readonly V3Step[] = [
       "messages-hassle",
       "transport",
       "not-worth",
-      "dont-know-where",
+      "dont-know-whom",
       "might-need",
+      "keep",
       "not-yet",
       "other",
     ],
     {
       section: "home",
-      when: HAS_IDLE_ITEMS,
+      when: WOULD_RELEASE,
       multiple: true,
       shuffle: true,
       fixedLast: 1,
@@ -284,6 +304,7 @@ export const V3_STEPS: readonly V3Step[] = [
     product: true,
     card: "wanted",
     shuffle: true,
+    compact: true,
   }),
   choice("seeking", ["yes", "no"], {
     section: "the-app",
@@ -295,12 +316,12 @@ export const V3_STEPS: readonly V3Step[] = [
   choice(
     "delegate",
     [
+      "none",
       "answer-questions",
       "suggest-time",
       "remind",
       "negotiate",
       "accept-offer",
-      "none",
     ],
     {
       section: "the-app",
@@ -309,21 +330,18 @@ export const V3_STEPS: readonly V3Step[] = [
       multiple: true,
       exclusive: "none",
       shuffle: true,
-      fixedLast: 1,
+      fixedFirst: 1,
+      compact: true,
     },
   ),
   { kind: "part", id: "part-price", section: "price" },
-  choice(
-    "pay-model",
-    ["free", "seller-fee", "pay-once", "monthly", "not-sure"],
-    {
-      section: "price",
-      product: true,
-      card: "price",
-      shuffle: true,
-      fixedLast: 1,
-    },
-  ),
+  choice("pay-model", ["free", "seller-fee", "pack-5", "monthly", "not-sure"], {
+    section: "price",
+    product: true,
+    card: "price",
+    shuffle: true,
+    fixedLast: 1,
+  }),
   choice(
     "age",
     ["under-18", "18-20", "21-23", "24-26", "27-30", "31-plus", "na"],

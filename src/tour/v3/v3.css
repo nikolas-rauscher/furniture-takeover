@@ -144,6 +144,70 @@
   height: 64px;
 }
 
+/* The answers of one choice; a step with many long answers packs them densely on
+   phones and low screens, so all show on entry. */
+.tour-choice-group {
+  display: contents;
+}
+@media (max-width: 760px), (max-height: 800px) {
+  .tour-study [data-compact] .ob-choices-list {
+    gap: 6px;
+  }
+  .tour-study [data-compact] .ob-choices-list .ob-choice {
+    min-height: 48px;
+    padding: 8px 14px;
+  }
+  .tour-study [data-compact] .ob-choices-list .ob-choice-title {
+    font-size: 1rem;
+  }
+}
+/* On short phones and low screens the whole step draws in: Pako, its line, the request
+   and the question get smaller, so the last answer still shows. */
+@media (max-width: 760px) and (max-height: 760px), (max-height: 800px) {
+  .tour-study .ob-body-inner:has([data-compact]) {
+    gap: 8px;
+  }
+  .tour-study .ob-body-inner:has([data-compact]) .ob-pako {
+    width: 48px;
+    height: 48px;
+  }
+  .tour-study .ob-body-inner:has([data-compact]) .ob-bubble-text {
+    font-size: 0.875rem;
+    line-height: 1.35;
+  }
+  .tour-study .ob-body-inner:has([data-compact]) .ob-bubble-title {
+    font-size: 0.9375rem;
+  }
+  .tour-study .ob-step:has([data-compact]) {
+    gap: 8px;
+  }
+  .tour-study .ob-step:has([data-compact]) .tour-question {
+    font-size: 0.9375rem;
+    line-height: 1.3;
+  }
+  .tour-study [data-compact] .ob-choices-list {
+    gap: 5px;
+  }
+  .tour-study [data-compact] .ob-choices-list .ob-choice {
+    min-height: 40px;
+    padding: 7px 12px;
+  }
+  .tour-study [data-compact] .ob-choices-list .ob-choice-title {
+    font-size: 0.9375rem;
+    line-height: 1.25;
+  }
+  .tour-study .ob-step:has([data-compact]) .tour-wanted {
+    padding: 8px 12px;
+  }
+  .tour-study .ob-step:has([data-compact]) .tour-wanted-icon {
+    width: 32px;
+    height: 32px;
+  }
+  .tour-study .ob-step:has([data-compact]) .tour-wanted-text {
+    font-size: 0.9375rem;
+  }
+}
+
 /* Multiple choices say so above their answers. */
 .tour-hint {
   margin: 0;
@@ -492,5 +556,15 @@
   .tour-study .tour-wanted-icon {
     width: 36px;
     height: 36px;
+  }
+}
+
+/* The form's choices take one column on a phone and two on a wide screen. */
+.tour-contact .tour-chips {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 761px) {
+  .tour-contact .tour-chips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

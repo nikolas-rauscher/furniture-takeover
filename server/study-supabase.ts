@@ -115,6 +115,7 @@ export function createSupabaseStudyStore(
         p_future_surveys: input.futureSurveys,
         p_roles: input.roles,
         p_place: input.place,
+        p_version: input.version,
       }),
     withdraw: (input: StudyWithdrawal) =>
       write("study_withdraw", { p_session: input.session }),

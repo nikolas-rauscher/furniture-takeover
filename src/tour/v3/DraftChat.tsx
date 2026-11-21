@@ -57,7 +57,7 @@ function variantOf(variant: DraftVariant | null): DraftVariant {
 export default function DraftChat({ context }: { context: StepContext }) {
   const { draft } = useTourText().v3;
   const reduced = useReducedMotion() === true;
-  const { answers, orders } = context.progress;
+  const { answers } = context.progress;
   const draftVariant = variantOf(context.progress.draftVariant);
   const [start] = useState(() =>
     resumeDraft(answers[DRAFT_DAY_STEP]?.chosen[0], answers.draft),
@@ -79,7 +79,6 @@ export default function DraftChat({ context }: { context: StepContext }) {
   const offerCard = useRef<HTMLDivElement>(null);
   const agreement = useRef<HTMLDivElement>(null);
   const questionId = useId();
-  const order = orders[DRAFT_DAY_STEP] ?? DRAFT_DAYS;
 
   useEffect(() => {
     if (phase !== "mia-typing" && phase !== "pako-typing") return;
@@ -166,9 +165,8 @@ export default function DraftChat({ context }: { context: StepContext }) {
       <div className="tour-chat-listing" aria-label={draft.listing.title}>
         <span className="tour-chat-thumb" aria-hidden="true" />
         <div>
-          <p className="tour-chat-listing-title">
-            {draft.listing.title} · {draft.listing.size}
-          </p>
+          <p className="tour-chat-listing-title">{draft.listing.title}</p>
+          <p className="tour-chat-listing-detail">{draft.listing.size}</p>
           <p className="tour-chat-listing-detail">
             {draft.listing.price} · {draft.listing.pickup} ·{" "}
             {draft.listing.seller}
@@ -223,13 +221,13 @@ export default function DraftChat({ context }: { context: StepContext }) {
           role="group"
           aria-label={draft.pickDay}
         >
-          {order.map((id) => (
+          {DRAFT_DAYS.map((id) => (
             <Button
               key={id}
               className="button secondary"
-              onClick={() => pickDay(id as DraftDay)}
+              onClick={() => pickDay(id)}
             >
-              {draft.days[id as DraftDay]}
+              {draft.days[id]}
             </Button>
           ))}
         </div>

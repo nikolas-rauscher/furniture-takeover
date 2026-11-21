@@ -32,16 +32,21 @@ function ChoiceContent({
       {step.multiple && !step.card && (
         <p className="tour-hint">{text.v3.chooseSeveral}</p>
       )}
-      <ChoiceStep
-        question={question}
-        options={optionsOf(text, step, context.progress)}
-        layout={plans ? "plans" : "list"}
-        multiple={step.multiple ?? false}
-        answer={{ ...context.given[step.id], shown: [] }}
-        onChange={({ chosen, text: words }, moved) =>
-          context.answer(step.id, { chosen, text: words }, moved)
-        }
-      />
+      <div
+        className="tour-choice-group"
+        data-compact={step.compact || undefined}
+      >
+        <ChoiceStep
+          question={question}
+          options={optionsOf(text, step, context.progress)}
+          layout={plans ? "plans" : "list"}
+          multiple={step.multiple ?? false}
+          answer={{ ...context.given[step.id], shown: [] }}
+          onChange={({ chosen, text: words }, moved) =>
+            context.answer(step.id, { chosen, text: words }, moved)
+          }
+        />
+      </div>
       <MoreBelow last=".ob-choices > .ob-choice-cell:last-child" />
     </>
   );

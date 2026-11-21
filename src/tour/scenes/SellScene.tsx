@@ -186,8 +186,9 @@ function sceneListing(
     cancel: INERT,
     resetConversation: INERT,
     choose: (id: string, label: string) =>
+      // The pickup field holds a calendar date only, so the chosen time joins the
+      // description, as the app stores availability text.
       answer(id, label, {
-        pickup: label,
         description: `${state.draft.description} Pickup on ${label.toLowerCase()}.`,
       }),
     choosePrice: (id: string, price: number) =>

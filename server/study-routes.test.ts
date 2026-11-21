@@ -92,6 +92,7 @@ const pilotBody = {
   futureSurveys: false,
   roles: ["buy", "sell"],
   place: "triaudes",
+  version: "v4-1",
 };
 const eventBody = (seq: number) => ({
   seq,
@@ -403,6 +404,7 @@ test("a repeated address gets the same answer as a new one and changes nothing",
       futureSurveys: false,
       roles: ["buy", "sell"],
       place: "triaudes",
+      version: "v4-1",
     },
   ]);
 });

@@ -122,7 +122,11 @@ test("the survey has 26 screens before the end after an attempt and 19 without",
 });
 
 test("the steps follow the spec: two scenes, the request idea, the draft, then delegation", () => {
-  const core = ids({ "idle-items": answer("4-10"), seeking: answer("yes") });
+  const core = ids({
+    "idle-items": answer("4-10"),
+    "idle-release": answer("yes"),
+    seeking: answer("yes"),
+  });
   assert.deepEqual(
     core.slice(core.indexOf("part-the-app") + 1, core.indexOf("part-price")),
     ["app-sell", "app-deal", "wanted-react", "seeking", "draft", "delegate"],
@@ -136,7 +140,7 @@ test("the steps follow the spec: two scenes, the request idea, the draft, then d
   ]);
   assert.deepEqual(
     core.slice(core.indexOf("part-home"), core.indexOf("part-the-app")),
-    ["part-home", "idle-items", "idle-why", "move"],
+    ["part-home", "idle-items", "idle-release", "idle-why", "move"],
   );
 });
 
@@ -156,8 +160,9 @@ test("buyers see finding, gone and the price to agree; sellers see finding a tak
     "transport",
     "trust",
   ];
-  const last = ["other", "nothing", "cant-recall"];
+  const last = ["other", "cant-recall"];
   assert.deepEqual(troubleFor("buying"), [
+    "nothing",
     "finding",
     "gone",
     "agree-price",
@@ -165,12 +170,14 @@ test("buyers see finding, gone and the price to agree; sellers see finding a tak
     ...last,
   ]);
   assert.deepEqual(troubleFor("getting-free"), [
+    "nothing",
     "finding",
     "gone",
     ...shared,
     ...last,
   ]);
   assert.deepEqual(troubleFor("selling"), [
+    "nothing",
     "finding-taker",
     "deadline-pickup",
     "listing",
@@ -179,6 +186,7 @@ test("buyers see finding, gone and the price to agree; sellers see finding a tak
     ...last,
   ]);
   assert.deepEqual(troubleFor("giving-away"), [
+    "nothing",
     "finding-taker",
     "deadline-pickup",
     "listing",
@@ -193,7 +201,7 @@ test("buyers see finding, gone and the price to agree; sellers see finding a tak
   }
 });
 
-test("last-trouble shuffles within the role's options and keeps the last three below", () => {
+test("last-trouble keeps nothing first and other and can't remember last, and shuffles the obstacles between", () => {
   const trouble = v3StepById("last-trouble");
   const selling = {
     ...progress,
@@ -204,11 +212,14 @@ test("last-trouble shuffles within the role's options and keeps the last three b
     [...ordered.orders["last-trouble"]].sort(),
     [...troubleFor("selling")].sort(),
   );
-  assert.deepEqual(ordered.orders["last-trouble"].slice(-3), [
+  assert.equal(ordered.orders["last-trouble"][0], "nothing");
+  assert.deepEqual(ordered.orders["last-trouble"].slice(-2), [
     "other",
-    "nothing",
     "cant-recall",
   ]);
+  const drawn = (draw: number) =>
+    withV3Order(selling, trouble, () => draw).orders["last-trouble"].join();
+  assert.notEqual(drawn(0), drawn(0.99));
   // The same role keeps the order; another role draws a new one among its own options.
   assert.equal(
     withV3Order(ordered, trouble, () => 0.5),
@@ -258,11 +269,36 @@ test("none of these clears the other tasks Pako may do, and is cleared by them",
   assert.deepEqual(toggleOption(options, ["none"], "remind"), ["remind"]);
 });
 
-test("the reasons for idle things are asked only of those who have some, as a multiple choice", () => {
-  assert.ok(!ids({ "idle-items": answer("none") }).includes("idle-why"));
+test("who has idle things says whether they would let them go; only yes or unsure gives reasons", () => {
+  assert.ok(!ids({ "idle-items": answer("none") }).includes("idle-release"));
   for (const count of ["1-3", "4-10", "over-10"])
-    assert.ok(ids({ "idle-items": answer(count) }).includes("idle-why"), count);
+    assert.ok(
+      ids({ "idle-items": answer(count) }).includes("idle-release"),
+      count,
+    );
+  const reasons = (release: string) =>
+    ids({ "idle-items": answer("1-3"), "idle-release": answer(release) });
+  assert.ok(reasons("yes").includes("idle-why"));
+  assert.ok(reasons("unsure").includes("idle-why"));
+  assert.ok(!reasons("no").includes("idle-why"));
+  // An answer left on idle-release decides nothing once there is nothing idle.
+  assert.ok(
+    !ids({
+      "idle-items": answer("none"),
+      "idle-release": answer("yes"),
+    }).includes("idle-why"),
+  );
   assert.equal(choiceStep("idle-why").multiple, true);
+  assert.ok(choiceStep("idle-why").options.includes("keep"));
+});
+
+test("delegate keeps none of these first and shuffles the five permissions below it", () => {
+  const delegate = v3StepById("delegate");
+  for (const draw of [0, 0.5, 0.99]) {
+    const order = withV3Order(progress, delegate, () => draw).orders.delegate;
+    assert.equal(order[0], "none");
+    assert.equal(order.length, 6);
+  }
 });
 
 test("saying yes to looking for something opens one optional line, named in every language", () => {
@@ -313,7 +349,7 @@ test("the first answer stays when the step is answered again", () => {
   assert.deepEqual(decided.firstChosen, ["send"]);
 });
 
-test("shuffled steps keep their first order; the draft's days are stored under draft-day", () => {
+test("shuffled steps keep their first order; the draft's days keep the order of the week", () => {
   const payModel = v3StepById("pay-model");
   const shuffled = withV3Order(progress, payModel, () => 0);
   assert.equal(shuffled.orders["pay-model"].at(-1), "not-sure");
@@ -322,7 +358,8 @@ test("shuffled steps keep their first order; the draft's days are stored under d
     shuffled,
   );
   const draft = withV3Order(progress, v3StepById("draft"), () => 0);
-  assert.deepEqual([...draft.orders[DRAFT_DAY_STEP]].sort(), ["sat", "sun"]);
+  assert.equal(draft.orders[DRAFT_DAY_STEP], undefined);
+  assert.deepEqual(DRAFT_DAYS, ["sat", "sun"]);
   assert.equal(withV3Order(progress, v3StepById("who")), progress);
   const wanted = withV3Order(progress, v3StepById("wanted-react"), () => 0);
   assert.deepEqual([...wanted.orders["wanted-react"]].sort(), [
@@ -386,10 +423,13 @@ test("the current part fills over its longest path, from at least 0.15; finished
   assert.equal(fill(buying, "last-outcome"), 7 / 11);
   assert.equal(fill(failed, "last-trouble"), 8 / 10);
   assert.equal(fill(failed, "last-messages"), 9 / 10);
-  // Part 2 counts the reasons until someone says they have nothing idle.
-  assert.equal(fill({}, "idle-items"), 1 / 4);
+  // Part 2 counts the release question and the reasons until an answer rules them out.
+  assert.equal(fill({}, "idle-items"), 1 / 5);
   assert.equal(fill({ "idle-items": answer("none") }, "move"), 2 / 3);
-  assert.equal(fill({ "idle-items": answer("1-3") }, "move"), 3 / 4);
+  const idle = { "idle-items": answer("1-3") };
+  assert.equal(fill(idle, "idle-release"), 2 / 5);
+  assert.equal(fill({ ...idle, "idle-release": answer("no") }, "move"), 3 / 4);
+  assert.equal(fill({ ...idle, "idle-release": answer("yes") }, "move"), 4 / 5);
   assert.deepEqual(sectionStates(v3StepById("seeking")), {
     "last-time": "done",
     home: "done",

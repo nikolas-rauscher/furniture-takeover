@@ -5,8 +5,6 @@ import type { V3Answer, V3Progress } from "./v3Progress.ts";
 import {
   answerIds,
   DRAFT_ALLOCATION,
-  DRAFT_DAY_STEP,
-  DRAFT_DAYS,
   offeredOptions,
   V3_SECTIONS,
   V3_STEPS,
@@ -112,32 +110,35 @@ export function canGoBack(steps: readonly V3Step[], step: V3Step): boolean {
   return index > 0 && step.kind !== "end";
 }
 
-/** Option ids with the ones that stay below marked, as the shuffle needs them. */
+/** Which options a step shuffles, the answer id their order is stored under, and the fixed ends. */
+type Shuffle = {
+  key: string;
+  ids: readonly string[];
+  fixedFirst: number;
+  fixedLast: number;
+};
+
+/** The middle options in a new order; the fixed ones keep their places at both ends. */
 function shuffledIds(
-  ids: readonly string[],
-  fixedLast: number,
+  { ids, fixedFirst, fixedLast }: Shuffle,
   random: RandomSource,
 ) {
-  const marked = ids.map((id, index) => ({
+  const marked = ids.slice(fixedFirst).map((id, index, rest) => ({
     id,
-    last: index >= ids.length - fixedLast,
+    last: index >= rest.length - fixedLast,
   }));
-  return shuffleOptions(marked, random).map((option) => option.id);
+  const middle = shuffleOptions(marked, random).map((option) => option.id);
+  return [...ids.slice(0, fixedFirst), ...middle];
 }
 
-/** Which options a step shuffles, and the answer id their order is stored under. */
-type Shuffle = { key: string; ids: readonly string[]; fixedLast: number };
-
 function shuffleOf(step: V3Step, answers: AnswerSheet): Shuffle | null {
-  if (step.kind === "choice" && step.shuffle)
-    return {
-      key: step.id,
-      ids: offeredOptions(step, answers),
-      fixedLast: step.fixedLast,
-    };
-  if (step.kind === "draft")
-    return { key: DRAFT_DAY_STEP, ids: DRAFT_DAYS, fixedLast: 0 };
-  return null;
+  if (step.kind !== "choice" || !step.shuffle) return null;
+  return {
+    key: step.id,
+    ids: offeredOptions(step, answers),
+    fixedFirst: step.fixedFirst,
+    fixedLast: step.fixedLast,
+  };
 }
 
 /** The draft task's variant, drawn once per participant by its allocation and kept. */
@@ -177,7 +178,7 @@ export function withV3Order(
           ...progress,
           orders: {
             ...progress.orders,
-            [shuffle.key]: shuffledIds(shuffle.ids, shuffle.fixedLast, random),
+            [shuffle.key]: shuffledIds(shuffle, random),
           },
         };
   return step.kind === "draft" ? withDraftVariant(ordered, random) : ordered;

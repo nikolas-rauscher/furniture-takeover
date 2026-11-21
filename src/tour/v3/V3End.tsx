@@ -110,13 +110,15 @@ function StayInTouch({ context }: { context: StepContext }) {
 
 /**
  * The thank-you with how saving went, the optional form and the share block. Who saw
- * the wrong price learns that it was deliberate. Once the form is sent it gives way to a
+ * the wrong price learns that it was deliberate; nobody under 18 is offered the form. Once the form is sent it gives way to a
  * line saying so, and the screen returns to its top.
  */
 export default function V3End({ context }: { context: StepContext }) {
   const { v3 } = useTourText();
   const top = useRef<HTMLDivElement>(null);
   const sent = context.progress.pilot !== null;
+  // No email address is asked of anyone under 18.
+  const minor = context.progress.answers.age?.chosen.includes("under-18");
   useEffect(() => {
     if (sent) top.current?.closest(".ob-body")?.scrollTo({ top: 0 });
   }, [sent]);
@@ -127,10 +129,10 @@ export default function V3End({ context }: { context: StepContext }) {
         <EndSaveStatus context={context} />
         {sent && <p className="tour-save">{v3.pilot.sent}</p>}
       </div>
+      {!sent && !minor && <StayInTouch context={context} />}
       {context.progress.draftVariant === "wrong-price" && (
         <p className="tour-debrief">{v3.end.debrief}</p>
       )}
-      {!sent && <StayInTouch context={context} />}
       <ShareBlock context={context} />
     </div>
   );

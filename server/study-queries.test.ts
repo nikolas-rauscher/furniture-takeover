@@ -132,6 +132,7 @@ const PARTICIPANTS: Participant[] = [
       "last-transport": ["not-yet"],
       "last-messages": ["6-15"],
       "idle-items": ["4-10"],
+      "idle-release": ["yes"],
       "idle-why": ["listing-hassle", "transport"],
       move: ["move-feb"],
       "wanted-react": ["offer-now"],
@@ -145,7 +146,7 @@ const PARTICIPANTS: Participant[] = [
       },
       "draft-price": ["chf-45"],
       delegate: ["answer-questions", "suggest-time"],
-      "pay-model": ["pay-once"],
+      "pay-model": ["pack-5"],
       age: ["21-23"],
       gender: ["woman"],
     },
@@ -173,7 +174,8 @@ const PARTICIPANTS: Participant[] = [
       "last-transport": ["foot"],
       "last-messages": ["1-5"],
       "idle-items": ["1-3"],
-      "idle-why": ["might-need"],
+      "idle-release": ["unsure"],
+      "idle-why": ["might-need", "keep"],
       move: ["no-or-later"],
       "wanted-react": ["rather-not"],
       seeking: ["no"],
@@ -277,14 +279,18 @@ async function addVolunteers(
   ] as const;
   for (const [name, roles] of forms)
     await db.query(
-      "select public.study_save_pilot($1,false,true,false,false,$2,'atrium')",
+      "select public.study_save_pilot($1,false,true,false,false,$2,'atrium','v4-1')",
       [`${name}@epfl.ch`, roles],
     );
   await db.query(
-    "select public.study_save_pilot('flat@unil.ch',false,true,true,false,'{sell}','flat')",
+    "select public.study_save_pilot('flat@unil.ch',false,true,true,false,'{sell}','flat','v4-1')",
   );
   await db.query(
-    "select public.study_save_pilot('later@unil.ch',true,false,false,true,'{}',null)",
+    "select public.study_save_pilot('later@unil.ch',true,false,false,true,'{}',null,'v4-1')",
+  );
+  // A form of another wording version counts in neither rate nor places.
+  await db.query(
+    "select public.study_save_pilot('pilot@unil.ch',true,true,true,true,'{buy}','vortex','v3-pilot')",
   );
 }
 
@@ -395,11 +401,17 @@ test("the v4 results queries run on the sessions of the named version only", asy
     ],
   );
   assert.deepEqual(
-    rowsOf(await query("rq2-idle"), "subgroup", "answered", "with_idle"),
+    rowsOf(
+      await query("rq2-idle"),
+      "subgroup",
+      "answered",
+      "with_idle",
+      "supply",
+    ),
     [
-      ["all", 3, 2],
-      ["moving-by-june", 2, 1],
-      ["rest", 1, 1],
+      ["all", 3, 2, 1],
+      ["moving-by-june", 2, 1, 1],
+      ["rest", 1, 1, 0],
     ],
   );
   assert.deepEqual(
@@ -409,11 +421,13 @@ test("the v4 results queries run on the sessions of the named version only", asy
       "chosen",
       "participants",
       "effort_or_transport",
+      "keeping",
     ),
     [
-      ["listing-hassle", 1, 2, 1],
-      ["might-need", 1, 2, 1],
-      ["transport", 1, 2, 1],
+      ["keep", 1, 2, 1, 1],
+      ["listing-hassle", 1, 2, 1, 1],
+      ["might-need", 1, 2, 1, 1],
+      ["transport", 1, 2, 1, 1],
     ],
   );
   assert.deepEqual(
@@ -516,10 +530,10 @@ test("the v4 results queries run on the sessions of the named version only", asy
     [
       ["all", "free", false, 1, "3", "2"],
       ["all", "monthly", true, 1, "3", "2"],
-      ["all", "pay-once", true, 1, "3", "2"],
+      ["all", "pack-5", true, 1, "3", "2"],
       ["buying", "free", false, 1, "1", null],
       ["none", "monthly", true, 1, "1", "1"],
-      ["passing-on", "pay-once", true, 1, "1", "1"],
+      ["passing-on", "pack-5", true, 1, "1", "1"],
     ],
   );
   assert.deepEqual(await query("forms"), [

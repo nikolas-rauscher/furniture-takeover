@@ -44,6 +44,8 @@ export const studyReportRowsSchema = z.strictObject({
       futureSurveys: z.boolean(),
       roles: z.array(z.enum(STUDY_PILOT_ROLES)),
       place: z.enum(STUDY_PILOT_PLACES).nullable(),
+      /** Null for forms from before v4, which did not store it. */
+      version: z.string().nullable(),
     }),
   ),
 });
@@ -244,6 +246,6 @@ export function buildStudyReport(
     questions: questions(answers),
     texts: texts(answers),
     ladder: ladder(sessions, answers),
-    pilot: pilot(rows.pilot),
+    pilot: pilot(rows.pilot.filter((form) => form.version === version)),
   };
 }

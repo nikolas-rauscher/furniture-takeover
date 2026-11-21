@@ -440,10 +440,10 @@ export const DE: TourText = {
         text: "Wer etwas sucht, schreibt in die App, was er oder sie braucht. Das sehen alle Studierenden in der Nähe, die takeover nutzen.",
       },
       delegate: {
-        text: "Stell dir jetzt eine andere Einstellung vor: Pako handelt in deinem Namen. Du siehst die Nachrichten erst nach dem Senden.",
+        text: "Stell dir jetzt vor, du verkaufst etwas und Pako darf selbst handeln. Pako schickt Nachrichten in deinem Namen; du siehst sie erst danach.",
       },
       price: {
-        text: "Suchen, Inserieren und Nachrichten sind gratis. Pako hilft dir ein paar Mal pro Tag gratis. Eine Hilfe = Pako entwirft ein Inserat oder eine Nachricht. Kosten würde nur zusätzliche Hilfe von Pako.",
+        text: "Suchen, Inserieren und Nachrichten sind gratis. Pako entwirft gratis ein paar Inserate oder Nachrichten pro Tag. Jeder Entwurf zählt einmal. Kosten würde nur zusätzliche Hilfe von Pako.",
       },
     },
     wantedPost: {
@@ -507,7 +507,7 @@ export const DE: TourText = {
         options: {
           "moving-in": "Ja, mit dem Einzug",
           "moving-out": "Ja, mit dem Auszug",
-          both: "Beides, Aus- und Einzug",
+          both: "Ja, beides (Aus- und Einzug)",
           "no-move": "Nein",
         },
       },
@@ -526,8 +526,10 @@ export const DE: TourText = {
         options: { yes: "Ja", no: "Nein", ongoing: "Ist noch offen" },
       },
       "last-trouble": {
-        question: "Was war am mühsamsten?",
+        question:
+          "Was war bei diesem Versuch schwierig, falls überhaupt etwas?",
         options: {
+          nothing: "Nichts war schwierig",
           finding: "Etwas Passendes finden",
           gone: "Dass es schon weg war",
           "agree-price": "Sich auf einen Preis einigen",
@@ -542,7 +544,6 @@ export const DE: TourText = {
           transport: "Der Transport",
           trust: "Der anderen Person vertrauen",
           other: "Etwas anderes",
-          nothing: "Nichts war mühsam",
           "cant-recall": "Weiss nicht mehr",
         },
       },
@@ -579,6 +580,11 @@ export const DE: TourText = {
           "over-10": "Mehr als 10",
         },
       },
+      "idle-release": {
+        question:
+          "Käme es für dich infrage, etwas davon zu verkaufen oder zu verschenken?",
+        options: { yes: "Ja", no: "Nein", unsure: "Unsicher" },
+      },
       "idle-why": {
         question: "Warum hast du sie noch?",
         options: {
@@ -586,8 +592,9 @@ export const DE: TourText = {
           "messages-hassle": "Nachrichten und Termine sind mir zu mühsam",
           transport: "Ich kann sie nicht transportieren",
           "not-worth": "Für das Geld lohnt sich der Aufwand nicht",
-          "dont-know-where": "Ich weiss nicht, wem ich sie anbieten könnte",
+          "dont-know-whom": "Ich weiss nicht, wem ich sie anbieten könnte",
           "might-need": "Ich brauche sie vielleicht noch",
+          keep: "Ich will sie behalten",
           "not-yet": "Ich bin noch nicht dazu gekommen",
           other: "Anderes",
         },
@@ -603,7 +610,7 @@ export const DE: TourText = {
       },
       "wanted-react": {
         question:
-          "Du hast eine Schreibtischlampe übrig, wie sie gesucht wird. Was würdest du am ehesten tun?",
+          "Du hast genau so eine Schreibtischlampe übrig. Was würdest du am ehesten tun?",
         options: {
           "offer-now": "Sie jetzt anbieten",
           "offer-later": "Sie später anbieten",
@@ -619,12 +626,12 @@ export const DE: TourText = {
         question:
           "Was dürfte Pako ohne Rückfrage erledigen? Du kannst mehrere wählen.",
         options: {
+          none: "Nichts davon",
           "answer-questions": "Fragen zum Gegenstand beantworten",
           "suggest-time": "Einen Abholtermin vorschlagen",
           remind: "Die andere Person an den Termin erinnern",
           negotiate: "Über den Preis verhandeln",
           "accept-offer": "Ein Angebot annehmen",
-          none: "Nichts davon",
         },
       },
       "pay-model": {
@@ -632,7 +639,7 @@ export const DE: TourText = {
         options: {
           free: "Gratis",
           "seller-fee": "Gebühr pro Verkauf",
-          "pay-once": "5er-Paket",
+          "pack-5": "5er-Paket",
           monthly: "Monatsabo",
           "not-sure": "Weiss nicht",
         },
@@ -679,9 +686,9 @@ export const DE: TourText = {
           help: "unbegrenzt",
           pay: "5\u00a0% des Verkaufspreises, nur wenn du etwas verkaufst (CHF\u00a02 bei CHF\u00a040)",
         },
-        "pay-once": {
+        "pack-5": {
           price: "CHF\u00a05",
-          help: "Pako entwirft 5 zusätzliche Inserate",
+          help: "5 zusätzliche Entwürfe",
           pay: "CHF\u00a05 einmalig",
         },
         monthly: {

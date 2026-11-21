@@ -137,6 +137,7 @@ export default function PilotForm({ context }: { context: StepContext }) {
       // The follow-up questions are answered only by those who want to try early.
       roles: draft.tryEarly ? draft.roles : [],
       place: draft.tryEarly ? draft.place : null,
+      version: context.progress.version,
     });
     context.sendPilot(sent);
   }
