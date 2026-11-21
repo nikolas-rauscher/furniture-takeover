@@ -17,6 +17,8 @@ export const DE: TourText = {
     language: "Sprache",
     languageNames: { en: "English", fr: "Français", de: "Deutsch" },
     surveyHeading: "Umfrage zu takeover",
+    surveyUpdated:
+      "Die Umfrage wurde aktualisiert und beginnt deshalb von vorn.",
     back: "Zurück",
     continue: "Weiter",
     skip: "Überspringen",

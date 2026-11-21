@@ -17,6 +17,7 @@ const stepById = (id: string) => findStep(STEPS, id);
 
 const progress: StudyProgress = {
   session: "6f1c1f9e-5b7a-4c1e-9a1d-2f3b4c5d6e7f",
+  version: "pilot-1",
   source: "moodle",
   device: "phone",
   language: "en",
@@ -128,4 +129,18 @@ test("switching from the cheaper desk to the nearer one empties far-transport", 
       elapsedMs: 1500,
     },
   ]);
+});
+
+test("the v1 start request names the wording version the session began in", async (t) => {
+  const sent: { version: string }[] = [];
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async (_url: string, init: RequestInit) => {
+      sent.push(JSON.parse(String(init.body)));
+      return new Response(null, { status: 200 });
+    },
+  );
+  await saveJob({ ...progress, version: "pilot-0" }, "session").send();
+  assert.equal(sent[0].version, "pilot-0");
 });

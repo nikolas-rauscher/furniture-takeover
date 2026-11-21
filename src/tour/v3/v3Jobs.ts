@@ -10,7 +10,6 @@ import {
   startSession,
 } from "../studyApi.ts";
 import type { V3Progress } from "./v3Progress.ts";
-import { V3_VERSION } from "./v3Script.ts";
 
 export const SESSION_KEY = "session";
 export const PILOT_KEY = "pilot";
@@ -25,7 +24,7 @@ function sessionJob(progress: V3Progress): SaveJob {
       startSession({
         session: progress.session,
         survey: "v3",
-        version: V3_VERSION,
+        version: progress.version,
         language: progress.language,
         source: progress.source,
         device: progress.device,

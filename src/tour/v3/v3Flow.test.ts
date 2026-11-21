@@ -47,6 +47,7 @@ const answer = (...chosen: string[]): V3Answer => ({
 
 const progress: V3Progress = {
   session: SESSION,
+  version: V3_VERSION,
   source: "friends",
   device: "phone",
   language: "en",
@@ -394,4 +395,18 @@ test("a change that keeps the path empties nothing", () => {
     withoutAnswersOffPath(answers, selling).answers,
     selling.answers,
   );
+});
+
+test("the start request names the wording version the session began in", async (t) => {
+  const sent: { version: string }[] = [];
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async (_url: string, init: RequestInit) => {
+      sent.push(JSON.parse(String(init.body)));
+      return new Response(null, { status: 200 });
+    },
+  );
+  await v3Job({ ...progress, version: "v3-2" }, "session").send();
+  assert.equal(sent[0].version, "v3-2");
 });

@@ -1,7 +1,6 @@
 import type { SaveJob } from "./saveQueue.ts";
 import { saveAnswer, sendContact, startSession } from "./studyApi.ts";
 import type { StudyProgress } from "./studyProgress.ts";
-import { STUDY_VERSION } from "./tourScript.ts";
 
 export const SESSION_KEY = "session";
 export const CONTACT_KEY = "contact";
@@ -38,7 +37,7 @@ export function saveJob(progress: StudyProgress, key: string): SaveJob {
         startSession({
           session: progress.session,
           survey: "v1",
-          version: STUDY_VERSION,
+          version: progress.version,
           language: progress.language,
           source: progress.source,
           device: progress.device,

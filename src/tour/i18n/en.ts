@@ -18,6 +18,7 @@ export const EN = {
     language: "Language",
     languageNames: { en: "English", fr: "Français", de: "Deutsch" },
     surveyHeading: "takeover survey",
+    surveyUpdated: "The survey was updated, so it starts again.",
     back: "Back",
     continue: "Continue",
     skip: "Skip",

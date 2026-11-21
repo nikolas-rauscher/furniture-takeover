@@ -6,7 +6,7 @@ import { useRecorder, type Recorder } from "../study/useRecorder";
 import { withEvent, withV3Order } from "./v3Flow";
 import { SESSION_KEY, eventJobs, v3Job } from "./v3Jobs";
 import { loadV3, storeV3, type V3Progress } from "./v3Progress";
-import { V3_STEPS } from "./v3Script";
+import { V3_STEPS, V3_VERSION } from "./v3Script";
 import V3Start from "./V3Start";
 import V3Steps from "./V3Steps";
 import type { StudyLanguage } from "../../../shared/study.ts";
@@ -21,6 +21,7 @@ function firstProgress(source: string, language: StudyLanguage): V3Progress {
   const first = V3_STEPS[0];
   const started: V3Progress = {
     session: randomUuid(),
+    version: V3_VERSION,
     source,
     device: deviceClass(),
     language,
@@ -89,7 +90,7 @@ export default function V3Study({
   onShowPitch: () => void;
 }) {
   const { language } = useTourLanguage();
-  const [stored] = useState(() => loadV3(source));
+  const [{ stored, updated }] = useState(() => loadV3(source));
   const [resumed] = useState(() =>
     stored ? stored.unsaved.map((key) => v3Job(stored.progress, key)) : [],
   );
@@ -114,6 +115,7 @@ export default function V3Study({
       <V3Start
         contact={contact}
         deleteBy={deleteBy}
+        updated={updated}
         onAgree={agree}
         onShowPitch={onShowPitch}
       />

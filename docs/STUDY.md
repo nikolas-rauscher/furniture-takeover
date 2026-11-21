@@ -194,6 +194,8 @@ Share: "Every answer helps, also from people who never sell anything. Share it?"
 
 One session per participant, created on "Let's go": a random id, `survey = 'v3'`, the wording version (`v3-3` for the pilot, a raised label for the run), the language at the start (`en`, `fr`, `de`), the channel tag, phone or desktop. No name, no IP address, no browser details.
 
+The tab keeps the participant's progress with the wording version the session started in. A reload continues the session only in that version: after a new version is deployed, the progress is set aside and the survey starts again with a new session and the line "The survey was updated, so it starts again."
+
 One answer per session and step, replaced when the participant goes back and answers again. When a change after Back takes a step off the participant's path, such as `last-role` changed to `none` after `last-trouble` was answered, that step's answer is saved again empty: `chosen` and `text` empty, `first_chosen` kept. An empty answer counts as not answered on the results page, in "How others answered" and in the queries below:
 
 | Field | Content |
