@@ -21,6 +21,7 @@ import {
   withMoment,
   withoutAnswersOffPath,
   withV3Order,
+  withPriceShown,
 } from "./v3Flow.ts";
 import { eventJobs, v3Job } from "./v3Jobs.ts";
 import type { V3Answer, V3Progress } from "./v3Progress.ts";
@@ -485,4 +486,27 @@ test("Back after skipping the rest returns to the scene it was skipped from", ()
   );
   assert.equal(backTarget(touring).id, "tour-find");
   assert.equal(backTarget({ ...touring, stepId: "tour-deal" }).id, "tour-sell");
+});
+
+test("each ladder price counts as asked once, from the moment it shows", () => {
+  const at = (start: string, answers: Record<string, string> = {}) =>
+    withPriceShown({
+      ...progress,
+      orders: { "pack-price": [start] },
+      answers: Object.fromEntries(
+        Object.entries(answers).map(([id, chosen]) => [id, answer(chosen)]),
+      ),
+    });
+  const shownSteps = (p: V3Progress) =>
+    p.events.filter((e) => e.kind === "shown").map((e) => e.step);
+  const first = at("chf-5");
+  assert.deepEqual(shownSteps(first), ["pack-chf-5"]);
+  assert.equal(withPriceShown(first), first, "shown once");
+  const followUp = withPriceShown({
+    ...first,
+    answers: { "pack-chf-5": answer("yes") },
+  });
+  assert.deepEqual(shownSteps(followUp), ["pack-chf-5", "pack-chf-8"]);
+  const done = at("chf-8", { "pack-chf-8": "yes" });
+  assert.deepEqual(shownSteps(done), [], "nothing left to show");
 });

@@ -180,3 +180,33 @@ test("a question's denominator from 1 to the minimum is hidden like its counts",
   );
   assert.equal(many.questions[0].answered, STUDY_REPORT_MIN_CELL);
 });
+
+test("the ladder counts every session shown a price, answered or not", () => {
+  const sessions = [
+    ...times(4, () => session({ shown: ["pack-chf-5"] })),
+    session({ shown: ["pack-chf-5", "pack-chf-8"] }),
+    session({ shown: ["pack-chf-5"] }),
+  ];
+  const answer = (step: string, chosen: string) => ({
+    version: "v3-2",
+    step,
+    chosen: [chosen],
+    text: "",
+  });
+  const { ladder } = buildStudyReport(
+    rows({
+      sessions,
+      answers: [
+        ...times(5, () => answer("pack-chf-5", "yes")),
+        answer("pack-chf-8", "no"),
+      ],
+    }),
+    null,
+  );
+  // Six were shown CHF 5, one left without answering: 5 yes of 6.
+  assert.deepEqual(ladder, [
+    { price: 2, shown: 0, yes: 0 },
+    { price: 5, shown: 6, yes: 5 },
+    { price: 8, shown: null, yes: 0 },
+  ]);
+});

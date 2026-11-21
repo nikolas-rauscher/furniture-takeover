@@ -219,27 +219,19 @@ function Questions({
 }
 
 /** The pack ladder: of those asked at each price, how many said yes. */
+/**
+ * The pack ladder: of the sessions shown each price, how many said yes. Someone who
+ * left at a price counts there as not yes. Hidden counts stay hidden.
+ */
 function PackLadder({ report }: { report: StudyReport }) {
-  const prices = [2, 5, 8];
-  const asked = prices.map((price) => {
-    const question = report.questions.find(
-      ({ step }) => step === `pack-chf-${price}`,
-    );
-    const yes = question?.options.find(({ option }) => option === "yes");
-    return {
-      price,
-      answered: question?.answered ?? 0,
-      yes: yes ? yes.count : 0,
-    };
-  });
   return (
     <ul className="admin-study-bars">
-      {asked.map(({ price, answered, yes }) => (
+      {report.ladder.map(({ price, shown, yes }) => (
         <Bar
           key={price}
           label={`CHF ${price}: yes`}
           count={yes}
-          of={answered}
+          of={shown}
           minCell={report.minCell}
         />
       ))}

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  STUDY_PACK_PRICES,
   STUDY_PILOT_HOUSES,
   STUDY_PILOT_WEEKS,
   STUDY_REPORT_MIN_CELL,
@@ -136,6 +137,24 @@ function texts(answers: readonly Answer[]) {
   }));
 }
 
+/** Each pack price: the sessions shown it, answered or not, and the yes answers there. */
+function ladder(sessions: readonly Session[], answers: readonly Answer[]) {
+  return STUDY_PACK_PRICES.map((price) => {
+    const step = `pack-chf-${price}`;
+    return {
+      price,
+      shown: shown(
+        sessions.filter((session) => session.shown.includes(step)).length,
+      ),
+      yes: shown(
+        answers.filter(
+          (answer) => answer.step === step && answer.chosen.includes("yes"),
+        ).length,
+      ),
+    };
+  });
+}
+
 function pilot(forms: StudyReportRows["pilot"]) {
   return {
     forms: forms.length,
@@ -207,6 +226,7 @@ export function buildStudyReport(
     })),
     questions: questions(answers),
     texts: texts(answers),
+    ladder: ladder(sessions, answers),
     pilot: pilot(rows.pilot),
   };
 }

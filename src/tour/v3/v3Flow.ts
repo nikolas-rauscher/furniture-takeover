@@ -2,7 +2,7 @@ import type { StudyEventKind } from "../../../shared/study.ts";
 import type { TourScene } from "../device/sceneMessages.ts";
 import { shuffleOptions, type RandomSource } from "../optionOrder.ts";
 import { emptiedOffPath, isShown, neighbourStep } from "../stepConditions.ts";
-import { drawStart } from "./packPricing.ts";
+import { drawStart, ladderOf } from "./packPricing.ts";
 import type { V3Answer, V3Progress } from "./v3Progress.ts";
 import {
   answerIds,
@@ -14,6 +14,7 @@ import {
   V3_STEPS,
   type V3Section,
   type V3Step,
+  packAnswerStep,
 } from "./v3Script.ts";
 
 /** The contract's limit for the time on one step. */
@@ -186,6 +187,20 @@ export function withEvent(
     at: at.toISOString(),
   };
   return { ...progress, events: [...progress.events, event] };
+}
+
+/**
+ * Records the ladder's price on screen once, when it is first shown. The analysis
+ * counts these as asked, so a participant who leaves at a price still counts there.
+ */
+export function withPriceShown(progress: V3Progress): V3Progress {
+  const { next } = ladderOf(progress);
+  if (next === null) return progress;
+  const step = packAnswerStep(next);
+  const seen = progress.events.some(
+    (event) => event.kind === "shown" && event.step === step,
+  );
+  return seen ? progress : withEvent(progress, "shown", step);
 }
 
 /**

@@ -23,6 +23,7 @@ import {
   withEvent,
   withMoment,
   withoutAnswersOffPath,
+  withPriceShown,
   withV3Order,
 } from "./v3Flow";
 import { PILOT_KEY, v3Job } from "./v3Jobs";
@@ -229,6 +230,7 @@ export default function V3Steps({
       let next = withV3Order({ ...moved, stepId: target.id }, target);
       if (travel === -1) next = withEvent(next, "back", from, target.id);
       next = withEvent(next, "shown", target.id);
+      if (target.kind === "ladder") next = withPriceShown(next);
       if (target.kind === "saved") next = withEvent(next, "core-complete");
       if (target.kind === "end") next = withEvent(next, "end");
       return next;
@@ -327,19 +329,14 @@ export default function V3Steps({
     // The next price starts without a selection.
     setPending(null);
     if (ladder.next === null) return;
-    if (ladder.asked.length === 0)
-      setProgress(
-        storeAnswers({
-          [PACK_START_STEP]: { chosen: [packPriceId(ladder.start)], text: "" },
-          [packAnswerStep(ladder.next)]: { chosen: [chosen], text: "" },
-        }),
-      );
-    else
-      setProgress(
-        storeAnswers({
-          [packAnswerStep(ladder.next)]: { chosen: [chosen], text: "" },
-        }),
-      );
+    const answered = storeAnswers({
+      ...(ladder.asked.length === 0 && {
+        [PACK_START_STEP]: { chosen: [packPriceId(ladder.start)], text: "" },
+      }),
+      [packAnswerStep(ladder.next)]: { chosen: [chosen], text: "" },
+    });
+    // The follow-up price, if any, counts as asked from the moment it shows.
+    setProgress((current) => withPriceShown(answered(current)));
   }
 
   function sendPilot(pilot: StudyPilot) {

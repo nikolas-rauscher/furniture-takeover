@@ -4,6 +4,7 @@
  * they change only together with `V3_VERSION`.
  */
 
+import { STUDY_PACK_PRICES } from "../../../shared/study.ts";
 import type { TourScene } from "../device/sceneMessages.ts";
 import type { TourText } from "../i18n/en.ts";
 import type { StepCondition } from "../stepConditions.ts";
@@ -104,7 +105,7 @@ export type DraftResult = (typeof DRAFT_RESULTS)[number];
 export const SITUATIONS = 3;
 
 /** The move-out pack's prices in CHF, from low to high; the ladder starts at one at random. */
-export const PACK_PRICES = [2, 5, 8] as const;
+export const PACK_PRICES = STUDY_PACK_PRICES;
 export type PackPrice = (typeof PACK_PRICES)[number];
 export const PACK_ANSWERS = ["yes", "no", "not-sure"] as const;
 export type PackAnswer = (typeof PACK_ANSWERS)[number];

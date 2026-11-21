@@ -151,6 +151,8 @@ const PARTICIPANTS: Participant[] = [
     events: [
       ["shown", "who"],
       ["shown", "draft"],
+      ["shown", "pack-chf-5"],
+      ["shown", "pack-chf-8"],
       ["core-complete", null],
       ["shown", "pilot"],
       ["end", null],
@@ -178,8 +180,6 @@ const PARTICIPANTS: Participant[] = [
       "move-it": ["carry-bike"],
       desk: ["cheaper"],
       "pay-model": ["none"],
-      "pack-start": ["chf-2"],
-      "pack-chf-2": ["no"],
       "delivery-pref": ["pick-up"],
       draft: { chosen: ["sent-own"], first: ["own"] },
     },
@@ -187,6 +187,8 @@ const PARTICIPANTS: Participant[] = [
     events: [
       ["shown", "who"],
       ["shown", "last-role"],
+      // Left while CHF 5 was on screen, without answering.
+      ["shown", "pack-chf-5"],
     ],
   },
 ];
@@ -287,9 +289,11 @@ test("the v3 results queries run on v3 sessions of the named version only", asyn
   assert.deepEqual(
     rowsOf(await query("drop-off"), "step", "shown", "stopped_here"),
     [
+      ["pack-chf-5", 2, 1],
       ["who", 2, 0],
       ["draft", 1, 0],
-      ["last-role", 1, 1],
+      ["last-role", 1, 0],
+      ["pack-chf-8", 1, 0],
       ["pilot", 1, 0],
     ],
   );
@@ -351,10 +355,8 @@ test("the v3 results queries run on v3 sessions of the named version only", asyn
   assert.deepEqual(
     rowsOf(await query("d4-ladder"), "price", "start_price", "yes", "asked"),
     [
-      ["chf-2", "all", 0, 1],
-      ["chf-2", "chf-2", 0, 1],
-      ["chf-5", "all", 1, 1],
-      ["chf-5", "chf-5", 1, 1],
+      ["chf-5", "all", 1, 2],
+      ["chf-5", "chf-5", 1, 2],
       ["chf-8", "all", 0, 1],
       ["chf-8", "chf-5", 0, 1],
     ],

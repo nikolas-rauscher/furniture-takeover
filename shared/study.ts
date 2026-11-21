@@ -262,6 +262,9 @@ export const STUDY_V3_CORE_SCREENS = [
   "delivery-worth",
 ] as const;
 
+/** The move-out pack's prices in CHF on the survey's price ladder, from low to high. */
+export const STUDY_PACK_PRICES = [2, 5, 8] as const;
+
 /** On the results page, a breakdown cell with fewer answers than this is hidden. */
 export const STUDY_REPORT_MIN_CELL = 5;
 
@@ -304,6 +307,17 @@ export const studyReportSchema = z.strictObject({
   ),
   /** Typed answers per step, sorted alphabetically so their order says nothing. */
   texts: z.array(z.strictObject({ step: stepId, texts: z.array(z.string()) })),
+  /**
+   * The pack ladder per price: sessions shown the price, answered or not, and their
+   * yes answers. Someone who left at a price counts as not yes.
+   */
+  ladder: z.array(
+    z.strictObject({
+      price: z.union(STUDY_PACK_PRICES.map((price) => z.literal(price))),
+      shown: cell,
+      yes: cell,
+    }),
+  ),
   pilot: z.strictObject({
     forms: count,
     joinPilot: count,

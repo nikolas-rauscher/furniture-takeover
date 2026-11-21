@@ -240,7 +240,7 @@ One answer per session and step, replaced when the participant goes back and ans
 
 `first_chosen` holds the option picked first (`send`, `change`, `own` or `dont-send`); `draft-day` holds the chosen day.
 
-The price ladder stores `pack-start` (the price asked first: `chf-2`, `chf-5` or `chf-8`) and one answer per price asked: `pack-chf-2`, `pack-chf-5`, `pack-chf-8`, each `yes`, `no` or `not-sure`.
+The price ladder records each price once when it is shown, as a `shown` event with step `pack-chf-2`, `pack-chf-5` or `pack-chf-8`; the first of them is the random start. It stores `pack-start` (the price asked first: `chf-2`, `chf-5` or `chf-8`) with the first answer, and one answer per price answered: `pack-chf-2`, `pack-chf-5`, `pack-chf-8`, each `yes`, `no` or `not-sure`. The analysis counts a price as asked when it was shown.
 
 Events, sent in batches and stored once per sequence number, at most 600 per session. A batch the server refuses for good is dropped, so events never hold back answers, the session or the pilot form:
 
@@ -311,7 +311,7 @@ Frozen with a date before the first invitation, together with the script and the
 | D1b | Nearer lower bound > 50% → test a second price–distance pair and nearby sorting. Cheaper lower bound > 50% → price sort first. Else open. "Neither" stays in the denominator. | FMEL, EPFL/UNIL |
 | D2 | (1) Nothing ≥ 40% → problem weaker than believed, no nomination. (2) Else top named obstacle ≥ 25% and no tie → nominate it for the pilot. (3) Else open. | Buyers and sellers separately |
 | D3 | Helper lower bound ≥ 15% → partner quote and a real booking offer in the pilot. Upper bound < 15% → deprioritise this offer. Else open. 15% is a team threshold. | Furniture subgroup |
-| D4 | Acceptance at CHF 5 (`yes` ÷ asked at CHF 5) lower bound ≥ 20% → continue the pack idea and offer a real paid pack in February. Else no student payment in the pilot. | Acceptance at CHF 2 and 8; each price by start price; moving by June |
+| D4 | Acceptance at CHF 5 (`yes` ÷ shown CHF 5, answered or not) lower bound ≥ 20% → continue the pack idea and offer a real paid pack in February. Else no student payment in the pilot. | Acceptance at CHF 2 and 8; each price by start price; moving by June |
 | D5a | `sent-unchanged` lower bound > 50% → keep Pako's draft as the default for offers and test one-tap sending in the pilot. `sent-unchanged` + `sent-changed` upper bound < 50% → make the draft optional; offers start from an empty message. Else open. | `sent-own` and `not-sent` separately; unfinished; first vs final choice |
 | D5b | `short-updates` + `replies-too` lower bound > 50% → prototype the opt-in. Upper bound < 50% → keep "you tap every send". Else open. | Each option separately; by draft code |
 | D5c | Dropped in `v3-2`: the comprehension item was merged into `sending`. The sentence stays as it is. | |
@@ -588,20 +588,24 @@ order by subgroup, chosen desc, option;
 
 ### D4 Pack price ladder
 
-Acceptance per price over everyone asked at that price, in total and by the price asked first.
+Acceptance per price over everyone shown that price, in total and by the price shown first. A participant who left while a price was on screen counts there as not yes; the answers are joined to the exposures.
 
 ```sql
 -- d4-ladder
 with run as (
   select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v3-1'
+), exposures as (
+  select e.session, e.step, min(e.seq) as seq
+  from takeover_admin.study_events e join run on run.id = e.session
+  where e.kind = 'shown' and e.step in ('pack-chf-2', 'pack-chf-5', 'pack-chf-8')
+  group by e.session, e.step
 ), starts as (
-  select a.session, a.chosen[1] as start
-  from takeover_admin.study_answers a join run on run.id = a.session
-  where a.step = 'pack-start'
+  select distinct on (session) session, step as start from exposures order by session, seq
 ), asked as (
-  select substring(a.step from 6) as price, s.start, a.chosen[1] as answer
-  from takeover_admin.study_answers a join starts s on s.session = a.session
-  where a.step in ('pack-chf-2', 'pack-chf-5', 'pack-chf-8') and cardinality(a.chosen) > 0
+  select substring(x.step from 6) as price, substring(s.start from 6) as start, a.chosen[1] as answer
+  from exposures x
+  join starts s on s.session = x.session
+  left join takeover_admin.study_answers a on a.session = x.session and a.step = x.step
 )
 select price, coalesce(start, 'all') as start_price,
   count(*) filter (where answer = 'yes') as yes, count(*) as asked
