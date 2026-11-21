@@ -91,12 +91,11 @@ const v3AnswerBody = (session: string, step: string, chosen: string[]) => ({
 });
 const pilotBody = {
   email: "ada@epfl.ch",
+  launchNews: true,
+  tryEarly: true,
+  futureSurveys: false,
   role: "both",
-  house: "triaudes",
-  weeks: ["2026-12-21", "2027-02-08"],
-  items: ["household"],
-  joinPilot: true,
-  laterEmail: true,
+  place: "triaudes",
 };
 const eventBody = (seq: number) => ({
   seq,
@@ -339,17 +338,26 @@ test("events arrive in batches of up to 40 and are checked one by one", async (t
   assert.equal(unknown.status, 404);
 });
 
-test("the pilot form needs one ticked box and known houses, weeks and items", async (t) => {
+test("the form at the end needs one ticked box, and role and place exactly when trying early", async (t) => {
   const url = await startServer(t, { study: openStudy(t) });
   const saved = await post(url, STUDY_ROUTES.pilot, pilotBody);
   assert.equal(saved.status, 200);
+  const newsOnly = {
+    ...pilotBody,
+    email: "bo@unil.ch",
+    tryEarly: false,
+    role: null,
+    place: null,
+  };
+  assert.equal((await post(url, STUDY_ROUTES.pilot, newsOnly)).status, 200);
   for (const change of [
-    { joinPilot: false, laterEmail: false },
-    { house: "unknown-house" },
-    { weeks: ["2027-03-01"] },
-    { weeks: ["2026-12-21", "2026-12-21"] },
-    { items: ["car"] },
+    { launchNews: false, tryEarly: false, role: null, place: null },
+    { place: "unknown-place" },
+    { place: null },
+    { role: null },
+    { tryEarly: false },
     { role: "sell" },
+    { items: ["furniture"] },
     { session: randomUUID() },
   ]) {
     const refused = await post(url, STUDY_ROUTES.pilot, {
@@ -371,7 +379,7 @@ test("a repeated address gets the same answer as a new one and changes nothing",
     return { status: response.status, body: await response.text() };
   };
   const saved = { status: 200, body: JSON.stringify({ saved: true }) };
-  const later = { ...pilotBody, email: "ADA@epfl.ch", joinPilot: false };
+  const later = { ...pilotBody, email: "ADA@epfl.ch", futureSurveys: true };
   assert.deepEqual(await reply(STUDY_ROUTES.pilot, pilotBody), saved);
   assert.deepEqual(await reply(STUDY_ROUTES.pilot, later), saved);
   const contact = { email: "bo@unil.ch", pilot: true, session };
@@ -387,10 +395,11 @@ test("a repeated address gets the same answer as a new one and changes nothing",
   const { pilot } = await study.store.reportRows(undefined);
   assert.deepEqual(pilot, [
     {
-      house: "triaudes",
-      weeks: ["2026-12-21", "2027-02-08"],
-      joinPilot: true,
-      laterEmail: true,
+      launchNews: true,
+      tryEarly: true,
+      futureSurveys: false,
+      role: "both",
+      place: "triaudes",
     },
   ]);
 });

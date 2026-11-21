@@ -32,6 +32,7 @@ function firstProgress(source: string, language: StudyLanguage): V3Progress {
     queuedEvents: 0,
     pilot: null,
     unsentDraft: null,
+    draftVariant: null,
     moments: {},
     skippedFrom: null,
   };

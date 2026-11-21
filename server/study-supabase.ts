@@ -110,12 +110,11 @@ export function createSupabaseStudyStore(
     savePilot: (input: StudyPilot) =>
       write("study_save_pilot", {
         p_email: input.email,
+        p_launch_news: input.launchNews,
+        p_try_early: input.tryEarly,
+        p_future_surveys: input.futureSurveys,
         p_role: input.role,
-        p_house: input.house,
-        p_weeks: input.weeks,
-        p_items: input.items,
-        p_join_pilot: input.joinPilot,
-        p_later_email: input.laterEmail,
+        p_place: input.place,
       }),
     withdraw: (input: StudyWithdrawal) =>
       write("study_withdraw", { p_session: input.session }),

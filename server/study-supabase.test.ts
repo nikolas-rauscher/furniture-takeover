@@ -61,12 +61,11 @@ test("the Supabase transport calls the study functions with the service key", as
   });
   await study.savePilot({
     email: "ada@epfl.ch",
+    launchNews: false,
+    tryEarly: true,
+    futureSurveys: true,
     role: "buyer",
-    house: "not-fmel",
-    weeks: ["2026-12-14"],
-    items: ["books"],
-    joinPilot: false,
-    laterEmail: true,
+    place: "flat",
   });
   await study.withdraw({ session });
   assert.deepEqual(
@@ -105,12 +104,11 @@ test("the Supabase transport calls the study functions with the service key", as
   assert.deepEqual(bodyOf(calls[2]), { p_session: session, p_events: [event] });
   assert.deepEqual(bodyOf(calls[4]), {
     p_email: "ada@epfl.ch",
+    p_launch_news: false,
+    p_try_early: true,
+    p_future_surveys: true,
     p_role: "buyer",
-    p_house: "not-fmel",
-    p_weeks: ["2026-12-14"],
-    p_items: ["books"],
-    p_join_pilot: false,
-    p_later_email: true,
+    p_place: "flat",
   });
   assert.deepEqual(bodyOf(calls[5]), { p_session: session });
 });

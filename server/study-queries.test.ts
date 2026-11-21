@@ -138,13 +138,13 @@ const PARTICIPANTS: Participant[] = [
       "move-it": ["helper"],
       desk: ["nearer"],
       "last-cost": ["10-30"],
-      "pay-model": ["move-pack"],
-      "pack-start": ["chf-5"],
       "pack-chf-5": ["yes"],
       "pack-chf-8": ["no"],
-      "delivery-pref": ["if-priced"],
-      "delivery-worth": ["10-20"],
+      "pay-model": ["move-pack"],
+      "institution-pay": ["yes"],
+      "delivery-worth": ["11-20"],
       "draft-day": ["sat"],
+      "draft-variant": ["wrong-price"],
       draft: { chosen: ["sent-changed"], first: ["change"] },
     },
     draftText: "Hi Mia! I can pick it up on Saturday at 17:30.",
@@ -179,16 +179,20 @@ const PARTICIPANTS: Participant[] = [
       "wanted-share": ["no"],
       "move-it": ["carry-bike"],
       desk: ["cheaper"],
-      "pay-model": ["none"],
-      "delivery-pref": ["pick-up"],
+      "draft-variant": ["exact"],
       draft: { chosen: ["sent-own"], first: ["own"] },
+      "pack-chf-5": ["no"],
+      "pack-chf-2": ["yes"],
+      "pay-model": ["free"],
+      "delivery-worth": ["nothing"],
     },
     draftText: "Hi, is Sunday at 18:00 possible?",
     events: [
       ["shown", "who"],
       ["shown", "last-role"],
-      // Left while CHF 5 was on screen, without answering.
       ["shown", "pack-chf-5"],
+      // Left after answering CHF 2, before the core was saved.
+      ["shown", "pack-chf-2"],
     ],
   },
 ];
@@ -244,11 +248,14 @@ async function addVolunteers(
   ] as const;
   for (const [name, role] of forms)
     await db.query(
-      "select public.study_save_pilot($1,$2,'atrium','{2027-02-01}','{furniture}',true,false)",
+      "select public.study_save_pilot($1,false,true,false,$2,'atrium')",
       [`${name}@epfl.ch`, role],
     );
   await db.query(
-    "select public.study_save_pilot('later@unil.ch','buyer','not-fmel','{}','{}',false,true)",
+    "select public.study_save_pilot('flat@unil.ch',false,true,false,'seller','flat')",
+  );
+  await db.query(
+    "select public.study_save_pilot('later@unil.ch',true,false,true,null,null)",
   );
 }
 
@@ -289,10 +296,11 @@ test("the v3 results queries run on v3 sessions of the named version only", asyn
   assert.deepEqual(
     rowsOf(await query("drop-off"), "step", "shown", "stopped_here"),
     [
-      ["pack-chf-5", 2, 1],
+      ["pack-chf-5", 2, 0],
       ["who", 2, 0],
       ["draft", 1, 0],
       ["last-role", 1, 0],
+      ["pack-chf-2", 1, 1],
       ["pack-chf-8", 1, 0],
       ["pilot", 1, 0],
     ],
@@ -303,21 +311,26 @@ test("the v3 results queries run on v3 sessions of the named version only", asyn
   );
   assert.deepEqual(
     rowsOf(
-      await query("d1-houses"),
-      "house",
+      await query("d1-places"),
+      "place",
       "sellers",
       "buyers",
       "both_roles",
+      "people",
       "meets_rule",
     ),
-    [["atrium", 2, 3, 1, true]],
+    [
+      ["atrium", 2, 3, 1, 6, true],
+      ["flat", 1, 0, 0, 1, false],
+    ],
   );
-  assert.deepEqual(await query("d1-signups"), [
+  assert.deepEqual(await query("d1-forms"), [
     {
-      invitations_shown: 1,
-      signed_up: 6,
-      strong_interest: 6,
-      later_email_only: 1,
+      form_shown: 1,
+      forms: 8,
+      launch_news: 1,
+      try_early: 7,
+      future_surveys: 1,
     },
   ]);
   assert.deepEqual(
@@ -344,31 +357,39 @@ test("the v3 results queries run on v3 sessions of the named version only", asyn
     ],
   );
   assert.deepEqual(
-    rowsOf(await query("d3-transport"), "subgroup", "option", "answered"),
+    rowsOf(
+      await query("d3-transport"),
+      "item",
+      "subgroup",
+      "option",
+      "chosen",
+      "answered",
+    ),
     [
-      ["all", "carry-bike", "2"],
-      ["all", "helper", "2"],
-      ["furniture", "helper", "1"],
-      ["rest", "carry-bike", "1"],
+      ["delivery-worth", "all", "11-20", 1, "2"],
+      ["delivery-worth", "all", "nothing", 1, "2"],
+      ["delivery-worth", "furniture", "11-20", 1, "1"],
+      ["delivery-worth", "rest", "nothing", 1, "1"],
+      ["move-it", "all", "carry-bike", 1, "2"],
+      ["move-it", "all", "helper", 1, "2"],
+      ["move-it", "furniture", "helper", 1, "1"],
+      ["move-it", "rest", "carry-bike", 1, "1"],
     ],
   );
+  // Yes at CHF 2 counts the yes at CHF 5 too: both entered, both would pay CHF 2.
   assert.deepEqual(
     rowsOf(
       await query("d4-ladder"),
-      "price",
-      "start_price",
       "subgroup",
-      "yes",
-      "asked",
+      "entered",
+      "yes_2",
+      "yes_5",
+      "yes_8",
     ),
     [
-      ["chf-5", "all", "all", 1, 2],
-      ["chf-5", "all", "moving-by-june", 1, 1],
-      ["chf-5", "all", "rest", 0, 1],
-      ["chf-5", "chf-5", "all", 1, 2],
-      ["chf-8", "all", "all", 0, 1],
-      ["chf-8", "all", "moving-by-june", 0, 1],
-      ["chf-8", "chf-5", "all", 0, 1],
+      ["all", 2, 2, 1, 0],
+      ["moving-by-june", 1, 1, 1, 0],
+      ["rest", 1, 1, 0, 0],
     ],
   );
   assert.deepEqual(
@@ -376,37 +397,22 @@ test("the v3 results queries run on v3 sessions of the named version only", asyn
       await query("d9-pay-model"),
       "subgroup",
       "model",
+      "paid",
       "chosen",
       "answered",
+      "paid_answered",
     ),
     [
-      ["all", "move-pack", 1, "2"],
-      ["all", "none", 1, "2"],
-      ["epfl-unil", "move-pack", 1, "1"],
-      ["rest", "none", 1, "1"],
-    ],
-  );
-  assert.deepEqual(
-    rowsOf(
-      await query("d10-delivery"),
-      "item",
-      "subgroup",
-      "answer",
-      "chosen",
-      "answered",
-    ),
-    [
-      ["delivery-pref", "all", "if-priced", 1, "2"],
-      ["delivery-pref", "all", "pick-up", 1, "2"],
-      ["delivery-pref", "furniture", "if-priced", 1, "1"],
-      ["delivery-pref", "rest", "pick-up", 1, "1"],
-      ["delivery-worth", "all", "10-20", 1, "1"],
-      ["delivery-worth", "furniture", "10-20", 1, "1"],
+      ["all", "move-pack", true, 1, "2", "1"],
+      ["all", "free", false, 1, "2", "1"],
+      ["epfl-unil", "move-pack", true, 1, "1", "1"],
+      ["rest", "free", false, 1, "1", null],
     ],
   );
   assert.deepEqual(
     rowsOf(
       await query("d5a-draft"),
+      "variant",
       "final",
       "first",
       "participants",
@@ -414,15 +420,20 @@ test("the v3 results queries run on v3 sessions of the named version only", asyn
       "shown_task",
     ),
     [
-      ["sent-changed", "change", 1, 2, 1],
-      ["sent-own", "own", 1, 2, 1],
+      ["exact", "sent-own", "own", 1, 1, 1],
+      ["wrong-price", "sent-changed", "change", 1, 1, 1],
     ],
   );
   assert.deepEqual(
-    rowsOf(await query("d5a-texts"), "final", "chosen_day", "text"),
+    rowsOf(await query("d5a-texts"), "variant", "final", "chosen_day", "text"),
     [
-      ["sent-changed", "sat", "Hi Mia! I can pick it up on Saturday at 17:30."],
-      ["sent-own", null, "Hi, is Sunday at 18:00 possible?"],
+      [
+        "wrong-price",
+        "sent-changed",
+        "sat",
+        "Hi Mia! I can pick it up on Saturday at 17:30.",
+      ],
+      ["exact", "sent-own", null, "Hi, is Sunday at 18:00 possible?"],
     ],
   );
   assert.deepEqual(
@@ -491,7 +502,7 @@ test("the v3 results queries run on v3 sessions of the named version only", asyn
       ["wanted-share", "rest", "no", 1, "1"],
     ],
   );
-  assert.equal(queries.size, 20);
+  assert.equal(queries.size, 19);
 
   await runDeletion(run, deletion);
   for (const table of [
@@ -533,10 +544,16 @@ test("answers emptied by going back count as not answered in the v3 queries", as
   };
   assert.deepEqual(await query("d2-obstacles"), []);
   assert.deepEqual(
-    rowsOf(await query("d3-transport"), "subgroup", "option", "answered"),
+    rowsOf(
+      await query("d3-transport"),
+      "item",
+      "subgroup",
+      "option",
+      "answered",
+    ),
     [
-      ["all", "helper", "1"],
-      ["rest", "helper", "1"],
+      ["move-it", "all", "helper", "1"],
+      ["move-it", "rest", "helper", "1"],
     ],
   );
   assert.deepEqual(

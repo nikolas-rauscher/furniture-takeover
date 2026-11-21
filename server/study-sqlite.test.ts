@@ -58,12 +58,11 @@ const contact = (
 ): StudyContact => ({ email, pilot: false, session });
 const pilot = (email: string): StudyPilot => ({
   email,
+  launchNews: false,
+  tryEarly: true,
+  futureSurveys: false,
   role: "seller",
-  house: "atrium",
-  weeks: ["2027-02-01"],
-  items: ["furniture", "bike"],
-  joinPilot: true,
-  laterEmail: false,
+  place: "atrium",
 });
 
 async function withDatabase(run: (path: string) => void) {
@@ -277,32 +276,46 @@ test("a contact is stored once per address, and a later submission for it change
   });
 });
 
-test("a pilot form is stored once per address, and a later form for it changes nothing", async () => {
+test("a form at the end is stored once per address, and a later form for it changes nothing", async () => {
   await withDatabase((path) => {
     const store = createSqliteStudyStore(path);
     store.savePilot(pilot("Ada@Epfl.ch"));
     store.savePilot({
       ...pilot("ada@epfl.ch"),
-      role: "both",
-      weeks: [],
-      joinPilot: false,
-      laterEmail: true,
+      tryEarly: false,
+      futureSurveys: true,
+      role: null,
+      place: null,
+    });
+    store.savePilot({
+      ...pilot("bo@unil.ch"),
+      launchNews: true,
+      tryEarly: false,
+      role: null,
+      place: null,
     });
     store.close?.();
     assert.deepEqual(
       rows(
         path,
-        "SELECT email, role, house, weeks, items, join_pilot, later_email FROM study_pilot",
+        "SELECT email, launch_news, try_early, future_surveys, role, place FROM study_pilot ORDER BY email",
       ),
       [
         {
           email: "ada@epfl.ch",
+          launch_news: 0,
+          try_early: 1,
+          future_surveys: 0,
           role: "seller",
-          house: "atrium",
-          weeks: '["2027-02-01"]',
-          items: '["furniture","bike"]',
-          join_pilot: 1,
-          later_email: 0,
+          place: "atrium",
+        },
+        {
+          email: "bo@unil.ch",
+          launch_news: 1,
+          try_early: 0,
+          future_surveys: 0,
+          role: null,
+          place: null,
         },
       ],
     );
@@ -445,7 +458,7 @@ test("a demo file from before v3 gets the new columns and keeps its sessions as 
   });
 });
 
-test("answers, sessions, contacts and pilot forms stop at their limits; a full list refuses listed addresses too", async () => {
+test("answers, sessions, contacts and end forms stop at their limits; a full list refuses listed addresses too", async () => {
   await withDatabase((path) => {
     const store = createSqliteStudyStore(path);
     const { session } = v1Start();
@@ -471,7 +484,7 @@ test("answers, sessions, contacts and pilot forms stop at their limits; a full l
     for (let n = 0; n < STUDY_LIMITS.contacts; n++)
       insertContact.run(`p${n}@epfl.ch`);
     const insertPilot = db.prepare(
-      "INSERT INTO study_pilot (email, role, house, weeks, items, join_pilot, later_email, created_at) VALUES (?, 'buyer', 'vortex', '[]', '[]', 1, 0, '')",
+      "INSERT INTO study_pilot (email, launch_news, try_early, future_surveys, created_at) VALUES (?, 1, 0, 0, '')",
     );
     for (let n = 0; n < STUDY_LIMITS.pilot; n++)
       insertPilot.run(`p${n}@epfl.ch`);

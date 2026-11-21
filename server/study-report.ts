@@ -1,8 +1,9 @@
 import { z } from "zod";
 import {
   STUDY_PACK_PRICES,
-  STUDY_PILOT_HOUSES,
-  STUDY_PILOT_WEEKS,
+  STUDY_PACK_START,
+  STUDY_PILOT_PLACES,
+  STUDY_PILOT_ROLES,
   STUDY_REPORT_MIN_CELL,
   STUDY_V3_CORE_SCREENS,
   type StudyReport,
@@ -35,10 +36,11 @@ export const studyReportRowsSchema = z.strictObject({
   ),
   pilot: z.array(
     z.strictObject({
-      house: z.enum(STUDY_PILOT_HOUSES),
-      weeks: z.array(z.enum(STUDY_PILOT_WEEKS)),
-      joinPilot: z.boolean(),
-      laterEmail: z.boolean(),
+      launchNews: z.boolean(),
+      tryEarly: z.boolean(),
+      futureSurveys: z.boolean(),
+      role: z.enum(STUDY_PILOT_ROLES).nullable(),
+      place: z.enum(STUDY_PILOT_PLACES).nullable(),
     }),
   ),
 });
@@ -137,41 +139,49 @@ function texts(answers: readonly Answer[]) {
   }));
 }
 
-/** Each pack price: the sessions shown it, answered or not, and the yes answers there. */
+const yesAt = (answers: readonly Answer[], price: number) =>
+  answers.filter(
+    (answer) =>
+      answer.step === `pack-chf-${price}` && answer.chosen.includes("yes"),
+  ).length;
+
+/**
+ * The pack ladder over everyone shown its first price, answered or not. A lower price
+ * is asked only after "no" at the first, so yes at the first price adds to the yes
+ * answers there without linking sessions. Yes at a higher price was yes at the first.
+ */
 function ladder(sessions: readonly Session[], answers: readonly Answer[]) {
-  return STUDY_PACK_PRICES.map((price) => {
-    const step = `pack-chf-${price}`;
-    return {
+  const entered = sessions.filter((session) =>
+    session.shown.includes(`pack-chf-${STUDY_PACK_START}`),
+  ).length;
+  return {
+    entered: shown(entered),
+    prices: STUDY_PACK_PRICES.map((price) => ({
       price,
-      shown: shown(
-        sessions.filter((session) => session.shown.includes(step)).length,
-      ),
       yes: shown(
-        answers.filter(
-          (answer) => answer.step === step && answer.chosen.includes("yes"),
-        ).length,
+        yesAt(answers, price) +
+          (price < STUDY_PACK_START ? yesAt(answers, STUDY_PACK_START) : 0),
       ),
-    };
-  });
+    })),
+  };
 }
 
 function pilot(forms: StudyReportRows["pilot"]) {
+  const early = forms.filter((form) => form.tryEarly);
   return {
     forms: forms.length,
-    joinPilot: forms.filter((form) => form.joinPilot).length,
-    laterEmail: forms.filter((form) => form.laterEmail).length,
-    houses: STUDY_PILOT_HOUSES.map((house) => {
-      const signUps = forms.filter(
-        (form) => form.house === house && form.joinPilot,
-      );
-      const perWeek = countBy(signUps, (form) => form.weeks);
+    launchNews: forms.filter((form) => form.launchNews).length,
+    tryEarly: early.length,
+    futureSurveys: forms.filter((form) => form.futureSurveys).length,
+    places: STUDY_PILOT_PLACES.map((place) => {
+      const here = early.filter((form) => form.place === place);
+      const withRole = (role: string) =>
+        shown(here.filter((form) => form.role === role).length);
       return {
-        house,
-        total: shown(signUps.length),
-        weeks: STUDY_PILOT_WEEKS.map((week) => ({
-          week,
-          count: shown(perWeek.get(week) ?? 0),
-        })),
+        place,
+        sellers: withRole("seller"),
+        buyers: withRole("buyer"),
+        both: withRole("both"),
       };
     }),
   };

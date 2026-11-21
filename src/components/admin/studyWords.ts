@@ -21,6 +21,13 @@ const RECORDED: Record<string, Words> = {
     question: "Day picked in the practice chat",
     options: EN.v3.draft.days,
   },
+  "draft-variant": {
+    question: "Offer Pako drafted in the practice chat",
+    options: {
+      exact: "At the agreed CHF 40",
+      "wrong-price": "At CHF 35 instead of the agreed CHF 40",
+    },
+  },
   draft: {
     question: "What participants did with Pako's offer draft",
     options: {
@@ -31,10 +38,6 @@ const RECORDED: Record<string, Words> = {
       change: "Started changing, nothing decided",
       own: "Started their own, nothing decided",
     },
-  },
-  "pack-start": {
-    question: "Pack ladder: the price asked first",
-    options: { "chf-2": "CHF 2", "chf-5": "CHF 5", "chf-8": "CHF 8" },
   },
   "pack-chf-2": {
     question: EN.v3.packLadder.question(2),

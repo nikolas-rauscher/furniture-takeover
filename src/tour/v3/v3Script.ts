@@ -4,13 +4,13 @@
  * they change only together with `V3_VERSION`.
  */
 
-import { STUDY_PACK_PRICES } from "../../../shared/study.ts";
+import { STUDY_PACK_PRICES, STUDY_PACK_START } from "../../../shared/study.ts";
 import type { TourScene } from "../device/sceneMessages.ts";
 import type { TourText } from "../i18n/en.ts";
 import type { StepCondition } from "../stepConditions.ts";
 
 /** Raised whenever a question, an option or its wording changes. */
-export const V3_VERSION = "v3-7";
+export const V3_VERSION = "v3-8";
 /** The time the start screen and the share text name, rounded up from the core's estimate. */
 export const V3_MINUTES = 5;
 /** The one open sentence is shorter than what the server accepts. */
@@ -28,8 +28,8 @@ export type V3Section = (typeof V3_SECTIONS)[number];
 type StepWords = TourText["v3"]["steps"];
 type ChoiceStepId = keyof StepWords;
 
-/** Pako's line above a step's question, where it turns to a new topic within a part. */
-type Intro = "moveIntro";
+/** Pako's line above a step's question, where it turns to a new topic or sets a scene. */
+type Intro = "moveIntro" | "lampIntro";
 
 /** The parts after the start; each opens with a screen that says what it asks. */
 export type V3Part = Exclude<V3Section, "you">;
@@ -91,6 +91,18 @@ export type V3Step =
 export const DRAFT_DAY_STEP = "draft-day";
 export const DRAFT_DAYS = ["sat", "sun"] as const;
 export type DraftDay = (typeof DRAFT_DAYS)[number];
+/**
+ * Which offer Pako drafts, drawn once per participant and stored with the day: the
+ * agreed price, or CHF 5 less than it.
+ */
+export const DRAFT_VARIANT_STEP = "draft-variant";
+export const DRAFT_VARIANTS = ["exact", "wrong-price"] as const;
+export type DraftVariant = (typeof DRAFT_VARIANTS)[number];
+/** The listing's and the agreed price in CHF, and the price the wrong draft names instead. */
+export const DRAFT_PRICES: Record<DraftVariant, number> = {
+  exact: 40,
+  "wrong-price": 35,
+};
 /** The option picked first for Pako's draft, kept as the draft's first answer. */
 export type DraftAction = "send" | "change" | "own" | "dont-send";
 /** The options that open the message for writing. */
@@ -109,15 +121,13 @@ export type DraftResult = (typeof DRAFT_RESULTS)[number];
 /** How many situations part 4 holds, for its context cards. */
 export const SITUATIONS = 3;
 
-/** The move-out pack's prices in CHF, from low to high; the ladder starts at one at random. */
+/** The move-out pack's prices in CHF, from low to high; the ladder starts in the middle. */
 export const PACK_PRICES = STUDY_PACK_PRICES;
 export type PackPrice = (typeof PACK_PRICES)[number];
+export const PACK_START: PackPrice = STUDY_PACK_START;
 export const PACK_ANSWERS = ["yes", "no", "not-sure"] as const;
 export type PackAnswer = (typeof PACK_ANSWERS)[number];
-export const PACK_LADDER_STEP = "pack-price";
-/** The start price is stored as an answer of its own, like the draft's day. */
-export const PACK_START_STEP = "pack-start";
-export const packPriceId = (price: PackPrice) => `chf-${price}` as const;
+const PACK_LADDER_STEP = "pack-price";
 export const packAnswerStep = (price: PackPrice) =>
   `pack-chf-${price}` as const;
 
@@ -133,8 +143,6 @@ const STUDENTS: StepCondition = {
   step: "who",
   anyOf: ["epfl", "unil", "other-school"],
 };
-/** Only EPFL and UNIL students can open an account, so only they are invited. */
-const ACCOUNT_HOLDERS: StepCondition = { step: "who", anyOf: ["epfl", "unil"] };
 const WATCHES_TOUR: StepCondition = { step: PEEK_STEP, anyOf: ["tour"] };
 
 function choice(
@@ -278,12 +286,6 @@ export const V3_STEPS: readonly V3Step[] = [
     section: "last-time",
   }),
   { kind: "part", id: "part-the-app", section: "the-app" },
-  choice("headline", ["h-move", "h-photo", "h-ai", "h-nearby", "none"], {
-    section: "the-app",
-    product: true,
-    shuffle: true,
-    fixedLast: 1,
-  }),
   ...CORE_SCENES.flatMap(featureSteps),
   choice(
     "stop",
@@ -318,23 +320,34 @@ export const V3_STEPS: readonly V3Step[] = [
     ],
     { section: "the-app", product: true, shuffle: true, fixedLast: 2 },
   ),
-  // The options go from sending nothing to sending more, so they keep their order.
-  choice("sending", ["myself", "short-updates", "replies-too", "not-sure"], {
-    section: "the-app",
-    product: true,
-  }),
   // "Wanted nearby", a feature idea: a nearby student's anonymous request, shown as a card.
   choice("wanted-react", ["snap", "look", "ignore", "rather-not"], {
     section: "the-app",
     product: true,
     shuffle: true,
     fixedLast: 1,
+    intro: "lampIntro",
   }),
   choice("wanted-share", ["yes", "maybe", "no"], {
     section: "the-app",
     product: true,
   }),
+  // The slogans come last in the part, so they do not prime the scenes.
+  choice("headline", ["h-move", "h-photo", "h-ai", "h-nearby", "none"], {
+    section: "the-app",
+    product: true,
+    shuffle: true,
+    fixedLast: 1,
+  }),
   { kind: "part", id: "part-situations", section: "situations" },
+  // The desk comes first, so its prices are not read right after the helper's CHF 15.
+  {
+    kind: "desk",
+    id: "desk",
+    section: "situations",
+    situation: 1,
+    options: ["nearer", "cheaper", "neither"],
+  },
   choice(
     "move-it",
     [
@@ -347,25 +360,25 @@ export const V3_STEPS: readonly V3Step[] = [
     ],
     {
       section: "situations",
-      situation: 1,
+      situation: 2,
       product: true,
       shuffle: true,
       fixedLast: 2,
       disclosure: "helperMissing",
     },
   ),
-  {
-    kind: "desk",
-    id: "desk",
-    section: "situations",
-    situation: 2,
-    options: ["nearer", "cheaper", "neither"],
-  },
   { kind: "draft", id: "draft", section: "situations", situation: 3 },
+  // Asked after the draft task, so the task is not framed by it. The options go from
+  // sending nothing to sending more, so they keep their order.
+  choice("sending", ["myself", "short-updates", "replies-too", "not-sure"], {
+    section: "situations",
+    product: true,
+  }),
   { kind: "part", id: "part-price", section: "price" },
+  { kind: "ladder", id: PACK_LADDER_STEP, section: "price" },
   choice(
     "pay-model",
-    ["seller-fee", "move-pack", "monthly", "institution", "none"],
+    ["free", "seller-fee", "move-pack", "monthly", "not-sure"],
     {
       section: "price",
       product: true,
@@ -373,22 +386,14 @@ export const V3_STEPS: readonly V3Step[] = [
       fixedLast: 1,
     },
   ),
-  { kind: "ladder", id: PACK_LADDER_STEP, section: "price" },
-  choice("delivery-pref", ["pick-up", "if-priced", "always", "depends"], {
+  choice("institution-pay", ["yes", "no-difference", "not-sure"], {
     section: "price",
     product: true,
   }),
   choice(
     "delivery-worth",
-    ["only-free", "up-to-5", "5-10", "10-20", "over-20", "not-sure"],
-    {
-      section: "price",
-      product: true,
-      when: {
-        step: "delivery-pref",
-        anyOf: ["if-priced", "always", "depends"],
-      },
-    },
+    ["nothing", "up-to-5", "6-10", "11-20", "over-20", "not-sure"],
+    { section: "price", product: true },
   ),
   { kind: "saved", id: "saved" },
   {
@@ -421,7 +426,7 @@ export const V3_STEPS: readonly V3Step[] = [
     brief: false,
     when: WATCHES_TOUR,
   })),
-  { kind: "pilot", id: "pilot", when: ACCOUNT_HOLDERS },
+  { kind: "pilot", id: "pilot" },
   { kind: "end", id: "end" },
 ];
 
@@ -438,7 +443,6 @@ function storesAnswer(step: V3Step): boolean {
 /** The ids stored for a step: the step itself, each row of an "About you" screen, or each ladder price. */
 export function answerIds(step: V3Step): string[] {
   if (step.kind === "about") return step.rows.map((row) => row.id);
-  if (step.kind === "ladder")
-    return [PACK_START_STEP, ...PACK_PRICES.map(packAnswerStep)];
+  if (step.kind === "ladder") return PACK_PRICES.map(packAnswerStep);
   return storesAnswer(step) ? [step.id] : [];
 }

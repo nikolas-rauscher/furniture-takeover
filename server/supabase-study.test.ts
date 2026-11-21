@@ -5,10 +5,8 @@ import { studyDatabase } from "./supabase-fixture.ts";
 import {
   STUDY_EVENT_KINDS,
   STUDY_LANGUAGES,
-  STUDY_PILOT_HOUSES,
-  STUDY_PILOT_ITEMS,
+  STUDY_PILOT_PLACES,
   STUDY_PILOT_ROLES,
-  STUDY_PILOT_WEEKS,
   STUDY_RESULTS_MINIMUM,
   STUDY_SURVEYS,
   studyResultsSchema,
@@ -60,7 +58,7 @@ async function setup(t: TestContext) {
     ]);
   const savePilot = (email: string, role = "seller") =>
     db.query(
-      "select public.study_save_pilot($1,$2,'atrium','{2027-02-01}','{furniture}',true,false)",
+      "select public.study_save_pilot($1,false,true,false,$2,'atrium')",
       [email, role],
     );
   const saveContact = (email: string, session: string | null = null) =>
@@ -203,7 +201,7 @@ const STUDY_FUNCTIONS = [
   "public.study_save_answer(gen_random_uuid(),'who','{}','{}','{}','',0)",
   "public.study_save_events(gen_random_uuid(),'[]'::jsonb)",
   "public.study_save_contact('a@epfl.ch',true,null)",
-  "public.study_save_pilot('a@epfl.ch','buyer','atrium','{}','{}',true,false)",
+  "public.study_save_pilot('a@epfl.ch',true,false,false,null,null)",
   "public.study_withdraw(gen_random_uuid())",
   "public.study_results('v3-1')",
   "public.study_report_rows(gen_random_uuid())",
@@ -335,26 +333,33 @@ test("events are stored once per sequence number, checked, and capped per sessio
   assert.equal(await count("study_events"), STUDY_LIMITS.eventsPerSession);
 });
 
-test("a pilot form is stored once per address as first sent, without a session, and capped", async (t) => {
-  const { asOwner, savePilot, count } = await setup(t);
+test("a form at the end is stored once per address as first sent, without a session, and capped", async (t) => {
+  const { db, asOwner, savePilot, count } = await setup(t);
   await savePilot("Ada@Epfl.ch");
   await savePilot(" ada@epfl.ch ", "both");
   assert.deepEqual(
     await asOwner(
-      "select email, role, weeks, items, join_pilot, later_email from takeover_admin.study_pilot",
+      "select email, launch_news, try_early, future_surveys, role, place from takeover_admin.study_pilot",
     ),
     [
       {
         email: "ada@epfl.ch",
+        launch_news: false,
+        try_early: true,
+        future_surveys: false,
         role: "seller",
-        weeks: ["2027-02-01"],
-        items: ["furniture"],
-        join_pilot: true,
-        later_email: false,
+        place: "atrium",
       },
     ],
   );
   await assert.rejects(savePilot("bo@unil.ch", "seller-buyer"), /check/);
+  // Role and place come with trying early and only with it; one tick is needed.
+  for (const call of [
+    "select public.study_save_pilot('cy@epfl.ch',true,true,false,null,null)",
+    "select public.study_save_pilot('cy@epfl.ch',true,false,false,'buyer','flat')",
+    "select public.study_save_pilot('cy@epfl.ch',false,false,false,null,null)",
+  ])
+    await assert.rejects(db.query(call), /check/);
   assert.deepEqual(
     await asOwner(
       `select column_name from information_schema.columns
@@ -363,8 +368,8 @@ test("a pilot form is stored once per address as first sent, without a session, 
     [],
   );
   await asOwner(
-    `insert into takeover_admin.study_pilot(email,role,house,weeks,items,join_pilot,later_email)
-     select 'p'||n||'@epfl.ch','buyer','vortex','{}','{}',true,false from generate_series(2,$1) as n`,
+    `insert into takeover_admin.study_pilot(email,launch_news,try_early,future_surveys)
+     select 'p'||n||'@epfl.ch',true,false,false from generate_series(2,$1) as n`,
     [STUDY_LIMITS.pilot],
   );
   assert.equal(await count("study_pilot"), STUDY_LIMITS.pilot);
@@ -496,21 +501,15 @@ test("the tables accept every value the wire contract allows", async (t) => {
     ),
   ]);
   for (const role of STUDY_PILOT_ROLES)
-    for (const house of STUDY_PILOT_HOUSES)
+    for (const place of STUDY_PILOT_PLACES)
       await db.query(
-        "select public.study_save_pilot($1,$2,$3,$4,$5,true,true)",
-        [
-          `${role}-${house}@epfl.ch`,
-          role,
-          house,
-          STUDY_PILOT_WEEKS,
-          STUDY_PILOT_ITEMS,
-        ],
+        "select public.study_save_pilot($1,true,true,true,$2,$3)",
+        [`${role}-${place}@epfl.ch`, role, place],
       );
   assert.equal(await count("study_events"), STUDY_EVENT_KINDS.length);
   assert.equal(
     await count("study_pilot"),
-    STUDY_PILOT_ROLES.length * STUDY_PILOT_HOUSES.length,
+    STUDY_PILOT_ROLES.length * STUDY_PILOT_PLACES.length,
   );
 });
 

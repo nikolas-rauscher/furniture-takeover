@@ -2,12 +2,13 @@ import type { StudyEventKind } from "../../../shared/study.ts";
 import type { TourScene } from "../device/sceneMessages.ts";
 import { shuffleOptions, type RandomSource } from "../optionOrder.ts";
 import { emptiedOffPath, isShown, neighbourStep } from "../stepConditions.ts";
-import { drawStart, ladderOf } from "./packPricing.ts";
+import { ladderOf } from "./packPricing.ts";
 import type { V3Answer, V3Progress } from "./v3Progress.ts";
 import {
   answerIds,
   DRAFT_DAY_STEP,
   DRAFT_DAYS,
+  DRAFT_VARIANTS,
   sceneStepId,
   TOUR_SCENES_ORDER,
   V3_SECTIONS,
@@ -151,21 +152,38 @@ function shuffleOf(step: V3Step): Shuffle | null {
   return null;
 }
 
-/** A shuffled step draws its order the first time it is shown and keeps it; the ladder draws its start price. */
+/** The draft task's variant, drawn once per participant and kept. */
+function withDraftVariant(
+  progress: V3Progress,
+  random: RandomSource,
+): V3Progress {
+  if (progress.draftVariant) return progress;
+  const draftVariant =
+    DRAFT_VARIANTS[Math.floor(random() * DRAFT_VARIANTS.length)];
+  return { ...progress, draftVariant };
+}
+
+/**
+ * A shuffled step draws its order the first time it is shown and keeps it; the draft
+ * task also draws its variant.
+ */
 export function withV3Order(
   progress: V3Progress,
   step: V3Step,
   random: RandomSource = Math.random,
 ): V3Progress {
-  if (step.kind === "ladder") {
-    if (progress.orders[step.id]) return progress;
-    const start = [drawStart(random)];
-    return { ...progress, orders: { ...progress.orders, [step.id]: start } };
-  }
   const shuffle = shuffleOf(step);
-  if (!shuffle || progress.orders[shuffle.key]) return progress;
-  const order = shuffledIds(shuffle.ids, shuffle.fixedLast, random);
-  return { ...progress, orders: { ...progress.orders, [shuffle.key]: order } };
+  const ordered =
+    !shuffle || progress.orders[shuffle.key]
+      ? progress
+      : {
+          ...progress,
+          orders: {
+            ...progress.orders,
+            [shuffle.key]: shuffledIds(shuffle.ids, shuffle.fixedLast, random),
+          },
+        };
+  return step.kind === "draft" ? withDraftVariant(ordered, random) : ordered;
 }
 
 /**

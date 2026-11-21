@@ -81,7 +81,7 @@ export const namedStudyErrors = {
   study_pilot_limit: new AgentError(
     429,
     "STUDY_PILOT_LIMIT",
-    "The pilot list has reached its maximum number of addresses.",
+    "The form at the end of the survey has reached its maximum number of addresses.",
   ),
   admin_required: new AgentError(
     403,

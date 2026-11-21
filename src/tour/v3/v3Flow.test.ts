@@ -29,13 +29,16 @@ import {
   answerIds,
   DRAFT_DAY_STEP,
   DRAFT_DAYS,
+  DRAFT_PRICES,
+  DRAFT_VARIANTS,
   SITUATIONS,
   V3_STEPS,
   V3_VERSION,
   type V3ChoiceStep,
 } from "./v3Script.ts";
 import { optionsOf, questionOf } from "./v3Words.ts";
-import { drawStart, ladderOf } from "./packPricing.ts";
+import { ladderOf } from "./packPricing.ts";
+import { sentResult } from "./draftResume.ts";
 import { toggleOption } from "../optionOrder.ts";
 
 const SESSION = "6f1c1f9e-5b7a-4c1e-9a1d-2f3b4c5d6e7f";
@@ -58,6 +61,7 @@ const progress: V3Progress = {
   stepId: "who",
   answers: {},
   orders: {},
+  draftVariant: null,
   events: [],
   queuedEvents: 0,
   pilot: null,
@@ -86,21 +90,23 @@ test("someone who tried answers the details; someone who did not gets one reason
   assert.equal(none[none.indexOf("why-not") + 1], "move");
 });
 
-test("with the start screen, the core has 33 screens after an attempt and 29 without", () => {
+test("with the start screen, the core has 34 screens after an attempt and 30 without", () => {
   const core = (role: string) => {
     const shown = ids({ "last-role": answer(role) });
     return shown.slice(0, shown.indexOf("saved")).length;
   };
-  assert.equal(core("buying") + 1, 33);
-  assert.equal(core("none") + 1, 29);
+  assert.equal(core("buying") + 1, 34);
+  assert.equal(core("none") + 1, 30);
 });
 
-test("the core shows each feature briefly, then asks whether it would have helped", () => {
+test("the core shows each feature briefly, then asks whether it would have helped; the slogans come last", () => {
   const core = ids({});
   assert.deepEqual(
-    core.slice(core.indexOf("headline"), core.indexOf("part-situations")),
+    core.slice(
+      core.indexOf("part-the-app") + 1,
+      core.indexOf("part-situations"),
+    ),
     [
-      "headline",
       "app-find",
       "helped-find",
       "app-sell",
@@ -109,9 +115,9 @@ test("the core shows each feature briefly, then asks whether it would have helpe
       "helped-deal",
       "stop",
       "try-first",
-      "sending",
       "wanted-react",
       "wanted-share",
+      "headline",
     ],
   );
   const brief = V3_STEPS.filter((step) => step.kind === "scene" && step.brief);
@@ -157,12 +163,12 @@ test("the tour shows only after Peek, starting with the scene picked first", () 
   const tour = ids({ peek: answer("tour"), "scene-pick": answer("find") });
   const scenes = tour.filter((id) => id.startsWith("tour-"));
   assert.deepEqual(scenes, ["tour-find", "tour-sell", "tour-deal"]);
-  assert.equal(tour[tour.indexOf("tour-deal") + 1], "end");
+  assert.deepEqual(tour.slice(tour.indexOf("tour-deal") + 1), ["pilot", "end"]);
 });
 
-test("only EPFL and UNIL students see the pilot form; students see their studies", () => {
-  assert.ok(ids({ who: answer("unil") }).includes("pilot"));
-  assert.ok(!ids({ who: answer("other-school") }).includes("pilot"));
+test("everyone sees the form at the end; students see their studies", () => {
+  for (const who of ["epfl", "unil", "other-school", "no"])
+    assert.ok(ids({ who: answer(who) }).includes("pilot"), who);
   assert.ok(ids({ who: answer("other-school") }).includes("about-studies"));
   assert.ok(!ids({ who: answer("no") }).includes("about-studies"));
 });
@@ -173,7 +179,7 @@ test("back stops before the first screen and after the core", () => {
     assert.equal(canGoBack(steps, v3StepById(id)), false, id);
   assert.equal(canGoBack(steps, v3StepById("draft")), true);
   assert.equal(canGoBack(steps, v3StepById("who")), true);
-  assert.equal(nextV3({}, "delivery-pref").id, "saved");
+  assert.equal(nextV3({}, "delivery-worth").id, "saved");
 });
 
 test("the first answer stays when the step is answered again", () => {
@@ -241,7 +247,7 @@ test("every way of paying is a price card with two advantages, in every language
   for (const text of Object.values(TOUR_TEXT)) {
     const options = optionsOf(text, payModel, { answers: {}, orders: {} });
     for (const option of options) {
-      if (option.id === "none") {
+      if (option.id === "not-sure") {
         assert.equal(option.plan, undefined);
         continue;
       }
@@ -280,29 +286,67 @@ test("answers, events and the session are valid on the wire", () => {
   assert.ok(studyEventsSchema.safeParse(batch).success);
 });
 
-test("Pako's offer names the day the participant picked, in every language", () => {
+test("Pako's offer names the day picked and the variant's price, in every language", () => {
   for (const text of Object.values(TOUR_TEXT))
-    for (const day of DRAFT_DAYS) {
-      const words = text.v3.draft.days[day];
-      assert.match(
-        text.v3.draft.offer(words),
-        new RegExp(words, "i"),
-        `${day} in ${text.v3.draft.chatLabel}`,
-      );
-    }
+    for (const day of DRAFT_DAYS)
+      for (const variant of DRAFT_VARIANTS) {
+        const words = text.v3.draft.days[day];
+        const offer = text.v3.draft.offer(words, DRAFT_PRICES[variant]);
+        const label = `${day} ${variant} in ${text.v3.draft.chatLabel}`;
+        assert.match(offer, new RegExp(words, "i"), label);
+        assert.ok(
+          offer.replace(/\s/g, " ").includes(`CHF ${DRAFT_PRICES[variant]}.`),
+          label,
+        );
+      }
+  assert.deepEqual(DRAFT_PRICES, { exact: 40, "wrong-price": 35 });
 });
 
-test("each situation opens with its place among the four", () => {
+test("the draft's variant is drawn once when the task shows and kept", () => {
+  const draft = v3StepById("draft");
+  const exact = withV3Order(progress, draft, () => 0);
+  assert.equal(exact.draftVariant, "exact");
+  assert.equal(
+    withV3Order(progress, draft, () => 0.99).draftVariant,
+    "wrong-price",
+  );
+  assert.equal(withV3Order(exact, draft, () => 0.99).draftVariant, "exact");
+  assert.equal(
+    withV3Order(progress, v3StepById("desk"), () => 0).draftVariant,
+    null,
+  );
+});
+
+test("a sent offer counts as unchanged only when it is the variant's own draft", () => {
+  const text = TOUR_TEXT.en.v3.draft;
+  for (const variant of DRAFT_VARIANTS) {
+    const offer = text.offer(text.days.sat, DRAFT_PRICES[variant]);
+    assert.equal(sentResult("change", offer, offer), "sent-unchanged", variant);
+    assert.equal(sentResult("own", offer, offer), "sent-own", variant);
+  }
+  const wrong = text.offer(text.days.sat, DRAFT_PRICES["wrong-price"]);
+  const corrected = text.offer(text.days.sat, DRAFT_PRICES.exact);
+  assert.equal(sentResult("change", corrected, wrong), "sent-changed");
+  assert.equal(sentResult("change", wrong, corrected), "sent-changed");
+});
+
+test("the situations open with the desk, then the helper, then the draft; sending follows the draft", () => {
   const situations = V3_STEPS.filter((step) => step.situation !== undefined);
   assert.deepEqual(
     situations.map((step) => [step.id, step.situation]),
     [
-      ["move-it", 1],
-      ["desk", 2],
+      ["desk", 1],
+      ["move-it", 2],
       ["draft", 3],
     ],
   );
   assert.equal(situations.length, SITUATIONS);
+  const core = ids({});
+  assert.equal(core[core.indexOf("draft") + 1], "sending");
+  assert.deepEqual(
+    core.slice(core.indexOf("part-price") + 1, core.indexOf("saved")),
+    ["pack-price", "pay-model", "institution-pay", "delivery-worth"],
+  );
 });
 
 test("sections close in order and are all done after the core", () => {
@@ -320,48 +364,33 @@ test("sections close in order and are all done after the core", () => {
   );
 });
 
-test("the pack ladder asks the next higher price after yes and the next lower after no", () => {
-  assert.deepEqual(
-    [0, 0.5, 0.99].map((r) => drawStart(() => r)),
-    ["chf-2", "chf-5", "chf-8"],
-  );
-  const sheet = (start: string, answers: Record<string, string>) => ({
-    orders: { "pack-price": [start] },
+test("the pack ladder starts at CHF 5 for everyone, then asks 8 after yes and 2 after no", () => {
+  const sheet = (answers: Record<string, string>) => ({
     answers: Object.fromEntries(
       Object.entries(answers).map(([id, chosen]) => [id, answer(chosen)]),
     ),
   });
-  assert.equal(ladderOf(sheet("chf-5", {})).next, 5);
-  assert.equal(ladderOf(sheet("chf-5", { "pack-chf-5": "yes" })).next, 8);
-  assert.equal(ladderOf(sheet("chf-5", { "pack-chf-5": "no" })).next, 2);
-  const done = ladderOf(
-    sheet("chf-5", { "pack-chf-5": "yes", "pack-chf-8": "no" }),
-  );
+  assert.deepEqual(ladderOf(sheet({})), { asked: [], next: 5 });
+  assert.equal(ladderOf(sheet({ "pack-chf-5": "yes" })).next, 8);
+  assert.equal(ladderOf(sheet({ "pack-chf-5": "no" })).next, 2);
+  assert.equal(ladderOf(sheet({ "pack-chf-5": "not-sure" })).next, null);
+  const done = ladderOf(sheet({ "pack-chf-5": "yes", "pack-chf-8": "no" }));
   assert.equal(done.next, null);
   assert.deepEqual(done.asked, [
     { price: 5, answer: "yes" },
     { price: 8, answer: "no" },
   ]);
-  for (const [start, first] of [
-    ["chf-8", "yes"],
-    ["chf-2", "no"],
-    ["chf-5", "not-sure"],
-  ])
-    assert.equal(
-      ladderOf(sheet(start, { [`pack-chf-${start.slice(4)}`]: first })).next,
-      null,
-      `${start} ${first}`,
-    );
+  assert.equal(
+    ladderOf(sheet({ "pack-chf-5": "no", "pack-chf-2": "yes" })).next,
+    null,
+  );
+  // Showing the ladder draws nothing: the start is the same for everyone.
+  assert.equal(withV3Order(progress, v3StepById("pack-price")), progress);
 });
 
-test("delivery's worth is asked of everyone who would consider delivery", () => {
-  assert.ok(
-    !ids({ "delivery-pref": answer("pick-up") }).includes("delivery-worth"),
-  );
-  for (const choice of ["if-priced", "always", "depends"])
-    assert.ok(
-      ids({ "delivery-pref": answer(choice) }).includes("delivery-worth"),
-    );
+test("delivery's worth is asked of everyone; the last cost only of those who tried", () => {
+  assert.ok(ids({}).includes("delivery-worth"));
+  assert.ok(ids({ "last-role": answer("none") }).includes("delivery-worth"));
   assert.ok(ids({ "last-role": answer("selling") }).includes("last-cost"));
   assert.ok(!ids({ "last-role": answer("none") }).includes("last-cost"));
 });
@@ -524,17 +553,16 @@ test("Back after skipping the rest returns to the scene it was skipped from", ()
 });
 
 test("each ladder price counts as asked once, from the moment it shows", () => {
-  const at = (start: string, answers: Record<string, string> = {}) =>
+  const at = (answers: Record<string, string> = {}) =>
     withPriceShown({
       ...progress,
-      orders: { "pack-price": [start] },
       answers: Object.fromEntries(
         Object.entries(answers).map(([id, chosen]) => [id, answer(chosen)]),
       ),
     });
   const shownSteps = (p: V3Progress) =>
     p.events.filter((e) => e.kind === "shown").map((e) => e.step);
-  const first = at("chf-5");
+  const first = at();
   assert.deepEqual(shownSteps(first), ["pack-chf-5"]);
   assert.equal(withPriceShown(first), first, "shown once");
   const followUp = withPriceShown({
@@ -542,7 +570,7 @@ test("each ladder price counts as asked once, from the moment it shows", () => {
     answers: { "pack-chf-5": answer("yes") },
   });
   assert.deepEqual(shownSteps(followUp), ["pack-chf-5", "pack-chf-8"]);
-  const done = at("chf-8", { "pack-chf-8": "yes" });
+  const done = at({ "pack-chf-5": "yes", "pack-chf-8": "yes" });
   assert.deepEqual(shownSteps(done), [], "nothing left to show");
 });
 

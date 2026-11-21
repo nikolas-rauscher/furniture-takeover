@@ -7,6 +7,20 @@ import {
 } from "./v3Script.ts";
 
 /**
+ * What sending the written message records: Pako's words kept, changed, or replaced.
+ * The offer is the one drafted for the participant's variant, so a message that keeps
+ * the wrong price of that draft counts as unchanged.
+ */
+export function sentResult(
+  writing: DraftWriting,
+  message: string,
+  offer: string,
+): DraftResult {
+  if (writing === "own") return "sent-own";
+  return message === offer ? "sent-unchanged" : "sent-changed";
+}
+
+/**
  * How the chat unfolds after the day is picked: Mia answers, Pako drafts the offer,
  * the participant decides what to do with it, maybe writes, and the result shows.
  */

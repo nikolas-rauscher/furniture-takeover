@@ -44,17 +44,18 @@ create table takeover_admin.study_contacts (
  session uuid references takeover_admin.study_sessions(id) on delete set null,
  created_at timestamptz not null default now()
 );
--- The v3 pilot form has no session column, so it cannot be linked to answers.
+-- The v3 form at the end of the survey has no session column, so it cannot be linked to
+-- answers. Role and place are given by those who want to try takeover early, and only by them.
 create table takeover_admin.study_pilot (
  email text primary key check(length(email)<=254 and email=lower(email)),
- role text not null check(role in('seller','buyer','both')),
- house text not null check(house in('vortex','atrium','triaudes','fmel-other','not-fmel')),
- weeks text[] not null check(weeks <@ array['2026-12-14','2026-12-21','2027-02-01','2027-02-08']),
- items text[] not null check(items <@ array['furniture','household','electronics','bike','books','clothes','other']),
- join_pilot boolean not null,
- later_email boolean not null,
+ launch_news boolean not null,
+ try_early boolean not null,
+ future_surveys boolean not null,
+ role text check(role in('seller','buyer','both')),
+ place text check(place in('vortex','atrium','triaudes','fmel-other','other-res','flat','elsewhere')),
  created_at timestamptz not null default now(),
- check(join_pilot or later_email)
+ check(launch_news or try_early or future_surveys),
+ check(try_early=(role is not null and place is not null))
 );
 alter table takeover_admin.study_sessions enable row level security;
 alter table takeover_admin.study_answers enable row level security;
@@ -128,14 +129,14 @@ begin
 end $$;
 
 -- One form per address, and the first one stands, as for the contacts above.
-create function public.study_save_pilot(p_email text,p_role text,p_house text,p_weeks text[],p_items text[],
- p_join_pilot boolean,p_later_email boolean)
+create function public.study_save_pilot(p_email text,p_launch_news boolean,p_try_early boolean,
+ p_future_surveys boolean,p_role text,p_place text)
 returns void language plpgsql security definer set search_path='' as $$
 begin
  perform pg_advisory_xact_lock(hashtext('takeover_admin.study_pilot'));
  if (select count(*) from takeover_admin.study_pilot)>=2000 then raise exception 'study_pilot_limit'; end if;
- insert into takeover_admin.study_pilot(email,role,house,weeks,items,join_pilot,later_email)
- values(lower(btrim(p_email)),p_role,p_house,p_weeks,p_items,p_join_pilot,p_later_email)
+ insert into takeover_admin.study_pilot(email,launch_news,try_early,future_surveys,role,place)
+ values(lower(btrim(p_email)),p_launch_news,p_try_early,p_future_surveys,p_role,p_place)
  on conflict(email) do nothing;
 end $$;
 
@@ -193,7 +194,8 @@ begin
    from takeover_admin.study_answers a join takeover_admin.study_sessions s on s.id=a.session
    where s.survey='v3'),'[]'::jsonb),
   'pilot',coalesce((select jsonb_agg(jsonb_build_object(
-    'house',p.house,'weeks',to_jsonb(p.weeks),'joinPilot',p.join_pilot,'laterEmail',p.later_email))
+    'launchNews',p.launch_news,'tryEarly',p.try_early,'futureSurveys',p.future_surveys,
+    'role',p.role,'place',p.place))
    from takeover_admin.study_pilot p),'[]'::jsonb));
 end $$;
 
@@ -201,7 +203,7 @@ revoke all on function public.study_start(uuid,text,text,text,text,text),
  public.study_save_answer(uuid,text,text[],text[],text[],text,integer,integer),
  public.study_save_events(uuid,jsonb),
  public.study_save_contact(text,boolean,uuid),
- public.study_save_pilot(text,text,text,text[],text[],boolean,boolean),
+ public.study_save_pilot(text,boolean,boolean,boolean,text,text),
  public.study_withdraw(uuid),
  public.study_results(text),
  public.study_report_rows(uuid) from public,anon,authenticated;
@@ -209,7 +211,7 @@ grant execute on function public.study_start(uuid,text,text,text,text,text),
  public.study_save_answer(uuid,text,text[],text[],text[],text,integer,integer),
  public.study_save_events(uuid,jsonb),
  public.study_save_contact(text,boolean,uuid),
- public.study_save_pilot(text,text,text,text[],text[],boolean,boolean),
+ public.study_save_pilot(text,boolean,boolean,boolean,text,text),
  public.study_withdraw(uuid),
  public.study_results(text),
  public.study_report_rows(uuid) to service_role;

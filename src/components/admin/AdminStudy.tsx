@@ -12,13 +12,15 @@ type Cell = number | null;
 /** The two questions about the "Wanted nearby" idea, shown together. */
 const WANTED_STEPS = ["wanted-react", "wanted-share"];
 
-const HOUSES: Record<StudyReport["pilot"]["houses"][number]["house"], string> =
+const PLACES: Record<StudyReport["pilot"]["places"][number]["place"], string> =
   {
-    vortex: "Vortex",
-    atrium: "Atrium",
-    triaudes: "Triaudes",
-    "fmel-other": "Other FMEL",
-    "not-fmel": "Not FMEL",
+    vortex: "FMEL Vortex",
+    atrium: "FMEL Atrium",
+    triaudes: "FMEL Triaudes",
+    "fmel-other": "Other FMEL residence",
+    "other-res": "Other student residence",
+    flat: "Flat or studio",
+    elsewhere: "Somewhere else",
   };
 
 /** A count the page works out itself, hidden from 1 to the minimum like the server's. */
@@ -218,20 +220,21 @@ function Questions({
   );
 }
 
-/** The pack ladder: of those asked at each price, how many said yes. */
 /**
- * The pack ladder: of the sessions shown each price, how many said yes. Someone who
- * left at a price counts there as not yes. Hidden counts stay hidden.
+ * The pack ladder: of everyone who entered it, how many would pay each price, with the
+ * answers the ladder implies. Someone who left or was not sure counts as not yes.
+ * Hidden counts stay hidden.
  */
 function PackLadder({ report }: { report: StudyReport }) {
+  const { entered, prices } = report.ladder;
   return (
     <ul className="admin-study-bars">
-      {report.ladder.map(({ price, shown, yes }) => (
+      {prices.map(({ price, yes }) => (
         <Bar
           key={price}
           label={`CHF ${price}: yes`}
           count={yes}
-          of={shown}
+          of={entered}
           minCell={report.minCell}
         />
       ))}
@@ -263,33 +266,29 @@ function Texts({ report }: { report: StudyReport }) {
 
 function Pilot({ report }: { report: StudyReport }) {
   const { pilot, minCell } = report;
-  const weeks = pilot.houses[0]?.weeks.map(({ week }) => week) ?? [];
   return (
     <>
       <p className="admin-muted">
-        {pilot.forms} {pilot.forms === 1 ? "form" : "forms"} · {pilot.joinPilot}{" "}
-        signed up for the pilot · {pilot.laterEmail} want later emails
+        {pilot.forms} {pilot.forms === 1 ? "form" : "forms"} ·{" "}
+        {pilot.launchNews} want to hear when it is online · {pilot.tryEarly}{" "}
+        want to try it early · {pilot.futureSurveys} want future surveys
       </p>
-      <ScrollTable label="Table of pilot sign-ups by house and week">
+      <ScrollTable label="Table of those who want to try takeover early, by place and role">
         <thead>
           <tr>
-            <th scope="col">House</th>
-            <th scope="col">Signed up</th>
-            {weeks.map((week) => (
-              <th key={week} scope="col">
-                Week of {week}
-              </th>
-            ))}
+            <th scope="col">Lives</th>
+            <th scope="col">Sell</th>
+            <th scope="col">Buy</th>
+            <th scope="col">Both</th>
           </tr>
         </thead>
         <tbody>
-          {pilot.houses.map(({ house, total, weeks: perWeek }) => (
-            <tr key={house}>
-              <th scope="row">{HOUSES[house]}</th>
-              <td>{cellText(total, minCell)}</td>
-              {perWeek.map(({ week, count }) => (
-                <td key={week}>{cellText(count, minCell)}</td>
-              ))}
+          {pilot.places.map(({ place, sellers, buyers, both }) => (
+            <tr key={place}>
+              <th scope="row">{PLACES[place]}</th>
+              <td>{cellText(sellers, minCell)}</td>
+              <td>{cellText(buyers, minCell)}</td>
+              <td>{cellText(both, minCell)}</td>
             </tr>
           ))}
         </tbody>
@@ -370,14 +369,14 @@ function Report({
       <Panel id="study-texts" title="Typed answers">
         <Texts report={report} />
       </Panel>
-      <Panel id="study-pilot" title="Pilot sign-ups">
+      <Panel id="study-pilot" title="Form at the end">
         <Pilot report={report} />
       </Panel>
       <p className="admin-footnote">
         Counts from 1 to {report.minCell - 1} show as “&lt;{report.minCell}”, so
         a small group can’t be singled out. Each bar reads chosen over answered;
-        in a multiple choice the bars add up to more. Pilot forms are not linked
-        to answers, and cover every version.
+        in a multiple choice the bars add up to more. Forms at the end are not
+        linked to answers, and cover every version.
       </p>
     </div>
   );

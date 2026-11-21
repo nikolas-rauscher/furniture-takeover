@@ -425,23 +425,11 @@ export const FR: TourText = {
       bubble:
         "Avant la première question, voici ce que fait takeover et ce qui t’attend dans ce sondage.",
       title: "Qu’est-ce que takeover\u202f?",
-      lead: "Avec takeover, les étudiant·es des environs de l’EPFL, de l’UNIL et des résidences FMEL peuvent acheter, vendre et donner des objets d’occasion. Pako, l’assistant de l’app, t’aide en trois étapes\u202f:",
-      find: {
-        title: "Trouver",
-        text: "Tu décris ce qu’il te faut, et Pako cherche parmi les annonces des étudiant·es près de chez toi.",
-      },
-      sell: {
-        title: "Vendre",
-        text: "Tu prends une photo, puis Pako rédige l’annonce et te propose un prix.",
-      },
-      agree: {
-        title: "Se mettre d’accord",
-        text: "Dans le chat, tu te mets d’accord avec l’autre personne sur le prix et l’heure du rendez-vous, et Pako prépare les messages pour toi. Ensuite, vous vous retrouvez sur le campus.",
-      },
+      lead: "Une app pour acheter, vendre et donner des objets d’occasion entre étudiant·es des environs de l’EPFL, de l’UNIL et des résidences FMEL.",
       nextTitle: "Au programme du sondage",
       next: [
         "Ta dernière expérience d’achat, de vente ou de don d’un objet d’occasion",
-        "Trois courtes scènes de l’app, chacune suivie d’une question",
+        "Trois courtes scènes de l’app, puis quelques questions à son sujet",
         "Trois situations du quotidien, où tu choisis ce que tu ferais",
         "Le prix que tu paierais pour l’app et pour la livraison",
       ],
@@ -456,15 +444,15 @@ export const FR: TourText = {
       },
       "the-app": {
         bubble: "Cette partie porte sur l’app takeover elle-même.",
-        text: "Tu commenceras par comparer des slogans pour l’app. Tu verras ensuite trois courtes scènes. Après chacune, nous te demanderons si la fonction présentée te serait utile. Les dernières questions de cette partie portent sur l’app dans son ensemble.",
+        text: "Tu verras trois courtes scènes. Après chacune, nous te demanderons si la fonction présentée te serait utile. Suivent quelques questions sur l’app dans son ensemble, et pour finir tu compareras des slogans.",
       },
       situations: {
         bubble: "Cette partie présente trois situations du quotidien.",
-        text: "Imagine-toi dans chaque situation et choisis la réponse qui correspond le mieux à ce que tu ferais. Dans la dernière, tu échanges dans le chat avec une étudiante qui vend un bureau.",
+        text: "Imagine-toi dans chaque situation et choisis la réponse qui correspond le mieux à ce que tu ferais. Dans la dernière, tu échanges dans le chat avec une étudiante qui vend un bureau. Suit une question sur l’envoi des messages.",
       },
       price: {
         bubble: "Cette dernière partie porte sur l’argent et la livraison.",
-        text: "Nous te présentons quatre façons dont takeover pourrait gagner de l’argent et te demandons laquelle tu choisirais. Ensuite, nous te demandons combien tu paierais pour un pack déménagement et pour une livraison. Tu pourrais toujours chercher, publier une annonce et envoyer des messages gratuitement, avec un peu d’aide de Pako chaque jour.",
+        text: "D’abord, nous te demandons combien tu paierais pour un pack déménagement. Ensuite, tu choisis entre la version gratuite et trois façons de payer, puis nous te posons une question sur la livraison. Tu pourrais toujours chercher, publier une annonce et envoyer des messages gratuitement, avec un peu d’aide de Pako chaque jour.",
       },
     },
     scenes: {
@@ -519,34 +507,32 @@ export const FR: TourText = {
         },
       },
       "pay-model": {
-        question:
-          "Lequel de ces modes de financement préférerais-tu pour une app comme celle-ci\u202f?",
+        question: "Si tu payais toi-même, que choisirais-tu\u202f?",
         options: {
+          free: "Version gratuite",
           "seller-fee": "Commission par vente",
           "move-pack": "Pack déménagement",
           monthly: "Abonnement mensuel",
-          institution: "Payé par ton université ou ta résidence",
-          none: "Aucune de ces options, je ne paierais pas",
+          "not-sure": "Je ne sais pas",
         },
       },
-      "delivery-pref": {
+      "institution-pay": {
         question:
-          "Comment préférerais-tu ramener chez toi un objet encombrant acheté d’occasion\u202f?",
+          "Utiliserais-tu davantage takeover si ton université ou ta résidence payait pour toi\u202f?",
         options: {
-          "pick-up": "J’irais le chercher moi-même pour économiser",
-          "if-priced": "Je me le ferais livrer si le prix est correct",
-          always: "Je me le ferais toujours livrer",
-          depends: "Ça dépend de l’objet",
+          yes: "Oui",
+          "no-difference": "Ça ne changerait rien",
+          "not-sure": "Je ne sais pas",
         },
       },
       "delivery-worth": {
         question:
-          "Combien paierais-tu pour la livraison d’un objet encombrant à domicile à Lausanne (jusqu’à environ 5\u00a0km)\u202f?",
+          "Combien paierais-tu au maximum pour qu’on t’apporte un objet encombrant jusqu’à ta porte à Lausanne (environ 5\u00a0km)\u202f?",
         options: {
-          "only-free": "Rien, seulement si c’est gratuit",
+          nothing: "Rien, j’irais le chercher moi-même",
           "up-to-5": "Jusqu’à CHF\u00a05",
-          "5-10": "CHF\u00a05–10",
-          "10-20": "CHF\u00a010–20",
+          "6-10": "CHF\u00a06–10",
+          "11-20": "CHF\u00a011–20",
           "over-20": "Plus de CHF\u00a020",
           "not-sure": "Je ne sais pas",
         },
@@ -568,7 +554,7 @@ export const FR: TourText = {
           "getting-free": "Récupérer quelque chose gratuitement",
           selling: "Vendre quelque chose",
           "giving-away": "Donner quelque chose",
-          none: "Rien ne me vient à l’esprit",
+          none: "Je n’ai jamais essayé",
         },
       },
       "last-item": {
@@ -767,19 +753,26 @@ export const FR: TourText = {
       "Cette fonction t’aiderait-elle si tu voulais acheter ou vendre quelque chose d’occasion\u202f?",
     findingBySeller: "Trouver quelqu’un qui voulait l’objet",
     moveIntro: "Ensuite, deux questions sur ton logement actuel.",
+    lampIntro:
+      "Imagine que tu as une lampe de bureau dont tu n’as plus besoin.",
     packLadder: {
-      bubble:
-        "Regardons maintenant de plus près l’une de ces options\u202f: le pack déménagement.",
+      bubble: "D’abord, une façon de payer\u202f: un pack déménagement.",
       title: "Pack déménagement",
       price: (price) => `CHF\u00a0${price}, paiement unique`,
-      text: "Pendant 30\u00a0jours, tu peux faire rédiger cinq brouillons d’annonce supplémentaires à partir de tes photos, avec une vérification du prix pour chacun.",
+      text: "Rédiger tes annonces toi-même reste gratuit. Le pack ajoute cinq brouillons d’annonce supplémentaires à partir de tes photos, avec vérification du prix, valables 30\u00a0jours.",
       question: (price) =>
         `Paierais-tu CHF\u00a0${price} de ta poche pour ce pack lors de ton prochain déménagement\u202f?`,
       options: { yes: "Oui", no: "Non", "not-sure": "Je ne sais pas" },
     },
     plans: {
+      free: {
+        price: "CHF\u00a00",
+        detail:
+          "Tu continues avec la version gratuite, avec un peu d’aide de Pako chaque jour.",
+        benefits: ["Rien à payer", "Recherche, annonces et messages inclus"],
+      },
       "seller-fee": {
-        price: "5\u00a0% du prix",
+        price: "5\u00a0% quand un objet se vend",
         detail:
           "La personne qui vend l’objet paie la commission uniquement si la vente aboutit.",
         benefits: [
@@ -790,7 +783,7 @@ export const FR: TourText = {
       "move-pack": {
         price: "CHF\u00a05, paiement unique",
         detail:
-          "Pendant 30\u00a0jours, tu peux faire rédiger cinq brouillons d’annonce supplémentaires à partir de tes photos, avec une vérification du prix pour chacun.",
+          "Cinq brouillons d’annonce supplémentaires à partir de photos, avec vérification du prix, valables 30\u00a0jours.",
         benefits: [
           "Pas d’abonnement",
           "Pensé pour les semaines autour d’un déménagement",
@@ -802,14 +795,6 @@ export const FR: TourText = {
         benefits: [
           "Autant de brouillons et de vérifications de prix que tu veux",
           "Couvre aussi les achats et les ventes fréquents",
-        ],
-      },
-      institution: {
-        price: "Gratuit pour toi",
-        detail: "Ton université ou ta résidence paie pour ses étudiant·es.",
-        benefits: [
-          "Rien à payer toi-même",
-          "Les mêmes fonctions pour chaque étudiant·e",
         ],
       },
     },
@@ -868,8 +853,8 @@ export const FR: TourText = {
         "17\u00a0h\u00a030, c’est bon. Envoie-moi une offre et je confirme.",
       typing: (name) => `${name} écrit…`,
       offerReady: "J’ai rédigé une offre pour toi.",
-      offer: (day) =>
-        `Salut Mia\u202f! J’aimerais ton bureau blanc pour CHF\u00a040. Je peux venir le chercher ${day.toLowerCase()} à 17\u00a0h\u00a030 au Rolex Learning Center.`,
+      offer: (day, price) =>
+        `Salut Mia\u202f! J’aimerais ton bureau blanc pour CHF\u00a0${price}. Je peux venir le chercher ${day.toLowerCase()} à 17\u00a0h\u00a030 au Rolex Learning Center.`,
       offerTitle: "Brouillon d’offre",
       question: "Que ferais-tu de ce brouillon\u202f?",
       sendAsIs: "L’envoyer tel quel",
@@ -896,40 +881,35 @@ export const FR: TourText = {
     },
     pilot: {
       invite:
-        "Bientôt, nous allons tester takeover avec de vrais objets dans quelques résidences FMEL. Aimerais-tu y participer\u202f?",
+        "Envie de savoir quand takeover sera en ligne, de l’essayer en avant-première ou de participer à un futur sondage\u202f?",
       email: "Adresse e-mail",
+      ticksLegend: "Qu’est-ce qui t’intéresse\u202f?",
+      ticks: {
+        launchNews: "Préviens-moi quand takeover sera en ligne",
+        tryEarly: "J’aimerais essayer takeover en avant-première",
+        futureSurveys: "Invite-moi à de futurs sondages",
+      },
       role: "Voudrais-tu vendre, acheter ou les deux\u202f?",
       roles: { seller: "Vendre", buyer: "Acheter", both: "Les deux" },
-      items: "Qu’apporterais-tu ou que chercherais-tu\u202f?",
-      house: "Où habites-tu\u202f?",
-      houses: {
+      place: "Où habites-tu\u202f?",
+      places: {
         vortex: "FMEL Vortex",
         atrium: "FMEL Atrium",
         triaudes: "FMEL Triaudes",
         "fmel-other": "Une autre résidence FMEL",
-        "not-fmel": "Pas dans une résidence FMEL",
+        "other-res": "Une autre résidence étudiante",
+        flat: "Un appartement ou un studio",
+        elsewhere: "Ailleurs",
       },
-      weeks: "Quelles semaines te conviendraient\u202f?",
-      weekLabels: {
-        "2026-12-14": "14–18 décembre",
-        "2026-12-21": "21–23 décembre",
-        "2027-02-01": "1er–5 février",
-        "2027-02-08": "8–12 février",
-      },
-      consentLegend:
-        "Pour quelles raisons pouvons-nous te contacter par e-mail\u202f?",
-      joinPilot: "Inscris-moi au test pilote pendant ces semaines",
-      laterEmail:
-        "Écris-moi pour de futurs tests ou pour deux ou trois questions de suivi",
       note: "Nous conservons ton adresse e-mail séparément de tes réponses au sondage.",
       send: "Envoyer",
       noThanks: "Non merci",
       errors: {
         emailMissing: "Saisis ton adresse e-mail.",
         emailInvalid: "Ça ne ressemble pas à une adresse e-mail.",
+        ticks: "Coche au moins une case.",
         role: "Indique si tu voudrais vendre, acheter ou les deux.",
-        house: "Choisis où tu habites.",
-        ticks: "Coche au moins une des deux cases.",
+        place: "Choisis où tu habites.",
       },
     },
     end: {

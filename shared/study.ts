@@ -45,12 +45,6 @@ const session = z.uuid();
 const stepId = z.string().regex(/^[a-z][a-z0-9-]{1,39}$/);
 const optionId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,39}$/);
 const optionIds = z.array(optionId).max(MAX_OPTIONS);
-const uniqueList = <T extends string>(values: readonly [T, ...T[]]) =>
-  z
-    .array(z.enum(values))
-    .max(values.length)
-    .refine((list) => new Set(list).size === list.length, "Listed twice.");
-
 const studySurveySchema = z.enum(STUDY_SURVEYS);
 const studyLanguageSchema = z.enum(STUDY_LANGUAGES);
 /** Changes with the questions or their wording, so answers to different wordings stay apart. */
@@ -73,7 +67,7 @@ export const studyStartSchema = z
     session,
     /** Which questionnaire the participant answers. The v1 client predates the field. */
     survey: studySurveySchema.optional(),
-    /** The wording version, so pilot answers can be told apart. */
+    /** The wording version, so pretest answers can be told apart. */
     version: studyVersionSchema,
     /** Page language when the session started; a later switch is recorded as an event. */
     language: studyLanguageSchema.optional(),
@@ -167,47 +161,40 @@ export const studyContactSchema = z.strictObject({
 });
 
 export const STUDY_PILOT_ROLES = ["seller", "buyer", "both"] as const;
-export const STUDY_PILOT_HOUSES = [
+/** Where a participant who wants to try takeover early lives. */
+export const STUDY_PILOT_PLACES = [
   "vortex",
   "atrium",
   "triaudes",
   "fmel-other",
-  "not-fmel",
-] as const;
-/** Monday of each offered week. */
-export const STUDY_PILOT_WEEKS = [
-  "2026-12-14",
-  "2026-12-21",
-  "2027-02-01",
-  "2027-02-08",
-] as const;
-/** The same categories as the v3 question `last-item`. */
-export const STUDY_PILOT_ITEMS = [
-  "furniture",
-  "household",
-  "electronics",
-  "bike",
-  "books",
-  "clothes",
-  "other",
+  "other-res",
+  "flat",
+  "elsewhere",
 ] as const;
 
-/** v3 pilot form. Stored without a session, so it cannot be linked to answers. */
+/**
+ * v3 form at the end of the survey. Stored without a session, so it cannot be linked to
+ * answers. Role and place are asked only of those who want to try takeover early.
+ */
 export const studyPilotSchema = z
   .strictObject({
     email: z.email().max(254),
-    role: z.enum(STUDY_PILOT_ROLES),
-    house: z.enum(STUDY_PILOT_HOUSES),
-    weeks: uniqueList(STUDY_PILOT_WEEKS),
-    items: uniqueList(STUDY_PILOT_ITEMS),
-    /** "Sign me up for the pilot in these weeks". */
-    joinPilot: z.boolean(),
-    /** "Email me about later tests or two or three follow-up questions". */
-    laterEmail: z.boolean(),
+    /** "Tell me when takeover is online". */
+    launchNews: z.boolean(),
+    /** "I'd like to try takeover early". */
+    tryEarly: z.boolean(),
+    /** "Invite me to future surveys". */
+    futureSurveys: z.boolean(),
+    role: z.enum(STUDY_PILOT_ROLES).nullable(),
+    place: z.enum(STUDY_PILOT_PLACES).nullable(),
   })
   .refine(
-    (form) => form.joinPilot || form.laterEmail,
-    "Tick at least one of the two boxes.",
+    (form) => form.launchNews || form.tryEarly || form.futureSurveys,
+    "Tick at least one box.",
+  )
+  .refine(
+    (form) => form.tryEarly === (form.role !== null && form.place !== null),
+    "Role and place come with trying takeover early, and only with it.",
   );
 
 /** Removes the session with its answers and events. Removing it twice changes nothing. */
@@ -249,7 +236,6 @@ export const STUDY_V3_CORE_SCREENS = [
   "move",
   "housing",
   "part-the-app",
-  "headline",
   "app-find",
   "helped-find",
   "app-sell",
@@ -258,22 +244,25 @@ export const STUDY_V3_CORE_SCREENS = [
   "helped-deal",
   "stop",
   "try-first",
-  "sending",
   "wanted-react",
   "wanted-share",
+  "headline",
   "part-situations",
-  "move-it",
   "desk",
+  "move-it",
   "draft",
+  "sending",
   "part-price",
-  "pay-model",
   "pack-price",
-  "delivery-pref",
+  "pay-model",
+  "institution-pay",
   "delivery-worth",
 ] as const;
 
 /** The move-out pack's prices in CHF on the survey's price ladder, from low to high. */
 export const STUDY_PACK_PRICES = [2, 5, 8] as const;
+/** Every participant is asked this price first. */
+export const STUDY_PACK_START = 5;
 
 /** On the results page, a breakdown cell with fewer answers than this is hidden. */
 export const STUDY_REPORT_MIN_CELL = 5;
@@ -318,27 +307,30 @@ export const studyReportSchema = z.strictObject({
   /** Typed answers per step, sorted alphabetically so their order says nothing. */
   texts: z.array(z.strictObject({ step: stepId, texts: z.array(z.string()) })),
   /**
-   * The pack ladder per price: sessions shown the price, answered or not, and their
-   * yes answers. Someone who left at a price counts as not yes.
+   * The pack ladder over everyone who entered it, with implied answers: yes at CHF 5
+   * counts as yes at CHF 2. Someone who left at a price or was not sure counts as not yes.
    */
-  ladder: z.array(
-    z.strictObject({
-      price: z.union(STUDY_PACK_PRICES.map((price) => z.literal(price))),
-      shown: cell,
-      yes: cell,
-    }),
-  ),
+  ladder: z.strictObject({
+    entered: cell,
+    prices: z.array(
+      z.strictObject({
+        price: z.union(STUDY_PACK_PRICES.map((price) => z.literal(price))),
+        yes: cell,
+      }),
+    ),
+  }),
   pilot: z.strictObject({
     forms: count,
-    joinPilot: count,
-    laterEmail: count,
-    houses: z.array(
+    launchNews: count,
+    tryEarly: count,
+    futureSurveys: count,
+    /** Those who want to try takeover early, per place and role. */
+    places: z.array(
       z.strictObject({
-        house: z.enum(STUDY_PILOT_HOUSES),
-        total: cell,
-        weeks: z.array(
-          z.strictObject({ week: z.enum(STUDY_PILOT_WEEKS), count: cell }),
-        ),
+        place: z.enum(STUDY_PILOT_PLACES),
+        sellers: cell,
+        buyers: cell,
+        both: cell,
       }),
     ),
   }),

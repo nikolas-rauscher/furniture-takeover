@@ -32,10 +32,8 @@ import { ladderOf } from "./packPricing";
 import { rememberFinished, type V3Progress } from "./v3Progress";
 import {
   PACK_ANSWERS,
-  PACK_START_STEP,
   PEEK_STEP,
   packAnswerStep,
-  packPriceId,
   type V3ChoiceStep,
   type V3Step,
 } from "./v3Script";
@@ -345,9 +343,6 @@ export default function V3Steps({
     setPending(null);
     if (ladder.next === null) return;
     const answered = storeAnswers({
-      ...(ladder.asked.length === 0 && {
-        [PACK_START_STEP]: { chosen: [packPriceId(ladder.start)], text: "" },
-      }),
       [packAnswerStep(ladder.next)]: { chosen: [chosen], text: "" },
     });
     // The follow-up price, if any, counts as asked from the moment it shows.
@@ -381,7 +376,7 @@ export default function V3Steps({
     },
     sceneMoment: (moment, by) =>
       setProgress((current) => withMoment(current, step.id, moment, by)),
-    saveNow: (id, given) => setProgress(storeAnswers({ [id]: given })),
+    saveNow: (answers) => setProgress(storeAnswers(answers)),
     keepUnsentDraft: (unsentDraft) =>
       setProgress((current) => ({ ...current, unsentDraft })),
     answerLadder,

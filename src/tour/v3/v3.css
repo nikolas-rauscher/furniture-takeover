@@ -220,7 +220,7 @@
   font-weight: 700;
 }
 
-/* The pilot form: native fields, chips for choices, errors under their field. */
+/* The form at the end: native fields, chips for choices, errors under their field. */
 .tour-pilot {
   display: flex;
   flex-direction: column;
@@ -429,7 +429,7 @@
   min-height: 48px;
 }
 
-/* What is takeover: three features with the intro's pictures, then the plan. */
+/* What is takeover: one sentence, then the plan. */
 .tour-what-is {
   display: grid;
   gap: 16px;
@@ -439,29 +439,9 @@
   font-size: var(--type-label);
   font-weight: 750;
 }
-.tour-what-is-list {
-  display: grid;
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
 .tour-what-is-lead {
-  margin: 0 0 14px;
+  margin: 0;
   line-height: 1.5;
-}
-.tour-what-is-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-.tour-what-is-item .tour-principle-icon {
-  flex: none;
-  margin: 0;
-}
-.tour-what-is-item p {
-  margin: 0;
-  line-height: 1.45;
 }
 .tour-next {
   padding: 14px 16px;

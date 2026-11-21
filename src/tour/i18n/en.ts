@@ -413,23 +413,11 @@ export const EN = {
       bubble:
         "Before the first question, here's what takeover does and what this survey asks.",
       title: "What is takeover?",
-      lead: "With takeover, students around EPFL, UNIL and the FMEL residences can buy, sell and give away second-hand items. Pako, the app's assistant, helps at three points along the way:",
-      find: {
-        title: "Find",
-        text: "You describe what you need, and Pako searches listings posted by students nearby.",
-      },
-      sell: {
-        title: "Sell",
-        text: "You take a photo, and Pako writes the listing and suggests a price.",
-      },
-      agree: {
-        title: "Agree",
-        text: "You agree on the price and a pickup time in the chat, where Pako drafts the messages for you. Then you meet on campus.",
-      },
+      lead: "An app for students around EPFL, UNIL and the FMEL residences to buy, sell and give away second-hand items.",
       nextTitle: "What this survey asks",
       next: [
         "Your last experience with buying, selling or giving away something used",
-        "Three short scenes from the app, each followed by a question",
+        "Three short scenes from the app, then a few questions about it",
         "Three everyday situations in which you choose what you would do",
         "What you would pay for the app and for delivery",
       ],
@@ -443,15 +431,15 @@ export const EN = {
       },
       "the-app": {
         bubble: "This part is about takeover itself.",
-        text: "First, you'll compare some slogans for the app. Then you'll see three short scenes and tell us whether each feature would help you. We'll finish with a few questions about the app as a whole.",
+        text: "You'll see three short scenes and tell us whether each feature would help you. Then a few questions about the app as a whole follow, and at the end you compare some slogans.",
       },
       situations: {
         bubble: "This part has three everyday situations.",
-        text: "Imagine you're in each situation and choose what you would really do. In the last one, you chat with a seller.",
+        text: "Imagine you're in each situation and choose what you would really do. In the last one, you chat with a seller. One question about sending messages follows.",
       },
       price: {
         bubble: "This last part is about money and delivery.",
-        text: "We show you four ways takeover could earn money and ask which one you'd choose. Then we ask what you'd pay for a move-out pack and for delivery. Searching, listing and messaging would stay free, along with some help from Pako each day.",
+        text: "First, we ask what you'd pay for a move-out pack. Then you choose between the free version and three ways of paying, and we ask about delivery. Searching, listing and messaging would stay free, along with some help from Pako each day.",
       },
     },
     scenes: {
@@ -506,33 +494,32 @@ export const EN = {
         },
       },
       "pay-model": {
-        question:
-          "Which of these pricing models would you prefer for an app like this?",
+        question: "If you paid yourself, which would you choose?",
         options: {
+          free: "Free version",
           "seller-fee": "Fee per sale",
           "move-pack": "Move-out pack",
           monthly: "Monthly plan",
-          institution: "Paid by your university or residence",
-          none: "None of these, I wouldn't pay",
+          "not-sure": "Not sure",
         },
       },
-      "delivery-pref": {
-        question: "How would you prefer to get a bulky second-hand item home?",
+      "institution-pay": {
+        question:
+          "Would you use takeover more if your university or residence paid for it?",
         options: {
-          "pick-up": "I'd pick it up myself to save money",
-          "if-priced": "I'd have it delivered if the price is right",
-          always: "I'd always have it delivered",
-          depends: "It depends on the item",
+          yes: "Yes",
+          "no-difference": "It wouldn't make a difference",
+          "not-sure": "Not sure",
         },
       },
       "delivery-worth": {
         question:
-          "What would you pay for home delivery of a bulky item in Lausanne (up to about 5 km)?",
+          "What is the most you would pay to have a bulky item brought to your door in Lausanne (about 5 km)?",
         options: {
-          "only-free": "Nothing, only if it's free",
+          nothing: "Nothing, I'd fetch it myself",
           "up-to-5": "Up to CHF 5",
-          "5-10": "CHF 5–10",
-          "10-20": "CHF 10–20",
+          "6-10": "CHF 6–10",
+          "11-20": "CHF 11–20",
           "over-20": "More than CHF 20",
           "not-sure": "Not sure",
         },
@@ -554,7 +541,7 @@ export const EN = {
           "getting-free": "Get something for free",
           selling: "Sell something",
           "giving-away": "Give something away",
-          none: "I can't think of a time",
+          none: "I've never tried",
         },
       },
       "last-item": {
@@ -739,18 +726,28 @@ export const EN = {
       "Would this feature help you if you wanted to buy or sell something used?",
     findingBySeller: "Finding someone who wanted it",
     moveIntro: "Next, two questions about where you live now.",
+    lampIntro: "Imagine you have a desk lamp you no longer need.",
     packLadder: {
-      bubble: "Now a closer look at one of these options: the move-out pack.",
+      bubble: "First, one way of paying: a move-out pack.",
       title: "Move-out pack",
       price: (price: number) => `CHF ${price}, paid once`,
-      text: "For 30 days, you can use photos to draft five extra listings with price checks.",
+      text: "Writing listings yourself stays free. The pack adds five extra photo drafts with price checks, valid for 30 days.",
       question: (price: number) =>
         `Would you pay CHF ${price} of your own money for this pack when you next move?`,
       options: { yes: "Yes", no: "No", "not-sure": "Not sure" },
     },
     plans: {
+      free: {
+        price: "CHF 0",
+        detail:
+          "Keep using the free version, with some help from Pako each day.",
+        benefits: [
+          "Nothing to pay",
+          "Searching, listing and messaging included",
+        ],
+      },
       "seller-fee": {
-        price: "5% of the price",
+        price: "5% when an item sells",
         detail: "Paid by the seller, only when an item sells.",
         benefits: [
           "Listing and buying stay free",
@@ -759,8 +756,7 @@ export const EN = {
       },
       "move-pack": {
         price: "CHF 5, paid once",
-        detail:
-          "For 30 days, you can use photos to draft five extra listings with price checks.",
+        detail: "Five extra photo drafts with price checks, valid for 30 days.",
         benefits: ["No subscription", "Made for the weeks around a move"],
       },
       monthly: {
@@ -769,14 +765,6 @@ export const EN = {
         benefits: [
           "As many drafts and price checks as you like",
           "Covers frequent buying and selling",
-        ],
-      },
-      institution: {
-        price: "Free for you",
-        detail: "Your university or residence pays for its students.",
-        benefits: [
-          "Nothing to pay yourself",
-          "The same features for every student",
         ],
       },
     },
@@ -832,8 +820,8 @@ export const EN = {
       confirm: "17:30 is fine. Send me an offer and I'll confirm.",
       typing: (name: string) => `${name} is typing`,
       offerReady: "I've written an offer for you.",
-      offer: (day: string) =>
-        `Hi Mia! I'd like your white desk for CHF 40. I can pick it up on ${day} at 17:30 at the Rolex Learning Center.`,
+      offer: (day: string, price: number) =>
+        `Hi Mia! I'd like your white desk for CHF ${price}. I can pick it up on ${day} at 17:30 at the Rolex Learning Center.`,
       offerTitle: "Offer draft",
       question: "What would you do with this draft?",
       sendAsIs: "Send it as it is",
@@ -860,39 +848,35 @@ export const EN = {
     },
     pilot: {
       invite:
-        "Soon we'll test takeover with real items in a few FMEL residences. Would you like to take part?",
+        "Want to hear when takeover is online, try it early, or join a future survey?",
       email: "Email address",
+      ticksLegend: "What would you like?",
+      ticks: {
+        launchNews: "Tell me when takeover is online",
+        tryEarly: "I'd like to try takeover early",
+        futureSurveys: "Invite me to future surveys",
+      },
       role: "Would you sell, buy or both?",
       roles: { seller: "Sell", buyer: "Buy", both: "Both" },
-      items: "What would you bring or look for?",
-      house: "Where do you live?",
-      houses: {
+      place: "Where do you live?",
+      places: {
         vortex: "FMEL Vortex",
         atrium: "FMEL Atrium",
         triaudes: "FMEL Triaudes",
-        "fmel-other": "Another FMEL house",
-        "not-fmel": "Not in an FMEL house",
+        "fmel-other": "Another FMEL residence",
+        "other-res": "Another student residence",
+        flat: "A flat or studio",
+        elsewhere: "Somewhere else",
       },
-      weeks: "Which weeks would suit you?",
-      weekLabels: {
-        "2026-12-14": "14–18 December",
-        "2026-12-21": "21–23 December",
-        "2027-02-01": "1–5 February",
-        "2027-02-08": "8–12 February",
-      },
-      consentLegend: "What may we use your email address for?",
-      joinPilot: "Sign me up for the pilot in these weeks",
-      laterEmail:
-        "Email me about later tests or two or three follow-up questions",
       note: "Kept separately from your survey answers.",
       send: "Send",
       noThanks: "No thanks",
       errors: {
         emailMissing: "Enter your email address.",
         emailInvalid: "This doesn't look like an email address.",
+        ticks: "Tick at least one box.",
         role: "Choose whether you'd sell, buy or both.",
-        house: "Choose where you live.",
-        ticks: "Tick at least one of the two boxes.",
+        place: "Choose where you live.",
       },
     },
     end: {

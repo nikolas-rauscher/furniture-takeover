@@ -38,7 +38,7 @@ function labelOf(
 
 /** A way of paying for takeover as a card: its price, what it gives and its advantages. */
 function planOf(text: TourText, step: V3ChoiceStep, id: string) {
-  if (step.id !== "pay-model" || id === "none") return {};
+  if (step.id !== "pay-model" || id === "not-sure") return {};
   const plans: Record<string, TourText["v3"]["plans"]["monthly"]> =
     text.v3.plans;
   const plan = plans[id];

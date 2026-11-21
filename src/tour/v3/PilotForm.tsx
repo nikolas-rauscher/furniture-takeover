@@ -1,10 +1,8 @@
 import { useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  STUDY_PILOT_HOUSES,
-  STUDY_PILOT_ITEMS,
+  STUDY_PILOT_PLACES,
   STUDY_PILOT_ROLES,
-  STUDY_PILOT_WEEKS,
   studyPilotSchema,
   type StudyPilot,
 } from "../../../shared/study.ts";
@@ -12,37 +10,27 @@ import { useTourText } from "../i18n/TourLanguage";
 import type { StepContext } from "./stepContext";
 
 type Role = (typeof STUDY_PILOT_ROLES)[number];
-type House = (typeof STUDY_PILOT_HOUSES)[number];
-type Week = (typeof STUDY_PILOT_WEEKS)[number];
-type Item = (typeof STUDY_PILOT_ITEMS)[number];
+type Place = (typeof STUDY_PILOT_PLACES)[number];
+type Tick = "launchNews" | "tryEarly" | "futureSurveys";
+const TICKS: readonly Tick[] = ["launchNews", "tryEarly", "futureSurveys"];
 
-type Draft = {
+type Draft = Record<Tick, boolean> & {
   email: string;
   role: Role | null;
-  house: House | null;
-  weeks: Week[];
-  items: Item[];
-  joinPilot: boolean;
-  laterEmail: boolean;
+  place: Place | null;
 };
 
-type Field = "email" | "role" | "house" | "ticks";
+type Field = "email" | "ticks" | "role" | "place";
 type Errors = Partial<Record<Field, string>>;
 
 const EMPTY: Draft = {
   email: "",
+  launchNews: false,
+  tryEarly: false,
+  futureSurveys: false,
   role: null,
-  house: null,
-  weeks: [],
-  items: [],
-  joinPilot: false,
-  laterEmail: false,
+  place: null,
 };
-
-const toggled = <Value,>(list: Value[], value: Value) =>
-  list.includes(value)
-    ? list.filter((item) => item !== value)
-    : [...list, value];
 
 function Group({
   id,
@@ -71,7 +59,7 @@ function Group({
   );
 }
 
-function Tick({
+function TickBox({
   type,
   name,
   label,
@@ -92,11 +80,12 @@ function Tick({
   );
 }
 
-/** The separate pilot form for EPFL and UNIL students, stored without the session. */
+/**
+ * The optional form at the end, stored without the session. Role and place are asked
+ * only of those who want to try takeover early.
+ */
 export default function PilotForm({ context }: { context: StepContext }) {
-  const text = useTourText();
-  const { pilot } = text.v3;
-  const itemWords = text.v3.steps["last-item"].options;
+  const { pilot } = useTourText().v3;
   const id = useId();
   const form = useRef<HTMLFormElement>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY);
@@ -108,10 +97,9 @@ export default function PilotForm({ context }: { context: StepContext }) {
     if (!email) found.email = pilot.errors.emailMissing;
     else if (!studyPilotSchema.shape.email.safeParse(email).success)
       found.email = pilot.errors.emailInvalid;
-    if (!current.role) found.role = pilot.errors.role;
-    if (!current.house) found.house = pilot.errors.house;
-    if (!current.joinPilot && !current.laterEmail)
-      found.ticks = pilot.errors.ticks;
+    if (!TICKS.some((tick) => current[tick])) found.ticks = pilot.errors.ticks;
+    if (current.tryEarly && !current.role) found.role = pilot.errors.role;
+    if (current.tryEarly && !current.place) found.place = pilot.errors.place;
     return found;
   }
 
@@ -129,6 +117,9 @@ export default function PilotForm({ context }: { context: StepContext }) {
     const sent: StudyPilot = studyPilotSchema.parse({
       ...draft,
       email: draft.email.trim(),
+      // The follow-up questions are answered only by those who want to try early.
+      role: draft.tryEarly ? draft.role : null,
+      place: draft.tryEarly ? draft.place : null,
     });
     context.sendPilot(sent);
   }
@@ -166,80 +157,56 @@ export default function PilotForm({ context }: { context: StepContext }) {
           {pilot.note}
         </p>
       </div>
-      <div data-field="role">
-        <Group id={`${id}-role`} legend={pilot.role} error={errors.role}>
-          {STUDY_PILOT_ROLES.map((role) => (
-            <Tick
-              key={role}
-              type="radio"
-              name={`${id}-role`}
-              label={pilot.roles[role]}
-              checked={draft.role === role}
-              onChange={() => change({ role })}
-            />
-          ))}
-        </Group>
-      </div>
-      <Group id={`${id}-items`} legend={pilot.items}>
-        {STUDY_PILOT_ITEMS.map((item) => (
-          <Tick
-            key={item}
-            type="checkbox"
-            name={`${id}-items`}
-            label={itemWords[item]}
-            checked={draft.items.includes(item)}
-            onChange={() => change({ items: toggled(draft.items, item) })}
-          />
-        ))}
-      </Group>
-      <div data-field="house">
-        <Group id={`${id}-house`} legend={pilot.house} error={errors.house}>
-          {STUDY_PILOT_HOUSES.map((house) => (
-            <Tick
-              key={house}
-              type="radio"
-              name={`${id}-house`}
-              label={pilot.houses[house]}
-              checked={draft.house === house}
-              onChange={() => change({ house })}
-            />
-          ))}
-        </Group>
-      </div>
-      <Group id={`${id}-weeks`} legend={pilot.weeks}>
-        {STUDY_PILOT_WEEKS.map((week) => (
-          <Tick
-            key={week}
-            type="checkbox"
-            name={`${id}-weeks`}
-            label={pilot.weekLabels[week]}
-            checked={draft.weeks.includes(week)}
-            onChange={() => change({ weeks: toggled(draft.weeks, week) })}
-          />
-        ))}
-      </Group>
       <div data-field="ticks">
         <Group
           id={`${id}-ticks`}
-          legend={pilot.consentLegend}
+          legend={pilot.ticksLegend}
           error={errors.ticks}
         >
-          <Tick
-            type="checkbox"
-            name={`${id}-join`}
-            label={pilot.joinPilot}
-            checked={draft.joinPilot}
-            onChange={() => change({ joinPilot: !draft.joinPilot })}
-          />
-          <Tick
-            type="checkbox"
-            name={`${id}-later`}
-            label={pilot.laterEmail}
-            checked={draft.laterEmail}
-            onChange={() => change({ laterEmail: !draft.laterEmail })}
-          />
+          {TICKS.map((tick) => (
+            <TickBox
+              key={tick}
+              type="checkbox"
+              name={`${id}-${tick}`}
+              label={pilot.ticks[tick]}
+              checked={draft[tick]}
+              onChange={() => change({ [tick]: !draft[tick] })}
+            />
+          ))}
         </Group>
       </div>
+      {draft.tryEarly && (
+        <>
+          <div data-field="role">
+            <Group id={`${id}-role`} legend={pilot.role} error={errors.role}>
+              {STUDY_PILOT_ROLES.map((role) => (
+                <TickBox
+                  key={role}
+                  type="radio"
+                  name={`${id}-role`}
+                  label={pilot.roles[role]}
+                  checked={draft.role === role}
+                  onChange={() => change({ role })}
+                />
+              ))}
+            </Group>
+          </div>
+          <div data-field="place">
+            <Group id={`${id}-place`} legend={pilot.place} error={errors.place}>
+              {STUDY_PILOT_PLACES.map((place) => (
+                <TickBox
+                  key={place}
+                  type="radio"
+                  name={`${id}-place`}
+                  label={pilot.places[place]}
+                  checked={draft.place === place}
+                  onChange={() => change({ place })}
+                />
+              ))}
+            </Group>
+          </div>
+        </>
+      )}
       <div className="tour-form-actions">
         <Button type="submit" className="button primary large">
           {pilot.send}

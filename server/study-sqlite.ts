@@ -42,9 +42,8 @@ const SCHEMA = `PRAGMA foreign_keys = ON;
     created_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS study_pilot (
-    email TEXT PRIMARY KEY, role TEXT NOT NULL, house TEXT NOT NULL,
-    weeks TEXT NOT NULL, items TEXT NOT NULL, join_pilot INTEGER NOT NULL,
-    later_email INTEGER NOT NULL, created_at TEXT NOT NULL
+    email TEXT PRIMARY KEY, launch_news INTEGER NOT NULL, try_early INTEGER NOT NULL,
+    future_surveys INTEGER NOT NULL, role TEXT, place TEXT, created_at TEXT NOT NULL
   )`;
 
 /**
@@ -232,16 +231,15 @@ export function createSqliteStudyStore(
           throw namedStudyErrors.study_pilot_limit;
         db.prepare(
           `INSERT INTO study_pilot
-             (email, role, house, weeks, items, join_pilot, later_email, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (email) DO NOTHING`,
+             (email, launch_news, try_early, future_surveys, role, place, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (email) DO NOTHING`,
         ).run(
           normalizeEmail(input.email),
+          input.launchNews ? 1 : 0,
+          input.tryEarly ? 1 : 0,
+          input.futureSurveys ? 1 : 0,
           input.role,
-          input.house,
-          JSON.stringify(input.weeks),
-          JSON.stringify(input.items),
-          input.joinPilot ? 1 : 0,
-          input.laterEmail ? 1 : 0,
+          input.place,
           now(),
         );
       });
@@ -296,14 +294,15 @@ export function createSqliteStudyStore(
         }));
       const pilot = db
         .prepare(
-          "SELECT house, weeks, join_pilot, later_email FROM study_pilot",
+          "SELECT launch_news, try_early, future_surveys, role, place FROM study_pilot",
         )
         .all()
         .map((row) => ({
-          house: row.house,
-          weeks: JSON.parse(String(row.weeks)),
-          joinPilot: row.join_pilot === 1,
-          laterEmail: row.later_email === 1,
+          launchNews: row.launch_news === 1,
+          tryEarly: row.try_early === 1,
+          futureSurveys: row.future_surveys === 1,
+          role: row.role,
+          place: row.place,
         }));
       return studyReportRowsSchema.parse({ sessions, answers, pilot });
     },

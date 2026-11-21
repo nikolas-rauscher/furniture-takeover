@@ -32,12 +32,12 @@ Only **80 and 443** are forwarded from the internet to the nginx machine. Port 8
 
 Between your machines (LAN only, never forwarded):
 
-| From          | To               | Port | Why                                    |
-| ------------- | ---------------- | ---- | -------------------------------------- |
-| nginx machine | app machine      | 8787 | The app and the assistant              |
-| nginx machine | Supabase machine | 8000 | Kong, Supabase's API gateway           |
-| app machine   | Supabase machine | 8000 | Logins and AI quotas                   |
-| app machine   | internet (out)   | 443  | DeepSeek, Brave and OpenStreetMap      |
+| From          | To               | Port | Why                               |
+| ------------- | ---------------- | ---- | --------------------------------- |
+| nginx machine | app machine      | 8787 | The app and the assistant         |
+| nginx machine | Supabase machine | 8000 | Kong, Supabase's API gateway      |
+| app machine   | Supabase machine | 8000 | Logins and AI quotas              |
+| app machine   | internet (out)   | 443  | DeepSeek, Brave and OpenStreetMap |
 
 Do not forward 8000, 8787, 5432, 6543, 3000 or 4000. Limit port 8787 to the nginx machine and port 8000 to the nginx and app machines, using your firewall (for example the Proxmox firewall).
 
@@ -99,24 +99,24 @@ done
 
 Apply every file in `supabase/migrations/`, in this order:
 
-| File | Adds |
-| --- | --- |
-| `202610300001_supabase.sql` | Listings, conversations, messages and conversation archives with row-level security, `start_conversation`, the photo path check, the `listing-photos` storage bucket and realtime for messages |
-| `202610300002_accounts.sql` | Profiles, account preferences, saved listings, blocked users, reports, block checks on contact, and `delete_account` |
-| `202610300003_listing_details.sql` | The `pickup_by` date and `tags` on listings |
-| `202610300004_profile_and_api_keys.sql` | Profile bio, postal code, country and handover preference, and the table of encrypted personal API keys |
-| `202611060001_ai_quota.sql` | Daily AI request counters (50 per student, 500 in total) and `ai_quota` |
-| `202611190001_thread_reading.sql` | Read markers for unread counts, Pako's saved readings, the auto-read preference, and the separate reading allowance (150 per student, 1,500 in total) |
-| `202611190002_deals.sql` | Deals and deal events, participant-only access, the `deal_action` function for offers, confirmation and reservation, and release of reservations when a buyer deletes their account |
-| `202611190003_pickup.sql` | Pickup-day fields on deals (on my way, late, picked up, no-show, cancel reason), more deal event kinds, and `pickup_action` |
-| `202611190004_admin.sql` | The private `takeover_admin` schema, the `admins` table and `is_admin`, hidden listings, report resolution, student blocks, the moderation log, moderation checks on posting and contact, the shipped catalog (6 sellers, 40 listings), the demo seed and the `admin_*` functions |
-| `202611200001_review_fixes.sql` | Moves `deal_action` and `pickup_action` behind checked wrappers, guards listings with an agreed deal, tightens `delete_account`, and adds `ai_quota_spend`, which only the server's secret key may call. The older quota functions are revoked |
-| `202611200002_deal_rules.sql` | Stricter check that a deal message states its price, time and meeting point, with updated deal and pickup functions |
-| `202611200003_card_photos.sql` | `card_images` on listings, a card-size copy of each uploaded photo, with the photo checks updated |
-| `202611200004_bugs_and_features.sql` | Shipping completion, the pickup follow-up a day after the pickup and its release after two (`refresh_pickup_checks`), the price at save on saved listings, and the `@epfl.ch`/`@unil.ch` signup rule |
-| `202611200005_pickup_collected.sql` | After the buyer's "Picked up", `pickup_action` allows only Mark sold, the follow-up and a time proposal's answer |
-| `202611200006_review_fixes.sql` | A pickup the buyer reported collected never expires, is cancelled or released by the follow-up, and stays reserved when the buyer deletes their account, `check_account_deletion` before photos are removed, and `inbox_latest_messages`, each conversation's newest message for the inbox |
-| `202611210001_study.sql` | Tables for the user study on the tour page in `takeover_admin` (sessions, answers, events, the v1 contacts and the v3 pilot form), and the `study_*` functions that save them, remove a session and count the shared results. Only the server's secret key may call them. Students cannot read the tables. The study is open only when `STUDY_CONTACT` and `STUDY_DELETE_BY` are set; see `docs/STUDY.md` |
+| File                                    | Adds                                                                                                                                                                                                                                                                                                                                                                                                           |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `202610300001_supabase.sql`             | Listings, conversations, messages and conversation archives with row-level security, `start_conversation`, the photo path check, the `listing-photos` storage bucket and realtime for messages                                                                                                                                                                                                                 |
+| `202610300002_accounts.sql`             | Profiles, account preferences, saved listings, blocked users, reports, block checks on contact, and `delete_account`                                                                                                                                                                                                                                                                                           |
+| `202610300003_listing_details.sql`      | The `pickup_by` date and `tags` on listings                                                                                                                                                                                                                                                                                                                                                                    |
+| `202610300004_profile_and_api_keys.sql` | Profile bio, postal code, country and handover preference, and the table of encrypted personal API keys                                                                                                                                                                                                                                                                                                        |
+| `202611060001_ai_quota.sql`             | Daily AI request counters (50 per student, 500 in total) and `ai_quota`                                                                                                                                                                                                                                                                                                                                        |
+| `202611190001_thread_reading.sql`       | Read markers for unread counts, Pako's saved readings, the auto-read preference, and the separate reading allowance (150 per student, 1,500 in total)                                                                                                                                                                                                                                                          |
+| `202611190002_deals.sql`                | Deals and deal events, participant-only access, the `deal_action` function for offers, confirmation and reservation, and release of reservations when a buyer deletes their account                                                                                                                                                                                                                            |
+| `202611190003_pickup.sql`               | Pickup-day fields on deals (on my way, late, picked up, no-show, cancel reason), more deal event kinds, and `pickup_action`                                                                                                                                                                                                                                                                                    |
+| `202611190004_admin.sql`                | The private `takeover_admin` schema, the `admins` table and `is_admin`, hidden listings, report resolution, student blocks, the moderation log, moderation checks on posting and contact, the shipped catalog (6 sellers, 40 listings), the demo seed and the `admin_*` functions                                                                                                                              |
+| `202611200001_review_fixes.sql`         | Moves `deal_action` and `pickup_action` behind checked wrappers, guards listings with an agreed deal, tightens `delete_account`, and adds `ai_quota_spend`, which only the server's secret key may call. The older quota functions are revoked                                                                                                                                                                 |
+| `202611200002_deal_rules.sql`           | Stricter check that a deal message states its price, time and meeting point, with updated deal and pickup functions                                                                                                                                                                                                                                                                                            |
+| `202611200003_card_photos.sql`          | `card_images` on listings, a card-size copy of each uploaded photo, with the photo checks updated                                                                                                                                                                                                                                                                                                              |
+| `202611200004_bugs_and_features.sql`    | Shipping completion, the pickup follow-up a day after the pickup and its release after two (`refresh_pickup_checks`), the price at save on saved listings, and the `@epfl.ch`/`@unil.ch` signup rule                                                                                                                                                                                                           |
+| `202611200005_pickup_collected.sql`     | After the buyer's "Picked up", `pickup_action` allows only Mark sold, the follow-up and a time proposal's answer                                                                                                                                                                                                                                                                                               |
+| `202611200006_review_fixes.sql`         | A pickup the buyer reported collected never expires, is cancelled or released by the follow-up, and stays reserved when the buyer deletes their account, `check_account_deletion` before photos are removed, and `inbox_latest_messages`, each conversation's newest message for the inbox                                                                                                                     |
+| `202611210001_study.sql`                | Tables for the user study on the tour page in `takeover_admin` (sessions, answers, events, the v1 contacts and the v3 form at the end), and the `study_*` functions that save them, remove a session and count the shared results. Only the server's secret key may call them. Students cannot read the tables. The study is open only when `STUDY_CONTACT` and `STUDY_DELETE_BY` are set; see `docs/STUDY.md` |
 
 `202611200001_review_fixes.sql` makes the app server depend on `SUPABASE_SECRET_KEY`: without it, AI quota checks fail. Apply it only when the new build, started with that key, is ready to restart right after.
 
@@ -269,18 +269,18 @@ Then in a browser:
 
 ## Troubleshooting
 
-| Symptom                                                            | Likely cause                                                                                                                                  |
-| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| The app refuses to start: `requires HTTPS, or HTTP on localhost…`  | `SUPABASE_URL` is an `http://` address that is not localhost or a private LAN IP. Use the HTTPS address.                                      |
-| Sign-in page says it cannot connect                                | The browser cannot reach `https://supabase.deyan.ch/auth/v1/`. Check DNS, the certificate and the nginx Supabase block.                        |
-| The browser console shows a CORS error for `supabase.deyan.ch`     | nginx is adding its own CORS headers, or the request is not reaching Kong. Remove any `add_header Access-Control-…` lines; Kong sends them.   |
-| `403 ORIGIN_NOT_ALLOWED` when asking the assistant                 | `API_ALLOWED_ORIGINS` does not contain the exact address in the browser bar, including `https://`.                                            |
-| Photo upload fails with `413`                                      | `client_max_body_size` is missing in the HTTPS server block of that name.                                                                     |
-| The assistant's answer appears all at once, or stops after a while | `proxy_buffering off` or the long `proxy_read_timeout` is missing for `/api/agent/run`.                                                       |
-| Messages only appear after a refresh                               | WebSocket headers (`Upgrade`, `Connection`) are missing in the Supabase server block.                                                         |
-| `Sign in with a confirmed email address`                           | The user was not auto-confirmed. Edit the user in Studio, or recreate it with **Auto Confirm User** ticked.                                   |
-| Invitation or reset emails never arrive                            | Supabase has no SMTP configured. Create users by hand (step 5) or set `SMTP_*`.                                                               |
-| Photos show as broken images                                       | `SUPABASE_URL` is wrong, or the nginx Supabase block does not forward `storage`.                                                              |
+| Symptom                                                            | Likely cause                                                                                                                                |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| The app refuses to start: `requires HTTPS, or HTTP on localhost…`  | `SUPABASE_URL` is an `http://` address that is not localhost or a private LAN IP. Use the HTTPS address.                                    |
+| Sign-in page says it cannot connect                                | The browser cannot reach `https://supabase.deyan.ch/auth/v1/`. Check DNS, the certificate and the nginx Supabase block.                     |
+| The browser console shows a CORS error for `supabase.deyan.ch`     | nginx is adding its own CORS headers, or the request is not reaching Kong. Remove any `add_header Access-Control-…` lines; Kong sends them. |
+| `403 ORIGIN_NOT_ALLOWED` when asking the assistant                 | `API_ALLOWED_ORIGINS` does not contain the exact address in the browser bar, including `https://`.                                          |
+| Photo upload fails with `413`                                      | `client_max_body_size` is missing in the HTTPS server block of that name.                                                                   |
+| The assistant's answer appears all at once, or stops after a while | `proxy_buffering off` or the long `proxy_read_timeout` is missing for `/api/agent/run`.                                                     |
+| Messages only appear after a refresh                               | WebSocket headers (`Upgrade`, `Connection`) are missing in the Supabase server block.                                                       |
+| `Sign in with a confirmed email address`                           | The user was not auto-confirmed. Edit the user in Studio, or recreate it with **Auto Confirm User** ticked.                                 |
+| Invitation or reset emails never arrive                            | Supabase has no SMTP configured. Create users by hand (step 5) or set `SMTP_*`.                                                             |
+| Photos show as broken images                                       | `SUPABASE_URL` is wrong, or the nginx Supabase block does not forward `storage`.                                                            |
 
 ## Backups and updates
 

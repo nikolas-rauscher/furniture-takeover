@@ -5,7 +5,7 @@ import type {
   StudyStart,
 } from "../../../shared/study.ts";
 import { resumeFromTab, tabStorage, type Resumed } from "../tabStorage.ts";
-import { V3_VERSION } from "./v3Script.ts";
+import { V3_VERSION, type DraftVariant } from "./v3Script.ts";
 
 export type V3Answer = {
   chosen: string[];
@@ -33,6 +33,8 @@ export type V3Progress = {
   answers: Record<string, V3Answer>;
   /** Option orders as first shown, for steps that shuffle them. */
   orders: Record<string, string[]>;
+  /** The draft task's variant, drawn when the task is first shown. */
+  draftVariant: DraftVariant | null;
   /** Everything recorded so far, in order; `seq` is the position. */
   events: StudyEvent[];
   /** Events already handed to the save queue. */

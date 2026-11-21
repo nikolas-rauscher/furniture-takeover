@@ -124,19 +124,25 @@ test("drop-off counts the last screen of sessions that did not finish the core",
   assert.equal(report.totals.completed, 1);
 });
 
-test("pilot sign-ups are counted per house and week", () => {
-  const form = (house: "vortex" | "atrium", joinPilot = true) => ({
-    house,
-    weeks: ["2027-02-01" as const],
-    joinPilot,
-    laterEmail: true,
+test("the form at the end counts each tick; those who try early are counted per place and role", () => {
+  type Form = StudyReportRows["pilot"][number];
+  const form = (overrides: Partial<Form> = {}): Form => ({
+    launchNews: true,
+    tryEarly: false,
+    futureSurveys: false,
+    role: null,
+    place: null,
+    ...overrides,
   });
+  const early = (place: Form["place"], role: Form["role"]) =>
+    form({ tryEarly: true, place, role });
   const { pilot } = buildStudyReport(
     rows({
       pilot: [
-        ...times(5, () => form("vortex")),
-        form("atrium"),
-        form("atrium", false),
+        ...times(5, () => early("vortex", "seller")),
+        early("vortex", "buyer"),
+        early("flat", "both"),
+        form({ launchNews: false, futureSurveys: true }),
       ],
     }),
     null,
@@ -144,19 +150,20 @@ test("pilot sign-ups are counted per house and week", () => {
   assert.deepEqual(
     {
       forms: pilot.forms,
-      joinPilot: pilot.joinPilot,
-      laterEmail: pilot.laterEmail,
+      launchNews: pilot.launchNews,
+      tryEarly: pilot.tryEarly,
+      futureSurveys: pilot.futureSurveys,
     },
-    { forms: 7, joinPilot: 6, laterEmail: 7 },
+    { forms: 8, launchNews: 7, tryEarly: 7, futureSurveys: 1 },
   );
-  const vortex = pilot.houses.find(({ house }) => house === "vortex");
-  assert.equal(vortex?.total, 5);
   assert.deepEqual(
-    vortex?.weeks.find(({ week }) => week === "2027-02-01"),
-    { week: "2027-02-01", count: 5 },
+    pilot.places.find(({ place }) => place === "vortex"),
+    { place: "vortex", sellers: 5, buyers: null, both: 0 },
   );
-  const atrium = pilot.houses.find(({ house }) => house === "atrium");
-  assert.equal(atrium?.total, null);
+  assert.deepEqual(
+    pilot.places.find(({ place }) => place === "flat"),
+    { place: "flat", sellers: 0, buyers: 0, both: null },
+  );
 });
 
 test("a question's denominator from 1 to the minimum is hidden like its counts", () => {
@@ -181,10 +188,12 @@ test("a question's denominator from 1 to the minimum is hidden like its counts",
   assert.equal(many.questions[0].answered, STUDY_REPORT_MIN_CELL);
 });
 
-test("the ladder counts every session shown a price, answered or not", () => {
+test("the ladder counts everyone who entered it, with the answers it implies", () => {
   const sessions = [
-    ...times(4, () => session({ shown: ["pack-chf-5"] })),
-    session({ shown: ["pack-chf-5", "pack-chf-8"] }),
+    ...times(6, () => session({ shown: ["pack-chf-5", "pack-chf-8"] })),
+    ...times(5, () => session({ shown: ["pack-chf-5", "pack-chf-2"] })),
+    // Left at CHF 5 without answering, and not sure at CHF 5.
+    session({ shown: ["pack-chf-5"] }),
     session({ shown: ["pack-chf-5"] }),
   ];
   const answer = (step: string, chosen: string) => ({
@@ -197,16 +206,23 @@ test("the ladder counts every session shown a price, answered or not", () => {
     rows({
       sessions,
       answers: [
-        ...times(5, () => answer("pack-chf-5", "yes")),
-        answer("pack-chf-8", "no"),
+        ...times(6, () => answer("pack-chf-5", "yes")),
+        answer("pack-chf-8", "yes"),
+        ...times(5, () => answer("pack-chf-8", "no")),
+        ...times(5, () => answer("pack-chf-5", "no")),
+        ...times(5, () => answer("pack-chf-2", "yes")),
+        answer("pack-chf-5", "not-sure"),
       ],
     }),
     null,
   );
-  // Six were shown CHF 5, one left without answering: 5 yes of 6.
-  assert.deepEqual(ladder, [
-    { price: 2, shown: 0, yes: 0 },
-    { price: 5, shown: 6, yes: 5 },
-    { price: 8, shown: null, yes: 0 },
-  ]);
+  // Thirteen entered. Yes at CHF 2: the 6 who said yes at 5, and 5 more at 2.
+  assert.deepEqual(ladder, {
+    entered: 13,
+    prices: [
+      { price: 2, yes: 11 },
+      { price: 5, yes: 6 },
+      { price: 8, yes: null },
+    ],
+  });
 });
