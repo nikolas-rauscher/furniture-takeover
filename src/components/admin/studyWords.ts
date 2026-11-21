@@ -57,10 +57,14 @@ const RECORDED: Record<string, Words> = {
 
 /** Screens that show something instead of asking. */
 const SHOWN: Record<string, string> = {
-  "app-find": `Scene: ${EN.scenes.find.title}`,
-  "app-sell": `Scene: ${EN.scenes.sell.title}`,
-  "app-deal": `Scene: ${EN.scenes.deal.title}`,
+  "app-find": `Scene: ${EN.v3.scenes.find.title}`,
+  "app-sell": `Scene: ${EN.v3.scenes.sell.title}`,
+  "app-deal": `Scene: ${EN.v3.scenes.deal.title}`,
   "what-is": "What is takeover?",
+  "part-last-time": `Part screen: ${EN.v3.sections["last-time"]}`,
+  "part-the-app": `Part screen: ${EN.v3.sections["the-app"]}`,
+  "part-situations": `Part screen: ${EN.v3.sections.situations}`,
+  "part-price": `Part screen: ${EN.v3.sections.price}`,
   "pack-price": "Move-out pack price ladder",
 };
 

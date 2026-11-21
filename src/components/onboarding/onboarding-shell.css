@@ -379,6 +379,60 @@
   padding-inline-end: 40px;
 }
 
+/* Price cards sit two to a row where there is room: the price stands out under the
+   name, the advantages follow with checks. An answer without a price spans the row. */
+.ob-choices-plans {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.ob-choices-plans .ob-choice-cell:not([data-plan]) {
+  grid-column: 1 / -1;
+}
+.ob-choices-plans [data-plan] .ob-choice {
+  align-items: flex-start;
+  padding: 16px 48px 16px 16px;
+}
+.ob-choices-plans [data-plan] .ob-choice-text {
+  flex: 1;
+}
+.ob-choices-plans [data-plan] .ob-choice-mark {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+}
+.ob-choice-price {
+  color: var(--blue);
+  font-size: 1.25rem;
+  font-weight: 750;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+.ob-choice-benefits {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 2px solid var(--line);
+}
+.ob-choice-benefit {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: var(--type-support);
+  font-weight: 600;
+  line-height: 1.35;
+}
+.ob-choice-benefit svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--blue);
+}
+.ob-choice[aria-checked="true"] .ob-choice-price {
+  color: var(--blue-dark);
+}
+.ob-choice[aria-checked="true"] .ob-choice-benefits {
+  border-color: #d3daf5;
+}
+
 /* Short phones keep all eight answers above Continue: the cards draw closer, their
    icons shrink and the step sits nearer to Pako. */
 @media (max-width: 760px) and (max-height: 760px) {

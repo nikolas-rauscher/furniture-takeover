@@ -346,6 +346,56 @@
   text-align: center;
 }
 
+/* A part opens with its number, its name and what it asks, beside its picture. */
+.tour-part {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 14px;
+  padding: 18px;
+}
+.tour-part-icon {
+  display: grid;
+  grid-row: span 2;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: var(--sky);
+  color: var(--blue);
+}
+.tour-part .tour-eyebrow {
+  align-self: end;
+  margin: 0;
+}
+.tour-part-title {
+  align-self: start;
+  margin: 0;
+  font-size: var(--type-section);
+  font-weight: 750;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+.tour-part-text {
+  grid-column: 1 / -1;
+  margin: 14px 0 0;
+  line-height: 1.5;
+}
+
+/* The pack's card, then its one question at a time below it. */
+.tour-ladder {
+  display: grid;
+  gap: 16px;
+}
+/* The move-out pack's price on its card, as large as on the price cards before it. */
+.tour-pack-price {
+  margin: 0;
+  color: var(--blue);
+  font-size: 1.25rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
 /* Situations: a context card says which one, the scenario and what to do. */
 .tour-situation {
   display: grid;
@@ -395,6 +445,10 @@
   margin: 0;
   padding: 0;
   list-style: none;
+}
+.tour-what-is-lead {
+  margin: 0 0 14px;
+  line-height: 1.5;
 }
 .tour-what-is-item {
   display: flex;

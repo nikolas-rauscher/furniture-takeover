@@ -86,19 +86,19 @@ test("someone who tried answers the details; someone who did not gets one reason
   assert.equal(none[none.indexOf("why-not") + 1], "move");
 });
 
-test("with the start screen, the core has 29 screens after an attempt and 25 without", () => {
+test("with the start screen, the core has 33 screens after an attempt and 29 without", () => {
   const core = (role: string) => {
     const shown = ids({ "last-role": answer(role) });
     return shown.slice(0, shown.indexOf("saved")).length;
   };
-  assert.equal(core("buying") + 1, 29);
-  assert.equal(core("none") + 1, 25);
+  assert.equal(core("buying") + 1, 33);
+  assert.equal(core("none") + 1, 29);
 });
 
 test("the core shows each feature briefly, then asks whether it would have helped", () => {
   const core = ids({});
   assert.deepEqual(
-    core.slice(core.indexOf("headline"), core.indexOf("move-it")),
+    core.slice(core.indexOf("headline"), core.indexOf("part-situations")),
     [
       "headline",
       "app-find",
@@ -225,6 +225,30 @@ test("every option of every step has words in every language", () => {
         assert.ok(option.label, `${step.id} ${option.id}`),
       );
     }
+});
+
+test("each part after the start opens with its own screen, which stores no answer", () => {
+  for (const part of ["last-time", "the-app", "situations", "price"]) {
+    const first = V3_STEPS.find((step) => step.section === part);
+    assert.equal(first?.kind, "part", part);
+    assert.deepEqual(answerIds(first), [], part);
+  }
+});
+
+test("every way of paying is a price card with two advantages, in every language", () => {
+  const payModel = choiceSteps().find((step) => step.id === "pay-model");
+  assert.ok(payModel);
+  for (const text of Object.values(TOUR_TEXT)) {
+    const options = optionsOf(text, payModel, { answers: {}, orders: {} });
+    for (const option of options) {
+      if (option.id === "none") {
+        assert.equal(option.plan, undefined);
+        continue;
+      }
+      assert.ok(option.plan?.price && option.detail, option.id);
+      assert.equal(option.plan.benefits.length, 2, option.id);
+    }
+  }
 });
 
 test("answers, events and the session are valid on the wire", () => {

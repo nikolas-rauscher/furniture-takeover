@@ -18,8 +18,9 @@ const FEATURES: { id: Feature; Icon: IntroIcon }[] = [
 ];
 
 /**
- * Before the first question: what the app does, in three plain lines, and what the
- * survey asks next. It names no problem, so the questions about last time stay unprimed.
+ * Before the first question: what the app is, what Pako helps with in three plain
+ * lines, and the survey's parts. It names no problem, so the questions about the last
+ * time stay unprimed.
  */
 export default function WhatIsTakeover() {
   const { whatIs } = useTourText().v3;
@@ -31,6 +32,7 @@ export default function WhatIsTakeover() {
         <h2 id={titleId} className="tour-what-is-title">
           {whatIs.title}
         </h2>
+        <p className="tour-what-is-lead">{whatIs.lead}</p>
         <ul className="tour-what-is-list">
           {FEATURES.map(({ id, Icon }) => (
             <li key={id} className="tour-what-is-item">

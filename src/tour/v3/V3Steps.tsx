@@ -64,6 +64,7 @@ const keep: Transform = (progress) => progress;
 function moodFor(step: V3Step): PakoMood {
   switch (step.kind) {
     case "about-app":
+    case "part":
       return "wave";
     case "story":
       return "listen";
@@ -85,10 +86,10 @@ function reactsToPick(step: V3Step) {
   return step.section === "you" || step.section === "last-time";
 }
 
-/** Pako's title above a question: the part it opens, or the feature it asks about. */
+/** Pako's title above a question: the topic it turns to, or the feature it asks about. */
 function titleOf(step: V3ChoiceStep, text: TourText) {
   if (step.intro) return text.v3[step.intro];
-  return step.feature ? text.scenes[step.feature].title : undefined;
+  return step.feature ? text.v3.scenes[step.feature].title : undefined;
 }
 
 function bubbleFor(
@@ -101,6 +102,8 @@ function bubbleFor(
   switch (step.kind) {
     case "about-app":
       return { id: step.id, text: v3.whatIs.bubble };
+    case "part":
+      return { id: step.id, text: v3.parts[step.section].bubble };
     case "choice":
       return {
         id: step.id,
@@ -129,8 +132,8 @@ function bubbleFor(
     case "scene":
       return {
         id: step.id,
-        title: text.scenes[step.scene].title,
-        text: text.scenes[step.scene].text,
+        title: v3.scenes[step.scene].title,
+        text: v3.scenes[step.scene].text,
       };
     case "pilot":
       return { id: step.id, text: v3.pilot.invite };
@@ -459,7 +462,11 @@ export default function V3Steps({
       direction={direction}
       onKeyDown={handleKeyDown}
       focusFirst
-      readOnly={step.kind === "about-app" || step.kind === "draft"}
+      readOnly={
+        step.kind === "about-app" ||
+        step.kind === "part" ||
+        step.kind === "draft"
+      }
     >
       <V3StepContent context={context} />
     </StudyShell>

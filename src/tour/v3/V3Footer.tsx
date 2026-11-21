@@ -48,6 +48,7 @@ export default function V3Footer({ context }: { context: StepContext }) {
       );
     }
     case "about-app":
+    case "part":
     case "saved":
       return (
         <Button className={primary} onClick={context.moveOn}>

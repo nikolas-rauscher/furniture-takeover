@@ -31,6 +31,9 @@ export default function PackLadder({ context }: { context: StepContext }) {
     <div className="tour-ladder">
       <div className="tour-card tour-situation">
         <p className="tour-eyebrow">{words.title}</p>
+        {ladder.next !== null && (
+          <p className="tour-pack-price">{words.price(ladder.next)}</p>
+        )}
         <p className="tour-situation-text">{words.text}</p>
       </div>
       {ladder.next === null ? (

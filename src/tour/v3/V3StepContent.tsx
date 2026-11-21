@@ -8,6 +8,7 @@ import AboutRows from "./AboutRows";
 import DeskTask from "./DeskTask";
 import DraftChat from "./DraftChat";
 import PackLadder from "./PackLadder";
+import PartCard from "./PartCard";
 import PilotForm from "./PilotForm";
 import type { Given, StepContext } from "./stepContext";
 import {
@@ -46,6 +47,7 @@ function ChoiceContent({
       <ChoiceStep
         question={questionOf(text, step, context.progress.answers)}
         options={options}
+        layout={step.id === "pay-model" ? "plans" : "list"}
         multiple={step.multiple ?? false}
         answer={{ ...answer, shown: [] }}
         onChange={({ chosen, text: words }, moved) =>
@@ -138,6 +140,8 @@ function StepBody({ context }: { context: StepContext }) {
       return <PackLadder context={context} />;
     case "about-app":
       return <WhatIsTakeover />;
+    case "part":
+      return <PartCard section={step.section} />;
     case "saved":
       return <SavedContent context={context} />;
     case "about":

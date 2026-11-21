@@ -8,7 +8,12 @@ import { useArrowMoves } from "./arrowMoves";
 import TextAnswer from "./TextAnswer";
 
 function choiceOptions(options: StudyOption[]): ChoiceOption<string>[] {
-  return options.map(({ id, label, detail }) => ({ id, title: label, detail }));
+  return options.map(({ id, label, detail, plan }) => ({
+    id,
+    title: label,
+    detail,
+    plan,
+  }));
 }
 
 /** The answer after tapping an option; the text goes once no option asks for it. */
@@ -41,8 +46,8 @@ export default function ChoiceStep({
   answer: StepAnswer;
   /** `moved` is set when the arrow keys moved the selection, which is not a pick. */
   onChange: (answer: StepAnswer, moved: boolean) => void;
-  /** Short answers such as age bands sit side by side. */
-  layout?: "list" | "grid";
+  /** Short answers such as age bands sit side by side; ways of paying are price cards. */
+  layout?: "list" | "grid" | "plans";
 }) {
   const text = useTourText();
   const arrows = useArrowMoves();

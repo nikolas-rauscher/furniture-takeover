@@ -10,7 +10,7 @@ import type { TourText } from "../i18n/en.ts";
 import type { StepCondition } from "../stepConditions.ts";
 
 /** Raised whenever a question, an option or its wording changes. */
-export const V3_VERSION = "v3-6";
+export const V3_VERSION = "v3-7";
 /** The time the start screen and the share text name, rounded up from the core's estimate. */
 export const V3_MINUTES = 5;
 /** The one open sentence is shorter than what the server accepts. */
@@ -28,8 +28,11 @@ export type V3Section = (typeof V3_SECTIONS)[number];
 type StepWords = TourText["v3"]["steps"];
 type ChoiceStepId = keyof StepWords;
 
-/** Pako's line above a step's question, opening a part of the survey. */
-type Intro = "moveIntro" | "firstLookIntro" | "situationsIntro" | "priceIntro";
+/** Pako's line above a step's question, where it turns to a new topic within a part. */
+type Intro = "moveIntro";
+
+/** The parts after the start; each opens with a screen that says what it asks. */
+export type V3Part = Exclude<V3Section, "you">;
 
 type Base = {
   id: string;
@@ -65,6 +68,8 @@ export type V3ChoiceStep = Base & {
 
 export type V3Step =
   | (Base & { kind: "about-app" })
+  /** Opens a part: its number, its name and what it asks. */
+  | (Base & { kind: "part"; section: V3Part })
   | V3ChoiceStep
   | (Base & { kind: "story" })
   | (Base & { kind: "desk"; options: readonly string[] })
@@ -202,6 +207,7 @@ function featureSteps(scene: TourScene): V3Step[] {
 export const V3_STEPS: readonly V3Step[] = [
   { kind: "about-app", id: "what-is", section: "you" },
   choice("who", ["epfl", "unil", "other-school", "no"], { section: "you" }),
+  { kind: "part", id: "part-last-time", section: "last-time" },
   choice(
     "last-role",
     ["buying", "getting-free", "selling", "giving-away", "none"],
@@ -271,9 +277,9 @@ export const V3_STEPS: readonly V3Step[] = [
   choice("housing", ["fmel", "other-res", "flat", "family", "elsewhere"], {
     section: "last-time",
   }),
+  { kind: "part", id: "part-the-app", section: "the-app" },
   choice("headline", ["h-move", "h-photo", "h-ai", "h-nearby", "none"], {
     section: "the-app",
-    intro: "firstLookIntro",
     product: true,
     shuffle: true,
     fixedLast: 1,
@@ -328,6 +334,7 @@ export const V3_STEPS: readonly V3Step[] = [
     section: "the-app",
     product: true,
   }),
+  { kind: "part", id: "part-situations", section: "situations" },
   choice(
     "move-it",
     [
@@ -341,7 +348,6 @@ export const V3_STEPS: readonly V3Step[] = [
     {
       section: "situations",
       situation: 1,
-      intro: "situationsIntro",
       product: true,
       shuffle: true,
       fixedLast: 2,
@@ -356,12 +362,12 @@ export const V3_STEPS: readonly V3Step[] = [
     options: ["nearer", "cheaper", "neither"],
   },
   { kind: "draft", id: "draft", section: "situations", situation: 3 },
+  { kind: "part", id: "part-price", section: "price" },
   choice(
     "pay-model",
     ["seller-fee", "move-pack", "monthly", "institution", "none"],
     {
       section: "price",
-      intro: "priceIntro",
       product: true,
       shuffle: true,
       fixedLast: 1,

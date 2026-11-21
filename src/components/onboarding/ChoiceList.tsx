@@ -15,6 +15,8 @@ export type ChoiceOption<Id extends string> = {
   detail?: string;
   /** A tinted tile before the text; the study's plain answers go without. */
   tile?: { icon: IntroIcon; tint: ChoiceTint };
+  /** A price card: the price under the title, the advantages under the detail. */
+  plan?: { price: string; benefits: readonly string[] };
 };
 export type ChoiceListProps<Id extends string> = {
   /** The question, as the accessible name of the group. */
@@ -22,7 +24,7 @@ export type ChoiceListProps<Id extends string> = {
   options: ChoiceOption<Id>[];
   selected: Id[];
   multiple: boolean;
-  layout: "list" | "grid";
+  layout: "list" | "grid" | "plans";
   onToggle: (id: Id) => void;
 };
 
@@ -90,6 +92,7 @@ export default function ChoiceList<Id extends string>({
           <motion.div
             key={option.id}
             className="ob-choice-cell"
+            data-plan={option.plan ? true : undefined}
             initial={reduced ? false : { opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{
@@ -123,8 +126,21 @@ export default function ChoiceList<Id extends string>({
               )}
               <span className="ob-choice-text">
                 <span className="ob-choice-title">{option.title}</span>
+                {option.plan && (
+                  <span className="ob-choice-price">{option.plan.price}</span>
+                )}
                 {option.detail && (
                   <span className="ob-choice-detail">{option.detail}</span>
+                )}
+                {option.plan && (
+                  <span className="ob-choice-benefits">
+                    {option.plan.benefits.map((benefit) => (
+                      <span key={benefit} className="ob-choice-benefit">
+                        <Check size={14} strokeWidth={2.6} aria-hidden="true" />
+                        {benefit}
+                      </span>
+                    ))}
+                  </span>
                 )}
               </span>
               <span className="ob-choice-mark" aria-hidden="true">

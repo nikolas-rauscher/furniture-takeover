@@ -16,6 +16,8 @@ export type StudyOption = {
   id: string;
   label: string;
   detail?: string;
+  /** Shown as a price card: the price, then its advantages under the detail. */
+  plan?: { price: string; benefits: readonly string[] };
   /** Stays below the shuffled options, in the order listed. */
   last?: boolean;
   /** Clears every other option when picked, and is cleared by them. */

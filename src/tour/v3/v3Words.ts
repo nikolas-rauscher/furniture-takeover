@@ -36,6 +36,19 @@ function labelOf(
   return label;
 }
 
+/** A way of paying for takeover as a card: its price, what it gives and its advantages. */
+function planOf(text: TourText, step: V3ChoiceStep, id: string) {
+  if (step.id !== "pay-model" || id === "none") return {};
+  const plans: Record<string, TourText["v3"]["plans"]["monthly"]> =
+    text.v3.plans;
+  const plan = plans[id];
+  if (plan === undefined) throw new Error(`Plan ${id} has no words.`);
+  return {
+    detail: plan.detail,
+    plan: { price: plan.price, benefits: plan.benefits },
+  };
+}
+
 /** The step's options with their words, in the order this participant sees them. */
 export function optionsOf(
   text: TourText,
@@ -47,6 +60,7 @@ export function optionsOf(
     label: labelOf(text, step, id, progress.answers),
     withText: id === step.withText,
     exclusive: id === step.exclusive,
+    ...planOf(text, step, id),
   }));
   const order = progress.orders[step.id];
   return order ? orderOptions(options, order) : options;
