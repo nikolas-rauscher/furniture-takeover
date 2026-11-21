@@ -1,0 +1,39 @@
+# Render blueprint: one web service that serves the built app and its API, in account
+# mode against Supabase. Secrets are entered in the Render dashboard (sync: false).
+services:
+  - type: web
+    name: takeover
+    runtime: node
+    plan: starter
+    branch: study-tour
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      # Render routes traffic to this port on all interfaces.
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: API_PORT
+        value: "10000"
+      - key: API_ALLOWED_ORIGINS
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: ACCOUNT_KEYS_ENCRYPTION_KEY
+        sync: false
+      - key: DEEPSEEK_BASE_URL
+        sync: false
+      - key: DEEPSEEK_MODEL
+        sync: false
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: BRAVE_SEARCH_API_KEY
+        sync: false
+      - key: STUDY_CONTACT
+        sync: false
+      - key: STUDY_DELETE_BY
+        sync: false
