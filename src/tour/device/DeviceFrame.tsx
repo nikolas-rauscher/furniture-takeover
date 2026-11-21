@@ -120,8 +120,8 @@ function useSceneLink(
 }
 
 /**
- * The key moment's keyboard turn: a button named after Pako's hint, hidden until
- * it has focus. While it has focus the moment waits; pressing it takes the turn.
+ * The key moment's keyboard turn: a button named after Pako's hint (English, like
+ * the scenes), hidden until it has focus. While it has focus the moment waits; pressing it takes the turn.
  * A moment that ends while it has focus leaves it in place, inactive, until focus
  * moves on, so the keyboard user keeps their place.
  */
@@ -139,6 +139,7 @@ function CueKey({
     <button
       type="button"
       className="tour-cue-key"
+      lang="en"
       aria-disabled={cue === null || undefined}
       onFocus={() => {
         setFocused(label);
