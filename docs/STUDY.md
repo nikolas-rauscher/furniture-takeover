@@ -58,7 +58,7 @@ Pako asks every question. Wording is neutral; on product questions (`headline` t
 
 Folded toggle "What we save" below the invitation: "Your answers, which screens you see, skip or go back to, the time per screen, the link you came from, your language and whether you use a phone or a computer. Your progress stays in this tab until you close it, and this browser remembers that you finished. An email at the end is optional and kept apart from your answers. Everything is deleted by {date}. Questions: {contact}."
 
-`demo` opens the tour without a session; nothing is stored. `{date}` and `{contact}` come from `STUDY_DELETE_BY` and `STUDY_CONTACT`. A participant who wants their answers deleted writes to the contact.
+`demo` opens the tour without a session; nothing is stored. `{date}` and `{contact}` come from `STUDY_DELETE_BY` and `STUDY_CONTACT`. Answers carry no name or email, so the answers of one participant cannot be found later; the whole data set is deleted by the deletion date. Questions about the optional pilot email go to the contact address.
 
 Then one screen, `what-is`, before the first question. It says what the app does and names no problem, so the questions about the last attempt stay unprimed.
 
