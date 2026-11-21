@@ -33,12 +33,14 @@ const studyClosed = () =>
   );
 
 /** The deletion day itself is already closed: nothing is collected after the promised date. */
+export const isCollecting = (config: StudyAccess["config"], now: Date) =>
+  config.deleteBy > now.toISOString().slice(0, 10);
+
 function openStudy(
   study: StudyAccess | undefined,
   now: () => Date,
 ): StudyAccess | undefined {
-  const today = now().toISOString().slice(0, 10);
-  return study && study.config.deleteBy > today ? study : undefined;
+  return study && isCollecting(study.config, now()) ? study : undefined;
 }
 
 /**
@@ -136,45 +138,59 @@ export function createStudyRoutes(
       buildStudyReport(rows, url.searchParams.get("version")),
     );
   };
+  const collecting = () => openStudy(study, now);
+  // Configured is enough: a withdrawal is accepted for as long as the data is kept.
+  const stored = () => study;
   const write =
     <T>(
+      reachable: () => StudyAccess | undefined,
       schema: z.ZodType<T>,
       save: (store: StudyStore, input: T) => void | Promise<void>,
       reply: { saved: true } | { removed: true } = { saved: true },
     ): RouteHandler =>
     async ({ request, response }) => {
-      const open = openStudy(study, now);
-      if (!open) throw studyClosed();
+      const target = reachable();
+      if (!target) throw studyClosed();
       requireJson(request);
       capWrites(response);
       const input = parseStudyBody(
         schema,
         await readBody(request, STUDY_BODY_LIMIT),
       );
-      await save(open.store, input);
+      await save(target.store, input);
       send(response, 200, reply);
     };
   return {
     [`GET ${STUDY_ROUTES.config}`]: config,
     [`GET ${STUDY_ROUTES.results}`]: results,
     [`GET ${STUDY_ROUTES.report}`]: report,
-    [`POST ${STUDY_ROUTES.sessions}`]: write(studyStartSchema, (store, input) =>
-      store.start(input),
+    [`POST ${STUDY_ROUTES.sessions}`]: write(
+      collecting,
+      studyStartSchema,
+      (store, input) => store.start(input),
     ),
-    [`POST ${STUDY_ROUTES.answers}`]: write(studyAnswerSchema, (store, input) =>
-      store.saveAnswer(input),
+    [`POST ${STUDY_ROUTES.answers}`]: write(
+      collecting,
+      studyAnswerSchema,
+      (store, input) => store.saveAnswer(input),
     ),
-    [`POST ${STUDY_ROUTES.events}`]: write(studyEventsSchema, (store, input) =>
-      store.saveEvents(input),
+    [`POST ${STUDY_ROUTES.events}`]: write(
+      collecting,
+      studyEventsSchema,
+      (store, input) => store.saveEvents(input),
     ),
     [`POST ${STUDY_ROUTES.contacts}`]: write(
+      collecting,
       studyContactSchema,
       (store, input) => store.saveContact(input),
     ),
-    [`POST ${STUDY_ROUTES.pilot}`]: write(studyPilotSchema, (store, input) =>
-      store.savePilot(input),
+    [`POST ${STUDY_ROUTES.pilot}`]: write(
+      collecting,
+      studyPilotSchema,
+      (store, input) => store.savePilot(input),
     ),
     [`POST ${STUDY_ROUTES.withdrawals}`]: write(
+      stored,
       studyWithdrawalSchema,
       (store, input) => store.withdraw(input),
       { removed: true },

@@ -167,6 +167,47 @@ test("a study closes on its deletion date without a restart", async (t) => {
   assert.equal(await errorCode(refused), "STUDY_CLOSED");
 });
 
+test("collection closes at the start of the deletion date; withdrawals and the results page stay", async (t) => {
+  let time = Date.parse("2099-01-30T23:59:59.999Z");
+  const url = await startServer(t, {
+    study: openStudy(t, { now: () => new Date(time) }),
+  });
+  const session = randomUUID();
+  assert.equal(
+    (await post(url, STUDY_ROUTES.sessions, v3StartBody(session))).status,
+    200,
+  );
+  assert.deepEqual(
+    await (await fetch(url + STUDY_ROUTES.config)).json(),
+    config,
+  );
+
+  time = Date.parse("2099-01-31T00:00:00.000Z");
+  assert.deepEqual(await (await fetch(url + STUDY_ROUTES.config)).json(), {
+    open: false,
+  });
+  for (const [route, body] of [
+    [STUDY_ROUTES.sessions, v3StartBody(randomUUID())],
+    [STUDY_ROUTES.answers, v3AnswerBody(session, "who", ["epfl"])],
+    [STUDY_ROUTES.events, { session, events: [eventBody(0)] }],
+    [STUDY_ROUTES.contacts, { email: "ada@epfl.ch", pilot: true, session }],
+    [STUDY_ROUTES.pilot, pilotBody],
+  ] as const) {
+    const refused = await post(url, route, body);
+    assert.equal(refused.status, 403, route);
+    assert.equal(await errorCode(refused), "STUDY_CLOSED");
+  }
+  assert.equal((await fetch(url + STUDY_ROUTES.results)).status, 403);
+  const removed = await post(url, STUDY_ROUTES.withdrawals, { session });
+  assert.equal(removed.status, 200);
+  assert.deepEqual(await removed.json(), { removed: true });
+  const report = await fetch(url + STUDY_ROUTES.report, {
+    headers: { [demoAdminHeader]: "1" },
+  });
+  assert.equal(report.status, 200);
+  assert.equal(studyReportSchema.parse(await report.json()).totals.started, 0);
+});
+
 test("a session needs the consent confirmation", async (t) => {
   const url = await startServer(t, { study: openStudy(t) });
   for (const missing of [{ consent: false }, { consent: undefined }]) {

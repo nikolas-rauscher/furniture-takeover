@@ -74,7 +74,7 @@ Names and purpose only. Never commit values. The full list with comments is in [
 | `SUPABASE_PUBLISHABLE_KEY` | Public anon key. Never the service key |
 | `SUPABASE_SECRET_KEY` | Server-only `sb_secret_` key, required in account mode. Never in the browser or a `VITE_` variable |
 | `ACCOUNT_KEYS_ENCRYPTION_KEY` | Encrypts the personal API keys students save. Back it up and keep it unchanged |
-| `STUDY_CONTACT`, `STUDY_DELETE_BY` | Contact address and deletion date (`YYYY-MM-DD`, in the future) shown in the study's consent text. Both together open the user study on `/tour?s=<channel>` (version 3, `docs/STUDY.md`) and `/tour?s=<channel>&v=1` (version 1, `docs/STUDY-v1.md`); without them it stays closed |
+| `STUDY_CONTACT`, `STUDY_DELETE_BY` | Contact address and deletion date (`YYYY-MM-DD`) shown in the study's consent text. Both together open the user study on `/tour?s=<channel>` (version 3, `docs/STUDY.md`) and `/tour?s=<channel>&v=1` (version 1, `docs/STUDY-v1.md`); without them it stays closed. From the deletion date on the study collects nothing; the app still starts |
 | `LOCAL_AI_TEST_EMAIL`, `LOCAL_AI_TEST_UNTIL` | Optional temporary test allowance for one account, local development only |
 
 ## Commands

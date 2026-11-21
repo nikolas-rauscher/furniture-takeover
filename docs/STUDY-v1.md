@@ -132,7 +132,7 @@ With a sample of this size the results justify the next test. They are not adopt
 - Stored per session: a random id, the script version, the channel tag, phone or desktop, and per step the chosen options, the order shown, a short text and the time on the step. No name, no IP address, no browser details.
 - The email address is optional and kept in a separate table. It is linked to a session only if the participant ticks that box.
 - In account mode the data is in Supabase, in tables that students cannot read. The server writes them with its service key. In the local demo they are in the SQLite file.
-- The contact address and the deletion date come from the deployment (`STUDY_CONTACT`, `STUDY_DELETE_BY`). Without both, the study is closed and only the pitch tour is available.
+- The contact address and the deletion date come from the deployment (`STUDY_CONTACT`, `STUDY_DELETE_BY`). Without both, the study is closed and only the pitch tour is available. From the deletion date on it collects nothing, and the server still starts.
 - The owner deletes sessions, answers, contacts and any exports by the deletion date.
 
 ## Before launch

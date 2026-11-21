@@ -228,7 +228,7 @@ Events, sent in batches and stored once per sequence number:
 
 Not recorded: touch paths, scroll depth, keystrokes, session replay.
 
-In account mode the data is in Supabase, in tables that students cannot read; the server writes them through security-definer functions with its service key. In the local demo it is in the SQLite file. Without `STUDY_CONTACT` and `STUDY_DELETE_BY` the study is closed and only the pitch is available. The owner deletes sessions, answers, events, pilot forms, contacts and exports by the deletion date.
+In account mode the data is in Supabase, in tables that students cannot read; the server writes them through security-definer functions with its service key. In the local demo it is in the SQLite file. Without `STUDY_CONTACT` and `STUDY_DELETE_BY` the study is closed and only the pitch is available. From the deletion date on it collects nothing: the server still starts and logs one line that the study is closed, and the results page and `POST /api/study/withdrawals` keep working until the data is deleted. The owner deletes sessions, answers, events, pilot forms, contacts and exports by the deletion date.
 
 ## Analysis
 
