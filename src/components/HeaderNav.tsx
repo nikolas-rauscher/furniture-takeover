@@ -4,7 +4,7 @@ import {
   useMotionValue,
   useReducedMotion,
 } from "motion/react";
-import { useLayoutEffect, useRef, type RefObject } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { TAB_GLIDE, type MobileDestination } from "../MobileNav";
 import { Button } from "./ui/button";
 
@@ -61,21 +61,18 @@ function itemName(
  * scroll never enters its path. It glides when the page changes, follows its tab
  * at once when a label's width changes, and fades in after a page without a tab.
  */
-function TabPill({
-  nav,
-  active,
-}: {
-  nav: RefObject<HTMLElement | null>;
-  active: HeaderDestination | null;
-}) {
+function TabPill({ active }: { active: HeaderDestination | null }) {
+  const pill = useRef<HTMLSpanElement>(null);
   const x = useMotionValue(0);
   const width = useMotionValue(0);
   const opacity = useMotionValue(0);
   const shown = useRef<HeaderDestination | null>(null);
   const reduce = useReducedMotion();
   useLayoutEffect(() => {
-    const element = nav.current;
-    if (!element) return;
+    // The nav is found from the pill itself: on the first render a child's layout
+    // effect runs before React attaches its parent's ref.
+    const element = pill.current?.parentElement;
+    if (!element) throw new Error("The tab pill must sit inside the nav.");
     const activeTab = () =>
       element.querySelector<HTMLElement>('[aria-current="page"]');
     const tab = activeTab();
@@ -102,9 +99,10 @@ function TabPill({
     });
     for (const child of element.children) follow.observe(child);
     return () => follow.disconnect();
-  }, [nav, active, reduce, x, width, opacity]);
+  }, [active, reduce, x, width, opacity]);
   return (
     <motion.span
+      ref={pill}
       className="header-nav-highlight"
       style={{ x, width, opacity }}
       aria-hidden="true"
@@ -116,10 +114,9 @@ function TabPill({
 export default function HeaderNav(props: HeaderNavProps) {
   const { active, savedSearches, unreadMatches, unreadMessages, onNavigate } =
     props;
-  const nav = useRef<HTMLElement>(null);
   return (
-    <nav ref={nav} aria-label="Main navigation">
-      <TabPill nav={nav} active={active} />
+    <nav aria-label="Main navigation">
+      <TabPill active={active} />
       {items.map(({ id, label }) => (
         <Button
           key={id}
