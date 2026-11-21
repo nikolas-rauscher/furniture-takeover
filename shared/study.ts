@@ -14,7 +14,6 @@ export const STUDY_ROUTES = {
   contacts: "/api/study/contacts",
   pilot: "/api/study/pilot",
   withdrawals: "/api/study/withdrawals",
-  results: "/api/study/results",
   /** Admins only: the counts of the results page. */
   report: "/api/study/report",
 } as const;
@@ -25,18 +24,9 @@ export const STUDY_TEXT_MAX = 280;
 export const STUDY_EVENTS_PER_BATCH = 40;
 /** The server keeps at most this many events per session, so the client sends no more. */
 export const STUDY_EVENTS_PER_SESSION = 600;
-/**
- * "How others answered" appears once this many v3 participants of the same wording version
- * answered the desk task.
- */
-export const STUDY_RESULTS_MINIMUM = 20;
-/** The two v3 steps whose counts are shown to later participants. */
-export const STUDY_RESULT_STEPS = {
-  desk: "desk",
-  trouble: "last-trouble",
-} as const;
 
-const MAX_OPTIONS = 12;
+/** Room for the longest role-dependent list, `last-trouble` for sellers (13 options). */
+const MAX_OPTIONS = 16;
 const MAX_STEP_MS = 60 * 60 * 1000;
 const MAX_REVISION = 100_000;
 const MAX_EVENT_SEQ = 9_999;
@@ -48,9 +38,7 @@ const optionIds = z.array(optionId).max(MAX_OPTIONS);
 const studySurveySchema = z.enum(STUDY_SURVEYS);
 const studyLanguageSchema = z.enum(STUDY_LANGUAGES);
 /** Changes with the questions or their wording, so answers to different wordings stay apart. */
-export const studyVersionSchema = z
-  .string()
-  .regex(/^[a-z0-9][a-z0-9.-]{0,19}$/);
+const studyVersionSchema = z.string().regex(/^[a-z0-9][a-z0-9.-]{0,19}$/);
 
 /** The study is open once the deployment names a contact and a deletion date. */
 export const studyConfigSchema = z.discriminatedUnion("open", [
@@ -160,7 +148,17 @@ export const studyContactSchema = z.strictObject({
   session: session.nullable(),
 });
 
-export const STUDY_PILOT_ROLES = ["seller", "buyer", "both"] as const;
+/** What someone who wants to try takeover early would try; "not-sure" stands alone. */
+export const STUDY_PILOT_ROLES = [
+  "buy",
+  "get-free",
+  "sell",
+  "give-away",
+  "not-sure",
+] as const;
+/** Those who would sell or give away count as sellers; those who would buy or get, as buyers. */
+export const STUDY_SELLING_ROLES = ["sell", "give-away"] as const;
+export const STUDY_BUYING_ROLES = ["buy", "get-free"] as const;
 /** Where a participant who wants to try takeover early lives. */
 export const STUDY_PILOT_PLACES = [
   "vortex",
@@ -174,89 +172,75 @@ export const STUDY_PILOT_PLACES = [
 
 /**
  * v3 form at the end of the survey. Stored without a session, so it cannot be linked to
- * answers. Role and place are asked only of those who want to try takeover early.
+ * answers. Roles and place are asked only of those who want to try takeover early.
  */
 export const studyPilotSchema = z
   .strictObject({
     email: z.email().max(254),
-    /** "Tell me when takeover is online". */
+    /** "Tell me when takeover launches". */
     launchNews: z.boolean(),
     /** "I'd like to try takeover early". */
     tryEarly: z.boolean(),
+    /** "I'm up for a 15-minute chat". */
+    interview: z.boolean(),
     /** "Invite me to future surveys". */
     futureSurveys: z.boolean(),
-    role: z.enum(STUDY_PILOT_ROLES).nullable(),
+    /** Everything they would try; empty unless they want to try takeover early. */
+    roles: z.array(z.enum(STUDY_PILOT_ROLES)).max(STUDY_PILOT_ROLES.length),
     place: z.enum(STUDY_PILOT_PLACES).nullable(),
   })
   .refine(
-    (form) => form.launchNews || form.tryEarly || form.futureSurveys,
+    (form) =>
+      form.launchNews || form.tryEarly || form.interview || form.futureSurveys,
     "Tick at least one box.",
   )
   .refine(
-    (form) => form.tryEarly === (form.role !== null && form.place !== null),
-    "Role and place come with trying takeover early, and only with it.",
+    (form) => form.tryEarly === (form.roles.length > 0 && form.place !== null),
+    "Roles and place come with trying takeover early, and only with it.",
+  )
+  .refine(
+    (form) => new Set(form.roles).size === form.roles.length,
+    "Each role is named once.",
+  )
+  .refine(
+    (form) => !form.roles.includes("not-sure") || form.roles.length === 1,
+    "Not sure yet stands alone.",
   );
 
 /** Removes the session with its answers and events. Removing it twice changes nothing. */
 export const studyWithdrawalSchema = z.strictObject({ session });
-
-const tallySchema = z.strictObject({
-  /** Participants who answered the step. */
-  answered: z.number().int().min(0),
-  options: z.array(
-    z.strictObject({ option: optionId, count: z.number().int().min(1) }),
-  ),
-});
-
-/** Counts over the v3 sessions of one wording version, shown at the end of the survey. */
-export const studyResultsSchema = z.discriminatedUnion("ready", [
-  z.strictObject({ ready: z.literal(false) }),
-  z.strictObject({
-    ready: z.literal(true),
-    desk: tallySchema,
-    trouble: tallySchema,
-  }),
-]);
 
 /**
  * The v3 core screens in their order, conditional ones included. The results page reads
  * its funnel along this list; the client's script test keeps the two in step.
  */
 export const STUDY_V3_CORE_SCREENS = [
-  "what-is",
-  "who",
   "part-last-time",
+  "who",
+  "housing",
   "last-role",
   "last-item",
   "last-occasion",
-  "last-story",
+  "last-how",
+  "last-outcome",
   "last-trouble",
-  "last-cost",
-  "why-not",
+  "last-transport",
+  "last-messages",
+  "part-home",
+  "idle-items",
+  "idle-why",
   "move",
-  "housing",
   "part-the-app",
-  "app-find",
-  "helped-find",
   "app-sell",
-  "helped-sell",
   "app-deal",
-  "helped-deal",
-  "stop",
-  "try-first",
   "wanted-react",
-  "wanted-share",
-  "headline",
-  "part-situations",
-  "desk",
-  "move-it",
+  "seeking",
   "draft",
-  "sending",
+  "delegate",
   "part-price",
-  "pack-price",
   "pay-model",
-  "institution-pay",
-  "delivery-worth",
+  "age",
+  "gender",
 ] as const;
 
 /** The move-out pack's prices in CHF on the survey's price ladder, from low to high. */
@@ -323,14 +307,18 @@ export const studyReportSchema = z.strictObject({
     forms: count,
     launchNews: count,
     tryEarly: count,
+    interview: count,
     futureSurveys: count,
-    /** Those who want to try takeover early, per place and role. */
+    /**
+     * Those who want to try takeover early, per place: sellers would sell or give away,
+     * buyers would buy or get for free, so one form can count on both sides.
+     */
     places: z.array(
       z.strictObject({
         place: z.enum(STUDY_PILOT_PLACES),
         sellers: cell,
         buyers: cell,
-        both: cell,
+        undecided: cell,
       }),
     ),
   }),
@@ -346,5 +334,4 @@ export type StudyEvents = z.infer<typeof studyEventsSchema>;
 export type StudyContact = z.infer<typeof studyContactSchema>;
 export type StudyPilot = z.infer<typeof studyPilotSchema>;
 export type StudyWithdrawal = z.infer<typeof studyWithdrawalSchema>;
-export type StudyResults = z.infer<typeof studyResultsSchema>;
 export type StudyReport = z.infer<typeof studyReportSchema>;

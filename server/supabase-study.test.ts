@@ -1,15 +1,13 @@
 import test, { type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { studyDatabase } from "./supabase-fixture.ts";
+import { applyMigrations, studyDatabase } from "./supabase-fixture.ts";
 import {
   STUDY_EVENT_KINDS,
   STUDY_LANGUAGES,
   STUDY_PILOT_PLACES,
   STUDY_PILOT_ROLES,
-  STUDY_RESULTS_MINIMUM,
   STUDY_SURVEYS,
-  studyResultsSchema,
 } from "../shared/study.ts";
 import { studyReportRowsSchema } from "./study-report.ts";
 import { STUDY_LIMITS } from "./study-store.ts";
@@ -56,10 +54,10 @@ async function setup(t: TestContext) {
         })),
       ),
     ]);
-  const savePilot = (email: string, role = "seller") =>
+  const savePilot = (email: string, roles = ["sell"]) =>
     db.query(
-      "select public.study_save_pilot($1,false,true,false,$2,'atrium')",
-      [email, role],
+      "select public.study_save_pilot($1,false,true,false,false,$2,'atrium')",
+      [email, roles],
     );
   const saveContact = (email: string, session: string | null = null) =>
     db.query("select public.study_save_contact($1,true,$2)", [email, session]);
@@ -201,9 +199,8 @@ const STUDY_FUNCTIONS = [
   "public.study_save_answer(gen_random_uuid(),'who','{}','{}','{}','',0)",
   "public.study_save_events(gen_random_uuid(),'[]'::jsonb)",
   "public.study_save_contact('a@epfl.ch',true,null)",
-  "public.study_save_pilot('a@epfl.ch',true,false,false,null,null)",
+  "public.study_save_pilot('a@epfl.ch',true,false,false,false,null,null)",
   "public.study_withdraw(gen_random_uuid())",
-  "public.study_results('v3-1')",
   "public.study_report_rows(gen_random_uuid())",
 ];
 
@@ -336,30 +333,36 @@ test("events are stored once per sequence number, checked, and capped per sessio
 test("a form at the end is stored once per address as first sent, without a session, and capped", async (t) => {
   const { db, asOwner, savePilot, count } = await setup(t);
   await savePilot("Ada@Epfl.ch");
-  await savePilot(" ada@epfl.ch ", "both");
+  await savePilot(" ada@epfl.ch ", ["buy"]);
   assert.deepEqual(
     await asOwner(
-      "select email, launch_news, try_early, future_surveys, role, place from takeover_admin.study_pilot",
+      "select email, launch_news, try_early, interview, future_surveys, roles, place from takeover_admin.study_pilot",
     ),
     [
       {
         email: "ada@epfl.ch",
         launch_news: false,
         try_early: true,
+        interview: false,
         future_surveys: false,
-        role: "seller",
+        roles: ["sell"],
         place: "atrium",
       },
     ],
   );
-  await assert.rejects(savePilot("bo@unil.ch", "seller-buyer"), /check/);
-  // Role and place come with trying early and only with it; one tick is needed.
+  await assert.rejects(savePilot("bo@unil.ch", ["seller"]), /check/);
+  // Roles and place come with trying early and only with it; one tick is needed.
   for (const call of [
-    "select public.study_save_pilot('cy@epfl.ch',true,true,false,null,null)",
-    "select public.study_save_pilot('cy@epfl.ch',true,false,false,'buyer','flat')",
-    "select public.study_save_pilot('cy@epfl.ch',false,false,false,null,null)",
+    "select public.study_save_pilot('cy@epfl.ch',true,true,false,false,'{}',null)",
+    "select public.study_save_pilot('cy@epfl.ch',true,false,false,false,'{buy}','flat')",
+    "select public.study_save_pilot('cy@epfl.ch',false,false,false,false,'{}',null)",
   ])
     await assert.rejects(db.query(call), /check/);
+  // The interview tick alone is enough.
+  await db.query(
+    "select public.study_save_pilot('dee@epfl.ch',false,false,true,false,'{}',null)",
+  );
+  assert.equal(await count("study_pilot"), 2);
   assert.deepEqual(
     await asOwner(
       `select column_name from information_schema.columns
@@ -369,7 +372,7 @@ test("a form at the end is stored once per address as first sent, without a sess
   );
   await asOwner(
     `insert into takeover_admin.study_pilot(email,launch_news,try_early,future_surveys)
-     select 'p'||n||'@epfl.ch',true,false,false from generate_series(2,$1) as n`,
+     select 'p'||n||'@epfl.ch',true,false,false from generate_series(3,$1) as n`,
     [STUDY_LIMITS.pilot],
   );
   assert.equal(await count("study_pilot"), STUDY_LIMITS.pilot);
@@ -391,72 +394,10 @@ test("withdrawing removes the session with its answers and events and can be rep
   assert.equal(await count("study_events"), 0);
 });
 
-test("shared results count the v3 sessions of one wording version and appear from the minimum on", async (t) => {
-  const { db, startSession, startV3, saveV3Answer } = await setup(t);
-  const resultsOf = async (version: string) =>
-    (
-      await db.query<{ r: unknown }>("select public.study_results($1) as r", [
-        version,
-      ])
-    ).rows[0].r;
-  const results = () => resultsOf("v3-1");
-  const v1 = randomUUID();
-  await startSession(v1);
-  await db.query(
-    "select public.study_save_answer($1,'desk','{cheaper}',null,'{}','',0)",
-    [v1],
-  );
-  for (let n = 0; n < STUDY_RESULTS_MINIMUM; n++) {
-    const session = randomUUID();
-    await db.query(
-      "select public.study_start($1,'v3','v3-0','en','moodle','phone')",
-      [session],
-    );
-    await saveV3Answer(session, "desk", ["cheaper"]);
-  }
-  for (let n = 0; n < STUDY_RESULTS_MINIMUM; n++) {
-    const session = randomUUID();
-    await startV3(session);
-    if (n > 0)
-      await saveV3Answer(session, "desk", [n % 2 ? "nearer" : "neither"]);
-    if (n < 3) await saveV3Answer(session, "last-trouble", ["price"]);
-  }
-  assert.deepEqual(await results(), { ready: false });
-  const last = randomUUID();
-  await startV3(last);
-  await saveV3Answer(last, "desk", ["cheaper"]);
-  assert.deepEqual(await results(), {
-    ready: true,
-    desk: {
-      answered: STUDY_RESULTS_MINIMUM,
-      options: [
-        { option: "nearer", count: 10 },
-        { option: "neither", count: 9 },
-        { option: "cheaper", count: 1 },
-      ],
-    },
-    trouble: { answered: 3, options: [{ option: "price", count: 3 }] },
-  });
-  assert.ok(studyResultsSchema.safeParse(await results()).success);
-  assert.deepEqual(await resultsOf("v3-0"), {
-    ready: true,
-    desk: {
-      answered: STUDY_RESULTS_MINIMUM,
-      options: [{ option: "cheaper", count: STUDY_RESULTS_MINIMUM }],
-    },
-    trouble: { answered: 0, options: [] },
-  });
-});
-
-test("an answer emptied by going back keeps its first answer and is not counted in the shared results", async (t) => {
-  const { db, asOwner, startV3, saveV3Answer } = await setup(t);
+test("an answer emptied by going back keeps its first answer", async (t) => {
+  const { asOwner, startV3, saveV3Answer } = await setup(t);
   const emptied = randomUUID();
-  for (let n = 0; n < STUDY_RESULTS_MINIMUM; n++) {
-    const session = n === 0 ? emptied : randomUUID();
-    await startV3(session);
-    await saveV3Answer(session, "desk", ["nearer"]);
-    if (n === 1) await saveV3Answer(session, "last-trouble", ["price"]);
-  }
+  await startV3(emptied);
   await saveV3Answer(emptied, "last-trouble", ["transport"]);
   await saveV3Answer(emptied, "last-trouble", [], ["transport"]);
   assert.deepEqual(
@@ -466,13 +407,6 @@ test("an answer emptied by going back keeps its first answer and is not counted 
     ),
     [{ chosen: [], first_chosen: ["transport"] }],
   );
-  const { rows } = await db.query<{ r: { trouble: unknown } }>(
-    "select public.study_results('v3-1') as r",
-  );
-  assert.deepEqual(rows[0].r.trouble, {
-    answered: 1,
-    options: [{ option: "price", count: 1 }],
-  });
 });
 
 test("the tables accept every value the wire contract allows", async (t) => {
@@ -503,8 +437,8 @@ test("the tables accept every value the wire contract allows", async (t) => {
   for (const role of STUDY_PILOT_ROLES)
     for (const place of STUDY_PILOT_PLACES)
       await db.query(
-        "select public.study_save_pilot($1,true,true,true,$2,$3)",
-        [`${role}-${place}@epfl.ch`, role, place],
+        "select public.study_save_pilot($1,true,true,true,true,$2,$3)",
+        [`${role}-${place}@epfl.ch`, [role], place],
       );
   assert.equal(await count("study_events"), STUDY_EVENT_KINDS.length);
   assert.equal(
@@ -546,7 +480,16 @@ test("the results page rows are for admins and carry no session ids or emails", 
   assert.deepEqual(report.answers, [
     { version: "v3-1", step: "who", chosen: ["epfl"], text: "" },
   ]);
-  assert.equal(report.pilot.length, 1);
+  assert.deepEqual(report.pilot, [
+    {
+      launchNews: false,
+      tryEarly: true,
+      interview: false,
+      futureSurveys: false,
+      roles: ["sell"],
+      place: "atrium",
+    },
+  ]);
   const body = JSON.stringify(rows[0].r);
   assert.ok(!body.includes(session) && !body.includes("ada@epfl.ch"));
 });
@@ -583,4 +526,55 @@ test("a write in flight from before a reload never replaces the newer answer", a
       },
     ],
   );
+});
+
+test("the v4 migration keeps earlier forms: no interview, roles from their role; v3's shared counts go", async () => {
+  const { db, asOwner } = await studyDatabase(["202611210001_study.sql"]);
+  try {
+    await db.query(
+      "select public.study_save_pilot('old@epfl.ch',true,false,false,null,null)",
+    );
+    for (const [email, role] of [
+      ["sell@epfl.ch", "seller"],
+      ["buy@epfl.ch", "buyer"],
+      ["both@epfl.ch", "both"],
+    ])
+      await db.query(
+        "select public.study_save_pilot($1,false,true,false,$2,'flat')",
+        [email, role],
+      );
+    await db.exec("reset role");
+    await applyMigrations(db, ["202611220002_study_v4.sql"]);
+    await db.exec("set role service_role");
+    assert.deepEqual(
+      await asOwner(
+        "select email, interview, roles from takeover_admin.study_pilot order by email",
+      ),
+      [
+        { email: "both@epfl.ch", interview: false, roles: ["buy", "sell"] },
+        { email: "buy@epfl.ch", interview: false, roles: ["buy"] },
+        { email: "old@epfl.ch", interview: false, roles: [] },
+        { email: "sell@epfl.ch", interview: false, roles: ["sell"] },
+      ],
+    );
+    // A seller's list of obstacles is longer than v3 allowed.
+    const session = "6f1c1f9e-5b7a-4c1e-9a1d-2f3b4c5d6e7f";
+    await db.query(
+      "select public.study_start($1,'v3','v4-1','en','x','phone')",
+      [session],
+    );
+    const thirteen = Array.from({ length: 13 }, (_, n) => `o${n}`);
+    await db.query(
+      "select public.study_save_answer($1,'last-trouble','{o1}','{o1}',$2,'',0,1)",
+      [session, thirteen],
+    );
+    assert.deepEqual(
+      await asOwner(
+        "select proname from pg_proc where proname in ('study_results','study_save_pilot')",
+      ),
+      [{ proname: "study_save_pilot" }],
+    );
+  } finally {
+    await db.close();
+  }
 });

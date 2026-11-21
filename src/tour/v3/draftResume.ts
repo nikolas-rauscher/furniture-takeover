@@ -20,6 +20,26 @@ export function sentResult(
   return message === offer ? "sent-unchanged" : "sent-changed";
 }
 
+/** An amount with CHF or francs before or after it; a time such as 17.30 has neither. */
+const PRICE =
+  /(?:CHF|SFr\.?|Fr\.)\s*(\d+(?:[.,]\d{1,2})?)|(\d+(?:[.,]\d{1,2})?)\s*(?:CHF|francs?\b|Fr\.|\.[-–])/gi;
+
+/**
+ * The price named in a sent message, as an option id: `chf-45` for one price, `several`
+ * when it names different prices, `no-price` when it names none.
+ */
+export function sentPrice(message: string): string {
+  const prices = new Set(
+    [...message.matchAll(PRICE)].map((match) =>
+      Number((match[1] ?? match[2]).replace(",", ".")),
+    ),
+  );
+  if (prices.size === 0) return "no-price";
+  if (prices.size > 1) return "several";
+  const [price] = prices;
+  return `chf-${String(price).replace(".", "-")}`;
+}
+
 /**
  * How the chat unfolds after the day is picked: Mia answers, Pako drafts the offer,
  * the participant decides what to do with it, maybe writes, and the result shows.

@@ -10,35 +10,34 @@ import {
 import { TOUR_TEXT } from "../i18n/tourText.ts";
 import {
   answerEvent,
-  backTarget,
   canGoBack,
+  MIN_SECTION_FILL,
   nextV3,
   recordV3Answer,
+  sectionFill,
   sectionStates,
   v3StepById,
   visibleV3Steps,
   withEvent,
-  withMoment,
   withoutAnswersOffPath,
   withV3Order,
-  withPriceShown,
 } from "./v3Flow.ts";
 import { eventJobs, v3Job } from "./v3Jobs.ts";
 import type { V3Answer, V3Progress } from "./v3Progress.ts";
 import {
   answerIds,
+  DRAFT_ALLOCATION,
   DRAFT_DAY_STEP,
   DRAFT_DAYS,
   DRAFT_PRICES,
   DRAFT_VARIANTS,
-  SITUATIONS,
+  V3_SECTIONS,
   V3_STEPS,
   V3_VERSION,
   type V3ChoiceStep,
 } from "./v3Script.ts";
-import { optionsOf, questionOf } from "./v3Words.ts";
-import { ladderOf } from "./packPricing.ts";
-import { sentResult } from "./draftResume.ts";
+import { optionsOf } from "./v3Words.ts";
+import { sentPrice, sentResult } from "./draftResume.ts";
 import { toggleOption } from "../optionOrder.ts";
 
 const SESSION = "6f1c1f9e-5b7a-4c1e-9a1d-2f3b4c5d6e7f";
@@ -66,120 +65,225 @@ const progress: V3Progress = {
   queuedEvents: 0,
   pilot: null,
   unsentDraft: null,
-  moments: {},
-  skippedFrom: null,
 };
 
 const ids = (answers: V3Progress["answers"]) =>
   visibleV3Steps(answers).map((step) => step.id);
 
 const choiceSteps = (): V3ChoiceStep[] =>
-  V3_STEPS.flatMap((step) => {
-    if (step.kind === "choice") return [step];
-    if (step.kind === "about") return [...step.rows];
-    return [];
+  V3_STEPS.flatMap((step) => (step.kind === "choice" ? [step] : []));
+
+const choiceStep = (id: string) => v3StepById(id) as V3ChoiceStep;
+
+/** The obstacles of `last-trouble` offered after a role, as their ids. */
+const troubleFor = (role: string) =>
+  optionsOf(TOUR_TEXT.en, choiceStep("last-trouble"), {
+    answers: { "last-role": answer(role) },
+    orders: {},
+  }).map((option) => option.id);
+
+test("someone who tried answers the details; someone who never tried goes on to things at home", () => {
+  const tried = ids({
+    "last-role": answer("selling"),
+    "last-outcome": answer("yes"),
   });
-
-test("someone who tried answers the details; someone who did not gets one reason", () => {
-  const tried = ids({ "last-role": answer("selling") });
-  assert.ok(tried.includes("last-trouble"));
-  assert.ok(!tried.includes("why-not"));
+  for (const id of [
+    "last-item",
+    "last-occasion",
+    "last-how",
+    "last-outcome",
+    "last-trouble",
+    "last-transport",
+    "last-messages",
+  ])
+    assert.ok(tried.includes(id), id);
   const none = ids({ "last-role": answer("none") });
-  assert.ok(none.includes("why-not"));
   assert.ok(!none.includes("last-item"));
-  assert.equal(none[none.indexOf("why-not") + 1], "move");
+  assert.equal(none[none.indexOf("last-role") + 1], "part-home");
 });
 
-test("with the start screen, the core has 34 screens after an attempt and 30 without", () => {
-  const core = (role: string) => {
-    const shown = ids({ "last-role": answer(role) });
-    return shown.slice(0, shown.indexOf("saved")).length;
+test("transport is asked only where something changed hands or still might", () => {
+  const after = (outcome: string) =>
+    ids({ "last-role": answer("buying"), "last-outcome": answer(outcome) });
+  assert.ok(after("yes").includes("last-transport"));
+  assert.ok(after("ongoing").includes("last-transport"));
+  assert.ok(!after("no").includes("last-transport"));
+});
+
+test("the survey has 26 screens before the end after an attempt and 19 without", () => {
+  const core = (answers: V3Progress["answers"]) => {
+    const shown = ids(answers);
+    return shown.slice(0, shown.indexOf("end")).length;
   };
-  assert.equal(core("buying") + 1, 34);
-  assert.equal(core("none") + 1, 30);
+  const idle = { "idle-items": answer("1-3"), "last-outcome": answer("yes") };
+  assert.equal(core({ ...idle, "last-role": answer("buying") }), 26);
+  assert.equal(core({ ...idle, "last-role": answer("none") }), 19);
+  assert.equal(core({ "idle-items": answer("none") }), 18);
 });
 
-test("the core shows each feature briefly, then asks whether it would have helped; the slogans come last", () => {
-  const core = ids({});
+test("the steps follow the spec: two scenes, the request idea, the draft, then delegation", () => {
+  const core = ids({ "idle-items": answer("4-10"), seeking: answer("yes") });
   assert.deepEqual(
-    core.slice(
-      core.indexOf("part-the-app") + 1,
-      core.indexOf("part-situations"),
-    ),
-    [
-      "app-find",
-      "helped-find",
-      "app-sell",
-      "helped-sell",
-      "app-deal",
-      "helped-deal",
-      "stop",
-      "try-first",
-      "wanted-react",
-      "wanted-share",
-      "headline",
-    ],
+    core.slice(core.indexOf("part-the-app") + 1, core.indexOf("part-price")),
+    ["app-sell", "app-deal", "wanted-react", "seeking", "draft", "delegate"],
   );
-  const brief = V3_STEPS.filter((step) => step.kind === "scene" && step.brief);
-  assert.equal(brief.length, 3);
+  assert.deepEqual(core.slice(core.indexOf("part-price")), [
+    "part-price",
+    "pay-model",
+    "age",
+    "gender",
+    "end",
+  ]);
+  assert.deepEqual(
+    core.slice(core.indexOf("part-home"), core.indexOf("part-the-app")),
+    ["part-home", "idle-items", "idle-why", "move"],
+  );
 });
 
-test("the results page reads its funnel along the core screens of the script", () => {
-  const core = V3_STEPS.slice(
-    0,
-    V3_STEPS.findIndex((step) => step.kind === "saved"),
-  );
+test("the results page reads its funnel along the screens of the script", () => {
   assert.deepEqual(
-    core.map((step) => step.id),
+    V3_STEPS.filter((step) => step.kind !== "end").map((step) => step.id),
     [...STUDY_V3_CORE_SCREENS],
   );
 });
 
-test("someone who never tried is asked whether a feature would help, not have helped", () => {
-  const text = TOUR_TEXT.en;
-  const helped = v3StepById("helped-sell") as V3ChoiceStep;
-  const tried = { "last-role": answer("selling") };
-  assert.equal(
-    questionOf(text, helped, tried),
-    text.v3.steps["helped-sell"].question,
-  );
-  assert.equal(
-    questionOf(text, helped, { "last-role": answer("none") }),
-    text.v3.helpedNeverTried,
-  );
-});
-
-test("nothing would stop me clears the other obstacles", () => {
-  const stop = v3StepById("stop") as V3ChoiceStep;
-  const options = optionsOf(TOUR_TEXT.en, stop, progress);
-  assert.deepEqual(toggleOption(options, ["privacy", "too-long"], "nothing"), [
-    "nothing",
+test("buyers see finding, gone and the price to agree; sellers see finding a taker, the listing and the price to set", () => {
+  const shared = [
+    "replies",
+    "messages",
+    "timing",
+    "cancelled",
+    "transport",
+    "trust",
+  ];
+  const last = ["other", "nothing", "cant-recall"];
+  assert.deepEqual(troubleFor("buying"), [
+    "finding",
+    "gone",
+    "agree-price",
+    ...shared,
+    ...last,
   ]);
-  assert.deepEqual(toggleOption(options, ["nothing"], "privacy"), ["privacy"]);
+  assert.deepEqual(troubleFor("getting-free"), [
+    "finding",
+    "gone",
+    ...shared,
+    ...last,
+  ]);
+  assert.deepEqual(troubleFor("selling"), [
+    "finding-taker",
+    "deadline-pickup",
+    "listing",
+    "set-price",
+    ...shared,
+    ...last,
+  ]);
+  assert.deepEqual(troubleFor("giving-away"), [
+    "finding-taker",
+    "deadline-pickup",
+    "listing",
+    ...shared,
+    ...last,
+  ]);
+  // The wire takes every role's list in a shown order.
+  for (const role of ["buying", "getting-free", "selling", "giving-away"]) {
+    const shown = { session: SESSION, step: "last-trouble", ...answer("x") };
+    const sent = { ...shown, shown: troubleFor(role) };
+    assert.ok(studyAnswerSchema.safeParse(sent).success, role);
+  }
 });
 
-test("the tour shows only after Peek, starting with the scene picked first", () => {
-  assert.ok(!ids({}).includes("scene-pick"));
-  const tour = ids({ peek: answer("tour"), "scene-pick": answer("find") });
-  const scenes = tour.filter((id) => id.startsWith("tour-"));
-  assert.deepEqual(scenes, ["tour-find", "tour-sell", "tour-deal"]);
-  assert.deepEqual(tour.slice(tour.indexOf("tour-deal") + 1), ["pilot", "end"]);
+test("last-trouble shuffles within the role's options and keeps the last three below", () => {
+  const trouble = v3StepById("last-trouble");
+  const selling = {
+    ...progress,
+    answers: { "last-role": answer("selling") },
+  };
+  const ordered = withV3Order(selling, trouble, () => 0);
+  assert.deepEqual(
+    [...ordered.orders["last-trouble"]].sort(),
+    [...troubleFor("selling")].sort(),
+  );
+  assert.deepEqual(ordered.orders["last-trouble"].slice(-3), [
+    "other",
+    "nothing",
+    "cant-recall",
+  ]);
+  // The same role keeps the order; another role draws a new one among its own options.
+  assert.equal(
+    withV3Order(ordered, trouble, () => 0.5),
+    ordered,
+  );
+  const buying = withV3Order(
+    { ...ordered, answers: { "last-role": answer("buying") } },
+    trouble,
+    () => 0,
+  );
+  assert.deepEqual(
+    [...buying.orders["last-trouble"]].sort(),
+    [...troubleFor("buying")].sort(),
+  );
 });
 
-test("everyone sees the form at the end; students see their studies", () => {
-  for (const who of ["epfl", "unil", "other-school", "no"])
-    assert.ok(ids({ who: answer(who) }).includes("pilot"), who);
-  assert.ok(ids({ who: answer("other-school") }).includes("about-studies"));
-  assert.ok(!ids({ who: answer("no") }).includes("about-studies"));
+test("an obstacle is emptied when another role changes the options; the same options keep it", () => {
+  const before = {
+    "last-role": answer("buying"),
+    "last-trouble": answer("replies"),
+  };
+  const selling = withoutAnswersOffPath(before, {
+    ...progress,
+    answers: { ...before, "last-role": answer("selling") },
+  });
+  assert.deepEqual(selling.answers["last-trouble"].chosen, []);
+  assert.deepEqual(selling.answers["last-trouble"].firstChosen, ["replies"]);
+  assert.equal(selling.answers["last-trouble"].revision, 2);
+  const sameOptions = {
+    "last-role": answer("buying"),
+    "last-trouble": answer("transport"),
+  };
+  const kept = withoutAnswersOffPath(sameOptions, {
+    ...progress,
+    answers: { ...sameOptions, "last-trouble": answer("timing") },
+  });
+  assert.deepEqual(kept.answers["last-trouble"].chosen, ["timing"]);
 });
 
-test("back stops before the first screen and after the core", () => {
+test("none of these clears the other tasks Pako may do, and is cleared by them", () => {
+  const delegate = choiceStep("delegate");
+  assert.equal(delegate.multiple, true);
+  const options = optionsOf(TOUR_TEXT.en, delegate, progress);
+  assert.deepEqual(toggleOption(options, ["remind", "negotiate"], "none"), [
+    "none",
+  ]);
+  assert.deepEqual(toggleOption(options, ["none"], "remind"), ["remind"]);
+});
+
+test("the reasons for idle things are asked only of those who have some, as a multiple choice", () => {
+  assert.ok(!ids({ "idle-items": answer("none") }).includes("idle-why"));
+  for (const count of ["1-3", "4-10", "over-10"])
+    assert.ok(ids({ "idle-items": answer(count) }).includes("idle-why"), count);
+  assert.equal(choiceStep("idle-why").multiple, true);
+});
+
+test("saying yes to looking for something opens one optional line, named in every language", () => {
+  for (const text of Object.values(TOUR_TEXT)) {
+    const yes = optionsOf(text, choiceStep("seeking"), progress).find(
+      (option) => option.id === "yes",
+    );
+    assert.equal(yes?.withText, true);
+    assert.equal(yes?.textLine, text.v3.seekingWhat);
+  }
+});
+
+test("everyone who finishes reaches the end; back stops before the first screen and at the end", () => {
+  for (const role of ["buying", "none"])
+    assert.equal(ids({ "last-role": answer(role) }).at(-1), "end", role);
   const steps = visibleV3Steps({});
-  for (const id of ["what-is", "saved", "about-you", "end"])
-    assert.equal(canGoBack(steps, v3StepById(id)), false, id);
+  assert.equal(canGoBack(steps, v3StepById("part-last-time")), false);
+  assert.equal(canGoBack(steps, v3StepById("end")), false);
   assert.equal(canGoBack(steps, v3StepById("draft")), true);
-  assert.equal(canGoBack(steps, v3StepById("who")), true);
-  assert.equal(nextV3({}, "delivery-worth").id, "saved");
+  assert.equal(canGoBack(steps, v3StepById("gender")), true);
+  assert.equal(nextV3({}, "gender").id, "end");
 });
 
 test("the first answer stays when the step is answered again", () => {
@@ -210,40 +314,45 @@ test("the first answer stays when the step is answered again", () => {
 });
 
 test("shuffled steps keep their first order; the draft's days are stored under draft-day", () => {
-  const headline = v3StepById("headline");
-  const shuffled = withV3Order(progress, headline, () => 0);
-  assert.equal(shuffled.orders.headline.at(-1), "none");
+  const payModel = v3StepById("pay-model");
+  const shuffled = withV3Order(progress, payModel, () => 0);
+  assert.equal(shuffled.orders["pay-model"].at(-1), "not-sure");
   assert.equal(
-    withV3Order(shuffled, headline, () => 0.9),
+    withV3Order(shuffled, payModel, () => 0.9),
     shuffled,
   );
   const draft = withV3Order(progress, v3StepById("draft"), () => 0);
   assert.deepEqual([...draft.orders[DRAFT_DAY_STEP]].sort(), ["sat", "sun"]);
   assert.equal(withV3Order(progress, v3StepById("who")), progress);
+  const wanted = withV3Order(progress, v3StepById("wanted-react"), () => 0);
+  assert.deepEqual([...wanted.orders["wanted-react"]].sort(), [
+    "leave",
+    "offer-later",
+    "offer-now",
+    "rather-not",
+  ]);
 });
 
 test("every option of every step has words in every language", () => {
   for (const text of Object.values(TOUR_TEXT))
     for (const step of choiceSteps()) {
-      const options = optionsOf(text, step, { answers: {}, orders: {} });
-      assert.equal(options.length, step.options.length, step.id);
-      options.forEach((option) =>
-        assert.ok(option.label, `${step.id} ${option.id}`),
-      );
+      const labels: Record<string, string> = text.v3.steps[step.id].options;
+      assert.deepEqual(Object.keys(labels), [...step.options], step.id);
+      step.options.forEach((id) => assert.ok(labels[id], `${step.id} ${id}`));
     }
 });
 
-test("each part after the start opens with its own screen, which stores no answer", () => {
-  for (const part of ["last-time", "the-app", "situations", "price"]) {
+test("each of the four parts opens with its own screen, which stores no answer", () => {
+  assert.equal(V3_SECTIONS.length, 4);
+  for (const part of V3_SECTIONS) {
     const first = V3_STEPS.find((step) => step.section === part);
     assert.equal(first?.kind, "part", part);
     assert.deepEqual(answerIds(first), [], part);
   }
 });
 
-test("every way of paying is a price card with two advantages, in every language", () => {
-  const payModel = choiceSteps().find((step) => step.id === "pay-model");
-  assert.ok(payModel);
+test("every way of paying is a card with its price and the same two facts, in every language", () => {
+  const payModel = choiceStep("pay-model");
   for (const text of Object.values(TOUR_TEXT)) {
     const options = optionsOf(text, payModel, { answers: {}, orders: {} });
     for (const option of options) {
@@ -251,8 +360,70 @@ test("every way of paying is a price card with two advantages, in every language
         assert.equal(option.plan, undefined);
         continue;
       }
-      assert.ok(option.plan?.price && option.detail, option.id);
-      assert.equal(option.plan.benefits.length, 2, option.id);
+      assert.ok(option.plan?.price, option.id);
+      assert.deepEqual(
+        option.plan.facts.map((fact) => fact.label),
+        [text.v3.plans.help, text.v3.plans.pay],
+        option.id,
+      );
+      option.plan.facts.forEach((fact) => assert.ok(fact.value, option.id));
+    }
+  }
+});
+
+test("the current part fills over its longest path, from at least 0.15; finished parts are full", () => {
+  const fill = (answers: V3Progress["answers"], id: string) =>
+    sectionFill(answers, v3StepById(id));
+  // Part 1 counts the whole tried path from the start: the part screen and ten questions.
+  assert.equal(fill({}, "part-last-time"), MIN_SECTION_FILL);
+  assert.equal(fill({}, "who"), MIN_SECTION_FILL);
+  assert.equal(fill({}, "housing"), 2 / 11);
+  assert.equal(fill({}, "last-role"), 3 / 11);
+  const buying = { "last-role": answer("buying") };
+  assert.equal(fill(buying, "last-messages"), 10 / 11);
+  // A failed attempt skips transport, so the steps after it move forward, not back.
+  const failed = { ...buying, "last-outcome": answer("no") };
+  assert.equal(fill(buying, "last-outcome"), 7 / 11);
+  assert.equal(fill(failed, "last-trouble"), 8 / 10);
+  assert.equal(fill(failed, "last-messages"), 9 / 10);
+  // Part 2 counts the reasons until someone says they have nothing idle.
+  assert.equal(fill({}, "idle-items"), 1 / 4);
+  assert.equal(fill({ "idle-items": answer("none") }, "move"), 2 / 3);
+  assert.equal(fill({ "idle-items": answer("1-3") }, "move"), 3 / 4);
+  assert.deepEqual(sectionStates(v3StepById("seeking")), {
+    "last-time": "done",
+    home: "done",
+    "the-app": "current",
+    price: "next",
+  });
+  assert.ok(
+    Object.values(sectionStates(v3StepById("end"))).every(
+      (state) => state === "done",
+    ),
+  );
+});
+
+test("the strip never goes back along any path forward", () => {
+  const paths: V3Progress["answers"][] = [
+    { "last-role": answer("buying"), "last-outcome": answer("yes") },
+    { "last-role": answer("selling"), "last-outcome": answer("no") },
+    { "last-role": answer("none"), "idle-items": answer("none") },
+    { "last-role": answer("giving-away"), "idle-items": answer("over-10") },
+  ];
+  for (const answers of paths) {
+    // Each step is reached with the answers given before it.
+    const steps = visibleV3Steps(answers).filter((step) => step.section);
+    let previous = { section: -1, fill: 0 };
+    const given: V3Progress["answers"] = {};
+    for (const step of steps) {
+      const section = ["last-time", "home", "the-app", "price"].indexOf(
+        step.section ?? "",
+      );
+      const now = sectionFill(given, step);
+      if (section === previous.section)
+        assert.ok(now >= previous.fill, `${step.id} after ${previous.fill}`);
+      previous = { section, fill: now };
+      if (answers[step.id]) given[step.id] = answers[step.id];
     }
   }
 });
@@ -273,6 +444,15 @@ test("answers, events and the session are valid on the wire", () => {
       const sent = { session: SESSION, step: id, ...answer("x"), elapsedMs: 0 };
       assert.ok(studyAnswerSchema.safeParse(sent).success, id);
     }
+  for (const id of ["draft-day", "draft-variant", "draft-price"]) {
+    const sent = {
+      session: SESSION,
+      step: id,
+      ...answer("chf-45"),
+      elapsedMs: 0,
+    };
+    assert.ok(studyAnswerSchema.safeParse(sent).success, id);
+  }
   let recorded = progress;
   for (let index = 0; index < 45; index += 1)
     recorded = withEvent(recorded, "shown", "who", null, new Date(0));
@@ -286,38 +466,94 @@ test("answers, events and the session are valid on the wire", () => {
   assert.ok(studyEventsSchema.safeParse(batch).success);
 });
 
-test("Pako's offer names the day picked and the variant's price, in every language", () => {
+test("Mia confirms the agreed price and time; Pako's reply names the day and the variant's price, in every language", () => {
+  assert.deepEqual(DRAFT_PRICES, { exact: 40, "wrong-price": 45 });
   for (const text of Object.values(TOUR_TEXT))
-    for (const day of DRAFT_DAYS)
+    for (const day of DRAFT_DAYS) {
+      const words = text.v3.draft.days[day];
+      const confirm = text.v3.draft.confirm(words, DRAFT_PRICES.exact);
+      assert.ok(confirm.replace(/\s/g, " ").includes("CHF 40"), confirm);
+      assert.match(confirm, /17[.:]30|17\s+h\s+30|5:30 pm/);
+      assert.match(confirm, new RegExp(words, "i"));
       for (const variant of DRAFT_VARIANTS) {
-        const words = text.v3.draft.days[day];
         const offer = text.v3.draft.offer(words, DRAFT_PRICES[variant]);
         const label = `${day} ${variant} in ${text.v3.draft.chatLabel}`;
         assert.match(offer, new RegExp(words, "i"), label);
-        assert.ok(
-          offer.replace(/\s/g, " ").includes(`CHF ${DRAFT_PRICES[variant]}.`),
-          label,
-        );
+        assert.equal(sentPrice(offer), `chf-${DRAFT_PRICES[variant]}`, label);
       }
-  assert.deepEqual(DRAFT_PRICES, { exact: 40, "wrong-price": 35 });
+    }
 });
 
-test("the draft's variant is drawn once when the task shows and kept", () => {
-  const draft = v3StepById("draft");
-  const exact = withV3Order(progress, draft, () => 0);
-  assert.equal(exact.draftVariant, "exact");
-  assert.equal(
-    withV3Order(progress, draft, () => 0.99).draftVariant,
-    "wrong-price",
+test("two in three participants get the wrong price, drawn once when the task shows and kept", () => {
+  assert.deepEqual(
+    DRAFT_ALLOCATION.filter((variant) => variant === "wrong-price").length,
+    2,
   );
+  assert.equal(DRAFT_ALLOCATION.length, 3);
+  const draft = v3StepById("draft");
+  const variantAt = (draw: number) =>
+    withV3Order(progress, draft, () => draw).draftVariant;
+  assert.equal(variantAt(0), "exact");
+  assert.equal(variantAt(0.34), "wrong-price");
+  assert.equal(variantAt(0.99), "wrong-price");
+  const exact = withV3Order(progress, draft, () => 0);
   assert.equal(withV3Order(exact, draft, () => 0.99).draftVariant, "exact");
   assert.equal(
-    withV3Order(progress, v3StepById("desk"), () => 0).draftVariant,
+    withV3Order(progress, v3StepById("delegate"), () => 0).draftVariant,
     null,
   );
 });
 
-test("a sent offer counts as unchanged only when it is the variant's own draft", () => {
+test("the draft's variant is kept through a reload and stored with the day", async (t) => {
+  const drawn = withV3Order(progress, v3StepById("draft"), () => 0.5);
+  const reloaded = JSON.parse(JSON.stringify(drawn)) as V3Progress;
+  assert.equal(
+    withV3Order(reloaded, v3StepById("draft"), () => 0).draftVariant,
+    "wrong-price",
+  );
+  const stored = {
+    ...reloaded,
+    answers: {
+      "draft-variant": answer("wrong-price"),
+      "draft-price": answer("chf-45"),
+    },
+  };
+  const sent: { step: string; chosen: string[] }[] = [];
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async (_url: string, init: RequestInit) => {
+      sent.push(JSON.parse(String(init.body)));
+      return new Response(null, { status: 200 });
+    },
+  );
+  await v3Job(stored, "draft-variant").send();
+  await v3Job(stored, "draft-price").send();
+  assert.deepEqual(
+    sent.map(({ step, chosen }) => [step, chosen]),
+    [
+      ["draft-variant", ["wrong-price"]],
+      ["draft-price", ["chf-45"]],
+    ],
+  );
+});
+
+test("the price sent is read from the message: one price, several, or none", () => {
+  assert.equal(
+    sentPrice("Great, thanks! So CHF 45, on Saturday at 5:30 pm."),
+    "chf-45",
+  );
+  assert.equal(
+    sentPrice("Abgemacht, CHF 40 am Samstag um 17.30 Uhr."),
+    "chf-40",
+  );
+  assert.equal(sentPrice("Ok pour 40 francs samedi à 17 h 30"), "chf-40");
+  assert.equal(sentPrice("40.- passt, bis 17.30"), "chf-40");
+  assert.equal(sentPrice("Not CHF 45 but CHF 40, see you at 17:30"), "several");
+  assert.equal(sentPrice("See you on Saturday at 17:30!"), "no-price");
+});
+
+test("a sent reply counts as unchanged only when it is the variant's own draft", () => {
   const text = TOUR_TEXT.en.v3.draft;
   for (const variant of DRAFT_VARIANTS) {
     const offer = text.offer(text.days.sat, DRAFT_PRICES[variant]);
@@ -328,71 +564,6 @@ test("a sent offer counts as unchanged only when it is the variant's own draft",
   const corrected = text.offer(text.days.sat, DRAFT_PRICES.exact);
   assert.equal(sentResult("change", corrected, wrong), "sent-changed");
   assert.equal(sentResult("change", wrong, corrected), "sent-changed");
-});
-
-test("the situations open with the desk, then the helper, then the draft; sending follows the draft", () => {
-  const situations = V3_STEPS.filter((step) => step.situation !== undefined);
-  assert.deepEqual(
-    situations.map((step) => [step.id, step.situation]),
-    [
-      ["desk", 1],
-      ["move-it", 2],
-      ["draft", 3],
-    ],
-  );
-  assert.equal(situations.length, SITUATIONS);
-  const core = ids({});
-  assert.equal(core[core.indexOf("draft") + 1], "sending");
-  assert.deepEqual(
-    core.slice(core.indexOf("part-price") + 1, core.indexOf("saved")),
-    ["pack-price", "pay-model", "institution-pay", "delivery-worth"],
-  );
-});
-
-test("sections close in order and are all done after the core", () => {
-  assert.deepEqual(sectionStates(v3StepById("headline")), {
-    you: "done",
-    "last-time": "done",
-    "the-app": "current",
-    situations: "next",
-    price: "next",
-  });
-  assert.ok(
-    Object.values(sectionStates(v3StepById("saved"))).every(
-      (state) => state === "done",
-    ),
-  );
-});
-
-test("the pack ladder starts at CHF 5 for everyone, then asks 8 after yes and 2 after no", () => {
-  const sheet = (answers: Record<string, string>) => ({
-    answers: Object.fromEntries(
-      Object.entries(answers).map(([id, chosen]) => [id, answer(chosen)]),
-    ),
-  });
-  assert.deepEqual(ladderOf(sheet({})), { asked: [], next: 5 });
-  assert.equal(ladderOf(sheet({ "pack-chf-5": "yes" })).next, 8);
-  assert.equal(ladderOf(sheet({ "pack-chf-5": "no" })).next, 2);
-  assert.equal(ladderOf(sheet({ "pack-chf-5": "not-sure" })).next, null);
-  const done = ladderOf(sheet({ "pack-chf-5": "yes", "pack-chf-8": "no" }));
-  assert.equal(done.next, null);
-  assert.deepEqual(done.asked, [
-    { price: 5, answer: "yes" },
-    { price: 8, answer: "no" },
-  ]);
-  assert.equal(
-    ladderOf(sheet({ "pack-chf-5": "no", "pack-chf-2": "yes" })).next,
-    null,
-  );
-  // Showing the ladder draws nothing: the start is the same for everyone.
-  assert.equal(withV3Order(progress, v3StepById("pack-price")), progress);
-});
-
-test("delivery's worth is asked of everyone; the last cost only of those who tried", () => {
-  assert.ok(ids({}).includes("delivery-worth"));
-  assert.ok(ids({ "last-role": answer("none") }).includes("delivery-worth"));
-  assert.ok(ids({ "last-role": answer("selling") }).includes("last-cost"));
-  assert.ok(!ids({ "last-role": answer("none") }).includes("last-cost"));
 });
 
 test("event batches are telemetry and stop at the server's limit per session", () => {
@@ -410,25 +581,6 @@ test("event batches are telemetry and stop at the server's limit per session", (
   );
 });
 
-test("a scene's key moments are recorded once, across replays and reloads", () => {
-  const tapped = withMoment(progress, "tour-sell", 2, "visitor");
-  const auto = withMoment(tapped, "tour-sell", 4, "scene");
-  assert.deepEqual(
-    auto.events.map(({ kind, step, detail }) => [kind, step, detail]),
-    [
-      ["moment-tapped", "tour-sell", "moment-2"],
-      ["moment-auto", "tour-sell", "moment-4"],
-    ],
-  );
-  // A replay taps moment 2 again: nothing new.
-  assert.equal(withMoment(auto, "tour-sell", 2, "visitor"), auto);
-  // A reload keeps the progress, moments included, so the same holds after it.
-  const reloaded = JSON.parse(JSON.stringify(auto)) as V3Progress;
-  assert.deepEqual(withMoment(reloaded, "tour-sell", 4, "scene"), reloaded);
-  // The same moment in another scene still counts.
-  assert.equal(withMoment(auto, "tour-deal", 2, "scene").events.length, 3);
-});
-
 test("going back from last-trouble and changing last-role to none empties the answers left behind", async (t) => {
   const tried: V3Progress = {
     ...progress,
@@ -438,10 +590,9 @@ test("going back from last-trouble and changing last-role to none empties the an
       "last-role": answer("buying"),
       "last-item": answer("furniture"),
       "last-occasion": answer("moving-in"),
-      "last-story": { ...answer(), text: "The seller never answered." },
       "last-trouble": {
         ...answer("transport"),
-        shown: ["transport", "price"],
+        shown: ["transport", "gone"],
         elapsedMs: 4000,
       },
     },
@@ -456,17 +607,17 @@ test("going back from last-trouble and changing last-role to none empties the an
     ...tried,
     answers: { ...tried.answers, "last-role": none },
   });
-  assert.equal(nextV3(changed.answers, "last-role").id, "why-not");
+  assert.equal(nextV3(changed.answers, "last-role").id, "part-home");
   assert.deepEqual(changed.answers["last-trouble"], {
     chosen: [],
     firstChosen: ["transport"],
-    shown: ["transport", "price"],
+    shown: ["transport", "gone"],
     text: "",
     elapsedMs: 4000,
     // Emptying is a new save, so it outranks the answer it replaces.
     revision: 2,
   });
-  for (const id of ["last-item", "last-occasion", "last-story"])
+  for (const id of ["last-item", "last-occasion"])
     assert.deepEqual(
       [changed.answers[id].chosen, changed.answers[id].text],
       [[], ""],
@@ -491,7 +642,7 @@ test("going back from last-trouble and changing last-role to none empties the an
       step: "last-trouble",
       chosen: [],
       firstChosen: ["transport"],
-      shown: ["transport", "price"],
+      shown: ["transport", "gone"],
       text: "",
       elapsedMs: 4000,
       revision: 2,
@@ -499,18 +650,18 @@ test("going back from last-trouble and changing last-role to none empties the an
   ]);
 });
 
-test("a change that keeps the path empties nothing", () => {
+test("a change that keeps the path and the options empties nothing", () => {
   const answers = {
     "last-role": answer("buying"),
-    "last-trouble": answer("price"),
+    "last-item": answer("books"),
   };
-  const selling = {
+  const changed = {
     ...progress,
     answers: { ...answers, "last-role": answer("selling") },
   };
   assert.deepEqual(
-    withoutAnswersOffPath(answers, selling).answers,
-    selling.answers,
+    withoutAnswersOffPath(answers, changed).answers,
+    changed.answers,
   );
 });
 
@@ -526,87 +677,4 @@ test("the start request names the wording version the session began in", async (
   );
   await v3Job({ ...progress, version: "v3-2" }, "session").send();
   assert.equal(sent[0].version, "v3-2");
-});
-
-test("Back after skipping the rest returns to the scene it was skipped from", () => {
-  const touring: V3Progress = {
-    ...progress,
-    answers: {
-      who: answer("epfl"),
-      peek: answer("tour"),
-      "scene-pick": answer("sell"),
-    },
-    stepId: "pilot",
-  };
-  assert.deepEqual(
-    visibleV3Steps(touring.answers)
-      .map((step) => step.id)
-      .slice(-5),
-    ["tour-sell", "tour-deal", "tour-find", "pilot", "end"],
-  );
-  assert.equal(
-    backTarget({ ...touring, skippedFrom: "tour-sell" }).id,
-    "tour-sell",
-  );
-  assert.equal(backTarget(touring).id, "tour-find");
-  assert.equal(backTarget({ ...touring, stepId: "tour-deal" }).id, "tour-sell");
-});
-
-test("each ladder price counts as asked once, from the moment it shows", () => {
-  const at = (answers: Record<string, string> = {}) =>
-    withPriceShown({
-      ...progress,
-      answers: Object.fromEntries(
-        Object.entries(answers).map(([id, chosen]) => [id, answer(chosen)]),
-      ),
-    });
-  const shownSteps = (p: V3Progress) =>
-    p.events.filter((e) => e.kind === "shown").map((e) => e.step);
-  const first = at();
-  assert.deepEqual(shownSteps(first), ["pack-chf-5"]);
-  assert.equal(withPriceShown(first), first, "shown once");
-  const followUp = withPriceShown({
-    ...first,
-    answers: { "pack-chf-5": answer("yes") },
-  });
-  assert.deepEqual(shownSteps(followUp), ["pack-chf-5", "pack-chf-8"]);
-  const done = at({ "pack-chf-5": "yes", "pack-chf-8": "yes" });
-  assert.deepEqual(shownSteps(done), [], "nothing left to show");
-});
-
-test("a feature answered as tried is emptied when the participant turns out never to have tried", () => {
-  const before = {
-    "last-role": answer("selling"),
-    "helped-find": answer("yes"),
-  };
-  const after = withoutAnswersOffPath(before, {
-    ...progress,
-    answers: { ...before, "last-role": answer("none") },
-  });
-  assert.deepEqual(after.answers["helped-find"].chosen, []);
-  assert.deepEqual(after.answers["helped-find"].firstChosen, ["yes"]);
-  assert.equal(after.answers["helped-find"].revision, 2);
-});
-
-test("`finding` is emptied when the role changes its meaning; other obstacles stay", () => {
-  const before = {
-    "last-role": answer("buying"),
-    "last-trouble": answer("finding"),
-  };
-  const selling = withoutAnswersOffPath(before, {
-    ...progress,
-    answers: { ...before, "last-role": answer("selling") },
-  });
-  assert.deepEqual(selling.answers["last-trouble"].chosen, []);
-  const transport = { ...before, "last-trouble": answer("transport") };
-  const kept = withoutAnswersOffPath(transport, {
-    ...progress,
-    answers: { ...transport, "last-role": answer("selling") },
-  });
-  assert.equal(kept.answers["last-trouble"], transport["last-trouble"]);
-  const sameSide = withoutAnswersOffPath(before, {
-    ...progress,
-    answers: { ...before, "last-role": answer("getting-free") },
-  });
-  assert.equal(sameSide.answers["last-trouble"], before["last-trouble"]);
 });

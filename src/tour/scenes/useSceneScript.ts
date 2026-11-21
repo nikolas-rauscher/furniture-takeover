@@ -35,6 +35,8 @@ const SCROLL_MS = 360;
 
 /** The short version's share of every hold and every gap between changes. */
 const BRIEF_PACE = 0.35;
+/** With reduced motion the short version waits only this long before each beat. */
+const REDUCED_BRIEF_HOLD_MS = 300;
 
 /** How long a beat waits for its element, such as a sheet still opening, before the round fails. */
 const ELEMENT_WAIT_MS = 4000;
@@ -106,7 +108,7 @@ function lastCue<State>(beats: readonly Beat<State>[]) {
  * changes in between. A tap clicks the control, so the app's own handler answers.
  * At a key moment the scene waits for the visitor's own tap or drag, and takes
  * it after a few seconds without one. With reduced motion every beat lands at
- * once, after its hold, without the finger. A beat that fails, such as one
+ * once, after its hold, without the finger; the short version skips the holds too. A beat that fails, such as one
  * whose element never appears, stops the round and is passed to `onFail`.
  */
 export function useSceneScript<State>(
@@ -132,7 +134,15 @@ export function useSceneScript<State>(
     const { signal } = run;
     const scroll = reduced ? "auto" : "smooth";
     const doneAt = lastCue(beats);
-    const paced = (ms: number) => (brief ? Math.round(ms * BRIEF_PACE) : ms);
+    // The short version with reduced motion moves on to its last frame, which shows what
+    // the caption describes, after only the app's own moment to render each change; the
+    // full version keeps its holds for reading.
+    const paced = (ms: number) => {
+      if (!brief) return ms;
+      return reduced
+        ? Math.min(ms, REDUCED_BRIEF_HOLD_MS)
+        : Math.round(ms * BRIEF_PACE);
+    };
 
     /** The scene's own finger: it rests on the control, then taps or drags it. */
     async function touchItself(beat: Beat<State>, key: number) {

@@ -106,55 +106,54 @@ test("the v1 results queries run and count eligible participants", async (t) => 
   );
 });
 
+type Answer = string[] | { chosen: string[]; first?: string[]; text?: string };
+
 type Participant = {
   source: string;
   device: "phone" | "desktop";
-  answers: Record<string, string[] | { chosen: string[]; first: string[] }>;
-  draftText?: string;
+  answers: Record<string, Answer>;
   events: [kind: string, step: string | null][];
 };
 
-/** One participant who tried to sell furniture, and one who never tried. */
+/** A seller who finished, a buyer who left at the draft, and one who never tried. */
 const PARTICIPANTS: Participant[] = [
   {
     source: "fmel-atrium",
     device: "phone",
     answers: {
       who: ["epfl"],
+      housing: ["fmel"],
       "last-role": ["selling"],
       "last-item": ["furniture"],
-      "last-trouble": ["transport"],
+      "last-occasion": ["moving-out"],
+      "last-how": ["chat-group"],
+      "last-outcome": ["ongoing"],
+      "last-trouble": ["deadline-pickup"],
+      "last-transport": ["not-yet"],
+      "last-messages": ["6-15"],
+      "idle-items": ["4-10"],
+      "idle-why": ["listing-hassle", "transport"],
       move: ["move-feb"],
-      housing: ["fmel"],
-      headline: ["h-photo"],
-      "helped-find": ["yes"],
-      "helped-sell": ["partly"],
-      "helped-deal": ["na"],
-      stop: ["privacy", "nobody-nearby"],
-      "try-first": ["photo-listing"],
-      sending: { chosen: ["short-updates"], first: ["myself"] },
-      "wanted-react": ["snap"],
-      "wanted-share": ["yes"],
-      "move-it": ["helper"],
-      desk: ["nearer"],
-      "last-cost": ["10-30"],
-      "pack-chf-5": ["yes"],
-      "pack-chf-8": ["no"],
-      "pay-model": ["move-pack"],
-      "institution-pay": ["yes"],
-      "delivery-worth": ["11-20"],
+      "wanted-react": ["offer-now"],
+      seeking: { chosen: ["yes"], text: "A bike" },
       "draft-day": ["sat"],
       "draft-variant": ["wrong-price"],
-      draft: { chosen: ["sent-changed"], first: ["change"] },
+      draft: {
+        chosen: ["sent-unchanged"],
+        first: ["send"],
+        text: "Great, thanks! So CHF 45, on Saturday at 5:30 pm at the Rolex Learning Center. See you then!",
+      },
+      "draft-price": ["chf-45"],
+      delegate: ["answer-questions", "suggest-time"],
+      "pay-model": ["pay-once"],
+      age: ["21-23"],
+      gender: ["woman"],
     },
-    draftText: "Hi Mia! I can pick it up on Saturday at 17:30.",
     events: [
-      ["shown", "who"],
+      ["shown", "part-last-time"],
       ["shown", "draft"],
-      ["shown", "pack-chf-5"],
-      ["shown", "pack-chf-8"],
+      ["shown", "end"],
       ["core-complete", null],
-      ["shown", "pilot"],
       ["end", null],
       ["share", null],
     ],
@@ -164,35 +163,62 @@ const PARTICIPANTS: Participant[] = [
     device: "desktop",
     answers: {
       who: ["no"],
-      "last-role": ["none"],
-      "why-not": ["hassle"],
-      move: ["no-plan"],
       housing: ["flat"],
-      headline: ["none"],
-      "helped-find": ["no"],
-      "helped-sell": ["yes"],
-      "helped-deal": ["no"],
-      stop: ["nothing"],
-      "try-first": ["none"],
-      sending: ["myself"],
+      "last-role": ["buying"],
+      "last-item": ["books"],
+      "last-occasion": ["no-move"],
+      "last-how": ["facebook"],
+      "last-outcome": ["yes"],
+      "last-trouble": ["finding"],
+      "last-transport": ["foot"],
+      "last-messages": ["1-5"],
+      "idle-items": ["1-3"],
+      "idle-why": ["might-need"],
+      move: ["no-or-later"],
       "wanted-react": ["rather-not"],
-      "wanted-share": ["no"],
-      "move-it": ["carry-bike"],
-      desk: ["cheaper"],
-      "draft-variant": ["exact"],
-      draft: { chosen: ["sent-own"], first: ["own"] },
-      "pack-chf-5": ["no"],
-      "pack-chf-2": ["yes"],
+      seeking: ["no"],
+      "draft-variant": ["wrong-price"],
+      draft: {
+        chosen: ["sent-changed"],
+        first: ["change"],
+        text: "Great, thanks! So CHF 40, on Sunday at 5:30 pm.",
+      },
+      "draft-price": ["chf-40"],
+      delegate: ["none"],
       "pay-model": ["free"],
-      "delivery-worth": ["nothing"],
     },
-    draftText: "Hi, is Sunday at 18:00 possible?",
+    events: [
+      ["shown", "part-last-time"],
+      ["shown", "last-role"],
+      // Left at the draft, before the end.
+      ["shown", "draft"],
+    ],
+  },
+  {
+    source: "poster-rlc",
+    device: "phone",
+    answers: {
+      who: ["unil"],
+      "last-role": ["none"],
+      "idle-items": ["none"],
+      move: ["move-jun"],
+      "wanted-react": ["offer-later"],
+      seeking: { chosen: ["yes"], text: "A desk lamp" },
+      "draft-variant": ["exact"],
+      draft: {
+        chosen: ["sent-own"],
+        first: ["own"],
+        text: "Hi Mia, CHF 40 on Saturday works.",
+      },
+      "draft-price": ["chf-40"],
+      delegate: ["remind"],
+      "pay-model": ["monthly"],
+    },
     events: [
       ["shown", "who"],
-      ["shown", "last-role"],
-      ["shown", "pack-chf-5"],
-      // Left after answering CHF 2, before the core was saved.
-      ["shown", "pack-chf-2"],
+      ["shown", "end"],
+      ["core-complete", null],
+      ["end", null],
     ],
   },
 ];
@@ -200,7 +226,7 @@ const PARTICIPANTS: Participant[] = [
 async function addParticipant(
   db: Awaited<ReturnType<typeof studyDatabase>>["db"],
   participant: Participant,
-  version = "v3-1",
+  version = "v4-1",
 ) {
   const session = randomUUID();
   await db.query("select public.study_start($1,'v3',$2,'en',$3,$4)", [
@@ -210,10 +236,11 @@ async function addParticipant(
     participant.device,
   ]);
   for (const [step, answer] of Object.entries(participant.answers)) {
-    const { chosen, first } = Array.isArray(answer)
-      ? { chosen: answer, first: answer }
-      : answer;
-    const text = step === "draft" ? (participant.draftText ?? "") : "";
+    const {
+      chosen,
+      first = chosen,
+      text = "",
+    } = Array.isArray(answer) ? { chosen: answer } : answer;
     await db.query("select public.study_save_answer($1,$2,$3,$4,'{}',$5,700)", [
       session,
       step,
@@ -235,183 +262,177 @@ async function addParticipant(
   ]);
 }
 
+/** Forms at the end: launch news, try early, interview, future surveys, roles, place. */
 async function addVolunteers(
   db: Awaited<ReturnType<typeof studyDatabase>>["db"],
 ) {
   const forms = [
-    ["s1", "seller"],
-    ["s2", "seller"],
-    ["b1", "buyer"],
-    ["b2", "buyer"],
-    ["b3", "buyer"],
-    ["x1", "both"],
+    ["s1", ["sell"]],
+    ["s2", ["give-away"]],
+    ["b1", ["buy"]],
+    ["b2", ["get-free"]],
+    ["b3", ["buy", "get-free"]],
+    ["x1", ["buy", "sell"]],
+    ["u1", ["not-sure"]],
   ] as const;
-  for (const [name, role] of forms)
+  for (const [name, roles] of forms)
     await db.query(
-      "select public.study_save_pilot($1,false,true,false,$2,'atrium')",
-      [`${name}@epfl.ch`, role],
+      "select public.study_save_pilot($1,false,true,false,false,$2,'atrium')",
+      [`${name}@epfl.ch`, roles],
     );
   await db.query(
-    "select public.study_save_pilot('flat@unil.ch',false,true,false,'seller','flat')",
+    "select public.study_save_pilot('flat@unil.ch',false,true,true,false,'{sell}','flat')",
   );
   await db.query(
-    "select public.study_save_pilot('later@unil.ch',true,false,true,null,null)",
+    "select public.study_save_pilot('later@unil.ch',true,false,false,true,'{}',null)",
   );
 }
 
 const rowsOf = (rows: Record<string, unknown>[], ...columns: string[]) =>
   rows.map((row) => columns.map((column) => row[column]));
 
-test("the v3 results queries run on v3 sessions of the named version only", async (t) => {
+/** The two-sided 95% Wilson lower bound, rounded as the queries round it. */
+const wilsonLow = (k: number, n: number) => {
+  const z = 1.96;
+  const centre = (k + (z * z) / 2) / (n + z * z);
+  const half = (z * Math.sqrt((k * (n - k)) / n + (z * z) / 4)) / (n + z * z);
+  return Math.round((centre - half) * 1000) / 1000;
+};
+
+/** A rounded numeric column, which the driver returns as text. */
+const numberOf = (value: unknown) => (value === null ? null : Number(value));
+
+async function v4Queries() {
+  const { queries, deletion } = await namedV3Queries();
+  const query =
+    (run: (sql: string) => Promise<Record<string, unknown>[]>) =>
+    async (name: string) => {
+      const sql = queries.get(name);
+      assert.ok(sql, `query ${name} is documented`);
+      return run(sql);
+    };
+  return { queries, deletion, query };
+}
+
+test("the v4 results queries run on the sessions of the named version only", async (t) => {
   const { db, run, count } = await database(t);
   for (const participant of PARTICIPANTS) await addParticipant(db, participant);
   await addParticipant(db, PARTICIPANTS[0], "v3-pilot");
   await db.query(
-    "select public.study_start($1,'v1','v3-1',null,'moodle','phone')",
+    "select public.study_start($1,'v1','v4-1',null,'moodle','phone')",
     [randomUUID()],
   );
   await addVolunteers(db);
-  const { queries, deletion } = await namedV3Queries();
-  const query = async (name: string) => {
-    const sql = queries.get(name);
-    assert.ok(sql, `query ${name} is documented`);
-    return run(sql);
-  };
+  const { queries, deletion, query: queryWith } = await v4Queries();
+  const query = queryWith(run);
 
   assert.deepEqual(
     rowsOf(
       await query("funnel"),
       "source",
+      "device",
       "started",
       "answered_any",
       "core_complete",
       "end_reached",
       "shared",
-    ),
+    ).sort(),
     [
-      ["fmel-atrium", 1, 1, 1, 1, 1],
-      ["friend", 1, 1, 0, 0, 0],
+      ["fmel-atrium", "phone", 1, 1, 1, 1, 1],
+      ["friend", "desktop", 1, 1, 0, 0, 0],
+      ["poster-rlc", "phone", 1, 1, 1, 1, 0],
     ],
   );
   assert.deepEqual(
     rowsOf(await query("drop-off"), "step", "shown", "stopped_here"),
     [
-      ["pack-chf-5", 2, 0],
-      ["who", 2, 0],
-      ["draft", 1, 0],
+      ["draft", 2, 1],
+      ["end", 2, 0],
+      ["part-last-time", 2, 0],
       ["last-role", 1, 0],
-      ["pack-chf-2", 1, 1],
-      ["pack-chf-8", 1, 0],
-      ["pilot", 1, 0],
+      ["who", 1, 0],
     ],
   );
   assert.deepEqual(
     rowsOf(await query("split"), "option", "chosen", "answered"),
-    [["hassle", 1, "1"]],
+    [
+      ["epfl", 1, "3"],
+      ["no", 1, "3"],
+      ["unil", 1, "3"],
+    ],
   );
   assert.deepEqual(
     rowsOf(
-      await query("d1-places"),
-      "place",
-      "sellers",
-      "buyers",
-      "both_roles",
-      "people",
-      "meets_rule",
+      await query("rq1-coordination"),
+      "side",
+      "answered",
+      "coordination",
+      "finding_listing",
     ),
     [
-      ["atrium", 2, 3, 1, 6, true],
-      ["flat", 1, 0, 0, 1, false],
-    ],
-  );
-  assert.deepEqual(await query("d1-forms"), [
-    {
-      form_shown: 1,
-      forms: 8,
-      launch_news: 1,
-      try_early: 7,
-      future_surveys: 1,
-    },
-  ]);
-  assert.deepEqual(
-    rowsOf(await query("d1-move-housing"), "housing", "move", "participants"),
-    [
-      ["flat", "no-plan", 1],
-      ["fmel", "move-feb", 1],
+      ["all", 2, 1, 1],
+      ["buying", 1, 0, 1],
+      ["passing-on", 1, 1, 0],
     ],
   );
   assert.deepEqual(
-    rowsOf(await query("d1b-desk"), "subgroup", "option", "chosen", "answered"),
+    (await query("rq1-coordination")).map((row) =>
+      numberOf(row.coordination_low),
+    ),
+    [wilsonLow(1, 2), wilsonLow(0, 1), wilsonLow(1, 1)],
+  );
+  assert.deepEqual(
+    rowsOf(await query("rq1-context"), "step", "answer", "chosen", "answered"),
     [
-      ["all", "cheaper", 1, "2"],
-      ["all", "nearer", 1, "2"],
-      ["fmel", "nearer", 1, "1"],
-      ["rest", "cheaper", 1, "1"],
+      ["last-how", "chat-group", 1, "2"],
+      ["last-how", "facebook", 1, "2"],
+      ["last-messages", "1-5", 1, "2"],
+      ["last-messages", "6-15", 1, "2"],
+      ["last-outcome", "ongoing", 1, "2"],
+      ["last-outcome", "yes", 1, "2"],
+      ["last-transport", "foot", 1, "2"],
+      ["last-transport", "not-yet", 1, "2"],
     ],
   );
   assert.deepEqual(
-    rowsOf(await query("d2-obstacles"), "side", "option", "named", "chosen"),
+    rowsOf(await query("rq2-idle"), "subgroup", "answered", "with_idle"),
     [
-      ["all", "transport", true, 1],
-      ["seller", "transport", true, 1],
+      ["all", 3, 2],
+      ["moving-by-june", 2, 1],
+      ["rest", 1, 1],
     ],
   );
   assert.deepEqual(
     rowsOf(
-      await query("d3-transport"),
-      "item",
-      "subgroup",
+      await query("rq2-reasons"),
       "option",
       "chosen",
-      "answered",
+      "participants",
+      "effort_or_transport",
     ),
     [
-      ["delivery-worth", "all", "11-20", 1, "2"],
-      ["delivery-worth", "all", "nothing", 1, "2"],
-      ["delivery-worth", "furniture", "11-20", 1, "1"],
-      ["delivery-worth", "rest", "nothing", 1, "1"],
-      ["move-it", "all", "carry-bike", 1, "2"],
-      ["move-it", "all", "helper", 1, "2"],
-      ["move-it", "furniture", "helper", 1, "1"],
-      ["move-it", "rest", "carry-bike", 1, "1"],
-    ],
-  );
-  // Yes at CHF 2 counts the yes at CHF 5 too: both entered, both would pay CHF 2.
-  assert.deepEqual(
-    rowsOf(
-      await query("d4-ladder"),
-      "subgroup",
-      "entered",
-      "yes_2",
-      "yes_5",
-      "yes_8",
-    ),
-    [
-      ["all", 2, 2, 1, 0],
-      ["moving-by-june", 1, 1, 1, 0],
-      ["rest", 1, 1, 0, 0],
+      ["listing-hassle", 1, 2, 1],
+      ["might-need", 1, 2, 1],
+      ["transport", 1, 2, 1],
     ],
   );
   assert.deepEqual(
-    rowsOf(
-      await query("d9-pay-model"),
-      "subgroup",
-      "model",
-      "paid",
-      "chosen",
-      "answered",
-      "paid_answered",
-    ),
+    rowsOf(await query("rq3-wanted"), "step", "answer", "chosen", "answered"),
     [
-      ["all", "move-pack", true, 1, "2", "1"],
-      ["all", "free", false, 1, "2", "1"],
-      ["epfl-unil", "move-pack", true, 1, "1", "1"],
-      ["rest", "free", false, 1, "1", null],
+      ["seeking", "yes", 2, "3"],
+      ["seeking", "no", 1, "3"],
+      ["wanted-react", "offer-later", 1, "3"],
+      ["wanted-react", "offer-now", 1, "3"],
+      ["wanted-react", "rather-not", 1, "3"],
     ],
   );
+  assert.deepEqual(rowsOf(await query("rq3-seeking-texts"), "text"), [
+    ["A bike"],
+    ["A desk lamp"],
+  ]);
   assert.deepEqual(
     rowsOf(
-      await query("d5a-draft"),
+      await query("rq4-draft"),
       "variant",
       "final",
       "first",
@@ -420,89 +441,112 @@ test("the v3 results queries run on v3 sessions of the named version only", asyn
       "shown_task",
     ),
     [
-      ["exact", "sent-own", "own", 1, 1, 1],
-      ["wrong-price", "sent-changed", "change", 1, 1, 1],
+      ["exact", "sent-own", "own", 1, 1, 2],
+      ["wrong-price", "sent-changed", "change", 1, 2, 2],
+      ["wrong-price", "sent-unchanged", "send", 1, 2, 2],
+    ],
+  );
+  const unchanged = await query("rq4-unchanged");
+  assert.deepEqual(
+    rowsOf(unchanged, "variant", "completed", "sent_unchanged"),
+    [
+      ["exact", 1, 0],
+      ["wrong-price", 2, 1],
     ],
   );
   assert.deepEqual(
-    rowsOf(await query("d5a-texts"), "variant", "final", "chosen_day", "text"),
+    unchanged.map((row) => numberOf(row.unchanged_low)),
+    [wilsonLow(0, 1), wilsonLow(1, 2)],
+  );
+  assert.deepEqual(
+    rowsOf(await query("rq4-price"), "variant", "price", "participants"),
     [
+      ["exact", "chf-40", 1],
+      ["wrong-price", "chf-40", 1],
+      ["wrong-price", "chf-45", 1],
+    ],
+  );
+  assert.deepEqual(
+    rowsOf(
+      await query("rq4-texts"),
+      "variant",
+      "final",
+      "price",
+      "text",
+    ).sort(),
+    [
+      ["exact", "sent-own", "chf-40", "Hi Mia, CHF 40 on Saturday works."],
       [
         "wrong-price",
         "sent-changed",
-        "sat",
-        "Hi Mia! I can pick it up on Saturday at 17:30.",
+        "chf-40",
+        "Great, thanks! So CHF 40, on Sunday at 5:30 pm.",
       ],
-      ["exact", "sent-own", null, "Hi, is Sunday at 18:00 possible?"],
-    ],
-  );
-  assert.deepEqual(
-    rowsOf(await query("d5b-sending"), "answer", "chosen", "answered"),
-    [
-      ["myself", 1, "2"],
-      ["short-updates", 1, "2"],
     ],
   );
   assert.deepEqual(
     rowsOf(
-      await query("d7-helped"),
-      "feature",
-      "wording",
-      "answer",
+      await query("rq4-delegate"),
+      "variant",
+      "task",
       "chosen",
-      "answered",
+      "participants",
     ),
     [
-      ["helped-deal", "tried", "na", 1, "1"],
-      ["helped-deal", "never-tried", "no", 1, "1"],
-      ["helped-find", "tried", "yes", 1, "1"],
-      ["helped-find", "never-tried", "no", 1, "1"],
-      ["helped-sell", "tried", "partly", 1, "1"],
-      ["helped-sell", "never-tried", "yes", 1, "1"],
+      ["all", "answer-questions", 1, 3],
+      ["all", "none", 1, 3],
+      ["all", "remind", 1, 3],
+      ["all", "suggest-time", 1, 3],
+      ["exact", "remind", 1, 1],
+      ["wrong-price", "answer-questions", 1, 2],
+      ["wrong-price", "none", 1, 2],
+      ["wrong-price", "suggest-time", 1, 2],
     ],
   );
   assert.deepEqual(
-    rowsOf(await query("d7-try-first"), "option", "feature", "chosen"),
+    rowsOf(
+      await query("rq5-pay-model"),
+      "side",
+      "model",
+      "paid",
+      "chosen",
+      "answered",
+      "paid_answered",
+    ),
     [
-      ["photo-listing", true, 1],
-      ["none", false, 1],
+      ["all", "free", false, 1, "3", "2"],
+      ["all", "monthly", true, 1, "3", "2"],
+      ["all", "pay-once", true, 1, "3", "2"],
+      ["buying", "free", false, 1, "1", null],
+      ["none", "monthly", true, 1, "1", "1"],
+      ["passing-on", "pay-once", true, 1, "1", "1"],
     ],
   );
-  assert.deepEqual(
-    rowsOf(await query("d8-stop"), "option", "chosen", "answered"),
-    [
-      ["nobody-nearby", 1, 2],
-      ["nothing", 1, 2],
-      ["privacy", 1, 2],
-    ],
-  );
-  assert.deepEqual(rowsOf(await query("d6-headline"), "subgroup", "option"), [
-    ["all", "h-photo"],
-    ["all", "none"],
-    ["epfl-unil", "h-photo"],
-    ["rest", "none"],
+  assert.deepEqual(await query("forms"), [
+    {
+      end_reached: 2,
+      forms: 9,
+      launch_news: 1,
+      try_early: 8,
+      interview: 1,
+      future_surveys: 1,
+    },
   ]);
   assert.deepEqual(
     rowsOf(
-      await query("d11-wanted"),
-      "step",
-      "subgroup",
-      "answer",
-      "chosen",
-      "answered",
+      await query("forms-places"),
+      "place",
+      "sellers",
+      "buyers",
+      "undecided",
+      "people",
     ),
     [
-      ["wanted-react", "all", "rather-not", 1, "2"],
-      ["wanted-react", "all", "snap", 1, "2"],
-      ["wanted-react", "fmel", "snap", 1, "1"],
-      ["wanted-react", "rest", "rather-not", 1, "1"],
-      ["wanted-share", "all", "no", 1, "2"],
-      ["wanted-share", "all", "yes", 1, "2"],
-      ["wanted-share", "fmel", "yes", 1, "1"],
-      ["wanted-share", "rest", "no", 1, "1"],
+      ["atrium", 3, 4, 1, 7],
+      ["flat", 1, 0, 0, 1],
     ],
   );
-  assert.equal(queries.size, 19);
+  assert.equal(queries.size, 17);
 
   await runDeletion(run, deletion);
   for (const table of [
@@ -515,7 +559,7 @@ test("the v3 results queries run on v3 sessions of the named version only", asyn
     assert.equal(await count(table), 0);
 });
 
-test("answers emptied by going back count as not answered in the v3 queries", async (t) => {
+test("answers emptied by going back count as not answered in the v4 queries", async (t) => {
   const { db, run } = await database(t);
   await addParticipant(db, {
     source: "friends",
@@ -525,8 +569,8 @@ test("answers emptied by going back count as not answered in the v3 queries", as
       "last-role": { chosen: ["none"], first: ["buying"] },
       "last-item": { chosen: [], first: ["furniture"] },
       "last-trouble": { chosen: [], first: ["transport"] },
-      "why-not": ["hassle"],
-      "move-it": ["helper"],
+      "idle-items": ["none"],
+      "idle-why": { chosen: [], first: ["might-need"] },
     },
     events: [["shown", "who"]],
   });
@@ -534,26 +578,26 @@ test("answers emptied by going back count as not answered in the v3 queries", as
     source: "poster-rlc",
     device: "desktop",
     answers: { age: [] },
-    events: [["shown", "who"]],
+    events: [["shown", "part-last-time"]],
   });
-  const { queries } = await namedV3Queries();
-  const query = async (name: string) => {
-    const sql = queries.get(name);
-    assert.ok(sql, `query ${name} is documented`);
-    return run(sql);
-  };
-  assert.deepEqual(await query("d2-obstacles"), []);
+  const { query: queryWith } = await v4Queries();
+  const query = queryWith(run);
   assert.deepEqual(
     rowsOf(
-      await query("d3-transport"),
-      "item",
-      "subgroup",
-      "option",
+      await query("rq1-coordination"),
+      "side",
       "answered",
+      "coordination",
+      "coordination_low",
     ),
+    [["all", 0, 0, null]],
+  );
+  assert.deepEqual(await query("rq2-reasons"), []);
+  assert.deepEqual(
+    rowsOf(await query("rq2-idle"), "subgroup", "answered", "with_idle"),
     [
-      ["move-it", "all", "helper", "1"],
-      ["move-it", "rest", "helper", "1"],
+      ["all", 1, 0],
+      ["rest", 1, 0],
     ],
   );
   assert.deepEqual(

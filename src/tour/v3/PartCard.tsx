@@ -1,19 +1,19 @@
 import { useId } from "react";
-import { Banknote, Clock, LampDesk, Sparkles } from "@/components/icons";
+import { Banknote, Clock, Package, Sparkles } from "@/components/icons";
 import type { IntroIcon } from "@/components/onboarding/onboardingIcons";
 import { useTourText } from "../i18n/TourLanguage";
-import { V3_SECTIONS, type V3Part } from "./v3Script";
+import { V3_SECTIONS, type V3Section } from "./v3Script";
 
-/** Each part's picture: the last time, the app, the situations' desk and money. */
-const ICONS: Record<V3Part, IntroIcon> = {
+/** Each part's picture: the last time, things at home, the app and money. */
+const ICONS: Record<V3Section, IntroIcon> = {
   "last-time": Clock,
+  home: Package,
   "the-app": Sparkles,
-  situations: LampDesk,
   price: Banknote,
 };
 
 /** Opens a part of the survey: which part it is, its name and what it asks. */
-export default function PartCard({ section }: { section: V3Part }) {
+export default function PartCard({ section }: { section: V3Section }) {
   const { v3 } = useTourText();
   const titleId = useId();
   const Icon = ICONS[section];

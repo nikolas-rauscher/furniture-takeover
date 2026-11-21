@@ -63,8 +63,9 @@ test("the Supabase transport calls the study functions with the service key", as
     email: "ada@epfl.ch",
     launchNews: false,
     tryEarly: true,
+    interview: true,
     futureSurveys: true,
-    role: "buyer",
+    roles: ["buy"],
     place: "flat",
   });
   await study.withdraw({ session });
@@ -106,8 +107,9 @@ test("the Supabase transport calls the study functions with the service key", as
     p_email: "ada@epfl.ch",
     p_launch_news: false,
     p_try_early: true,
+    p_interview: true,
     p_future_surveys: true,
-    p_role: "buyer",
+    p_roles: ["buy"],
     p_place: "flat",
   });
   assert.deepEqual(bodyOf(calls[5]), { p_session: session });
@@ -134,23 +136,6 @@ test("a v1 start request without survey or language reaches the database as v1",
   assert.equal(bodyOf(calls[0]).p_survey, "v1");
   assert.equal(bodyOf(calls[0]).p_language, null);
   assert.equal(bodyOf(calls[1]).p_first_chosen, null);
-});
-
-test("the Supabase transport reads the shared results and checks their shape", async (t) => {
-  let body: unknown = {
-    ready: true,
-    desk: { answered: 20, options: [{ option: "nearer", count: 20 }] },
-    trouble: { answered: 0, options: [] },
-  };
-  const calls = fakeSupabase(t, () => Response.json(body));
-  assert.deepEqual(await store().results("v3-3"), body);
-  assert.match(calls[0].url, /\/rpc\/study_results$/);
-  assert.deepEqual(bodyOf(calls[0]), { p_version: "v3-3" });
-  body = { ready: true };
-  await assert.rejects(async () => store().results("v3-3"), {
-    code: "STUDY_UNAVAILABLE",
-    status: 503,
-  });
 });
 
 test("the Supabase transport turns named database errors into API errors", async (t) => {

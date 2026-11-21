@@ -9,14 +9,18 @@ import { Check } from "@/components/icons";
 import type { IntroIcon } from "./onboardingIcons";
 
 export type ChoiceTint = "sky" | "sand" | "butter";
+/** A price card: the price beside the title, then label and value rows. */
+export type ChoicePlan = {
+  price: string;
+  facts: readonly { label: string; value: string }[];
+};
 export type ChoiceOption<Id extends string> = {
   id: Id;
   title: string;
   detail?: string;
   /** A tinted tile before the text; the study's plain answers go without. */
   tile?: { icon: IntroIcon; tint: ChoiceTint };
-  /** A price card: the price under the title, the advantages under the detail. */
-  plan?: { price: string; benefits: readonly string[] };
+  plan?: ChoicePlan;
 };
 export type ChoiceListProps<Id extends string> = {
   /** The question, as the accessible name of the group. */
@@ -125,19 +129,25 @@ export default function ChoiceList<Id extends string>({
                 </span>
               )}
               <span className="ob-choice-text">
-                <span className="ob-choice-title">{option.title}</span>
-                {option.plan && (
-                  <span className="ob-choice-price">{option.plan.price}</span>
-                )}
+                <span className="ob-choice-head">
+                  <span className="ob-choice-title">{option.title}</span>
+                  {option.plan && (
+                    <span className="ob-choice-price">{option.plan.price}</span>
+                  )}
+                </span>
                 {option.detail && (
                   <span className="ob-choice-detail">{option.detail}</span>
                 )}
                 {option.plan && (
-                  <span className="ob-choice-benefits">
-                    {option.plan.benefits.map((benefit) => (
-                      <span key={benefit} className="ob-choice-benefit">
-                        <Check size={14} strokeWidth={2.6} aria-hidden="true" />
-                        {benefit}
+                  <span className="ob-choice-facts">
+                    {option.plan.facts.map((fact) => (
+                      <span key={fact.label} className="ob-choice-fact">
+                        <span className="ob-choice-fact-label">
+                          {fact.label}
+                        </span>
+                        <span className="ob-choice-fact-value">
+                          {fact.value}
+                        </span>
                       </span>
                     ))}
                   </span>

@@ -11,12 +11,7 @@ import {
 } from "../shared/study.ts";
 import { AgentError } from "./errors.ts";
 import { createAgentServer } from "./http.ts";
-import {
-  STUDY_BODY_LIMIT,
-  STUDY_RESULTS_MAX_AGE_MS,
-  STUDY_RESULTS_READS_PER_MINUTE,
-  STUDY_WRITES_PER_MINUTE,
-} from "./routes/study.ts";
+import { STUDY_BODY_LIMIT, STUDY_WRITES_PER_MINUTE } from "./routes/study.ts";
 import type { StudyAccess } from "./routes/types.ts";
 import { createAgentService } from "./service.ts";
 import { createSqliteStudyStore } from "./study-sqlite.ts";
@@ -93,8 +88,9 @@ const pilotBody = {
   email: "ada@epfl.ch",
   launchNews: true,
   tryEarly: true,
+  interview: false,
   futureSurveys: false,
-  role: "both",
+  roles: ["buy", "sell"],
   place: "triaudes",
 };
 const eventBody = (seq: number) => ({
@@ -115,7 +111,6 @@ const unusedStore = (): StudyStore => {
     saveContact: unused,
     savePilot: unused,
     withdraw: unused,
-    results: unused,
     reportRows: unused,
   };
 };
@@ -139,9 +134,6 @@ test("a deployment without contact and deletion date reports the study as closed
     assert.equal(refused.status, 403);
     assert.equal(await errorCode(refused), "STUDY_CLOSED");
   }
-  const results = await fetch(url + STUDY_ROUTES.results);
-  assert.equal(results.status, 403);
-  assert.equal(await errorCode(results), "STUDY_CLOSED");
 });
 
 test("an open study reports its contact and deletion date", async (t) => {
@@ -197,7 +189,6 @@ test("collection closes at the start of the deletion date; withdrawals and the r
     assert.equal(refused.status, 403, route);
     assert.equal(await errorCode(refused), "STUDY_CLOSED");
   }
-  assert.equal((await fetch(url + STUDY_ROUTES.results)).status, 403);
   const removed = await post(url, STUDY_ROUTES.withdrawals, { session });
   assert.equal(removed.status, 200);
   assert.deepEqual(await removed.json(), { removed: true });
@@ -338,7 +329,7 @@ test("events arrive in batches of up to 40 and are checked one by one", async (t
   assert.equal(unknown.status, 404);
 });
 
-test("the form at the end needs one ticked box, and role and place exactly when trying early", async (t) => {
+test("the form at the end needs one of its four ticks, and roles and place exactly when trying early", async (t) => {
   const url = await startServer(t, { study: openStudy(t) });
   const saved = await post(url, STUDY_ROUTES.pilot, pilotBody);
   assert.equal(saved.status, 200);
@@ -346,17 +337,28 @@ test("the form at the end needs one ticked box, and role and place exactly when 
     ...pilotBody,
     email: "bo@unil.ch",
     tryEarly: false,
-    role: null,
+    roles: [],
     place: null,
   };
   assert.equal((await post(url, STUDY_ROUTES.pilot, newsOnly)).status, 200);
+  const chatOnly = {
+    ...newsOnly,
+    email: "cy@epfl.ch",
+    launchNews: false,
+    interview: true,
+  };
+  assert.equal((await post(url, STUDY_ROUTES.pilot, chatOnly)).status, 200);
   for (const change of [
-    { launchNews: false, tryEarly: false, role: null, place: null },
+    { launchNews: false, tryEarly: false, roles: [], place: null },
+    { interview: undefined },
     { place: "unknown-place" },
     { place: null },
-    { role: null },
+    { roles: [] },
+    { roles: ["sell", "sell"] },
+    { roles: ["not-sure", "buy"] },
+    { role: "both" },
     { tryEarly: false },
-    { role: "sell" },
+    { roles: ["seller"] },
     { items: ["furniture"] },
     { session: randomUUID() },
   ]) {
@@ -397,8 +399,9 @@ test("a repeated address gets the same answer as a new one and changes nothing",
     {
       launchNews: true,
       tryEarly: true,
+      interview: false,
       futureSurveys: false,
-      role: "both",
+      roles: ["buy", "sell"],
       place: "triaudes",
     },
   ]);
@@ -419,77 +422,6 @@ test("withdrawing removes a session and answers the same when repeated", async (
     v3AnswerBody(session, "who", ["epfl"]),
   );
   assert.equal(answer.status, 404);
-});
-
-const resultsOf = (url: string, version: string) =>
-  fetch(`${url}${STUDY_ROUTES.results}?version=${version}`);
-
-test("shared results are read at most once a minute for each wording version", async (t) => {
-  let time = Date.parse("2026-11-30T10:00:00Z");
-  const reads: string[] = [];
-  const store = {
-    ...unusedStore(),
-    results: (version: string) => {
-      reads.push(version);
-      return { ready: false as const, read: reads.length };
-    },
-  };
-  const url = await startServer(t, {
-    study: openStudy(t, { store, now: () => new Date(time) }),
-  });
-  const read = async (version: string) =>
-    (await (await resultsOf(url, version)).json()).read;
-  assert.equal(await read("v3-3"), 1);
-  assert.equal(await read("v3-4"), 2);
-  time += STUDY_RESULTS_MAX_AGE_MS - 1;
-  assert.equal(await read("v3-3"), 1);
-  assert.equal(await read("v3-4"), 2);
-  time += 1;
-  assert.equal(await read("v3-3"), 3);
-  assert.deepEqual(reads, ["v3-3", "v3-4", "v3-3"]);
-});
-
-test("shared results are asked for with a valid wording version", async (t) => {
-  const url = await startServer(t, { study: openStudy(t) });
-  for (const query of [
-    "",
-    "?version=",
-    "?version=V3-3",
-    "?version=v3%203",
-    `?version=${"v".repeat(21)}`,
-  ]) {
-    const refused = await fetch(url + STUDY_ROUTES.results + query);
-    assert.equal(refused.status, 400, query);
-    assert.equal(await errorCode(refused), "INVALID_STUDY_REQUEST");
-  }
-  assert.deepEqual(await (await resultsOf(url, "v3-3")).json(), {
-    ready: false,
-  });
-});
-
-test("reads behind the shared results' cache are capped per minute", async (t) => {
-  let time = Date.parse("2026-11-30T10:00:00Z");
-  let reads = 0;
-  const store = {
-    ...unusedStore(),
-    results: () => {
-      reads += 1;
-      return { ready: false as const };
-    },
-  };
-  const url = await startServer(t, {
-    study: openStudy(t, { store, now: () => new Date(time) }),
-  });
-  for (let n = 0; n < STUDY_RESULTS_READS_PER_MINUTE; n++)
-    assert.equal((await resultsOf(url, `v${n}`)).status, 200);
-  const busy = await resultsOf(url, "other");
-  assert.equal(busy.status, 429);
-  assert.equal(await errorCode(busy), "STUDY_BUSY");
-  assert.equal(busy.headers.get("retry-after"), "60");
-  assert.equal((await resultsOf(url, "v0")).status, 200, "a kept version");
-  assert.equal(reads, STUDY_RESULTS_READS_PER_MINUTE);
-  time += 60_000;
-  assert.equal((await resultsOf(url, "other")).status, 200);
 });
 
 test("a contact is accepted with and without a session, and an unknown session is refused", async (t) => {

@@ -384,7 +384,8 @@ function celebrationWords(moment: ChatMoment): ReactNode {
  */
 export function ChatCelebration({ moment }: { moment: ChatMoment }) {
   return (
-    <motion.p
+    // A div, not a paragraph: the confetti inside it is a div of its own.
+    <motion.div
       className="chat-celebration"
       data-kind={moment.kind}
       role="status"
@@ -402,7 +403,7 @@ export function ChatCelebration({ moment }: { moment: ChatMoment }) {
         )}
       </span>
       <span className="chat-celebration-text">{celebrationWords(moment)}</span>
-    </motion.p>
+    </motion.div>
   );
 }
 

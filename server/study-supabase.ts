@@ -1,6 +1,5 @@
 import type { z } from "zod";
 import {
-  studyResultsSchema,
   surveyOf,
   type StudyAnswer,
   type StudyContact,
@@ -112,14 +111,13 @@ export function createSupabaseStudyStore(
         p_email: input.email,
         p_launch_news: input.launchNews,
         p_try_early: input.tryEarly,
+        p_interview: input.interview,
         p_future_surveys: input.futureSurveys,
-        p_role: input.role,
+        p_roles: input.roles,
         p_place: input.place,
       }),
     withdraw: (input: StudyWithdrawal) =>
       write("study_withdraw", { p_session: input.session }),
-    results: (version: string) =>
-      readJson("study_results", { p_version: version }, studyResultsSchema),
     reportRows: (requestedBy: string | undefined) => {
       if (!requestedBy)
         throw new Error("Account mode reads the results page for a user.");

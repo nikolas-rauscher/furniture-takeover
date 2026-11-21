@@ -6,7 +6,6 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  STUDY_RESULTS_MINIMUM,
   type StudyAnswer,
   type StudyContact,
   type StudyEvents,
@@ -60,8 +59,9 @@ const pilot = (email: string): StudyPilot => ({
   email,
   launchNews: false,
   tryEarly: true,
+  interview: false,
   futureSurveys: false,
-  role: "seller",
+  roles: ["sell"],
   place: "atrium",
 });
 
@@ -284,37 +284,40 @@ test("a form at the end is stored once per address, and a later form for it chan
       ...pilot("ada@epfl.ch"),
       tryEarly: false,
       futureSurveys: true,
-      role: null,
+      roles: [],
       place: null,
     });
     store.savePilot({
       ...pilot("bo@unil.ch"),
       launchNews: true,
       tryEarly: false,
-      role: null,
+      interview: true,
+      roles: [],
       place: null,
     });
     store.close?.();
     assert.deepEqual(
       rows(
         path,
-        "SELECT email, launch_news, try_early, future_surveys, role, place FROM study_pilot ORDER BY email",
+        "SELECT email, launch_news, try_early, interview, future_surveys, roles, place FROM study_pilot ORDER BY email",
       ),
       [
         {
           email: "ada@epfl.ch",
           launch_news: 0,
           try_early: 1,
+          interview: 0,
           future_surveys: 0,
-          role: "seller",
+          roles: '["sell"]',
           place: "atrium",
         },
         {
           email: "bo@unil.ch",
           launch_news: 1,
           try_early: 0,
+          interview: 1,
           future_surveys: 0,
-          role: null,
+          roles: "[]",
           place: null,
         },
       ],
@@ -349,81 +352,27 @@ test("withdrawing removes the session with its answers and events, unlinks its c
   });
 });
 
-test("shared results appear once enough v3 participants of one wording version answered the desk task", async () => {
-  await withDatabase((path) => {
-    const store = createSqliteStudyStore(path);
-    const v1 = randomUUID();
-    store.start({ ...v1Start(v1), version: "v3-1" });
-    store.saveAnswer({ ...answer(v1, "desk"), chosen: ["cheaper"] });
-    const deskAnswers = (count: number, choice: string, version = "v3-1") => {
-      for (let n = 0; n < count; n++) {
-        const { session } = v3Start();
-        store.start({ ...v3Start(session), version });
-        store.saveAnswer(v3Answer(session, "desk", [choice]));
-        if (n === 0)
-          store.saveAnswer(v3Answer(session, "last-trouble", ["transport"]));
-      }
-    };
-    deskAnswers(STUDY_RESULTS_MINIMUM, "cheaper", "v3-0");
-    deskAnswers(STUDY_RESULTS_MINIMUM - 2, "nearer");
-    deskAnswers(1, "neither");
-    assert.deepEqual(store.results("v3-1"), { ready: false });
-    deskAnswers(1, "cheaper");
-    assert.deepEqual(store.results("v3-1"), {
-      ready: true,
-      desk: {
-        answered: STUDY_RESULTS_MINIMUM,
-        options: [
-          { option: "nearer", count: STUDY_RESULTS_MINIMUM - 2 },
-          { option: "cheaper", count: 1 },
-          { option: "neither", count: 1 },
-        ],
-      },
-      trouble: {
-        answered: 3,
-        options: [{ option: "transport", count: 3 }],
-      },
-    });
-    assert.deepEqual(store.results("v3-0"), {
-      ready: true,
-      desk: {
-        answered: STUDY_RESULTS_MINIMUM,
-        options: [{ option: "cheaper", count: STUDY_RESULTS_MINIMUM }],
-      },
-      trouble: { answered: 1, options: [{ option: "transport", count: 1 }] },
-    });
-    assert.deepEqual(store.results("v3-9"), { ready: false });
-    store.close?.();
-  });
-});
-
 test("an answer emptied by going back keeps its first answer and counts as not answered", async () => {
   await withDatabase((path) => {
     const store = createSqliteStudyStore(path);
     const emptied = randomUUID();
-    for (let n = 0; n < STUDY_RESULTS_MINIMUM; n++) {
-      const { session } = v3Start();
-      store.start(v3Start(n === 0 ? emptied : session));
-      store.saveAnswer(
-        v3Answer(n === 0 ? emptied : session, "desk", ["nearer"]),
-      );
-      if (n === 1)
-        store.saveAnswer(v3Answer(session, "last-trouble", ["price"]));
-    }
+    const kept = randomUUID();
+    store.start(v3Start(emptied));
+    store.start(v3Start(kept));
+    store.saveAnswer(v3Answer(kept, "last-trouble", ["timing"]));
     store.saveAnswer(v3Answer(emptied, "last-trouble", ["transport"]));
     store.saveAnswer({
       ...v3Answer(emptied, "last-trouble", []),
       firstChosen: ["transport"],
     });
-    assert.deepEqual(store.results("v3-1"), {
-      ready: true,
-      desk: {
-        answered: STUDY_RESULTS_MINIMUM,
-        options: [{ option: "nearer", count: STUDY_RESULTS_MINIMUM }],
-      },
-      trouble: { answered: 1, options: [{ option: "price", count: 1 }] },
-    });
     store.close?.();
+    assert.deepEqual(
+      rows(
+        path,
+        "SELECT chosen FROM study_answers WHERE step = 'last-trouble' ORDER BY chosen",
+      ),
+      [{ chosen: '["timing"]' }, { chosen: "[]" }],
+    );
     assert.deepEqual(
       rows(
         path,
@@ -431,6 +380,32 @@ test("an answer emptied by going back keeps its first answer and counts as not a
          WHERE session = '${emptied}' AND step = 'last-trouble'`,
       ),
       [{ chosen: "[]", first_chosen: '["transport"]', text: "" }],
+    );
+  });
+});
+
+test("a demo file from v3 gets the interview tick, false for its forms, and roles from its role", async () => {
+  await withDatabase((path) => {
+    const db = new DatabaseSync(path);
+    db.exec(`CREATE TABLE study_pilot (email TEXT PRIMARY KEY, launch_news INTEGER NOT NULL,
+        try_early INTEGER NOT NULL, future_surveys INTEGER NOT NULL, role TEXT, place TEXT,
+        created_at TEXT NOT NULL);
+      INSERT INTO study_pilot VALUES ('old@epfl.ch', 1, 0, 0, NULL, NULL, '');
+      INSERT INTO study_pilot VALUES ('both@epfl.ch', 0, 1, 0, 'both', 'flat', '');`);
+    db.close();
+    const store = createSqliteStudyStore(path);
+    store.savePilot({ ...pilot("new@epfl.ch"), interview: true });
+    store.close?.();
+    assert.deepEqual(
+      rows(
+        path,
+        "SELECT email, interview, roles FROM study_pilot ORDER BY email",
+      ),
+      [
+        { email: "both@epfl.ch", interview: 0, roles: '["buy","sell"]' },
+        { email: "new@epfl.ch", interview: 1, roles: '["sell"]' },
+        { email: "old@epfl.ch", interview: 0, roles: "[]" },
+      ],
     );
   });
 });

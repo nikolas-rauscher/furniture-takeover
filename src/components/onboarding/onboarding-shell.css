@@ -379,57 +379,69 @@
   padding-inline-end: 40px;
 }
 
-/* Price cards sit two to a row where there is room: the price stands out under the
-   name, the advantages follow with checks. An answer without a price spans the row. */
-.ob-choices-plans {
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+/* Price cards in one column, so they read as one comparison: the name with the price
+   beside it, then the same label and value rows on every card. */
+.ob-choice-head {
+  display: contents;
 }
-.ob-choices-plans .ob-choice-cell:not([data-plan]) {
-  grid-column: 1 / -1;
+.ob-choices-plans {
+  grid-template-columns: minmax(0, 1fr);
+}
+.ob-choices-plans {
+  gap: 10px;
 }
 .ob-choices-plans [data-plan] .ob-choice {
   align-items: flex-start;
-  padding: 16px 48px 16px 16px;
+  min-height: 0;
+  padding: 10px 44px 10px 14px;
 }
 .ob-choices-plans [data-plan] .ob-choice-text {
   flex: 1;
 }
+.ob-choices-plans [data-plan] .ob-choice-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
 .ob-choices-plans [data-plan] .ob-choice-mark {
   position: absolute;
-  top: 14px;
-  right: 14px;
+  top: 10px;
+  right: 12px;
 }
 .ob-choice-price {
+  flex: none;
   color: var(--blue);
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 750;
-  line-height: 1.25;
+  line-height: 1.3;
   letter-spacing: -0.02em;
+  white-space: nowrap;
 }
-.ob-choice-benefits {
+.ob-choice-facts {
   display: grid;
-  gap: 4px;
-  margin-top: 8px;
-  padding-top: 10px;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 12px;
+  margin-top: 6px;
+  padding-top: 6px;
   border-top: 2px solid var(--line);
-}
-.ob-choice-benefit {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
   font-size: var(--type-support);
-  font-weight: 600;
   line-height: 1.35;
 }
-.ob-choice-benefit svg {
-  flex: none;
-  margin-top: 2px;
-  color: var(--blue);
+.ob-choice-fact {
+  display: contents;
+}
+.ob-choice-fact-label {
+  color: var(--muted);
+  font-weight: 600;
+}
+.ob-choice-fact-value {
+  font-weight: 600;
 }
 .ob-choice[aria-checked="true"] .ob-choice-price {
   color: var(--blue-dark);
 }
-.ob-choice[aria-checked="true"] .ob-choice-benefits {
+.ob-choice[aria-checked="true"] .ob-choice-facts {
   border-color: #d3daf5;
 }
 

@@ -1,13 +1,10 @@
 import { DatabaseSync } from "node:sqlite";
 import {
-  STUDY_RESULTS_MINIMUM,
-  STUDY_RESULT_STEPS,
   surveyOf,
   type StudyAnswer,
   type StudyContact,
   type StudyEvents,
   type StudyPilot,
-  type StudyResults,
   type StudyStart,
 } from "../shared/study.ts";
 import { studyReportRowsSchema, type StudyReportRows } from "./study-report.ts";
@@ -43,29 +40,37 @@ const SCHEMA = `PRAGMA foreign_keys = ON;
   );
   CREATE TABLE IF NOT EXISTS study_pilot (
     email TEXT PRIMARY KEY, launch_news INTEGER NOT NULL, try_early INTEGER NOT NULL,
-    future_surveys INTEGER NOT NULL, role TEXT, place TEXT, created_at TEXT NOT NULL
+    future_surveys INTEGER NOT NULL, place TEXT, created_at TEXT NOT NULL,
+    interview INTEGER NOT NULL DEFAULT 0, roles TEXT NOT NULL DEFAULT '[]'
   )`;
 
 /**
  * Demo files written before v3 hold v1 sessions only, so their sessions get `survey = 'v1'`
- * and no language or first answers.
+ * and no language or first answers. Forms from before v4 had no interview tick.
  */
-const COLUMNS_ADDED_FOR_V3 = [
+const COLUMNS_ADDED_LATER = [
   ["study_sessions", "survey", "TEXT NOT NULL DEFAULT 'v1'"],
   ["study_sessions", "language", "TEXT"],
   ["study_answers", "first_chosen", "TEXT"],
   ["study_answers", "revision", "INTEGER NOT NULL DEFAULT 0"],
+  ["study_pilot", "interview", "INTEGER NOT NULL DEFAULT 0"],
+  ["study_pilot", "roles", "TEXT NOT NULL DEFAULT '[]'"],
 ] as const;
 
-function addColumnsForV3(db: DatabaseSync) {
-  for (const [table, column, definition] of COLUMNS_ADDED_FOR_V3) {
+/** A v3 file's one role per form becomes the roles it stands for, as in Postgres. */
+const ROLES_OF_V3 = `UPDATE study_pilot SET roles = CASE role
+  WHEN 'seller' THEN '["sell"]' WHEN 'buyer' THEN '["buy"]' WHEN 'both' THEN '["buy","sell"]'
+  ELSE '[]' END WHERE roles = '[]' AND role IS NOT NULL`;
+
+function addLaterColumns(db: DatabaseSync) {
+  for (const [table, column, definition] of COLUMNS_ADDED_LATER) {
     const columns = db.prepare(`PRAGMA table_info(${table})`).all();
     if (!columns.some(({ name }) => name === column))
       db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
   }
+  const pilotColumns = db.prepare("PRAGMA table_info(study_pilot)").all();
+  if (pilotColumns.some(({ name }) => name === "role")) db.exec(ROLES_OF_V3);
 }
-
-type Tally = Extract<StudyResults, { ready: true }>["desk"];
 
 /** Local demo transport: the study tables live in the demo database file. */
 export function createSqliteStudyStore(
@@ -74,10 +79,7 @@ export function createSqliteStudyStore(
 ): StudyStore {
   const db = new DatabaseSync(path);
   db.exec(SCHEMA);
-  addColumnsForV3(db);
-  db.exec(`CREATE TEMP VIEW study_v3_answers AS
-    SELECT s.version, a.step, a.chosen FROM study_answers a
-    JOIN study_sessions s ON s.id = a.session WHERE s.survey = 'v3'`);
+  addLaterColumns(db);
   const now = () => clock().toISOString();
   const exists = (condition: string, ...values: string[]) =>
     db.prepare(`SELECT 1 FROM ${condition}`).get(...values) !== undefined;
@@ -105,25 +107,6 @@ export function createSqliteStudyStore(
     return String(row.survey);
   };
   const requireSession = (id: string) => void surveyOfSession(id);
-  // An empty answer, skipped or emptied by going back, counts as not answered.
-  const tally = (version: string, step: string): Tally => ({
-    answered: count(
-      "study_v3_answers",
-      "version = ? AND step = ? AND json_array_length(chosen) > 0",
-      version,
-      step,
-    ),
-    options: db
-      .prepare(
-        `SELECT option.value AS option, COUNT(*) AS count
-         FROM study_v3_answers, json_each(study_v3_answers.chosen) AS option
-         WHERE version = ? AND step = ?
-         GROUP BY option.value ORDER BY count DESC, option.value`,
-      )
-      .all(version, step)
-      .map((row) => ({ option: String(row.option), count: Number(row.count) })),
-  });
-
   return {
     start(input: StudyStart) {
       inTransaction(() => {
@@ -231,14 +214,15 @@ export function createSqliteStudyStore(
           throw namedStudyErrors.study_pilot_limit;
         db.prepare(
           `INSERT INTO study_pilot
-             (email, launch_news, try_early, future_surveys, role, place, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (email) DO NOTHING`,
+             (email, launch_news, try_early, interview, future_surveys, roles, place, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (email) DO NOTHING`,
         ).run(
           normalizeEmail(input.email),
           input.launchNews ? 1 : 0,
           input.tryEarly ? 1 : 0,
+          input.interview ? 1 : 0,
           input.futureSurveys ? 1 : 0,
-          input.role,
+          JSON.stringify(input.roles),
           input.place,
           now(),
         );
@@ -246,15 +230,6 @@ export function createSqliteStudyStore(
     },
     withdraw({ session }) {
       db.prepare("DELETE FROM study_sessions WHERE id = ?").run(session);
-    },
-    results(version: string): StudyResults {
-      const desk = tally(version, STUDY_RESULT_STEPS.desk);
-      if (desk.answered < STUDY_RESULTS_MINIMUM) return { ready: false };
-      return {
-        ready: true,
-        desk,
-        trouble: tally(version, STUDY_RESULT_STEPS.trouble),
-      };
     },
     reportRows(): StudyReportRows {
       const sessions = db
@@ -294,14 +269,15 @@ export function createSqliteStudyStore(
         }));
       const pilot = db
         .prepare(
-          "SELECT launch_news, try_early, future_surveys, role, place FROM study_pilot",
+          "SELECT launch_news, try_early, interview, future_surveys, roles, place FROM study_pilot",
         )
         .all()
         .map((row) => ({
           launchNews: row.launch_news === 1,
           tryEarly: row.try_early === 1,
+          interview: row.interview === 1,
           futureSurveys: row.future_surveys === 1,
-          role: row.role,
+          roles: JSON.parse(String(row.roles)),
           place: row.place,
         }));
       return studyReportRowsSchema.parse({ sessions, answers, pilot });

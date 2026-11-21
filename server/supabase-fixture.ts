@@ -86,14 +86,20 @@ export const count = async (db: PGlite, sql: string) =>
   (await db.query(sql)).rows.length;
 
 /** An empty database with the study migration and the admins table, connected as the service role. */
-export async function studyDatabase() {
+/** The study's migrations in order; a test may stop before the later ones. */
+const STUDY_MIGRATIONS = [
+  "202611210001_study.sql",
+  "202611220002_study_v4.sql",
+];
+
+export async function studyDatabase(migrations = STUDY_MIGRATIONS) {
   const db = new PGlite();
   await db.exec(`create role anon; create role authenticated; create role service_role;
     create schema takeover_admin;
     revoke all on schema takeover_admin from public, anon, authenticated;
     create table public.admins (user_id uuid primary key);
     revoke all on public.admins from public, anon, authenticated;`);
-  await applyMigrations(db, ["202611210001_study.sql"]);
+  await applyMigrations(db, migrations);
   await db.exec("set role service_role");
   /** Runs as the tables' owner, which students and the service role are not. */
   const asOwner = async <T extends object = object>(

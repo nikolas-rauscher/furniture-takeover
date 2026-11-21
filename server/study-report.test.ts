@@ -73,35 +73,34 @@ test("questions count chosen options over the participants who answered", () => 
     rows({
       sessions: [session()],
       answers: [
-        ...times(6, () => answer("stop", ["privacy", "too-long"])),
-        answer("stop", ["other"], "Too far from my flat"),
-        answer("stop", [], ""),
+        ...times(6, () => answer("delegate", ["remind", "negotiate"])),
+        answer("seeking", ["yes"], "A bike"),
+        answer("delegate", [], ""),
         answer("who", ["epfl"]),
         answer("draft", ["sent-unchanged"], "Hi Mia! Saturday"),
         answer("draft", ["sent-own"], "Hi, Saturday at 18:00?"),
-        answer("last-story", [], "Sold it in a day"),
-        answer("last-story", [], "Buyer never came"),
+        answer("gender", ["self-describe"], "Agender"),
+        answer("idle-items", ["1-3"]),
       ],
     }),
     null,
   );
   assert.deepEqual(
     report.questions.map(({ step }) => step),
-    ["who", "stop", "draft"],
+    ["who", "idle-items", "seeking", "draft", "delegate", "gender"],
   );
-  assert.deepEqual(report.questions[1], {
-    step: "stop",
-    answered: 7,
+  assert.deepEqual(report.questions[4], {
+    step: "delegate",
+    answered: 6,
     options: [
-      { option: "privacy", count: 6 },
-      { option: "too-long", count: 6 },
-      { option: "other", count: null },
+      { option: "negotiate", count: 6 },
+      { option: "remind", count: 6 },
     ],
   });
   assert.deepEqual(report.texts, [
-    { step: "last-story", texts: ["Buyer never came", "Sold it in a day"] },
-    { step: "stop", texts: ["Too far from my flat"] },
+    { step: "seeking", texts: ["A bike"] },
     { step: "draft", texts: ["Hi, Saturday at 18:00?"] },
+    { step: "gender", texts: ["Agender"] },
   ]);
 });
 
@@ -109,7 +108,7 @@ test("drop-off counts the last screen of sessions that did not finish the core",
   const report = buildStudyReport(
     rows({
       sessions: [
-        ...times(5, () => session({ completed: false, lastShown: "desk" })),
+        ...times(5, () => session({ completed: false, lastShown: "draft" })),
         session({ completed: false, lastShown: "move" }),
         session({ completed: false, lastShown: null }),
         session(),
@@ -118,7 +117,7 @@ test("drop-off counts the last screen of sessions that did not finish the core",
     null,
   );
   assert.deepEqual(report.dropOff, [
-    { step: "desk", count: 5 },
+    { step: "draft", count: 5 },
     { step: "move", count: null },
   ]);
   assert.equal(report.totals.completed, 1);
@@ -129,20 +128,22 @@ test("the form at the end counts each tick; those who try early are counted per 
   const form = (overrides: Partial<Form> = {}): Form => ({
     launchNews: true,
     tryEarly: false,
+    interview: false,
     futureSurveys: false,
-    role: null,
+    roles: [],
     place: null,
     ...overrides,
   });
-  const early = (place: Form["place"], role: Form["role"]) =>
-    form({ tryEarly: true, place, role });
+  const early = (place: Form["place"], roles: Form["roles"]) =>
+    form({ tryEarly: true, place, roles });
   const { pilot } = buildStudyReport(
     rows({
       pilot: [
-        ...times(5, () => early("vortex", "seller")),
-        early("vortex", "buyer"),
-        early("flat", "both"),
-        form({ launchNews: false, futureSurveys: true }),
+        ...times(5, () => early("vortex", ["sell"])),
+        early("vortex", ["get-free"]),
+        early("flat", ["buy", "give-away"]),
+        early("flat", ["not-sure"]),
+        form({ launchNews: false, interview: true, futureSurveys: true }),
       ],
     }),
     null,
@@ -152,17 +153,19 @@ test("the form at the end counts each tick; those who try early are counted per 
       forms: pilot.forms,
       launchNews: pilot.launchNews,
       tryEarly: pilot.tryEarly,
+      interview: pilot.interview,
       futureSurveys: pilot.futureSurveys,
     },
-    { forms: 8, launchNews: 7, tryEarly: 7, futureSurveys: 1 },
+    { forms: 9, launchNews: 8, tryEarly: 8, interview: 1, futureSurveys: 1 },
   );
   assert.deepEqual(
     pilot.places.find(({ place }) => place === "vortex"),
-    { place: "vortex", sellers: 5, buyers: null, both: 0 },
+    { place: "vortex", sellers: 5, buyers: null, undecided: 0 },
   );
   assert.deepEqual(
     pilot.places.find(({ place }) => place === "flat"),
-    { place: "flat", sellers: 0, buyers: 0, both: null },
+    // One form who would buy and give away counts on both sides.
+    { place: "flat", sellers: null, buyers: null, undecided: null },
   );
 });
 

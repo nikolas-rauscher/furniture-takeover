@@ -1,22 +1,17 @@
 import type { StudyEventKind } from "../../../shared/study.ts";
-import type { TourScene } from "../device/sceneMessages.ts";
 import { shuffleOptions, type RandomSource } from "../optionOrder.ts";
 import { emptiedOffPath, isShown, neighbourStep } from "../stepConditions.ts";
-import { ladderOf } from "./packPricing.ts";
 import type { V3Answer, V3Progress } from "./v3Progress.ts";
 import {
   answerIds,
+  DRAFT_ALLOCATION,
   DRAFT_DAY_STEP,
   DRAFT_DAYS,
-  DRAFT_VARIANTS,
-  sceneStepId,
-  TOUR_SCENES_ORDER,
+  offeredOptions,
   V3_SECTIONS,
   V3_STEPS,
   type V3Section,
   type V3Step,
-  packAnswerStep,
-  wordingOf,
 } from "./v3Script.ts";
 
 /** The contract's limit for the time on one step. */
@@ -24,47 +19,45 @@ const MAX_STEP_MS = 60 * 60 * 1000;
 
 type AnswerSheet = V3Progress["answers"];
 
-/** The scenes in the order the participant picked: their first choice, then the rest. */
-function sceneOrder(answers: AnswerSheet): readonly TourScene[] {
-  const picked = answers["scene-pick"]?.chosen[0];
-  const first = TOUR_SCENES_ORDER.find((scene) => scene === picked);
-  if (!first) return TOUR_SCENES_ORDER;
-  return [first, ...TOUR_SCENES_ORDER.filter((scene) => scene !== first)];
+/**
+ * The steps that pass `keeps`, in order. A step that depends on an earlier one goes with
+ * it, so an answer left on a step off the path decides nothing.
+ */
+function stepsAlong(keeps: (step: V3Step) => boolean): V3Step[] {
+  const along: V3Step[] = [];
+  for (const step of V3_STEPS) {
+    const dependsOn = step.when?.step;
+    const reachable =
+      dependsOn === undefined || along.some(({ id }) => id === dependsOn);
+    if (reachable && keeps(step)) along.push(step);
+  }
+  return along;
 }
 
-/** A scene of the optional tour, whose order the participant picks. */
-export const isTourScene = (step: V3Step) =>
-  step.kind === "scene" && !step.brief;
-
 /** The steps this participant sees, given their answers so far. */
-export function visibleV3Steps(answers: AnswerSheet): V3Step[] {
-  const shown = V3_STEPS.filter((step) => isShown(step, answers));
-  const scenes = sceneOrder(answers).map(sceneStepId);
-  const firstScene = shown.findIndex(isTourScene);
-  if (firstScene === -1) return shown;
-  const byId = (id: string) => shown.find((step) => step.id === id);
-  const ordered = scenes.map((id) => {
-    const step = byId(id);
-    if (!step) throw new Error(`The tour has no step ${id}.`);
-    return step;
-  });
-  const rest = shown.filter((step) => !isTourScene(step));
-  return [...rest.slice(0, firstScene), ...ordered, ...rest.slice(firstScene)];
+export const visibleV3Steps = (answers: AnswerSheet): V3Step[] =>
+  stepsAlong((step) => isShown(step, answers));
+
+/**
+ * The options a stored answer was given among, where earlier answers decide them, such
+ * as the obstacles of `last-trouble` per role. Null where every participant sees the same.
+ */
+function offerOf(id: string, answers: AnswerSheet): string | null {
+  const step = V3_STEPS.find((candidate) => candidate.id === id);
+  if (step?.kind !== "choice" || !step.onlyFor) return null;
+  return offeredOptions(step, answers).join();
 }
 
 /**
- * Answers whose wording changed with an earlier answer, so the participant never
- * answered them as they now read: they are emptied like answers off the path.
+ * Answers given among other options than an earlier answer now offers, so the
+ * participant never answered the list they would now see: they are emptied like
+ * answers off the path.
  */
-function emptiedByWording(before: AnswerSheet, after: AnswerSheet) {
+function emptiedByOffer(before: AnswerSheet, after: AnswerSheet) {
   const emptied: AnswerSheet = {};
   for (const [id, answer] of Object.entries(after)) {
     const given = answer.chosen.length > 0 || answer.text !== "";
-    if (
-      given &&
-      wordingOf(id, before, answer.chosen) !==
-        wordingOf(id, after, answer.chosen)
-    )
+    if (given && offerOf(id, before) !== offerOf(id, after))
       emptied[id] = { ...answer, chosen: [], text: "" };
   }
   return emptied;
@@ -72,8 +65,8 @@ function emptiedByWording(before: AnswerSheet, after: AnswerSheet) {
 
 /**
  * Empties the answers of steps that the change from `before` takes off the participant's
- * path, such as `last-trouble` once `last-role` becomes `none`, and of steps whose wording
- * the change alters, such as `helped-find` between tried and never tried. Each keeps its
+ * path, such as `last-trouble` once `last-role` becomes `none`, and of steps whose options
+ * the change alters, such as `last-trouble` between buying and selling. Each keeps its
  * first answer, its order and its time; the events stay as they were.
  */
 export function withoutAnswersOffPath(
@@ -81,7 +74,7 @@ export function withoutAnswersOffPath(
   after: V3Progress,
 ): V3Progress {
   const emptied = {
-    ...emptiedByWording(before, after.answers),
+    ...emptiedByOffer(before, after.answers),
     ...emptiedOffPath(
       visibleV3Steps(before),
       visibleV3Steps(after.answers),
@@ -110,20 +103,13 @@ export const nextV3 = (answers: AnswerSheet, id: string) =>
 const previousV3 = (answers: AnswerSheet, id: string) =>
   neighbourStep(visibleV3Steps(answers), id, -1);
 
-/** Where Back leads: to the scene a skip of the tour left from, or else to the step before. */
-export function backTarget(progress: V3Progress): V3Step {
-  if (progress.skippedFrom) return v3StepById(progress.skippedFrom);
-  return previousV3(progress.answers, progress.stepId);
-}
+export const backTarget = (progress: V3Progress): V3Step =>
+  previousV3(progress.answers, progress.stepId);
 
-/** Back is offered except before the first screen and once the core is saved. */
+/** Back is offered except before the first screen and once the answers are saved. */
 export function canGoBack(steps: readonly V3Step[], step: V3Step): boolean {
   const index = steps.findIndex((candidate) => candidate.id === step.id);
-  const firstAfterCore = steps.findIndex(
-    (candidate) => candidate.kind === "about",
-  );
-  const blocked = step.kind === "saved" || step.kind === "end";
-  return index > 0 && !blocked && index !== firstAfterCore;
+  return index > 0 && step.kind !== "end";
 }
 
 /** Option ids with the ones that stay below marked, as the shuffle needs them. */
@@ -142,39 +128,50 @@ function shuffledIds(
 /** Which options a step shuffles, and the answer id their order is stored under. */
 type Shuffle = { key: string; ids: readonly string[]; fixedLast: number };
 
-function shuffleOf(step: V3Step): Shuffle | null {
+function shuffleOf(step: V3Step, answers: AnswerSheet): Shuffle | null {
   if (step.kind === "choice" && step.shuffle)
-    return { key: step.id, ids: step.options, fixedLast: step.fixedLast };
-  if (step.kind === "desk")
-    return { key: step.id, ids: step.options, fixedLast: 1 };
+    return {
+      key: step.id,
+      ids: offeredOptions(step, answers),
+      fixedLast: step.fixedLast,
+    };
   if (step.kind === "draft")
     return { key: DRAFT_DAY_STEP, ids: DRAFT_DAYS, fixedLast: 0 };
   return null;
 }
 
-/** The draft task's variant, drawn once per participant and kept. */
+/** The draft task's variant, drawn once per participant by its allocation and kept. */
 function withDraftVariant(
   progress: V3Progress,
   random: RandomSource,
 ): V3Progress {
   if (progress.draftVariant) return progress;
   const draftVariant =
-    DRAFT_VARIANTS[Math.floor(random() * DRAFT_VARIANTS.length)];
+    DRAFT_ALLOCATION[Math.floor(random() * DRAFT_ALLOCATION.length)];
   return { ...progress, draftVariant };
 }
 
+/** Whether a stored order holds exactly the options offered now. */
+const ordersSame = (
+  stored: readonly string[] | undefined,
+  ids: readonly string[],
+) =>
+  stored !== undefined &&
+  stored.length === ids.length &&
+  ids.every((id) => stored.includes(id));
+
 /**
- * A shuffled step draws its order the first time it is shown and keeps it; the draft
- * task also draws its variant.
+ * A shuffled step draws its order the first time it is shown and keeps it, until an
+ * earlier answer changes the options it offers; the draft task also draws its variant.
  */
 export function withV3Order(
   progress: V3Progress,
   step: V3Step,
   random: RandomSource = Math.random,
 ): V3Progress {
-  const shuffle = shuffleOf(step);
+  const shuffle = shuffleOf(step, progress.answers);
   const ordered =
-    !shuffle || progress.orders[shuffle.key]
+    !shuffle || ordersSame(progress.orders[shuffle.key], shuffle.ids)
       ? progress
       : {
           ...progress,
@@ -238,40 +235,6 @@ export function withEvent(
   return { ...progress, events: [...progress.events, event] };
 }
 
-/**
- * Records the ladder's price on screen once, when it is first shown. The analysis
- * counts these as asked, so a participant who leaves at a price still counts there.
- */
-export function withPriceShown(progress: V3Progress): V3Progress {
-  const { next } = ladderOf(progress);
-  if (next === null) return progress;
-  const step = packAnswerStep(next);
-  const seen = progress.events.some(
-    (event) => event.kind === "shown" && event.step === step,
-  );
-  return seen ? progress : withEvent(progress, "shown", step);
-}
-
-/**
- * Adds a key moment of a full scene: tapped by the visitor or advanced by the scene.
- * Each moment counts once per scene: a replay or a reload shows the same moments
- * again, and the moments already recorded are kept with the progress.
- */
-export function withMoment(
-  progress: V3Progress,
-  step: string,
-  moment: number,
-  by: "visitor" | "scene",
-): V3Progress {
-  const recorded = progress.moments[step] ?? [];
-  if (recorded.includes(moment)) return progress;
-  const kind = by === "visitor" ? "moment-tapped" : "moment-auto";
-  return {
-    ...withEvent(progress, kind, step, `moment-${moment}`),
-    moments: { ...progress.moments, [step]: [...recorded, moment] },
-  };
-}
-
 export type SectionState = "done" | "current" | "next";
 
 /** Each section's state on this step; after the core every section is done. */
@@ -285,4 +248,33 @@ export function sectionStates(step: V3Step): Record<V3Section, SectionState> {
       index < current ? "done" : index === current ? "current" : "next",
     ]),
   ) as Record<V3Section, SectionState>;
+}
+
+/** The current part's bar never starts empty, so its first screen already shows a start. */
+export const MIN_SECTION_FILL = 0.15;
+
+/**
+ * Steps that may still come: a conditional step counts until the answer it depends on
+ * rules it out. So the strip counts the longest path, and an answer can only shorten it.
+ */
+function possibleSteps(answers: AnswerSheet): V3Step[] {
+  return stepsAlong((step) => {
+    if (!step.when) return true;
+    const decided = (answers[step.when.step]?.chosen.length ?? 0) > 0;
+    return !decided || isShown(step, answers);
+  });
+}
+
+/**
+ * How far the participant is through the current part: the share of its possible steps
+ * before this one, at least the minimum. As answers only rule steps out, the bar never
+ * goes back on the way forward; never having tried skips part 1's rest at once.
+ */
+export function sectionFill(answers: AnswerSheet, step: V3Step): number {
+  const inSection = possibleSteps(answers).filter(
+    (candidate) => candidate.section === step.section,
+  );
+  const done = inSection.findIndex((candidate) => candidate.id === step.id);
+  if (done === -1) throw new Error(`Step ${step.id} is not part of this run.`);
+  return Math.max(MIN_SECTION_FILL, done / inSection.length);
 }

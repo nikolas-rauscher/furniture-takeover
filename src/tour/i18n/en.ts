@@ -2,16 +2,6 @@
  * Every word of the tour page in English, the reference for the other languages.
  * The app's own screens inside the phones stay in English and are not listed here.
  */
-const helped = {
-  question: "Would this feature have helped you last time?",
-  options: {
-    yes: "Yes",
-    partly: "Partly",
-    no: "No",
-    na: "That doesn't apply to me",
-  },
-};
-
 export const EN = {
   locale: "en-GB",
   common: {
@@ -387,13 +377,13 @@ export const EN = {
   },
   v3: {
     sections: {
-      you: "Start",
       "last-time": "Your experience",
+      home: "Things at home",
       "the-app": "The app",
-      situations: "Situations",
-      price: "Price & delivery",
+      price: "Price, and about you",
     },
-    progress: "Survey sections",
+    progress: "Survey parts",
+    lastPart: "Last part",
     sectionState: {
       done: (name: string) => `${name}: done`,
       current: (name: string) => `${name}: current`,
@@ -401,52 +391,55 @@ export const EN = {
     },
     start: {
       bubble: (minutes: number) =>
-        `Hi, I'm Pako, the assistant in the takeover app. A team of EPFL students is building the app so students around EPFL and UNIL can buy, sell and give away second-hand items. In this survey, we'd like to learn how you deal with used things and what you think of the app. It takes about ${minutes} minutes, and you don't need an account. Everyone can take part, even if you've never bought or sold anything used.`,
+        `Hi, I'm Pako, the assistant in the takeover app. EPFL students are building it so students around EPFL and UNIL can buy, sell and give away used things. The survey takes about ${minutes} minutes.`,
       saveTitle: "What we save",
+      moreBelow: "Continues below",
       save: (date: string) =>
-        `We save your answers and record which screens you visit, skip or return to and how long you spend on each one. We also record which link you followed, your language and whether you're using a phone or a computer. Your progress stays in this tab until you close it, and this browser remembers that you finished. You can leave an email address at the end. We store it separately from your answers. Everything is deleted by ${date}.`,
+        `We save your answers and record which screens you visit, skip or return to and how long you spend on each one. We also record which link you followed, your language and whether you're using a phone or a computer. Your progress stays in this tab until you close it, and this browser remembers that you finished. If you leave your email at the end, we store it separately from your answers. Everything is deleted by ${date}.`,
       questions: "Questions about the survey:",
       go: "Start the survey",
       demo: "Just show me the app",
     },
-    whatIs: {
-      bubble:
-        "Before the first question, here's what takeover does and what this survey asks.",
-      title: "What is takeover?",
-      lead: "An app for students around EPFL, UNIL and the FMEL residences to buy, sell and give away second-hand items.",
-      nextTitle: "What this survey asks",
-      next: [
-        "Your last experience with buying, selling or giving away something used",
-        "Three short scenes from the app, then a few questions about it",
-        "Three everyday situations in which you choose what you would do",
-        "What you would pay for the app and for delivery",
-      ],
-      duration: (minutes: number) => `About ${minutes} minutes`,
-    },
     parts: {
       label: (current: number, total: number) => `Part ${current} of ${total}`,
       "last-time": {
-        bubble: "This part is about your own experience with used things.",
-        text: "We'd like to hear about the last time you tried to buy, sell, give away or get a second-hand item, whether or not it worked out. There are no right or wrong answers.",
+        bubble: "First, a few questions about you and your experience.",
+        text: "There are no right or wrong answers.",
+      },
+      home: {
+        bubble: "Next, a few questions about things you have at home.",
+        text: "For example furniture, books, kitchen things or electronics.",
       },
       "the-app": {
-        bubble: "This part is about takeover itself.",
-        text: "You'll see three short scenes and tell us whether each feature would help you. Then a few questions about the app as a whole follow, and at the end you compare some slogans.",
-      },
-      situations: {
-        bubble: "This part has three everyday situations.",
-        text: "Imagine you're in each situation and choose what you would really do. In the last one, you chat with a seller. One question about sending messages follows.",
+        bubble:
+          "Now a quick look at the app. I draft listings and messages in it. You decide what gets sent.",
+        text: "Two short scenes, an idea for the app and a short chat.",
       },
       price: {
-        bubble: "This last part is about money and delivery.",
-        text: "First, we ask what you'd pay for a move-out pack. Then you choose between the free version and three ways of paying, and we ask about delivery. Searching, listing and messaging would stay free, along with some help from Pako each day.",
+        bubble: "Last part: price, and two questions about you.",
+        text: "Then you're done.",
       },
     },
-    scenes: {
-      find: {
-        title: "Finding something",
-        text: "A student near Vortex needs a desk and describes what they're looking for. Pako searches listings posted by students nearby and drafts an offer. Nothing is sent until the student taps Send.",
+    cards: {
+      lastTime: {
+        text: "Think of the last time you tried to buy, sell, give away or get a used item for free. It counts even if it didn't work out.",
       },
+      wanted: {
+        title: "An idea for takeover: requests.",
+        text: "If you're looking for something, you post what you need. All students nearby who use takeover can see it.",
+      },
+      delegate: {
+        text: "Now imagine a different setting: Pako acts in your name. You see the messages only after they're sent.",
+      },
+      price: {
+        text: "Searching, listing and messaging are free. Pako helps you a few times a day for free. One help = Pako drafts one listing or message. Only extra help from Pako would cost something.",
+      },
+    },
+    wantedPost: {
+      label: "Example of a request in the app",
+      text: "Someone 5 minutes from you is looking for a desk lamp.",
+    },
+    scenes: {
       sell: {
         title: "Selling with a photo",
         text: "Léa takes a photo of her desk. Pako writes the listing and suggests a price. Léa sets her own price and saves the listing.",
@@ -456,351 +449,239 @@ export const EN = {
         text: "Noah offers CHF 35 for the desk and Léa accepts, so the pickup is booked. At pickup time, both of them confirm the handover.",
       },
     },
-    situations: {
-      label: (current: number, total: number) =>
-        `Situation ${current} of ${total}`,
-      pickOne: "Choose the answer that fits you best.",
-      "move-it":
-        "You've found a desk you like in the app. The seller lives 4 km away from you.",
-      desk: "You need a desk, and the app shows two that would suit you. They're the same model in the same condition; only the price and the distance differ.",
-      draft:
-        "You want to buy a desk from Mia, another student. The price and the pickup place suit you.",
-      draftTask:
-        "First, answer Mia in the chat. Pako then writes an offer for you, and you decide what to do with it.",
-    },
     steps: {
-      "wanted-react": {
-        question: "How would you respond to this request?",
-        options: {
-          snap: "Take a photo and list my item",
-          look: "Look at the request and decide later",
-          ignore: "Ignore it",
-          "rather-not": "I'd rather not see requests like this",
-        },
-      },
-      "wanted-share": {
-        question:
-          "Would you share a request with students nearby? They’d see the item and your area, but not your name.",
-        options: { yes: "Yes", maybe: "Maybe", no: "No" },
-      },
-      "last-cost": {
-        question: "Roughly how much did you spend on transporting the item?",
-        options: {
-          nothing: "Nothing",
-          "under-10": "Under CHF 10",
-          "10-30": "CHF 10–30",
-          "over-30": "More than CHF 30",
-          "dont-remember": "I don't remember",
-        },
-      },
-      "pay-model": {
-        question: "If you paid yourself, which would you choose?",
-        options: {
-          free: "Free version",
-          "seller-fee": "Fee per sale",
-          "move-pack": "Move-out pack",
-          monthly: "Monthly plan",
-          "not-sure": "Not sure",
-        },
-      },
-      "institution-pay": {
-        question:
-          "Would you use takeover more if your university or residence paid for it?",
-        options: {
-          yes: "Yes",
-          "no-difference": "It wouldn't make a difference",
-          "not-sure": "Not sure",
-        },
-      },
-      "delivery-worth": {
-        question:
-          "What is the most you would pay to have a bulky item brought to your door in Lausanne (about 5 km)?",
-        options: {
-          nothing: "Nothing, I'd fetch it myself",
-          "up-to-5": "Up to CHF 5",
-          "6-10": "CHF 6–10",
-          "11-20": "CHF 11–20",
-          "over-20": "More than CHF 20",
-          "not-sure": "Not sure",
-        },
-      },
       who: {
         question: "Are you a student?",
         options: {
           epfl: "Yes, at EPFL",
           unil: "Yes, at UNIL",
-          "other-school": "Yes, at another school",
+          "other-school": "Yes, at another university",
           no: "No",
         },
       },
+      housing: {
+        question: "Which best describes where you live now?",
+        options: {
+          fmel: "In an FMEL residence",
+          "other-res": "In another student residence",
+          flat: "Shared or own flat or studio (not a residence)",
+          family: "With my family",
+          elsewhere: "Somewhere else",
+        },
+      },
       "last-role": {
-        question:
-          "Think of your last experience with a second-hand item. What were you trying to do?",
+        question: "What were you trying to do?",
         options: {
           buying: "Buy something",
           "getting-free": "Get something for free",
           selling: "Sell something",
           "giving-away": "Give something away",
-          none: "I've never tried",
+          none: "I've never tried any of these",
         },
       },
       "last-item": {
-        question: "What kind of second-hand item was involved last time?",
+        question: "What was it?",
         options: {
-          furniture: "Furniture (desk, chair, shelf, bed)",
-          household: "Small household items",
+          furniture: "Furniture",
+          household: "Household items",
           electronics: "Electronics",
           bike: "Bike or scooter",
-          books: "Books or course material",
-          clothes: "Clothes or shoes",
-          other: "Something else",
+          books: "Books",
+          clothes: "Clothes",
+          other: "Other",
         },
       },
       "last-occasion": {
-        question: "Was this related to moving in or moving out?",
+        question: "Was it connected with a move?",
         options: {
-          "moving-in": "Yes, I was moving in",
-          "moving-out": "Yes, I was moving out",
+          "moving-in": "Yes, moving in",
+          "moving-out": "Yes, moving out",
+          both: "Both moving out and in",
           "no-move": "No",
-          "cant-recall": "I can't remember",
         },
+      },
+      "last-how": {
+        question: "Where did you try first?",
+        options: {
+          friends: "Friends or people I know",
+          "chat-group": "WhatsApp or Telegram group",
+          facebook: "Facebook Marketplace",
+          anibis: "Anibis, Tutti or Ricardo",
+          other: "Other",
+        },
+      },
+      "last-outcome": {
+        question: "Did it work out?",
+        options: { yes: "Yes", no: "No", ongoing: "Still in progress" },
       },
       "last-trouble": {
-        question: "Which part was hardest for you last time, if any?",
+        question: "What was the most annoying part?",
         options: {
-          finding: "Finding the right item",
-          listing: "Writing the listing or taking photos",
-          price: "Knowing or agreeing on a price",
-          replies: "Slow replies or no replies",
-          timing: "Agreeing on a time, or a pickup falling through",
-          transport: "Getting it from A to B",
-          trust: "Not knowing whether I could trust the other person",
-          nothing: "Nothing was difficult",
+          finding: "Finding something suitable",
+          gone: "The item was already gone",
+          "agree-price": "Agreeing on a price",
+          "finding-taker": "Finding someone interested",
+          "deadline-pickup": "Arranging pickup before my deadline",
+          listing: "Writing the listing",
+          "set-price": "Setting the price",
+          replies: "Waiting for replies",
+          messages: "Lots of messages back and forth",
+          timing: "Agreeing on a pickup time",
+          cancelled: "Cancelled pickups",
+          transport: "Transport",
+          trust: "Trusting the other person",
           other: "Something else",
-          "cant-recall": "I can't remember",
+          nothing: "Nothing was annoying",
+          "cant-recall": "Can't remember",
         },
       },
-      "why-not": {
-        question:
-          "What is the main reason you haven't bought, sold or given away anything used?",
+      "last-transport": {
+        question: "How was it transported?",
         options: {
-          "no-need": "I never needed to",
-          "prefer-new": "I prefer new things",
-          hassle: "It seemed like too much hassle",
-          "dont-know-where": "I didn't know where to look",
-          other: "Something else",
+          foot: "On foot",
+          bike: "By bike",
+          "public-transport": "By public transport",
+          car: "By car",
+          delivery: "Delivered",
+          "not-yet": "Not moved yet",
+          "dont-know": "Don't know",
+        },
+      },
+      "last-messages": {
+        question:
+          "Roughly how many messages did it take in total, with everyone?",
+        options: {
+          none: "None",
+          "1-5": "1–5",
+          "6-15": "6–15",
+          "over-15": "More than 15",
+          "dont-remember": "Can't remember",
+        },
+      },
+      "idle-items": {
+        question:
+          "How many usable things do you have at home that you don't currently use?",
+        options: {
+          none: "None",
+          "1-3": "1–3",
+          "4-10": "4–10",
+          "over-10": "More than 10",
+        },
+      },
+      "idle-why": {
+        question: "Why do you still have them?",
+        options: {
+          "listing-hassle": "Listing is too much hassle",
+          "messages-hassle": "Messages and scheduling are too much hassle",
+          transport: "I can't transport them",
+          "not-worth": "Not worth the effort for the money",
+          "dont-know-where": "I don't know who I could offer them to",
+          "might-need": "I might still need them",
+          "not-yet": "I haven't got round to it",
+          other: "Other",
         },
       },
       move: {
-        question: "Are you planning to move out of your current home?",
+        question: "Will you move out by the end of June 2027?",
         options: {
-          "move-feb": "Yes, by the end of February 2027",
-          "move-jun": "Yes, between March and June 2027",
-          "move-later": "Yes, later",
-          "no-plan": "No, I have no plans to move",
+          "move-feb": "Yes, by the end of February",
+          "move-jun": "Yes, between March and June",
+          "no-or-later": "No, or later",
           "not-sure": "Not sure",
         },
       },
-      housing: {
-        question: "Where do you live at the moment?",
+      "wanted-react": {
+        question:
+          "You have a spare desk lamp like the one requested. What would you most likely do?",
         options: {
-          fmel: "In an FMEL residence",
-          "other-res": "In another student residence",
-          flat: "In a flat or studio",
-          family: "With my family",
-          elsewhere: "Somewhere else",
+          "offer-now": "Offer it now",
+          "offer-later": "Offer it later",
+          leave: "Leave the request unanswered",
+          "rather-not": "I don't want to see requests like this",
         },
       },
-      headline: {
-        question: "Which slogan would make you most likely to open takeover?",
+      seeking: {
+        question: "Are you looking for something used right now?",
+        options: { yes: "Yes", no: "No" },
+      },
+      delegate: {
+        question:
+          "What would you let Pako do without checking with you first? You can choose several.",
         options: {
-          "h-move": "“Sell your things before you move out.”",
-          "h-photo":
-            "“Take a photo and get a listing with a fair price, ready to post.”",
-          "h-ai": "“An AI assistant writes your listing from a photo.”",
-          "h-nearby":
-            "“Find second-hand items nearby and pick them up on campus.”",
+          "answer-questions": "Answer questions about the item",
+          "suggest-time": "Suggest a pickup time",
+          remind: "Remind the other person about the pickup",
+          negotiate: "Negotiate the price",
+          "accept-offer": "Accept an offer",
           none: "None of these",
         },
       },
-      "helped-find": helped,
-      "helped-sell": helped,
-      "helped-deal": helped,
-      stop: {
-        question:
-          "What could stop you from using takeover? You can choose several answers.",
+      "pay-model": {
+        question: "Which option would you choose?",
         options: {
-          "ai-mistakes": "The AI could make mistakes",
-          "nobody-nearby": "Too few people nearby use it",
-          "prefer-groups": "I prefer my WhatsApp or Telegram groups",
-          privacy: "Privacy concerns",
-          "too-long": "It takes too long",
-          nothing: "Nothing would stop me",
-          other: "Something else",
-        },
-      },
-      sending: {
-        question:
-          "Would you let Pako send messages without checking with you first?",
-        options: {
-          myself: "No, I'd send every message myself",
-          "short-updates": "Only short updates like “On my way”",
-          "replies-too": "Short updates and simple replies",
+          free: "Free",
+          "seller-fee": "Fee per sale",
+          "pay-once": "Pack of 5",
+          monthly: "Monthly subscription",
           "not-sure": "Not sure",
-        },
-      },
-      "move-it": {
-        question: "How would you get the desk home?",
-        options: {
-          "carry-bike": "Carry it or take it by bike",
-          "public-transport": "Take it on public transport",
-          "friend-car": "Borrow a car, or ask a friend who has one",
-          helper:
-            "Book a helper with a cargo bike in the app: CHF 15 for the whole trip up to 4 km, carried to your door (ground floor or lift; stairs may cost extra)",
-          "skip-desk": "Look for a desk closer to home instead",
-          "not-sure": "Not sure",
-        },
-      },
-      desk: {
-        question: "Which of the two desks would you choose?",
-        options: { nearer: "CHF 45", cheaper: "CHF 30", neither: "Neither" },
-      },
-      "scene-pick": {
-        question: "Which scene would you like to see first?",
-        options: {
-          sell: "Sell from a photo",
-          deal: "Agree on a pickup",
-          find: "Find something",
-        },
-      },
-      "try-first": {
-        question:
-          "Which feature would you try first the next time you buy or sell something?",
-        options: {
-          "describe-search": "Describe what I need to search the listings",
-          "photo-listing":
-            "Draft a listing from photos, with a suggested price and sources",
-          "offer-drafts": "Edit and send a draft offer",
-          "pickup-card": "Use the pickup card for confirmations and reminders",
-          none: "None of these",
-          "need-more": "I'd need to know more first",
         },
       },
       age: {
         question: "How old are you?",
         options: {
+          "under-18": "Under 18",
           "18-20": "18–20",
           "21-23": "21–23",
           "24-26": "24–26",
           "27-30": "27–30",
-          "31-plus": "31 or older",
+          "31-plus": "31+",
           na: "Prefer not to say",
         },
       },
       gender: {
-        question: "What is your gender?",
+        question: "Your gender?",
         options: {
           woman: "Woman",
           man: "Man",
           "non-binary": "Non-binary",
-          "self-describe": "Prefer to self-describe",
+          "self-describe": "Another term",
           na: "Prefer not to say",
         },
       },
-      level: {
-        question: "Which degree are you studying for?",
-        options: {
-          bachelor: "Bachelor",
-          master: "Master",
-          phd: "PhD",
-          other: "Other studies",
-          "not-student": "I'm not a student",
+    },
+    seekingWhat: "What are you looking for? (optional)",
+    chooseSeveral: "You can choose several.",
+    moreBelow: "More options below",
+    sceneInEnglish: "Example from the app (in English)",
+    plans: {
+      label: "Example prices, not available yet",
+      help: "Pako's help",
+      pay: "You pay",
+      cards: {
+        free: { price: "CHF 0", help: "a few times a day", pay: "nothing" },
+        "seller-fee": {
+          price: "5%",
+          help: "unlimited",
+          pay: "5% of the sale price, only if you sell something (CHF\u00a02 on CHF\u00a040)",
+        },
+        "pay-once": {
+          price: "CHF 5",
+          help: "Pako drafts 5 extra listings",
+          pay: "CHF 5 once",
+        },
+        monthly: {
+          price: "CHF 3/month",
+          help: "unlimited",
+          pay: "CHF 3 a month",
         },
       },
-      exchange: {
-        question: "Are you an exchange student?",
-        options: { yes: "Yes", no: "No", na: "Prefer not to say" },
-      },
-    },
-    helpedNeverTried:
-      "Would this feature help you if you wanted to buy or sell something used?",
-    findingBySeller: "Finding someone who wanted it",
-    moveIntro: "Next, two questions about where you live now.",
-    lampIntro: "Imagine you have a desk lamp you no longer need.",
-    packLadder: {
-      bubble: "First, one way of paying: a move-out pack.",
-      title: "Move-out pack",
-      price: (price: number) => `CHF ${price}, paid once`,
-      text: "Writing listings yourself stays free. The pack adds five extra photo drafts with price checks, valid for 30 days.",
-      question: (price: number) =>
-        `Would you pay CHF ${price} of your own money for this pack when you next move?`,
-      options: { yes: "Yes", no: "No", "not-sure": "Not sure" },
-    },
-    plans: {
-      free: {
-        price: "CHF 0",
-        detail:
-          "Keep using the free version, with some help from Pako each day.",
-        benefits: [
-          "Nothing to pay",
-          "Searching, listing and messaging included",
-        ],
-      },
-      "seller-fee": {
-        price: "5% when an item sells",
-        detail: "Paid by the seller, only when an item sells.",
-        benefits: [
-          "Listing and buying stay free",
-          "Nothing to pay if nothing sells",
-        ],
-      },
-      "move-pack": {
-        price: "CHF 5, paid once",
-        detail: "Five extra photo drafts with price checks, valid for 30 days.",
-        benefits: ["No subscription", "Made for the weeks around a move"],
-      },
-      monthly: {
-        price: "CHF 3 a month",
-        detail: "Unlimited help from Pako, the app's assistant.",
-        benefits: [
-          "As many drafts and price checks as you like",
-          "Covers frequent buying and selling",
-        ],
-      },
-    },
-    lastStory: {
-      question:
-        "In one sentence, how did your last experience with a second-hand item go?",
-      label: "Your sentence",
-      placeholder: "Optional, a few words are enough",
-    },
-    wantedCard: {
-      idea: "An idea for the app",
-      explanation:
-        "Students can share what they're looking for. Others nearby see the request, but never the name of the person asking.",
-      label: "Example of a request in the app, with an I have one button",
-      text: "Someone near Vortex is looking for a desk lamp. Got one lying around?",
-      button: "I have one",
-    },
-    whoSendsCard: {
-      title: "How the app works",
-      sentence:
-        "Pako, the app's assistant, drafts your messages. Nothing is sent until you tap Send.",
-    },
-    helperMissing: "Note: this helper service doesn't exist yet.",
-    packMissing: "Note: this pack doesn't exist yet.",
-    desk: {
-      sameTerms: "Same desk, same condition, pickup this week",
-      distance: {
-        nearer: "200 m from where you live",
-        cheaper: "4 km from where you live",
-      },
-      title: "Desk",
-      listLabel: "Two desks in the app",
     },
     draft: {
       intro:
-        "Mia asks when you could pick up the desk. Choose a day in the chat below.",
+        "You want to buy Mia's desk. Mia asks when you could pick it up: choose a day in the chat below.",
+      scenario:
+        "Mia is another student. The price and the pickup place work for you.",
+      task: "First, answer Mia in the chat. Pako then drafts a reply for you, and you decide what to do with it.",
       chatLabel: "Practice chat with Mia",
       listing: {
         title: "White desk",
@@ -813,51 +694,46 @@ export const EN = {
       you: "You",
       pako: "Pako",
       askDay:
-        "Hi! The desk is still available. Which day could you pick it up? I'm free from 17:00.",
+        "Hi! The desk is still available. Which day could you pick it up? I'm free from 5 pm.",
       pickDay: "Your answer to Mia",
       days: { sat: "Saturday", sun: "Sunday" },
-      yourDay: (day: string) => `${day} works for me. How about 17:30?`,
-      confirm: "17:30 is fine. Send me an offer and I'll confirm.",
+      yourDay: (day: string) => `${day} works for me. How about 5:30 pm?`,
+      confirm: (day: string, price: number) =>
+        `Agreed: CHF ${price}, on ${day} at 5:30 pm at the Rolex Learning Center.`,
       typing: (name: string) => `${name} is typing`,
-      offerReady: "I've written an offer for you.",
+      offerReady: "I've drafted a reply for you.",
       offer: (day: string, price: number) =>
-        `Hi Mia! I'd like your white desk for CHF ${price}. I can pick it up on ${day} at 17:30 at the Rolex Learning Center.`,
-      offerTitle: "Offer draft",
+        `Great, thanks! So CHF ${price}, on ${day} at 5:30 pm at the Rolex Learning Center. See you then!`,
+      offerTitle: "Pako's draft",
       question: "What would you do with this draft?",
-      sendAsIs: "Send it as it is",
-      change: "Change something first",
-      own: "Write my own message",
+      sendAsIs: "Send as written",
+      change: "Edit it",
+      own: "Write my own",
       ownLabel: "Your message to Mia",
       send: "Send",
-      dontSend: "Don't send it",
-      editLabel: "Your offer to Mia",
-      notSent: "You didn't send the offer.",
+      dontSend: "Send nothing",
+      editLabel: "Your reply to Mia",
+      notSent: "You didn't send anything.",
     },
-    saved: "Done! Your answers are saved.",
-    savedSaving: "Done! I'm saving your last answers.",
-    about: {
-      intro:
-        "Finally, a few optional questions about you. They help us understand who took part.",
-      finish: "Finish",
-      peek: "See the full scenes (optional)",
-    },
-    tour: {
-      next: "Next",
-      replay: "Replay",
-      skipRest: "Skip the rest",
-    },
+    scene: { next: "Next", replay: "Replay" },
     pilot: {
-      invite:
-        "Want to hear when takeover is online, try it early, or join a future survey?",
+      invite: "Would you like to hear from us again?",
       email: "Email address",
       ticksLegend: "What would you like?",
       ticks: {
-        launchNews: "Tell me when takeover is online",
+        launchNews: "Let me know when takeover launches",
         tryEarly: "I'd like to try takeover early",
+        interview: "I'm up for a 15-minute chat",
         futureSurveys: "Invite me to future surveys",
       },
-      role: "Would you sell, buy or both?",
-      roles: { seller: "Sell", buyer: "Buy", both: "Both" },
+      role: "What would you like to try?",
+      roles: {
+        buy: "Buy",
+        "get-free": "Get for free",
+        sell: "Sell",
+        "give-away": "Give away",
+        "not-sure": "Not sure yet",
+      },
       place: "Where do you live?",
       places: {
         vortex: "FMEL Vortex",
@@ -868,33 +744,21 @@ export const EN = {
         flat: "A flat or studio",
         elsewhere: "Somewhere else",
       },
-      note: "Kept separately from your survey answers.",
+      note: "Optional. Kept separately from your survey answers.",
       send: "Send",
-      noThanks: "No thanks",
+      sent: "We've saved your email. We'll be in touch.",
       errors: {
         emailMissing: "Enter your email address.",
         emailInvalid: "This doesn't look like an email address.",
         ticks: "Tick at least one box.",
-        role: "Choose whether you'd sell, buy or both.",
+        role: "Choose what you would like to try.",
         place: "Choose where you live.",
       },
     },
     end: {
-      title: "Thank you! Your answers help us decide what to build next.",
-      resultsTitle: "How others answered",
-      resultsWaiting: (minimum: number) =>
-        `Results appear once ${minimum} people have answered.`,
-      resultsLoading: "Loading the results…",
-      resultsFailed: "The results couldn't be loaded.",
-      deskTitle: "Two desks: which one?",
-      deskOptions: {
-        nearer: "Nearer: CHF 45, 200 m",
-        cheaper: "Cheaper: CHF 30, 4 km",
-        neither: "Neither",
-      },
-      troubleTitle: "What was most difficult last time",
-      troubleFinding: "Finding the right item or someone who wanted it",
-      ofAnswers: (count: number, total: number) => `${count} of ${total}`,
+      title: "Thank you!",
+      debrief:
+        "By the way: the CHF 45 draft was a deliberate mistake to see whether people check drafts.",
       shareTitle:
         "Every answer helps, including from people who never sell anything. Would you share the survey?",
       share: "Share",
@@ -905,7 +769,7 @@ export const EN = {
       copied: "Link copied.",
       copyFailed: "The link couldn't be copied. Here it is:",
       shareText: (minutes: number, link: string) =>
-        `I just did a ${minutes}-minute phone survey for an EPFL student project. No sign-in: ${link}`,
+        `I just did a ${minutes}-minute survey for an EPFL student project. No sign-in: ${link}`,
     },
   },
 };

@@ -5,14 +5,12 @@ import {
   studyContactSchema,
   studyEventsSchema,
   studyPilotSchema,
-  studyResultsSchema,
   studyStartSchema,
   type StudyAnswer,
   type StudyConfig,
   type StudyContact,
   type StudyEvents,
   type StudyPilot,
-  type StudyResults,
   type StudyStart,
 } from "../../shared/study.ts";
 
@@ -127,12 +125,4 @@ export function sendPilot(pilot: StudyPilot) {
     studyPilotSchema.parse(pilot),
     "send the pilot sign-up",
   );
-}
-
-/** The shared counts of one wording version: the participant's own. */
-export async function readResults(version: string): Promise<StudyResults> {
-  const query = new URLSearchParams({ version });
-  const response = await fetch(`${STUDY_ROUTES.results}?${query}`);
-  if (!response.ok) throw await failure(response, "read the results");
-  return studyResultsSchema.parse(await response.json());
 }

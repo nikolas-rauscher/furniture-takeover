@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useTourText } from "../i18n/TourLanguage";
 import { formatDay } from "../i18n/tourText";
 import StudyShell from "../study/StudyShell";
+import MoreBelow from "./MoreBelow";
 import { V3_MINUTES } from "./v3Script";
 
 /** What is saved, folded away behind a quiet toggle. */
@@ -36,13 +37,14 @@ function SaveDetails({
       </button>
       <div id={detailsId} hidden={!open}>
         <p>{start.save(formatDay(deleteBy, text))}</p>
-        <p>
+        <p className="tour-consent-last">
           {start.questions}{" "}
           <a className="tour-link" href={`mailto:${contact}`}>
             {contact}
           </a>
         </p>
       </div>
+      {open && <MoreBelow last=".tour-consent-last" label={start.moreBelow} />}
     </div>
   );
 }

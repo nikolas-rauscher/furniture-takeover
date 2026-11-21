@@ -7,10 +7,8 @@ import {
   studyEventsSchema,
   studyPilotSchema,
   studyStartSchema,
-  studyVersionSchema,
   studyWithdrawalSchema,
   type StudyConfig,
-  type StudyResults,
 } from "../../shared/study.ts";
 import { demoAdminHeader } from "../../shared/admin.ts";
 import type { CloudAccess } from "../cloud.ts";
@@ -23,10 +21,6 @@ import type { RouteHandler, RouteTable, StudyAccess } from "./types.ts";
 
 export const STUDY_BODY_LIMIT = 8 * 1024;
 export const STUDY_WRITES_PER_MINUTE = 300;
-/** The shared counts change slowly, so one database read serves a minute of participants. */
-export const STUDY_RESULTS_MAX_AGE_MS = 60_000;
-/** Database reads for the shared counts per minute, over all wording versions. */
-export const STUDY_RESULTS_READS_PER_MINUTE = 30;
 
 const studyClosed = () =>
   new AgentError(
@@ -86,35 +80,6 @@ function parseStudyBody<T>(schema: z.ZodType<T>, body: unknown): T {
 }
 
 /**
- * Keeps each wording version's counts for a minute; a failed read is not kept. Counts
- * that ran out are dropped, and the reads behind the cache are capped, so asking for
- * many versions grows neither the cache nor the load on the database.
- */
-function createResultsCache(now: () => Date) {
-  const cached = new Map<string, { results: StudyResults; until: number }>();
-  const capReads = createMinuteCap(
-    now,
-    STUDY_RESULTS_READS_PER_MINUTE,
-    "The study's results are asked for often. Please retry in a minute.",
-  );
-  return async (
-    store: StudyStore,
-    version: string,
-    response: ServerResponse,
-  ) => {
-    const time = now().getTime();
-    for (const [key, entry] of cached)
-      if (time >= entry.until) cached.delete(key);
-    const kept = cached.get(version);
-    if (kept) return kept.results;
-    capReads(response);
-    const results = await store.results(version);
-    cached.set(version, { results, until: time + STUDY_RESULTS_MAX_AGE_MS });
-    return results;
-  };
-}
-
-/**
  * Who asks for the results page. In account mode it is the signed-in user, whom the
  * database checks against the admins; the demo has no accounts, so its admin area
  * opens in developer mode, as the rest of the demo's admin area does.
@@ -140,25 +105,10 @@ export function createStudyRoutes(
     STUDY_WRITES_PER_MINUTE,
     "The study is receiving many answers. Please retry in a minute.",
   );
-  const cachedResults = createResultsCache(now);
   const config: RouteHandler = ({ response }) => {
     const open = openStudy(study, now);
     const body: StudyConfig = open ? open.config : { open: false };
     send(response, 200, body);
-  };
-  // Each participant asks for the counts of their own wording version.
-  const results: RouteHandler = async ({ response, url }) => {
-    const open = openStudy(study, now);
-    if (!open) throw studyClosed();
-    const version = studyVersionSchema.safeParse(
-      url.searchParams.get("version"),
-    );
-    if (!version.success) throw invalidStudyRequest();
-    send(
-      response,
-      200,
-      await cachedResults(open.store, version.data, response),
-    );
   };
   // Configured is enough: the counts stay readable after collection closes, until deletion.
   const report: RouteHandler = async ({ request, response, url }) => {
@@ -195,7 +145,6 @@ export function createStudyRoutes(
     };
   return {
     [`GET ${STUDY_ROUTES.config}`]: config,
-    [`GET ${STUDY_ROUTES.results}`]: results,
     [`GET ${STUDY_ROUTES.report}`]: report,
     [`POST ${STUDY_ROUTES.sessions}`]: write(
       collecting,

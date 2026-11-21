@@ -3,11 +3,17 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { useTourText } from "../i18n/TourLanguage";
 import TextAnswer from "../study/TextAnswer";
-import { resumeDraft, sentResult, type DraftPhase } from "./draftResume";
+import {
+  resumeDraft,
+  sentPrice,
+  sentResult,
+  type DraftPhase,
+} from "./draftResume";
 import type { Given, StepContext } from "./stepContext";
 import {
   DRAFT_DAY_STEP,
   DRAFT_DAYS,
+  DRAFT_PRICE_STEP,
   DRAFT_PRICES,
   DRAFT_VARIANT_STEP,
   type DraftAction,
@@ -71,6 +77,7 @@ export default function DraftChat({ context }: { context: StepContext }) {
   const moveOn = useRef(context.moveOn);
   const log = useRef<HTMLDivElement>(null);
   const offerCard = useRef<HTMLDivElement>(null);
+  const agreement = useRef<HTMLDivElement>(null);
   const questionId = useId();
   const order = orders[DRAFT_DAY_STEP] ?? DRAFT_DAYS;
 
@@ -98,9 +105,12 @@ export default function DraftChat({ context }: { context: StepContext }) {
     return () => window.clearTimeout(timer);
   }, [phase, reduced]);
 
-  // The offer takes focus once it appears, so it is read before the choices.
+  // The decision is seen whole: Mia's agreement scrolls to the top, so her terms, Pako's
+  // draft and the four choices stand together. The draft takes focus, so it is read first.
   useEffect(() => {
-    if (phase === "decide") offerCard.current?.focus();
+    if (phase !== "decide") return;
+    agreement.current?.scrollIntoView({ block: "start" });
+    offerCard.current?.focus({ preventScroll: true });
   }, [phase]);
 
   function pickDay(picked: DraftDay) {
@@ -115,8 +125,8 @@ export default function DraftChat({ context }: { context: StepContext }) {
   }
 
   /**
-   * The final answer, saved at once; a decision straight from the choices names that
-   * choice as the first.
+   * The final answer, saved at once with the price a sent message names; a decision
+   * straight from the choices names that choice as the first.
    */
   function decide(result: DraftResult, text: string, first?: DraftAction) {
     const decided: Given = {
@@ -124,7 +134,10 @@ export default function DraftChat({ context }: { context: StepContext }) {
       text,
       firstChosen: first ? [first] : undefined,
     };
-    context.saveNow({ draft: decided });
+    const price: Record<string, Given> = text
+      ? { [DRAFT_PRICE_STEP]: { chosen: [sentPrice(text)], text: "" } }
+      : {};
+    context.saveNow({ draft: decided, ...price });
     context.keepUnsentDraft(null);
     setDecision(decided);
     setPhase("decided");
@@ -181,9 +194,11 @@ export default function DraftChat({ context }: { context: StepContext }) {
           <p className="tour-chat-typing">{draft.typing(draft.mia)}</p>
         )}
         {after(["pako-typing", "decide", "write", "decided"]) && (
-          <Bubble from="mia" name={draft.mia}>
-            {draft.confirm}
-          </Bubble>
+          <div ref={agreement} className="tour-chat-anchor">
+            <Bubble from="mia" name={draft.mia}>
+              {draft.confirm(dayWords, DRAFT_PRICES.exact)}
+            </Bubble>
+          </div>
         )}
         {phase === "pako-typing" && (
           <p className="tour-chat-typing">{draft.typing(draft.pako)}</p>

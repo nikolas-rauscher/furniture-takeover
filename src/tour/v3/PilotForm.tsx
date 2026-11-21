@@ -7,16 +7,24 @@ import {
   type StudyPilot,
 } from "../../../shared/study.ts";
 import { useTourText } from "../i18n/TourLanguage";
+import { toggleOption } from "../optionOrder";
 import type { StepContext } from "./stepContext";
 
 type Role = (typeof STUDY_PILOT_ROLES)[number];
 type Place = (typeof STUDY_PILOT_PLACES)[number];
-type Tick = "launchNews" | "tryEarly" | "futureSurveys";
-const TICKS: readonly Tick[] = ["launchNews", "tryEarly", "futureSurveys"];
+const isRole = (id: string): id is Role =>
+  STUDY_PILOT_ROLES.some((role) => role === id);
+type Tick = "launchNews" | "tryEarly" | "interview" | "futureSurveys";
+const TICKS: readonly Tick[] = [
+  "launchNews",
+  "tryEarly",
+  "interview",
+  "futureSurveys",
+];
 
 type Draft = Record<Tick, boolean> & {
   email: string;
-  role: Role | null;
+  roles: Role[];
   place: Place | null;
 };
 
@@ -27,10 +35,18 @@ const EMPTY: Draft = {
   email: "",
   launchNews: false,
   tryEarly: false,
+  interview: false,
   futureSurveys: false,
-  role: null,
+  roles: [],
   place: null,
 };
+
+/** "Not sure yet" clears the other roles and is cleared by them. */
+const ROLE_OPTIONS = STUDY_PILOT_ROLES.map((id) => ({
+  id,
+  label: id,
+  exclusive: id === "not-sure",
+}));
 
 function Group({
   id,
@@ -81,7 +97,7 @@ function TickBox({
 }
 
 /**
- * The optional form at the end, stored without the session. Role and place are asked
+ * The optional form at the end, stored without the session. Roles and place are asked
  * only of those who want to try takeover early.
  */
 export default function PilotForm({ context }: { context: StepContext }) {
@@ -98,7 +114,8 @@ export default function PilotForm({ context }: { context: StepContext }) {
     else if (!studyPilotSchema.shape.email.safeParse(email).success)
       found.email = pilot.errors.emailInvalid;
     if (!TICKS.some((tick) => current[tick])) found.ticks = pilot.errors.ticks;
-    if (current.tryEarly && !current.role) found.role = pilot.errors.role;
+    if (current.tryEarly && current.roles.length === 0)
+      found.role = pilot.errors.role;
     if (current.tryEarly && !current.place) found.place = pilot.errors.place;
     return found;
   }
@@ -118,7 +135,7 @@ export default function PilotForm({ context }: { context: StepContext }) {
       ...draft,
       email: draft.email.trim(),
       // The follow-up questions are answered only by those who want to try early.
-      role: draft.tryEarly ? draft.role : null,
+      roles: draft.tryEarly ? draft.roles : [],
       place: draft.tryEarly ? draft.place : null,
     });
     context.sendPilot(sent);
@@ -182,11 +199,19 @@ export default function PilotForm({ context }: { context: StepContext }) {
               {STUDY_PILOT_ROLES.map((role) => (
                 <TickBox
                   key={role}
-                  type="radio"
-                  name={`${id}-role`}
+                  type="checkbox"
+                  name={`${id}-role-${role}`}
                   label={pilot.roles[role]}
-                  checked={draft.role === role}
-                  onChange={() => change({ role })}
+                  checked={draft.roles.includes(role)}
+                  onChange={() =>
+                    change({
+                      roles: toggleOption(
+                        ROLE_OPTIONS,
+                        draft.roles,
+                        role,
+                      ).filter(isRole),
+                    })
+                  }
                 />
               ))}
             </Group>
@@ -210,13 +235,6 @@ export default function PilotForm({ context }: { context: StepContext }) {
       <div className="tour-form-actions">
         <Button type="submit" className="button primary large">
           {pilot.send}
-        </Button>
-        <Button
-          type="button"
-          className="button quiet large"
-          onClick={context.moveOn}
-        >
-          {pilot.noThanks}
         </Button>
       </div>
     </form>

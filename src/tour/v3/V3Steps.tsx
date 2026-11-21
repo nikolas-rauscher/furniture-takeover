@@ -16,27 +16,17 @@ import {
   answerEvent,
   backTarget,
   canGoBack,
-  isTourScene,
   nextV3,
   recordV3Answer,
   v3StepById,
   visibleV3Steps,
   withEvent,
-  withMoment,
   withoutAnswersOffPath,
-  withPriceShown,
   withV3Order,
 } from "./v3Flow";
 import { PILOT_KEY, v3Job } from "./v3Jobs";
-import { ladderOf } from "./packPricing";
 import { rememberFinished, type V3Progress } from "./v3Progress";
-import {
-  PACK_ANSWERS,
-  PEEK_STEP,
-  packAnswerStep,
-  type V3ChoiceStep,
-  type V3Step,
-} from "./v3Script";
+import type { V3ChoiceStep, V3Step } from "./v3Script";
 import { optionsOf, questionOf } from "./v3Words";
 import SectionStrip from "./SectionStrip";
 import type { Given, SceneState, StepContext } from "./stepContext";
@@ -61,14 +51,7 @@ const keep: Transform = (progress) => progress;
 
 function moodFor(step: V3Step): PakoMood {
   switch (step.kind) {
-    case "about-app":
     case "part":
-      return "wave";
-    case "story":
-      return "listen";
-    case "saved":
-      return "cheer";
-    case "pilot":
       return "wave";
     case "end":
       return "happy";
@@ -78,64 +61,33 @@ function moodFor(step: V3Step): PakoMood {
 }
 
 /** Pako reacts to answers about the participant, never to answers about the product. */
-function reactsToPick(step: V3Step) {
-  if (step.kind === "about") return true;
-  if (step.kind !== "choice" || step.product) return false;
-  return step.section === "you" || step.section === "last-time";
+const reactsToPick = (step: V3Step) => step.kind === "choice" && !step.product;
+
+/**
+ * Pako's line on a question: the context of a step with a card, which the question
+ * then follows above the answers, or else the question itself.
+ */
+function choiceBubble(step: V3ChoiceStep, text: TourText): GuideBubble {
+  if (!step.card) return { id: step.id, text: questionOf(text, step) };
+  const card: { title?: string; text: string } = text.v3.cards[step.card];
+  return { id: step.id, title: card.title, text: card.text };
 }
 
-/** Pako's title above a question: the topic it turns to, or the feature it asks about. */
-function titleOf(step: V3ChoiceStep, text: TourText) {
-  if (step.intro) return text.v3[step.intro];
-  return step.feature ? text.v3.scenes[step.feature].title : undefined;
-}
-
-function bubbleFor(
-  step: V3Step,
-  text: TourText,
-  progress: V3Progress,
-): GuideBubble | undefined {
+function bubbleFor(step: V3Step, text: TourText): GuideBubble | undefined {
   const { v3 } = text;
-  const { answers } = progress;
   switch (step.kind) {
-    case "about-app":
-      return { id: step.id, text: v3.whatIs.bubble };
     case "part":
       return { id: step.id, text: v3.parts[step.section].bubble };
     case "choice":
-      return {
-        id: step.id,
-        title: titleOf(step, text),
-        text: questionOf(text, step, answers),
-      };
-    case "story":
-      return { id: step.id, text: v3.lastStory.question };
-    case "desk":
-      return { id: step.id, text: v3.steps.desk.question };
+      return choiceBubble(step, text);
     case "draft":
       return { id: step.id, text: v3.draft.intro };
-    case "ladder": {
-      // Pako asks each price in turn; the bubble changes with it, so the new price is read out.
-      const { next } = ladderOf(progress);
-      const words = v3.packLadder;
-      if (next === null) return { id: `${step.id}-done`, text: words.bubble };
-      return {
-        id: `${step.id}-${next}`,
-        title: words.bubble,
-        text: words.question(next),
-      };
-    }
-    case "about":
-      return { id: step.id, text: v3.about.intro };
     case "scene":
       return {
         id: step.id,
         title: v3.scenes[step.scene].title,
         text: v3.scenes[step.scene].text,
       };
-    case "pilot":
-      return { id: step.id, text: v3.pilot.invite };
-    case "saved":
     case "end":
       return undefined;
   }
@@ -146,7 +98,6 @@ function labelFor(
   bubble: GuideBubble | undefined,
   text: TourText,
 ) {
-  if (step.kind === "saved") return text.v3.saved;
   if (step.kind === "end") return text.v3.end.title;
   if (!bubble) throw new Error(`Step ${step.id} has no line from Pako.`);
   return bubble.title ? `${bubble.title} ${bubble.text}` : bubble.text;
@@ -154,27 +105,21 @@ function labelFor(
 
 /** Whether a tap on this step moves on by itself. */
 function advancesOnTap(step: V3Step, answer: Given) {
-  if (step.kind === "desk") return true;
-  if (step.kind !== "choice" || step.disclosure || step.multiple) return false;
+  if (step.kind !== "choice" || step.multiple) return false;
   return !step.withText || !answer.chosen.includes(step.withText);
 }
 
-/** The ids answered on this screen and what is given for each so far. */
+/** What is given on this screen so far. */
 function givenOn(
   step: V3Step,
   pending: Pending | null,
   answers: V3Progress["answers"],
-) {
-  const ids =
-    step.kind === "about" ? step.rows.map((row) => row.id) : [step.id];
-  return Object.fromEntries(
-    ids.map((id) => [
-      id,
-      (pending?.stepId === step.id ? pending.answers[id] : undefined) ??
-        answers[id] ??
-        EMPTY,
-    ]),
-  );
+): Record<string, Given> {
+  const given =
+    (pending?.stepId === step.id ? pending.answers[step.id] : undefined) ??
+    answers[step.id] ??
+    EMPTY;
+  return { [step.id]: given };
 }
 
 function useTimers() {
@@ -230,17 +175,14 @@ export default function V3Steps({
     setPending(null);
     const from = step.id;
     setProgress((current) => {
-      // A move ends a skip's jump back; the skip itself records it again.
-      const moved = before({ ...current, skippedFrom: null });
-      let next = withV3Order({ ...moved, stepId: target.id }, target);
+      let next = withV3Order({ ...before(current), stepId: target.id }, target);
       if (travel === -1) next = withEvent(next, "back", from, target.id);
       next = withEvent(next, "shown", target.id);
-      if (target.kind === "ladder") next = withPriceShown(next);
-      if (target.kind === "saved") next = withEvent(next, "core-complete");
-      if (target.kind === "end") next = withEvent(next, "end");
+      if (target.kind === "end")
+        next = withEvent(withEvent(next, "core-complete"), "end");
       return next;
     });
-    if (target.kind === "saved") rememberFinished();
+    if (target.kind === "end") rememberFinished();
   }
 
   /**
@@ -319,40 +261,11 @@ export default function V3Steps({
       [step.id]: { ...scene, ...change },
     }));
 
-  /** Every scene still ahead, the current one included, counts as skipped. */
-  function skipTour() {
-    const remaining = steps.slice(steps.indexOf(step)).filter(isTourScene);
-    const rest = steps[steps.map(isTourScene).lastIndexOf(true) + 1];
-    if (!rest) throw new Error("The tour has no step after its scenes.");
-    goTo(rest, 1, (current) => ({
-      ...remaining.reduce(
-        (next, skipped) =>
-          skipped.kind === "scene" &&
-          !(skipped.id === step.id && scene.finished)
-            ? withEvent(next, "scene-skipped", skipped.id, skipped.scene)
-            : next,
-        current,
-      ),
-      skippedFrom: step.id,
-    }));
-  }
-
-  function answerLadder(chosen: string) {
-    const ladder = ladderOf(progress);
-    // The next price starts without a selection.
-    setPending(null);
-    if (ladder.next === null) return;
-    const answered = storeAnswers({
-      [packAnswerStep(ladder.next)]: { chosen: [chosen], text: "" },
-    });
-    // The follow-up price, if any, counts as asked from the moment it shows.
-    setProgress((current) => withPriceShown(answered(current)));
-  }
-
+  /** The form at the end is sent once; the end screen stays and thanks for it. */
   function sendPilot(pilot: StudyPilot) {
     const transform: Transform = (current) => ({ ...current, pilot });
     recorder.add(v3Job(transform(progress), PILOT_KEY));
-    goTo(nextV3(progress.answers, step.id), 1, transform);
+    setProgress(transform);
   }
 
   const context: StepContext = {
@@ -365,21 +278,15 @@ export default function V3Steps({
     answer,
     proceed,
     moveOn,
-    finishAbout: (choice) =>
-      proceed({ ...given, [PEEK_STEP]: { chosen: [choice], text: "" } }),
-    skipTour,
     replayScene: () => updateScene({ replay: scene.replay + 1 }),
     sceneDone: () => {
       if (scene.finished || step.kind !== "scene") return;
       updateScene({ finished: true });
       log("scene-played", step.scene);
     },
-    sceneMoment: (moment, by) =>
-      setProgress((current) => withMoment(current, step.id, moment, by)),
     saveNow: (answers) => setProgress(storeAnswers(answers)),
     keepUnsentDraft: (unsentDraft) =>
       setProgress((current) => ({ ...current, unsentDraft })),
-    answerLadder,
     sendPilot,
     retry: recorder.retry,
     log,
@@ -389,13 +296,6 @@ export default function V3Steps({
 
   // Number keys pick answers and Enter moves on, as long as no control has the key.
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
-    if (step.kind === "ladder") {
-      const pick = numberPick(event, PACK_ANSWERS.length);
-      if (pick === null) return;
-      event.preventDefault();
-      answerLadder(PACK_ANSWERS[pick - 1]);
-      return;
-    }
     if (
       step.kind !== "choice" ||
       event.defaultPrevented ||
@@ -426,8 +326,8 @@ export default function V3Steps({
     }
   }
 
-  const bubble = bubbleFor(step, text, progress);
-  const strip = step.section !== undefined || step.kind === "saved";
+  const bubble = bubbleFor(step, text);
+  const strip = step.section !== undefined;
   const header =
     step.kind === "end" ? undefined : (
       <>
@@ -439,7 +339,7 @@ export default function V3Steps({
         >
           <ArrowLeft size={22} aria-hidden="true" />
         </Button>
-        {strip && <SectionStrip step={step} />}
+        {strip && <SectionStrip answers={progress.answers} step={step} />}
       </>
     );
 
@@ -447,7 +347,7 @@ export default function V3Steps({
     <StudyShell
       stepKey={step.id}
       label={labelFor(step, bubble, text)}
-      layout={step.kind === "end" || step.kind === "saved" ? "hero" : "guide"}
+      layout={step.kind === "end" ? "hero" : "guide"}
       arrangement={step.kind === "scene" ? "beside" : "top"}
       mood={mood}
       bubble={bubble}
@@ -457,11 +357,7 @@ export default function V3Steps({
       direction={direction}
       onKeyDown={handleKeyDown}
       focusFirst
-      readOnly={
-        step.kind === "about-app" ||
-        step.kind === "part" ||
-        step.kind === "draft"
-      }
+      readOnly={step.kind === "part" || step.kind === "draft"}
     >
       <V3StepContent context={context} />
     </StudyShell>

@@ -37,6 +37,7 @@
   --card-line: #e3e3dd;
   --lip: #d3d3cb;
   --selected: #eef1fc;
+  --hover-face: #f4f4ef;
   --radius-card: 16px;
   --radius-stage: 22px;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -261,8 +262,11 @@ textarea {
 .button.primary:not(:disabled):hover {
   --button-face: #3c58c7;
 }
-.button.secondary:not(:disabled):hover {
-  --button-face: var(--selected);
+/* A touch leaves no hover behind, and a hovered button never looks picked. */
+@media (hover: hover) {
+  .button.secondary:not(:disabled):hover {
+    --button-face: var(--hover-face);
+  }
 }
 /* Primary actions rest on the full lip at every size and secondary actions on a shallow
    one; small secondary ones and icon buttons sit flat. */

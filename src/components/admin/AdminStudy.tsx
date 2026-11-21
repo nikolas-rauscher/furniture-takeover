@@ -270,25 +270,26 @@ function Pilot({ report }: { report: StudyReport }) {
     <>
       <p className="admin-muted">
         {pilot.forms} {pilot.forms === 1 ? "form" : "forms"} ·{" "}
-        {pilot.launchNews} want to hear when it is online · {pilot.tryEarly}{" "}
-        want to try it early · {pilot.futureSurveys} want future surveys
+        {pilot.launchNews} want to hear when it launches · {pilot.tryEarly} want
+        to try it early · {pilot.interview} are up for a chat ·{" "}
+        {pilot.futureSurveys} want future surveys
       </p>
       <ScrollTable label="Table of those who want to try takeover early, by place and role">
         <thead>
           <tr>
             <th scope="col">Lives</th>
-            <th scope="col">Sell</th>
-            <th scope="col">Buy</th>
-            <th scope="col">Both</th>
+            <th scope="col">Sell or give away</th>
+            <th scope="col">Buy or get</th>
+            <th scope="col">Not sure yet</th>
           </tr>
         </thead>
         <tbody>
-          {pilot.places.map(({ place, sellers, buyers, both }) => (
+          {pilot.places.map(({ place, sellers, buyers, undecided }) => (
             <tr key={place}>
               <th scope="row">{PLACES[place]}</th>
               <td>{cellText(sellers, minCell)}</td>
               <td>{cellText(buyers, minCell)}</td>
-              <td>{cellText(both, minCell)}</td>
+              <td>{cellText(undecided, minCell)}</td>
             </tr>
           ))}
         </tbody>

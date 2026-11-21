@@ -3,7 +3,9 @@ import {
   STUDY_PACK_PRICES,
   STUDY_PACK_START,
   STUDY_PILOT_PLACES,
+  STUDY_BUYING_ROLES,
   STUDY_PILOT_ROLES,
+  STUDY_SELLING_ROLES,
   STUDY_REPORT_MIN_CELL,
   STUDY_V3_CORE_SCREENS,
   type StudyReport,
@@ -38,8 +40,9 @@ export const studyReportRowsSchema = z.strictObject({
     z.strictObject({
       launchNews: z.boolean(),
       tryEarly: z.boolean(),
+      interview: z.boolean(),
       futureSurveys: z.boolean(),
-      role: z.enum(STUDY_PILOT_ROLES).nullable(),
+      roles: z.array(z.enum(STUDY_PILOT_ROLES)),
       place: z.enum(STUDY_PILOT_PLACES).nullable(),
     }),
   ),
@@ -172,16 +175,20 @@ function pilot(forms: StudyReportRows["pilot"]) {
     forms: forms.length,
     launchNews: forms.filter((form) => form.launchNews).length,
     tryEarly: early.length,
+    interview: forms.filter((form) => form.interview).length,
     futureSurveys: forms.filter((form) => form.futureSurveys).length,
     places: STUDY_PILOT_PLACES.map((place) => {
       const here = early.filter((form) => form.place === place);
-      const withRole = (role: string) =>
-        shown(here.filter((form) => form.role === role).length);
+      const naming = (roles: readonly string[]) =>
+        shown(
+          here.filter((form) => form.roles.some((role) => roles.includes(role)))
+            .length,
+        );
       return {
         place,
-        sellers: withRole("seller"),
-        buyers: withRole("buyer"),
-        both: withRole("both"),
+        sellers: naming(STUDY_SELLING_ROLES),
+        buyers: naming(STUDY_BUYING_ROLES),
+        undecided: naming(["not-sure"]),
       };
     }),
   };

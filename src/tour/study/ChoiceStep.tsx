@@ -77,7 +77,8 @@ export default function ChoiceStep({
       </div>
       {withText && (
         <TextAnswer
-          label={text.common.inAFewWords(withText.label)}
+          label={withText.textLine ?? text.common.inAFewWords(withText.label)}
+          singleLine={withText.textLine !== undefined}
           value={answer.text}
           onChange={(text) => onChange({ ...answer, text }, false)}
         />

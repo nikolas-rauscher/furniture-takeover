@@ -1,3 +1,4 @@
+import type { ChoicePlan } from "@/components/onboarding/ChoiceList";
 /**
  * The study's questions as data, in the order of docs/STUDY.md. Step and option ids are
  * what the server stores, so they change only together with `STUDY_VERSION`.
@@ -16,14 +17,16 @@ export type StudyOption = {
   id: string;
   label: string;
   detail?: string;
-  /** Shown as a price card: the price, then its advantages under the detail. */
-  plan?: { price: string; benefits: readonly string[] };
+  /** Shown as a price card: the price beside the title, then the same facts as every card. */
+  plan?: ChoicePlan;
   /** Stays below the shuffled options, in the order listed. */
   last?: boolean;
   /** Clears every other option when picked, and is cleared by them. */
   exclusive?: boolean;
   /** Asks for a few words once picked. */
   withText?: boolean;
+  /** Asks for one line under this label instead of a few words named after the option. */
+  textLine?: string;
 };
 
 type BaseStep = { id: string; when?: StepCondition };

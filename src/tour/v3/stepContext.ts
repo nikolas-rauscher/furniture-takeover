@@ -33,17 +33,13 @@ export type StepContext = {
   proceed: (answers?: Record<string, Given>) => void;
   /** Goes to the next step without storing anything. */
   moveOn: () => void;
-  finishAbout: (choice: "finish" | "tour") => void;
-  skipTour: () => void;
   replayScene: () => void;
   sceneDone: () => void;
-  sceneMoment: (moment: number, by: "visitor" | "scene") => void;
   /** Keeps the draft's unsent words for this tab, or forgets them once decided. */
   keepUnsentDraft: (text: string | null) => void;
   /** Stores answers at once, by answer id, without leaving the step. */
   saveNow: (answers: Record<string, Given>) => void;
-  /** Answers the pack ladder's current price; the next price, if any, follows on the same screen. */
-  answerLadder: (answer: string) => void;
+  /** Sends the form at the end; the end screen stays. */
   sendPilot: (pilot: StudyPilot) => void;
   retry: () => void;
   log: (kind: StudyEventKind, detail?: string) => void;

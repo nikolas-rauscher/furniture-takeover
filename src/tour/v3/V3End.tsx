@@ -1,137 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  STUDY_RESULTS_MINIMUM,
-  type StudyResults,
-} from "../../../shared/study.ts";
 import { useTourText } from "../i18n/TourLanguage";
-import type { TourText } from "../i18n/en";
 import { SaveStatus } from "../study/StudyEnd";
-import { readResults } from "../studyApi";
+import PilotForm from "./PilotForm";
 import QrCode from "./QrCode";
 import type { StepContext } from "./stepContext";
-import { V3_MINUTES, V3_VERSION } from "./v3Script";
+import { V3_MINUTES } from "./v3Script";
 
 /** The channel tag of links shared from the end of the survey. */
 const SHARE_TAG = "friend";
 
-type Tally = Extract<StudyResults, { ready: true }>["desk"];
-type ResultsState =
-  | { status: "loading" }
-  | { status: "failed" }
-  | { status: "ready"; results: StudyResults };
-
 const shareLink = () => `${window.location.origin}/tour?s=${SHARE_TAG}`;
-
-function useResults() {
-  const [state, setState] = useState<ResultsState>({ status: "loading" });
-  useEffect(() => {
-    let current = true;
-    readResults(V3_VERSION)
-      .then((results) => current && setState({ status: "ready", results }))
-      .catch((error: unknown) => {
-        console.error(error);
-        if (current) setState({ status: "failed" });
-      });
-    return () => {
-      current = false;
-    };
-  }, []);
-  return state;
-}
-
-function Bars({
-  title,
-  rows,
-  total,
-  words,
-}: {
-  title: string;
-  rows: { label: string; count: number }[];
-  total: number;
-  words: TourText["v3"]["end"];
-}) {
-  return (
-    <figure className="tour-bars">
-      <figcaption className="tour-row-title">{title}</figcaption>
-      <ul>
-        {rows.map(({ label, count }) => (
-          <li key={label} className="tour-bar">
-            <span className="tour-bar-label">{label}</span>
-            <span className="tour-bar-track" aria-hidden="true">
-              <span
-                className="tour-bar-fill"
-                style={{ width: `${total ? (count / total) * 100 : 0}%` }}
-              />
-            </span>
-            <span className="tour-bar-count">
-              {words.ofAnswers(count, total)}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </figure>
-  );
-}
-
-const countOf = (tally: Tally, option: string) =>
-  tally.options.find((entry) => entry.option === option)?.count ?? 0;
-
-/** The desk split and the obstacles named last time, once enough people have answered. */
-function OthersAnswered() {
-  const text = useTourText();
-  const words = text.v3.end;
-  const state = useResults();
-  let body;
-  if (state.status === "loading")
-    body = <p className="tour-save">{words.resultsLoading}</p>;
-  else if (state.status === "failed")
-    body = <p className="tour-save">{words.resultsFailed}</p>;
-  else if (!state.results.ready)
-    body = (
-      <p className="tour-save">{words.resultsWaiting(STUDY_RESULTS_MINIMUM)}</p>
-    );
-  else {
-    const { desk, trouble } = state.results;
-    const troubleWords: Record<string, string> =
-      text.v3.steps["last-trouble"].options;
-    body = (
-      <>
-        <Bars
-          title={words.deskTitle}
-          total={desk.answered}
-          words={words}
-          rows={(["nearer", "cheaper", "neither"] as const).map((option) => ({
-            label: words.deskOptions[option],
-            count: countOf(desk, option),
-          }))}
-        />
-        <Bars
-          title={words.troubleTitle}
-          total={trouble.answered}
-          words={words}
-          rows={[...trouble.options]
-            .sort((a, b) => b.count - a.count)
-            .map(({ option, count }) => ({
-              label:
-                option === "finding"
-                  ? words.troubleFinding
-                  : troubleWords[option],
-              count,
-            }))}
-        />
-      </>
-    );
-  }
-  return (
-    <section className="tour-card tour-results" aria-labelledby="results-title">
-      <h2 id="results-title" className="tour-card-title">
-        {words.resultsTitle}
-      </h2>
-      <div aria-live="polite">{body}</div>
-    </section>
-  );
-}
 
 type CopyState =
   { status: "idle" } | { status: "copied" } | { status: "failed" };
@@ -208,23 +87,51 @@ function ShareBlock({ context }: { context: StepContext }) {
   );
 }
 
+/** How saving went, once it is done or has stopped; nothing while it is under way. */
+function EndSaveStatus({ context }: { context: StepContext }) {
+  const { save } = context;
+  if (save.sending) return null;
+  return <SaveStatus save={save} onRetry={context.retry} />;
+}
+
+/** The optional form, for everyone who finished, until it is sent. */
+function StayInTouch({ context }: { context: StepContext }) {
+  const { pilot } = useTourText().v3;
+  const titleId = useId();
+  return (
+    <section className="tour-card tour-contact" aria-labelledby={titleId}>
+      <h2 id={titleId} className="tour-card-title">
+        {pilot.invite}
+      </h2>
+      <PilotForm context={context} />
+    </section>
+  );
+}
+
 /**
- * The thank-you, how saving went, the share block and how others answered. The counts
- * load last and grow by an unknown height, so they come last and push nothing aside.
+ * The thank-you with how saving went, the optional form and the share block. Who saw
+ * the wrong price learns that it was deliberate. Once the form is sent it gives way to a
+ * line saying so, and the screen returns to its top.
  */
 export default function V3End({ context }: { context: StepContext }) {
-  const { v3, common } = useTourText();
+  const { v3 } = useTourText();
+  const top = useRef<HTMLDivElement>(null);
+  const sent = context.progress.pilot !== null;
+  useEffect(() => {
+    if (sent) top.current?.closest(".ob-body")?.scrollTo({ top: 0 });
+  }, [sent]);
   return (
-    <div className="ob-welcome tour-end tour-v3-end">
+    <div ref={top} className="ob-welcome tour-end tour-v3-end">
       <h2 className="ob-title">{v3.end.title}</h2>
       <div role="status">
-        <SaveStatus save={context.save} onRetry={context.retry} />
+        <EndSaveStatus context={context} />
+        {sent && <p className="tour-save">{v3.pilot.sent}</p>}
       </div>
+      {context.progress.draftVariant === "wrong-price" && (
+        <p className="tour-debrief">{v3.end.debrief}</p>
+      )}
+      {!sent && <StayInTouch context={context} />}
       <ShareBlock context={context} />
-      <a className="button quiet large" href="/">
-        {common.openApp}
-      </a>
-      <OthersAnswered />
     </div>
   );
 }
