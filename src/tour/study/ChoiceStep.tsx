@@ -4,6 +4,7 @@ import ChoiceList, {
 import { useTourText } from "../i18n/TourLanguage";
 import { toggleOption } from "../optionOrder";
 import type { StepAnswer, StudyOption } from "../tourScript";
+import { useArrowMoves } from "./arrowMoves";
 import TextAnswer from "./TextAnswer";
 
 function choiceOptions(options: StudyOption[]): ChoiceOption<string>[] {
@@ -38,29 +39,42 @@ export default function ChoiceStep({
   options: StudyOption[];
   multiple: boolean;
   answer: StepAnswer;
-  onChange: (answer: StepAnswer) => void;
+  /** `moved` is set when the arrow keys moved the selection, which is not a pick. */
+  onChange: (answer: StepAnswer, moved: boolean) => void;
   /** Short answers such as age bands sit side by side. */
   layout?: "list" | "grid";
 }) {
   const text = useTourText();
+  const arrows = useArrowMoves();
   const withText = options.find(
     (option) => option.withText && answer.chosen.includes(option.id),
   );
   return (
     <>
-      <ChoiceList
-        label={question}
-        options={choiceOptions(options)}
-        selected={answer.chosen}
-        multiple={multiple}
-        layout={layout}
-        onToggle={(id) => onChange(pickOption(options, answer, id, multiple))}
-      />
+      {/* Hears the keys before the list does, without a box of its own. */}
+      <div
+        style={{ display: "contents" }}
+        onKeyDownCapture={arrows.onKeyDownCapture}
+      >
+        <ChoiceList
+          label={question}
+          options={choiceOptions(options)}
+          selected={answer.chosen}
+          multiple={multiple}
+          layout={layout}
+          onToggle={(id) =>
+            onChange(
+              pickOption(options, answer, id, multiple),
+              arrows.takeMoved(),
+            )
+          }
+        />
+      </div>
       {withText && (
         <TextAnswer
           label={text.common.inAFewWords(withText.label)}
           value={answer.text}
-          onChange={(text) => onChange({ ...answer, text })}
+          onChange={(text) => onChange({ ...answer, text }, false)}
         />
       )}
     </>

@@ -22,8 +22,8 @@ function Row({ row, context }: { row: V3ChoiceStep; context: StepContext }) {
         multiple={false}
         layout="grid"
         answer={{ ...context.given[row.id], shown: [] }}
-        onChange={({ chosen, text: words }) =>
-          context.answer(row.id, { chosen, text: words })
+        onChange={({ chosen, text: words }, moved) =>
+          context.answer(row.id, { chosen, text: words }, moved)
         }
       />
     </section>

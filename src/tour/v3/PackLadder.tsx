@@ -43,8 +43,13 @@ export default function PackLadder({ context }: { context: StepContext }) {
             question={words.question(ladder.next)}
             options={options}
             multiple={false}
-            answer={{ chosen: [], text: "", shown: [] }}
-            onChange={({ chosen }) => context.answerLadder(chosen[0])}
+            answer={{ ...context.given[context.step.id], shown: [] }}
+            onChange={({ chosen }, moved) => {
+              // The arrow keys only select; a tap, Space, Enter or Continue answers.
+              if (moved)
+                context.answer(context.step.id, { chosen, text: "" }, true);
+              else context.answerLadder(chosen[0]);
+            }}
           />
         </div>
       )}

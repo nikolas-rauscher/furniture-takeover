@@ -1,4 +1,5 @@
 import ChoiceList from "@/components/onboarding/ChoiceList";
+import { useArrowMoves } from "../study/arrowMoves";
 import { LampDesk } from "@/components/icons";
 import { useTourText } from "../i18n/TourLanguage";
 import { orderOptions } from "../optionOrder";
@@ -27,6 +28,7 @@ export default function DeskTask({
     tile:
       id === "neither" ? undefined : { icon: LampDesk, tint: "sand" as const },
   }));
+  const arrows = useArrowMoves();
   const order = context.progress.orders[step.id];
   const shown = order ? orderOptions(listings, order) : listings;
   return (
@@ -35,14 +37,26 @@ export default function DeskTask({
         {v3.desk.title}
       </p>
       <p className="ob-note">{v3.desk.sameTerms}</p>
-      <ChoiceList
-        label={v3.steps.desk.question}
-        options={shown}
-        selected={context.given[step.id].chosen}
-        multiple={false}
-        layout="list"
-        onToggle={(id) => context.answer(step.id, { chosen: [id], text: "" })}
-      />
+      {/* Hears the keys before the list does, without a box of its own. */}
+      <div
+        style={{ display: "contents" }}
+        onKeyDownCapture={arrows.onKeyDownCapture}
+      >
+        <ChoiceList
+          label={v3.steps.desk.question}
+          options={shown}
+          selected={context.given[step.id].chosen}
+          multiple={false}
+          layout="list"
+          onToggle={(id) =>
+            context.answer(
+              step.id,
+              { chosen: [id], text: "" },
+              arrows.takeMoved(),
+            )
+          }
+        />
+      </div>
     </div>
   );
 }

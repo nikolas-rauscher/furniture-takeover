@@ -31,16 +31,22 @@ export default function V3Footer({ context }: { context: StepContext }) {
     case "pilot":
     case "end":
       return null;
-    case "ladder":
+    case "ladder": {
+      // Continue answers the price the arrow keys selected, or leaves a finished ladder.
+      const selected = given[step.id].chosen[0];
+      const done = ladderOf(context.progress).next === null;
       return (
         <Button
           className={primary}
-          disabled={ladderOf(context.progress).next !== null}
-          onClick={context.moveOn}
+          disabled={!done && selected === undefined}
+          onClick={() =>
+            done ? context.moveOn() : context.answerLadder(selected)
+          }
         >
           {common.continue}
         </Button>
       );
+    }
     case "about-app":
     case "saved":
       return (

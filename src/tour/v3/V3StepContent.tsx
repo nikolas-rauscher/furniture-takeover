@@ -48,8 +48,8 @@ function ChoiceContent({
         options={options}
         multiple={step.multiple ?? false}
         answer={{ ...answer, shown: [] }}
-        onChange={({ chosen, text: words }) =>
-          context.answer(step.id, { chosen, text: words })
+        onChange={({ chosen, text: words }, moved) =>
+          context.answer(step.id, { chosen, text: words }, moved)
         }
       />
       <p className="tour-disclosure" role="status">

@@ -7,6 +7,7 @@ import type { PakoMood } from "@/components/onboarding/storyTypes";
 import type { StudyPilot } from "../../../shared/study.ts";
 import { useTourText } from "../i18n/TourLanguage";
 import type { TourText } from "../i18n/en";
+import { movesOn } from "../study/arrowMoves";
 import { pickOption } from "../study/ChoiceStep";
 import StudyShell from "../study/StudyShell";
 import type { Recorder } from "../study/useRecorder";
@@ -48,7 +49,12 @@ const AUTO_ADVANCE_MS = 300;
 const PICK_MOOD_MS = 1400;
 
 type Transform = (progress: V3Progress) => V3Progress;
-type Pending = { stepId: string; answers: Record<string, Given> };
+type Pending = {
+  stepId: string;
+  answers: Record<string, Given>;
+  /** The arrow keys made the last change, so it is a selection, not yet a pick. */
+  moved: boolean;
+};
 
 const EMPTY: Given = { chosen: [], text: "" };
 const keep: Transform = (progress) => progress;
@@ -274,13 +280,18 @@ export default function V3Steps({
     timers.mood = window.setTimeout(() => setMood(moodFor(step)), PICK_MOOD_MS);
   }
 
-  function answer(id: string, changed: Given) {
+  function answer(id: string, changed: Given, moved = false) {
     const added = changed.chosen.length > (given[id]?.chosen.length ?? 0);
+    const confirmsArrowSelection =
+      pending?.stepId === step.id && pending.moved && !moved;
     if (added && reactsToPick(step)) reactToPick();
     const answers = { ...given, [id]: changed };
-    setPending({ stepId: step.id, answers });
+    setPending({ stepId: step.id, answers, moved });
     window.clearTimeout(timers.advance);
-    if (added && advancesOnTap(step, changed))
+    if (
+      movesOn({ added, moved, confirmsArrowSelection }) &&
+      advancesOnTap(step, changed)
+    )
       timers.advance = window.setTimeout(
         () => proceed(answers),
         AUTO_ADVANCE_MS,
@@ -313,6 +324,8 @@ export default function V3Steps({
 
   function answerLadder(chosen: string) {
     const ladder = ladderOf(progress);
+    // The next price starts without a selection.
+    setPending(null);
     if (ladder.next === null) return;
     if (ladder.asked.length === 0)
       setProgress(

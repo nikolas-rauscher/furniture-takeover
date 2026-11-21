@@ -27,7 +27,8 @@ export type StepContext = {
   save: SaveState;
   contact: string;
   scene: SceneState;
-  answer: (id: string, answer: Given) => void;
+  /** `moved`: the arrow keys moved the selection, which records it without moving on. */
+  answer: (id: string, answer: Given, moved?: boolean) => void;
   /** Stores what is given and goes to the next step. */
   proceed: (answers?: Record<string, Given>) => void;
   /** Goes to the next step without storing anything. */
