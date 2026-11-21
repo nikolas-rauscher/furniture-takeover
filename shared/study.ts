@@ -38,6 +38,7 @@ export const STUDY_RESULT_STEPS = {
 
 const MAX_OPTIONS = 12;
 const MAX_STEP_MS = 60 * 60 * 1000;
+const MAX_REVISION = 100_000;
 const MAX_EVENT_SEQ = 9_999;
 
 const session = z.uuid();
@@ -107,6 +108,11 @@ export const studyAnswerSchema = z.strictObject({
   text: z.string().trim().max(STUDY_TEXT_MAX),
   /** How long the step was on screen. */
   elapsedMs: z.number().int().min(0).max(MAX_STEP_MS),
+  /**
+   * v3 only: raised by the client with every save of this answer. The server keeps the
+   * newest; an older write, such as one still in flight from before a reload, changes nothing.
+   */
+  revision: z.number().int().min(1).max(MAX_REVISION).optional(),
 });
 
 /**

@@ -14,6 +14,8 @@ export type V3Answer = {
   shown: string[];
   text: string;
   elapsedMs: number;
+  /** Raised with every save of this answer; the server keeps the newest. */
+  revision: number;
 };
 
 type StudyEvent = StudyEvents["events"][number];

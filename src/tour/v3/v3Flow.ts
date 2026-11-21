@@ -65,7 +65,14 @@ export function withoutAnswersOffPath(
     answerIds,
     after.answers,
   );
-  return { ...after, answers: { ...after.answers, ...emptied } };
+  // An emptied answer is a new save, so it outranks the answer it replaces.
+  const raised = Object.fromEntries(
+    Object.entries(emptied).map(([id, answer]) => [
+      id,
+      { ...answer, revision: answer.revision + 1 },
+    ]),
+  );
+  return { ...after, answers: { ...after.answers, ...raised } };
 }
 
 export function v3StepById(id: string): V3Step {
@@ -155,6 +162,7 @@ export function recordV3Answer(
     shown,
     text: given.text.trim(),
     elapsedMs: Math.min(elapsed, MAX_STEP_MS),
+    revision: (earlier?.revision ?? 0) + 1,
   };
 }
 

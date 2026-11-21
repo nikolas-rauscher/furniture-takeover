@@ -494,3 +494,46 @@ test("answers, sessions, contacts and pilot forms stop at their limits; a full l
     full.close?.();
   });
 });
+
+test("a write in flight from before a reload never replaces the newer answer", async () => {
+  await withDatabase((path) => {
+    const store = createSqliteStudyStore(path);
+    const { session } = v3Start();
+    store.start(v3Start(session));
+    // After the reload the sent offer (revision 2) arrives first...
+    store.saveAnswer({
+      ...v3Answer(session, "draft", ["sent-unchanged"]),
+      firstChosen: ["change"],
+      text: "Hi Mia!",
+      revision: 2,
+    });
+    // ...then the unfinished "change" from before the reload (revision 1).
+    store.saveAnswer({
+      ...v3Answer(session, "draft", ["change"]),
+      text: "",
+      revision: 1,
+    });
+    // A retry of the newest write still lands.
+    store.saveAnswer({
+      ...v3Answer(session, "draft", ["sent-unchanged"]),
+      firstChosen: ["change"],
+      text: "Hi Mia!",
+      revision: 2,
+    });
+    store.close?.();
+    assert.deepEqual(
+      rows(
+        path,
+        "SELECT chosen, first_chosen, text, revision FROM study_answers",
+      ),
+      [
+        {
+          chosen: '["sent-unchanged"]',
+          first_chosen: '["change"]',
+          text: "Hi Mia!",
+          revision: 2,
+        },
+      ],
+    );
+  });
+});

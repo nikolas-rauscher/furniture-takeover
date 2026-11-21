@@ -55,6 +55,7 @@ const COLUMNS_ADDED_FOR_V3 = [
   ["study_sessions", "survey", "TEXT NOT NULL DEFAULT 'v1'"],
   ["study_sessions", "language", "TEXT"],
   ["study_answers", "first_chosen", "TEXT"],
+  ["study_answers", "revision", "INTEGER NOT NULL DEFAULT 0"],
 ] as const;
 
 function addColumnsForV3(db: DatabaseSync) {
@@ -162,11 +163,13 @@ export function createSqliteStudyStore(
           throw namedStudyErrors.study_answer_limit;
         db.prepare(
           `INSERT INTO study_answers
-             (session, step, chosen, first_chosen, shown, text, elapsed_ms, saved_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             (session, step, chosen, first_chosen, shown, text, elapsed_ms, revision, saved_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT (session, step) DO UPDATE SET chosen = excluded.chosen,
              shown = excluded.shown, text = excluded.text,
-             elapsed_ms = excluded.elapsed_ms, saved_at = excluded.saved_at`,
+             elapsed_ms = excluded.elapsed_ms, revision = excluded.revision,
+             saved_at = excluded.saved_at
+           WHERE excluded.revision >= study_answers.revision`,
         ).run(
           input.session,
           input.step,
@@ -175,6 +178,8 @@ export function createSqliteStudyStore(
           JSON.stringify(input.shown),
           input.text,
           input.elapsedMs,
+          // v1 sends no revision; its saves replace each other in order.
+          input.revision ?? 0,
           now(),
         );
       });

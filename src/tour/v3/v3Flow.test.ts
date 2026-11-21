@@ -46,6 +46,7 @@ const answer = (...chosen: string[]): V3Answer => ({
   shown: [],
   text: "",
   elapsedMs: 0,
+  revision: 1,
 });
 
 const progress: V3Progress = {
@@ -402,6 +403,8 @@ test("going back from last-trouble and changing last-role to none empties the an
     shown: ["transport", "price"],
     text: "",
     elapsedMs: 4000,
+    // Emptying is a new save, so it outranks the answer it replaces.
+    revision: 2,
   });
   for (const id of ["last-item", "last-occasion", "last-story"])
     assert.deepEqual(
@@ -431,6 +434,7 @@ test("going back from last-trouble and changing last-role to none empties the an
       shown: ["transport", "price"],
       text: "",
       elapsedMs: 4000,
+      revision: 2,
     },
   ]);
 });

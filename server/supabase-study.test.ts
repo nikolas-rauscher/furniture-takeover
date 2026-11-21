@@ -551,3 +551,37 @@ test("the results page rows are for admins and carry no session ids or emails", 
   const body = JSON.stringify(rows[0].r);
   assert.ok(!body.includes(session) && !body.includes("ada@epfl.ch"));
 });
+
+test("a write in flight from before a reload never replaces the newer answer", async (t) => {
+  const { db, asOwner, startV3 } = await setup(t);
+  const session = randomUUID();
+  await startV3(session);
+  const save = (
+    chosen: string[],
+    first: string[],
+    text: string,
+    revision: number,
+  ) =>
+    db.query(
+      "select public.study_save_answer($1,'draft',$2,$3,'{}',$4,900,$5)",
+      [session, chosen, first, text, revision],
+    );
+  // After the reload the sent offer (revision 2) arrives first, then the unfinished
+  // "change" from before the reload (revision 1); a retry of the newest still lands.
+  await save(["sent-unchanged"], ["change"], "Hi Mia!", 2);
+  await save(["change"], ["change"], "", 1);
+  await save(["sent-unchanged"], ["change"], "Hi Mia!", 2);
+  assert.deepEqual(
+    await asOwner(
+      "select chosen, first_chosen, text, revision from takeover_admin.study_answers",
+    ),
+    [
+      {
+        chosen: ["sent-unchanged"],
+        first_chosen: ["change"],
+        text: "Hi Mia!",
+        revision: 2,
+      },
+    ],
+  );
+});

@@ -64,6 +64,7 @@ function answerJob(progress: V3Progress, step: string): SaveJob {
         shown: answer.shown,
         text: answer.text,
         elapsedMs: answer.elapsedMs,
+        revision: answer.revision,
       }),
   };
 }

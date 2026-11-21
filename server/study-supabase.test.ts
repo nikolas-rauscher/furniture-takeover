@@ -51,6 +51,7 @@ test("the Supabase transport calls the study functions with the service key", as
     shown: [],
     text: "",
     elapsedMs: 1200,
+    revision: 3,
   });
   await study.saveEvents({ session, events: [event] });
   await study.saveContact({
@@ -99,6 +100,7 @@ test("the Supabase transport calls the study functions with the service key", as
     p_shown: [],
     p_text: "",
     p_elapsed_ms: 1200,
+    p_revision: 3,
   });
   assert.deepEqual(bodyOf(calls[2]), { p_session: session, p_events: [event] });
   assert.deepEqual(bodyOf(calls[4]), {

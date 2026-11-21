@@ -93,6 +93,8 @@ export function createSupabaseStudyStore(
         p_shown: input.shown,
         p_text: input.text,
         p_elapsed_ms: input.elapsedMs,
+        // v1 sends no revision; its saves replace each other in order.
+        p_revision: input.revision ?? 0,
       }),
     saveEvents: (input: StudyEvents) =>
       write("study_save_events", {

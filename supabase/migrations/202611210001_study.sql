@@ -22,6 +22,8 @@ create table takeover_admin.study_answers (
  shown text[] not null check(cardinality(shown)<=12),
  text text not null check(length(text)<=280),
  elapsed_ms integer not null check(elapsed_ms between 0 and 3600000),
+ -- v3 only: raised by the client with every save of this answer; an older write never replaces a newer one.
+ revision integer not null default 0 check(revision between 0 and 100000),
  saved_at timestamptz not null default now(),
  primary key(session,step)
 );
@@ -74,9 +76,10 @@ begin
 end $$;
 
 -- An answer replaces the earlier answer for the same step, so the participant can go back.
--- The first answer of a v3 step stays as it was first saved.
+-- The first answer of a v3 step stays as it was first saved. A write with an older revision
+-- than the stored one, such as a request still in flight from before a reload, changes nothing.
 create function public.study_save_answer(p_session uuid,p_step text,p_chosen text[],p_first_chosen text[],
- p_shown text[],p_text text,p_elapsed_ms integer)
+ p_shown text[],p_text text,p_elapsed_ms integer,p_revision integer default 0)
 returns void language plpgsql security definer set search_path='' as $$
 declare session_survey text;
 begin
@@ -87,10 +90,11 @@ begin
  if not exists(select 1 from takeover_admin.study_answers where session=p_session and step=p_step)
   and (select count(*) from takeover_admin.study_answers where session=p_session)>=60
  then raise exception 'study_answer_limit'; end if;
- insert into takeover_admin.study_answers(session,step,chosen,first_chosen,shown,text,elapsed_ms)
- values(p_session,p_step,p_chosen,p_first_chosen,p_shown,p_text,p_elapsed_ms)
+ insert into takeover_admin.study_answers(session,step,chosen,first_chosen,shown,text,elapsed_ms,revision)
+ values(p_session,p_step,p_chosen,p_first_chosen,p_shown,p_text,p_elapsed_ms,p_revision)
  on conflict(session,step) do update set chosen=excluded.chosen,shown=excluded.shown,text=excluded.text,
-  elapsed_ms=excluded.elapsed_ms,saved_at=now();
+  elapsed_ms=excluded.elapsed_ms,revision=excluded.revision,saved_at=now()
+  where excluded.revision>=takeover_admin.study_answers.revision;
 end $$;
 
 -- A batch of events: [{seq,kind,step,detail,at}]. An event sent again keeps its first record.
@@ -194,7 +198,7 @@ begin
 end $$;
 
 revoke all on function public.study_start(uuid,text,text,text,text,text),
- public.study_save_answer(uuid,text,text[],text[],text[],text,integer),
+ public.study_save_answer(uuid,text,text[],text[],text[],text,integer,integer),
  public.study_save_events(uuid,jsonb),
  public.study_save_contact(text,boolean,uuid),
  public.study_save_pilot(text,text,text,text[],text[],boolean,boolean),
@@ -202,7 +206,7 @@ revoke all on function public.study_start(uuid,text,text,text,text,text),
  public.study_results(text),
  public.study_report_rows(uuid) from public,anon,authenticated;
 grant execute on function public.study_start(uuid,text,text,text,text,text),
- public.study_save_answer(uuid,text,text[],text[],text[],text,integer),
+ public.study_save_answer(uuid,text,text[],text[],text[],text,integer,integer),
  public.study_save_events(uuid,jsonb),
  public.study_save_contact(text,boolean,uuid),
  public.study_save_pilot(text,text,text,text[],text[],boolean,boolean),
