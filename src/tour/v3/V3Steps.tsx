@@ -459,7 +459,7 @@ export default function V3Steps({
       direction={direction}
       onKeyDown={handleKeyDown}
       focusFirst
-      readOnly={step.kind === "about-app"}
+      readOnly={step.kind === "about-app" || step.kind === "draft"}
     >
       <V3StepContent context={context} />
     </StudyShell>
