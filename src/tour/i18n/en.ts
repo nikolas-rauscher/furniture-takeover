@@ -2,6 +2,16 @@
  * Every word of the tour page in English, the reference for the other languages.
  * The app's own screens inside the phones stay in English and are not listed here.
  */
+const helped = {
+  question: "Would this have helped you last time?",
+  options: {
+    yes: "Yes",
+    partly: "Partly",
+    no: "No",
+    na: "Doesn't apply to me",
+  },
+};
+
 export const EN = {
   locale: "en-GB",
   common: {
@@ -378,7 +388,7 @@ export const EN = {
     sections: {
       you: "You",
       "last-time": "Last time",
-      "first-look": "First look",
+      "the-app": "The app",
       situations: "Situations",
     },
     progress: "Survey sections",
@@ -389,7 +399,7 @@ export const EN = {
     },
     start: {
       bubble: (minutes: number) =>
-        `Hi, I'm Pako! We're EPFL students building takeover, an app for passing on used stuff around campus. Got ${minutes} minutes? No sign-in. Everyone's welcome, also if you've never bought or sold anything used.`,
+        `Hi, I'm Pako! We're EPFL students building takeover, an app for passing on used stuff around campus. You describe what you need or snap a photo of what you sell, I write the listing or the offer, and you agree on a pickup with students nearby. Got ${minutes} minutes? No sign-in. Everyone's welcome, also if you've never bought or sold anything used.`,
       saveTitle: "What we save",
       save: (date: string) =>
         `Your answers, which screens you see, skip or go back to, the time per screen, the link you came from, your language and whether you use a phone or a computer. Your progress stays in this tab until you close it, and this browser remembers that you finished. An email at the end is optional and kept apart from your answers. Everything is deleted by ${date}.`,
@@ -497,18 +507,28 @@ export const EN = {
           none: "None of these",
         },
       },
-      autonomy: {
-        question:
-          "Would you let the app send a short update like “On my way” for you, without checking with you first?",
-        options: { yes: "Yes", no: "No", unsure: "Not sure" },
-      },
-      "who-sends": {
-        question:
-          "Say Pako drafted a message and you close the app without sending it. What happens to the message?",
+      "helped-find": helped,
+      "helped-sell": helped,
+      "helped-deal": helped,
+      stop: {
+        question: "What would stop you from using takeover? Pick any.",
         options: {
-          stays: "It stays unsent until I send it",
-          "sent-later": "Pako sends it after a while",
-          "sent-now": "Pako sends it right away",
+          "ai-mistakes": "The AI could get things wrong",
+          "nobody-nearby": "Not enough people nearby use it",
+          "prefer-groups": "I prefer my WhatsApp or Telegram groups",
+          privacy: "Worries about privacy",
+          "too-long": "It takes too long",
+          nothing: "Nothing would stop me",
+          other: "Something else",
+        },
+      },
+      sending: {
+        question:
+          "Would you let Pako send some messages for you, without asking you first?",
+        options: {
+          myself: "No, I'd send every message myself",
+          "short-updates": "Only short updates like “On my way”",
+          "replies-too": "Short updates and simple replies",
           "not-sure": "Not sure",
         },
       },
@@ -599,6 +619,7 @@ export const EN = {
         options: { yes: "Yes", no: "No", na: "Prefer not to say" },
       },
     },
+    helpedNeverTried: "Would this help you?",
     findingBySeller: "Finding someone who wanted it",
     moveIntro: "Two quick ones about now.",
     firstLookIntro: "Now a first look at takeover.",
@@ -609,7 +630,7 @@ export const EN = {
       placeholder: "Optional, a few words are enough",
     },
     whoSendsCard: {
-      title: "How the app puts it",
+      title: "How the app works",
       sentence:
         "Pako drafts your messages. Nothing is sent until you tap Send.",
     },
@@ -674,7 +695,7 @@ export const EN = {
     about: {
       intro: "Last bit, all optional: it helps us understand who answered.",
       finish: "Finish",
-      peek: "Peek at the app (1 min, optional)",
+      peek: "See the full scenes (optional)",
     },
     tour: {
       next: "Next",

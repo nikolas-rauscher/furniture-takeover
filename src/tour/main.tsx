@@ -1,7 +1,7 @@
 import { StrictMode, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { globalStylesReady } from "../globalStyles";
-import { sceneInAddress } from "./device/sceneMessages";
+import { briefInAddress, sceneInAddress } from "./device/sceneMessages";
 import { initialLanguage } from "./i18n/language";
 import { TOUR_TEXT } from "./i18n/tourText";
 
@@ -30,7 +30,7 @@ function loadPage(): Promise<ReactElement> {
   const scene = sceneInAddress(window.location.search);
   if (scene)
     return import("./scenes/ScenePage").then(({ default: ScenePage }) => (
-      <ScenePage scene={scene} />
+      <ScenePage scene={scene} brief={briefInAddress(window.location.search)} />
     ));
   return Promise.all([
     import("./TourPage"),

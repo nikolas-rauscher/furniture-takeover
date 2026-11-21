@@ -2,6 +2,8 @@ import type { PakoMood } from "@/components/onboarding/storyTypes";
 
 /** What every scene receives: called once its last beat has played, or once a beat failed. */
 export type SceneProps = {
+  /** The short version: holds and changes run faster, and key moments tap themselves. */
+  brief: boolean;
   onEnd: () => void;
   onFail: (error: unknown) => void;
 };

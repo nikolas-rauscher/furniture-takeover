@@ -14,6 +14,7 @@ import type { Recorder } from "../study/useRecorder";
 import {
   answerEvent,
   canGoBack,
+  isTourScene,
   nextV3,
   previousV3,
   recordV3Answer,
@@ -24,7 +25,12 @@ import {
 } from "./v3Flow";
 import { PILOT_KEY, v3Job, WITHDRAW_KEY } from "./v3Jobs";
 import { rememberFinished, type V3Progress } from "./v3Progress";
-import { PEEK_STEP, V3_CLOSES, type V3Step } from "./v3Script";
+import {
+  PEEK_STEP,
+  V3_CLOSES,
+  type V3ChoiceStep,
+  type V3Step,
+} from "./v3Script";
 import { optionsOf, questionOf } from "./v3Words";
 import SectionStrip from "./SectionStrip";
 import type { Given, SceneState, StepContext } from "./stepContext";
@@ -63,17 +69,27 @@ function moodFor(step: V3Step): PakoMood {
 function reactsToPick(step: V3Step) {
   if (step.kind === "about") return true;
   if (step.kind !== "choice" || step.product) return false;
-  return step.section !== "first-look" && step.section !== "situations";
+  return step.section !== "the-app" && step.section !== "situations";
 }
 
-function bubbleFor(step: V3Step, text: TourText): GuideBubble | undefined {
+/** Pako's title above a question: the part it opens, or the feature it asks about. */
+function titleOf(step: V3ChoiceStep, text: TourText) {
+  if (step.intro) return text.v3[step.intro];
+  return step.feature ? text.scenes[step.feature].title : undefined;
+}
+
+function bubbleFor(
+  step: V3Step,
+  text: TourText,
+  answers: V3Progress["answers"],
+): GuideBubble | undefined {
   const { v3 } = text;
   switch (step.kind) {
     case "choice":
       return {
         id: step.id,
-        title: step.intro ? v3[step.intro] : undefined,
-        text: questionOf(text, step),
+        title: titleOf(step, text),
+        text: questionOf(text, step, answers),
       };
     case "story":
       return { id: step.id, text: v3.lastStory.question };
@@ -113,7 +129,7 @@ function labelFor(
 /** Whether a tap on this step moves on by itself. */
 function advancesOnTap(step: V3Step, answer: Given) {
   if (step.kind === "desk") return true;
-  if (step.kind !== "choice" || step.disclosure) return false;
+  if (step.kind !== "choice" || step.disclosure || step.multiple) return false;
   return !step.withText || !answer.chosen.includes(step.withText);
 }
 
@@ -253,11 +269,9 @@ export default function V3Steps({
 
   /** Every scene still ahead, the current one included, counts as skipped. */
   function skipTour() {
-    const remaining = steps
-      .slice(steps.indexOf(step))
-      .filter((candidate) => candidate.kind === "scene");
-    const rest = steps.find((candidate) => candidate.id === "try-first");
-    if (!rest) throw new Error("The tour has no question after its scenes.");
+    const remaining = steps.slice(steps.indexOf(step)).filter(isTourScene);
+    const rest = steps[steps.map(isTourScene).lastIndexOf(true) + 1];
+    if (!rest) throw new Error("The tour has no step after its scenes.");
     goTo(rest, 1, (current) =>
       remaining.reduce(
         (next, skipped) =>
@@ -336,7 +350,7 @@ export default function V3Steps({
         options,
         { ...given[step.id], shown: [] },
         options[number - 1].id,
-        false,
+        step.multiple ?? false,
       );
       answer(step.id, { chosen: picked.chosen, text: picked.text });
       return;
@@ -348,7 +362,7 @@ export default function V3Steps({
     }
   }
 
-  const bubble = bubbleFor(step, text);
+  const bubble = bubbleFor(step, text, progress.answers);
   const strip =
     step.section !== undefined ||
     step.kind === "reveal" ||

@@ -2,10 +2,23 @@ import type { TourText } from "../i18n/en.ts";
 import { orderOptions } from "../optionOrder.ts";
 import type { StudyOption } from "../tourScript.ts";
 import type { V3Progress } from "./v3Progress.ts";
-import { FREE_DRAFTS, wasBuying, type V3ChoiceStep } from "./v3Script.ts";
+import {
+  FREE_DRAFTS,
+  triedBefore,
+  wasBuying,
+  type V3ChoiceStep,
+} from "./v3Script.ts";
 
-/** A step's question in the page's language. */
-export function questionOf(text: TourText, step: V3ChoiceStep): string {
+/**
+ * A step's question in the page's language. Whether a feature would have helped
+ * is asked as a hypothetical of someone who never tried to exchange anything.
+ */
+export function questionOf(
+  text: TourText,
+  step: V3ChoiceStep,
+  answers: V3Progress["answers"],
+): string {
+  if (step.feature && !triedBefore(answers)) return text.v3.helpedNeverTried;
   const { question } = text.v3.steps[step.id];
   return typeof question === "function" ? question(FREE_DRAFTS) : question;
 }
@@ -39,6 +52,7 @@ export function optionsOf(
     id,
     label: labelOf(text, step, id, progress.answers),
     withText: id === step.withText,
+    exclusive: id === step.exclusive,
   }));
   const order = progress.orders[step.id];
   return order ? orderOptions(options, order) : options;

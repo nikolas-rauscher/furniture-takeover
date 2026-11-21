@@ -1,6 +1,16 @@
 import type { TourText } from "./en";
 
 /** The tour page in French. A no-break space keeps « ? », « : » and « ! » with their word. */
+const helped = {
+  question: "Est-ce que ça t'aurait aidé·e la dernière fois\u00a0?",
+  options: {
+    yes: "Oui",
+    partly: "En partie",
+    no: "Non",
+    na: "Ça ne me concerne pas",
+  },
+};
+
 export const FR: TourText = {
   locale: "fr-CH",
   common: {
@@ -386,7 +396,7 @@ export const FR: TourText = {
     sections: {
       you: "Toi",
       "last-time": "La dernière fois",
-      "first-look": "Premier aperçu",
+      "the-app": "L'app",
       situations: "Situations",
     },
     progress: "Parties du sondage",
@@ -397,7 +407,7 @@ export const FR: TourText = {
     },
     start: {
       bubble: (minutes) =>
-        `Salut, je suis Pako\u00a0! Nous sommes des étudiant·es de l'EPFL et nous construisons takeover, une app pour faire passer des objets d'occasion autour du campus. Tu as ${minutes} minutes\u00a0? Pas d'inscription. Tout le monde est bienvenu, aussi si tu n'as jamais acheté ni vendu d'occasion.`,
+        `Salut, je suis Pako\u00a0! Nous sommes des étudiant·es de l'EPFL et nous construisons takeover, une app pour faire passer des objets d'occasion autour du campus. Tu décris ce qu'il te faut ou tu prends en photo ce que tu vends, j'écris l'annonce ou l'offre, et tu conviens d'un retrait avec des étudiant·es près de chez toi. Tu as ${minutes} minutes\u00a0? Pas d'inscription. Tout le monde est bienvenu, aussi si tu n'as jamais acheté ni vendu d'occasion.`,
       saveTitle: "Ce que nous enregistrons",
       save: (date) =>
         `Tes réponses, les écrans que tu vois, passes ou sur lesquels tu reviens, le temps par écran, le lien par lequel tu es venu·e, ta langue et si tu utilises un téléphone ou un ordinateur. Ta progression reste dans cet onglet jusqu'à ce que tu le fermes, et ce navigateur se souvient que tu as terminé. Une adresse e-mail à la fin est facultative et conservée à part de tes réponses. Tout est supprimé d'ici au ${date}.`,
@@ -507,18 +517,30 @@ export const FR: TourText = {
           none: "Aucune de celles-ci",
         },
       },
-      autonomy: {
+      "helped-find": helped,
+      "helped-sell": helped,
+      "helped-deal": helped,
+      stop: {
         question:
-          "Laisserais-tu l'app envoyer pour toi une courte nouvelle comme «\u00a0J'arrive\u00a0», sans te demander d'abord\u00a0?",
-        options: { yes: "Oui", no: "Non", unsure: "Je ne sais pas" },
-      },
-      "who-sends": {
-        question:
-          "Imagine que Pako a rédigé un message et que tu fermes l'app sans l'envoyer. Qu'arrive-t-il au message\u00a0?",
+          "Qu'est-ce qui t'empêcherait d'utiliser takeover\u00a0? Choisis-en autant que tu veux.",
         options: {
-          stays: "Il reste non envoyé jusqu'à ce que je l'envoie",
-          "sent-later": "Pako l'envoie au bout d'un moment",
-          "sent-now": "Pako l'envoie tout de suite",
+          "ai-mistakes": "L'IA pourrait se tromper",
+          "nobody-nearby": "Pas assez de gens l'utilisent près de chez moi",
+          "prefer-groups": "Je préfère mes groupes WhatsApp ou Telegram",
+          privacy: "Des inquiétudes sur la vie privée",
+          "too-long": "Ça prend trop de temps",
+          nothing: "Rien ne m'en empêcherait",
+          other: "Autre chose",
+        },
+      },
+      sending: {
+        question:
+          "Laisserais-tu Pako envoyer certains messages pour toi, sans te demander d'abord\u00a0?",
+        options: {
+          myself: "Non, j'enverrais chaque message moi-même",
+          "short-updates":
+            "Seulement de courtes nouvelles comme «\u00a0J'arrive\u00a0»",
+          "replies-too": "De courtes nouvelles et des réponses simples",
           "not-sure": "Je ne sais pas",
         },
       },
@@ -616,6 +638,7 @@ export const FR: TourText = {
         options: { yes: "Oui", no: "Non", na: "Je préfère ne pas répondre" },
       },
     },
+    helpedNeverTried: "Est-ce que ça t'aiderait\u00a0?",
     findingBySeller: "Trouver quelqu'un que ça intéressait",
     moveIntro: "Deux petites questions sur maintenant.",
     firstLookIntro: "Maintenant, un premier aperçu de takeover.",
@@ -626,7 +649,7 @@ export const FR: TourText = {
       placeholder: "Facultatif, quelques mots suffisent",
     },
     whoSendsCard: {
-      title: "Comment l'app le formule",
+      title: "Comment fonctionne l'app",
       sentence:
         "Pako rédige tes messages. Rien n'est envoyé tant que tu ne touches pas Envoyer.",
     },
@@ -693,7 +716,7 @@ export const FR: TourText = {
       intro:
         "Dernière partie, entièrement facultative\u00a0: elle nous aide à comprendre qui a répondu.",
       finish: "Terminer",
-      peek: "Jeter un œil à l'app (1 min, facultatif)",
+      peek: "Voir les scènes en entier (facultatif)",
     },
     tour: {
       next: "Suivant",

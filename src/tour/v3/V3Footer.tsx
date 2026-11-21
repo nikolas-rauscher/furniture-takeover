@@ -48,7 +48,15 @@ export default function V3Footer({ context }: { context: StepContext }) {
           {common.continue}
         </Button>
       );
-    case "scene":
+    case "scene": {
+      const replay = (
+        <Button
+          className="button secondary large"
+          onClick={context.replayScene}
+        >
+          {v3.tour.replay}
+        </Button>
+      );
       return (
         <>
           <Button
@@ -61,19 +69,19 @@ export default function V3Footer({ context }: { context: StepContext }) {
           >
             {v3.tour.next}
           </Button>
-          <div className="tour-footer-row">
-            <Button
-              className="button secondary large"
-              onClick={context.replayScene}
-            >
-              {v3.tour.replay}
-            </Button>
-            <Button className={quiet} onClick={context.skipTour}>
-              {v3.tour.skipRest}
-            </Button>
-          </div>
+          {step.brief ? (
+            replay
+          ) : (
+            <div className="tour-footer-row">
+              {replay}
+              <Button className={quiet} onClick={context.skipTour}>
+                {v3.tour.skipRest}
+              </Button>
+            </div>
+          )}
         </>
       );
+    }
     case "about":
       if (endsAbout(context))
         return (

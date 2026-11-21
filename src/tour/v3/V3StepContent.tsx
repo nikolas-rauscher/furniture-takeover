@@ -13,7 +13,7 @@ import { STORY_MAX, type V3ChoiceStep } from "./v3Script";
 import { optionsOf, questionOf } from "./v3Words";
 import V3End from "./V3End";
 
-/** One choice, Pako's card for the who-sends question, and the note after a pick. */
+/** One choice, Pako's card for the sending question, and the note after a pick. */
 function ChoiceContent({
   step,
   context,
@@ -26,7 +26,7 @@ function ChoiceContent({
   const options = optionsOf(text, step, context.progress);
   return (
     <>
-      {step.id === "who-sends" && (
+      {step.id === "sending" && (
         <figure className="tour-card tour-quote">
           <figcaption className="tour-eyebrow">
             {text.v3.whoSendsCard.title}
@@ -35,9 +35,9 @@ function ChoiceContent({
         </figure>
       )}
       <ChoiceStep
-        question={questionOf(text, step)}
+        question={questionOf(text, step, context.progress.answers)}
         options={options}
-        multiple={false}
+        multiple={step.multiple ?? false}
         answer={{ ...answer, shown: [] }}
         onChange={({ chosen, text: words }) =>
           context.answer(step.id, { chosen, text: words })
@@ -99,6 +99,7 @@ export default function V3StepContent({ context }: { context: StepContext }) {
           key={step.id}
           label={text.scenes[step.scene].label}
           scene={step.scene}
+          brief={step.brief}
           replay={context.scene.replay}
           onMood={context.onMood}
           onDone={context.sceneDone}

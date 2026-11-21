@@ -10,7 +10,7 @@ type AboutStep = Extract<V3Step, { kind: "about" }>;
 function Row({ row, context }: { row: V3ChoiceStep; context: StepContext }) {
   const text = useTourText();
   const titleId = useId();
-  const question = questionOf(text, row);
+  const question = questionOf(text, row, context.progress.answers);
   return (
     <section className="tour-about-row" aria-labelledby={titleId}>
       <h2 id={titleId} className="tour-row-title">

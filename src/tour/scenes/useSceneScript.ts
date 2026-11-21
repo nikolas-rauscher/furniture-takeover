@@ -33,6 +33,9 @@ const RENDER_MS = 60;
 /** A smooth scroll to a new element ends before it lights up. */
 const SCROLL_MS = 360;
 
+/** The short version's share of every hold and every gap between changes. */
+const BRIEF_PACE = 0.35;
+
 /** How long a beat waits for its element, such as a sheet still opening, before the round fails. */
 const ELEMENT_WAIT_MS = 4000;
 
@@ -109,7 +112,7 @@ function lastCue<State>(beats: readonly Beat<State>[]) {
 export function useSceneScript<State>(
   initial: () => State,
   beats: readonly Beat<State>[],
-  { onEnd, onFail }: SceneProps,
+  { brief, onEnd, onFail }: SceneProps,
 ) {
   const reduced = useReducedMotion() === true;
   const [state, setState] = useState(initial);
@@ -128,6 +131,7 @@ export function useSceneScript<State>(
     const { signal } = run;
     const scroll = reduced ? "auto" : "smooth";
     const doneAt = lastCue(beats);
+    const paced = (ms: number) => (brief ? Math.round(ms * BRIEF_PACE) : ms);
 
     /** The scene's own finger: it rests on the control, then taps or drags it. */
     async function touchItself(beat: Beat<State>, key: number) {
@@ -196,7 +200,7 @@ export function useSceneScript<State>(
     }
 
     async function playBeat(beat: Beat<State>, index: number) {
-      await pause(beat.hold, signal);
+      await pause(paced(beat.hold), signal);
       if (beat.mood) report({ kind: "mood", mood: beat.mood });
       if (beat.reveal)
         bringIntoView(
@@ -204,13 +208,14 @@ export function useSceneScript<State>(
           "center",
           scroll,
         );
-      if (beat.cue) await keyMoment(beat, beat.cue, index);
+      // The short version has no time to wait for the visitor, so it taps itself.
+      if (beat.cue && !brief) await keyMoment(beat, beat.cue, index);
       else await touchItself(beat, index);
       if (index === doneAt) report({ kind: "done" });
       if (reduced) setState((current) => settle(current, beat));
       else
         for (const change of beat.changes ?? []) {
-          if (change.delay) await pause(change.delay, signal);
+          if (change.delay) await pause(paced(change.delay), signal);
           setState(change.apply);
         }
       if (beat.show) await showChange(beat.show, index);
@@ -231,7 +236,7 @@ export function useSceneScript<State>(
       if (!signal.aborted) failed.current(error);
     });
     return () => run.abort();
-  }, [beats, reduced]);
+  }, [beats, reduced, brief]);
 
   return { state, setState, marks: { touch, glow, cue } };
 }

@@ -27,11 +27,15 @@ function sceneOrder(answers: AnswerSheet): readonly TourScene[] {
   return [first, ...TOUR_SCENES_ORDER.filter((scene) => scene !== first)];
 }
 
+/** A scene of the optional tour, whose order the participant picks. */
+export const isTourScene = (step: V3Step) =>
+  step.kind === "scene" && !step.brief;
+
 /** The steps this participant sees, given their answers so far. */
 export function visibleV3Steps(answers: AnswerSheet): V3Step[] {
   const shown = V3_STEPS.filter((step) => isShown(step, answers));
   const scenes = sceneOrder(answers).map(sceneStepId);
-  const firstScene = shown.findIndex((step) => step.kind === "scene");
+  const firstScene = shown.findIndex(isTourScene);
   if (firstScene === -1) return shown;
   const byId = (id: string) => shown.find((step) => step.id === id);
   const ordered = scenes.map((id) => {
@@ -39,7 +43,7 @@ export function visibleV3Steps(answers: AnswerSheet): V3Step[] {
     if (!step) throw new Error(`The tour has no step ${id}.`);
     return step;
   });
-  const rest = shown.filter((step) => step.kind !== "scene");
+  const rest = shown.filter((step) => !isTourScene(step));
   return [...rest.slice(0, firstScene), ...ordered, ...rest.slice(firstScene)];
 }
 

@@ -1,6 +1,16 @@
 import type { TourText } from "./en";
 
 /** The tour page in German, in Swiss spelling (ss for ß). */
+const helped = {
+  question: "Hätte dir das letztes Mal geholfen?",
+  options: {
+    yes: "Ja",
+    partly: "Teilweise",
+    no: "Nein",
+    na: "Trifft auf mich nicht zu",
+  },
+};
+
 export const DE: TourText = {
   locale: "de-CH",
   common: {
@@ -386,7 +396,7 @@ export const DE: TourText = {
     sections: {
       you: "Du",
       "last-time": "Letztes Mal",
-      "first-look": "Erster Blick",
+      "the-app": "Die App",
       situations: "Situationen",
     },
     progress: "Teile der Umfrage",
@@ -397,7 +407,7 @@ export const DE: TourText = {
     },
     start: {
       bubble: (minutes) =>
-        `Hallo, ich bin Pako! Wir sind Studierende der EPFL und bauen takeover, eine App, um gebrauchte Sachen rund um den Campus weiterzugeben. Hast du ${minutes} Minuten? Ohne Anmeldung. Alle sind willkommen, auch wenn du noch nie etwas Gebrauchtes gekauft oder verkauft hast.`,
+        `Hallo, ich bin Pako! Wir sind Studierende der EPFL und bauen takeover, eine App, um gebrauchte Sachen rund um den Campus weiterzugeben. Du beschreibst, was du brauchst, oder fotografierst, was du verkaufst, ich schreibe das Inserat oder das Angebot, und du machst die Abholung mit Studierenden in der Nähe aus. Hast du ${minutes} Minuten? Ohne Anmeldung. Alle sind willkommen, auch wenn du noch nie etwas Gebrauchtes gekauft oder verkauft hast.`,
       saveTitle: "Was wir speichern",
       save: (date) =>
         `Deine Antworten, welche Bildschirme du siehst, überspringst oder zu denen du zurückgehst, die Zeit pro Bildschirm, den Link, über den du gekommen bist, deine Sprache und ob du ein Handy oder einen Computer benutzt. Dein Fortschritt bleibt in diesem Tab, bis du ihn schliesst, und dieser Browser merkt sich, dass du fertig bist. Eine E-Mail-Adresse am Schluss ist optional und wird getrennt von deinen Antworten aufbewahrt. Alles wird bis zum ${date} gelöscht.`,
@@ -506,18 +516,30 @@ export const DE: TourText = {
           none: "Keiner davon",
         },
       },
-      autonomy: {
+      "helped-find": helped,
+      "helped-sell": helped,
+      "helped-deal": helped,
+      stop: {
         question:
-          "Würdest du die App eine kurze Nachricht wie «Bin unterwegs» für dich senden lassen, ohne dich vorher zu fragen?",
-        options: { yes: "Ja", no: "Nein", unsure: "Weiss nicht" },
-      },
-      "who-sends": {
-        question:
-          "Angenommen, Pako hat eine Nachricht entworfen und du schliesst die App, ohne sie zu senden. Was passiert mit der Nachricht?",
+          "Was würde dich davon abhalten, takeover zu nutzen? Wähle beliebig viele.",
         options: {
-          stays: "Sie bleibt ungesendet, bis ich sie sende",
-          "sent-later": "Pako sendet sie nach einer Weile",
-          "sent-now": "Pako sendet sie sofort",
+          "ai-mistakes": "Die KI könnte Fehler machen",
+          "nobody-nearby": "Zu wenige Leute in der Nähe nutzen es",
+          "prefer-groups":
+            "Ich bleibe lieber bei meinen WhatsApp- oder Telegram-Gruppen",
+          privacy: "Bedenken wegen Datenschutz",
+          "too-long": "Es dauert zu lange",
+          nothing: "Nichts würde mich abhalten",
+          other: "Etwas anderes",
+        },
+      },
+      sending: {
+        question:
+          "Würdest du Pako manche Nachrichten für dich senden lassen, ohne dich vorher zu fragen?",
+        options: {
+          myself: "Nein, ich würde jede Nachricht selbst senden",
+          "short-updates": "Nur kurze Nachrichten wie «Bin unterwegs»",
+          "replies-too": "Kurze Nachrichten und einfache Antworten",
           "not-sure": "Weiss nicht",
         },
       },
@@ -609,6 +631,7 @@ export const DE: TourText = {
         options: { yes: "Ja", no: "Nein", na: "Möchte ich nicht sagen" },
       },
     },
+    helpedNeverTried: "Würde dir das helfen?",
     findingBySeller: "Jemanden finden, der es wollte",
     moveIntro: "Zwei kurze Fragen zu jetzt.",
     firstLookIntro: "Jetzt ein erster Blick auf takeover.",
@@ -619,7 +642,7 @@ export const DE: TourText = {
       placeholder: "Optional, ein paar Worte reichen",
     },
     whoSendsCard: {
-      title: "So sagt es die App",
+      title: "So funktioniert die App",
       sentence:
         "Pako entwirft deine Nachrichten. Nichts wird gesendet, bis du auf Senden tippst.",
     },
@@ -687,7 +710,7 @@ export const DE: TourText = {
       intro:
         "Zum Schluss, alles optional: Es hilft uns zu verstehen, wer geantwortet hat.",
       finish: "Abschliessen",
-      peek: "Einen Blick auf die App werfen (1 Min., optional)",
+      peek: "Die ganzen Szenen ansehen (optional)",
     },
     tour: {
       next: "Weiter",

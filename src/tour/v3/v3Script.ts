@@ -9,9 +9,9 @@ import type { TourText } from "../i18n/en.ts";
 import type { StepCondition } from "../stepConditions.ts";
 
 /** Raised whenever a question, an option or its wording changes. */
-export const V3_VERSION = "v3-1";
+export const V3_VERSION = "v3-2";
 /** The time the start screen and the share text name, rounded up from the core's estimate. */
-export const V3_MINUTES = 4;
+export const V3_MINUTES = 5;
 /** The participant is asked not to talk about the planted error before this day. */
 export const V3_CLOSES = "2026-12-13";
 /** Free photo drafts a day in the pack situation. */
@@ -22,7 +22,7 @@ export const STORY_MAX = 200;
 export const V3_SECTIONS = [
   "you",
   "last-time",
-  "first-look",
+  "the-app",
   "situations",
 ] as const;
 export type V3Section = (typeof V3_SECTIONS)[number];
@@ -55,6 +55,12 @@ export type V3ChoiceStep = Base & {
   disclosure?: "helperMissing" | "packMissing";
   /** An option that opens a short text field once picked. */
   withText?: string;
+  /** Several options may be picked; Continue moves on. */
+  multiple?: boolean;
+  /** In a multiple choice, the option that clears the others and is cleared by them. */
+  exclusive?: string;
+  /** The feature a "would this have helped" question is about. */
+  feature?: TourScene;
 };
 
 export type V3Step =
@@ -65,7 +71,12 @@ export type V3Step =
   | (Base & { kind: "reveal" })
   | (Base & { kind: "saved" })
   | (Base & { kind: "about"; rows: readonly V3ChoiceStep[] })
-  | (Base & { kind: "scene"; scene: TourScene })
+  | (Base & {
+      kind: "scene";
+      scene: TourScene;
+      /** The short version in the core; the optional tour plays the full one. */
+      brief: boolean;
+    })
   | (Base & { kind: "pilot" })
   | (Base & { kind: "end" });
 
@@ -110,12 +121,39 @@ function choice(
   };
 }
 
+/** Whether the participant tried to buy, get, sell or give away something before. */
+export const triedBefore = (
+  answers: Record<string, { chosen: readonly string[] }>,
+) => (answers[TRIED.step]?.chosen ?? []).some((id) => TRIED.anyOf.includes(id));
+
 /** Whether the participant was buying or getting, which changes one obstacle's words. */
 export const wasBuying = (role: string | undefined) =>
   role !== undefined && BUYING.includes(role);
 
 export const TOUR_SCENES_ORDER: readonly TourScene[] = ["sell", "deal", "find"];
 export const sceneStepId = (scene: TourScene) => `tour-${scene}`;
+/** The core shows the features in the order of an exchange: find, list, agree. */
+const CORE_SCENES: readonly TourScene[] = ["find", "sell", "deal"];
+const helpedStepId = (scene: TourScene) =>
+  `helped-${scene}` as const satisfies ChoiceStepId;
+
+/** A short scene of one feature, then whether it would have helped. */
+function featureSteps(scene: TourScene): V3Step[] {
+  return [
+    {
+      kind: "scene",
+      id: `app-${scene}`,
+      scene,
+      brief: true,
+      section: "the-app",
+    },
+    choice(helpedStepId(scene), ["yes", "partly", "no", "na"], {
+      section: "the-app",
+      product: true,
+      feature: scene,
+    }),
+  ];
+}
 
 export const V3_STEPS: readonly V3Step[] = [
   choice("who", ["epfl", "unil", "other-school", "no"], { section: "you" }),
@@ -184,23 +222,50 @@ export const V3_STEPS: readonly V3Step[] = [
     section: "last-time",
   }),
   choice("headline", ["h-move", "h-photo", "h-ai", "h-nearby", "none"], {
-    section: "first-look",
+    section: "the-app",
     intro: "firstLookIntro",
     product: true,
     shuffle: true,
     fixedLast: 1,
   }),
-  choice("autonomy", ["yes", "no", "unsure"], {
-    section: "first-look",
+  ...CORE_SCENES.flatMap(featureSteps),
+  choice(
+    "stop",
+    [
+      "ai-mistakes",
+      "nobody-nearby",
+      "prefer-groups",
+      "privacy",
+      "too-long",
+      "nothing",
+      "other",
+    ],
+    {
+      section: "the-app",
+      product: true,
+      shuffle: true,
+      fixedLast: 2,
+      multiple: true,
+      exclusive: "nothing",
+      withText: "other",
+    },
+  ),
+  choice(
+    "try-first",
+    [
+      "describe-search",
+      "photo-listing",
+      "offer-drafts",
+      "pickup-card",
+      "none",
+      "need-more",
+    ],
+    { section: "the-app", product: true, shuffle: true, fixedLast: 2 },
+  ),
+  // The options go from sending nothing to sending more, so they keep their order.
+  choice("sending", ["myself", "short-updates", "replies-too", "not-sure"], {
+    section: "the-app",
     product: true,
-    shuffle: true,
-    fixedLast: 1,
-  }),
-  choice("who-sends", ["stays", "sent-later", "sent-now", "not-sure"], {
-    section: "first-look",
-    product: true,
-    shuffle: true,
-    fixedLast: 1,
   }),
   choice(
     "move-it",
@@ -264,20 +329,9 @@ export const V3_STEPS: readonly V3Step[] = [
     kind: "scene",
     id: sceneStepId(scene),
     scene,
+    brief: false,
     when: WATCHES_TOUR,
   })),
-  choice(
-    "try-first",
-    [
-      "describe-search",
-      "photo-listing",
-      "offer-drafts",
-      "pickup-card",
-      "none",
-      "need-more",
-    ],
-    { when: WATCHES_TOUR, product: true, shuffle: true, fixedLast: 2 },
-  ),
   { kind: "pilot", id: "pilot", when: ACCOUNT_HOLDERS },
   { kind: "end", id: "end" },
 ];

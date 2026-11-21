@@ -83,6 +83,8 @@ function useSceneLink(
 
 export type DeviceFrameProps = {
   scene: TourScene;
+  /** Plays the scene's short version. */
+  brief?: boolean;
   /** Says what the scene shows, for anyone who cannot see it. */
   label: string;
   /** Counts the visitor's replays; each change starts the scene again. */
@@ -96,6 +98,7 @@ export type DeviceFrameProps = {
 /** A phone playing one of the app's scenes, scaled as a whole to fit its slot. */
 export default function DeviceFrame({
   scene,
+  brief = false,
   label,
   replay = 0,
   onMood,
@@ -137,7 +140,7 @@ export default function DeviceFrame({
               <iframe
                 ref={frame}
                 className="tour-device-app"
-                src={sceneAddress(scene)}
+                src={sceneAddress(scene, brief)}
                 title={label}
                 tabIndex={-1}
                 aria-hidden="true"

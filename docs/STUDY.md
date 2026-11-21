@@ -16,9 +16,10 @@ Setting: a course project. Dates, prices and the pilot are hypothetical; nothing
 | D3 | Transport help | `move-it`, helper option | Real bookings at a quoted price |
 | D4 | Paid pack in the spring pilot | `pack` | Share of real movers who reach the free limit, and how many buy |
 | D5a | Check step for drafts | `draft`: sent offers with a wrong day | Wrong details in real pilot messages |
-| D5b | Opt-in for short updates | `autonomy` | Opt-in uptake in the pilot |
-| D5c | Copy for who sends | `who-sends`, first answer | Quick test of a rewritten sentence |
+| D5b | Opt-in for short updates | `sending`: `short-updates` or `replies-too` | Opt-in uptake in the pilot |
 | D6 | Poster lines | `headline` | Scans per line in the poster test |
+| D7 | Which features the pilot and the onboarding lead with | `helped-find`, `helped-sell`, `helped-deal`, `try-first` | Which features pilot users open and finish |
+| D8 | Barriers the pilot plan must answer | `stop` | Reasons pilot volunteers give for dropping out |
 
 What the results cannot claim: shares for all EPFL/UNIL students; adoption or future use; real willingness to pay, a price or revenue; anything about the word "AI"; how much a check step would help; real-world draft error rates; differences between small subgroups; that the tour works.
 
@@ -47,13 +48,13 @@ Invitation (chat): "Hi all, we're EPFL students building takeover, an app for pa
 
 ## Script
 
-Pako asks every question. Wording is neutral; on product questions (`headline` to `draft`) Pako keeps a neutral face and does not react to answers. All questions are single choice. Shuffled options appear in random order, which is stored; options marked *last* stay at the bottom. A single-choice tap moves on after about 300 ms; Back is always visible. A section strip shows `You · Last time · First look · Situations`.
+Pako asks every question. Wording is neutral; on product questions (`headline` to `draft`) Pako keeps a neutral face and does not react to answers. All questions are single choice except `stop`. Shuffled options appear in random order, which is stored; options marked *last* stay at the bottom. A single-choice tap moves on after about 300 ms; Back is always visible. A section strip shows `You · Last time · The app · Situations`.
 
 ### Start
 
 | Id | Text | Options |
 | --- | --- | --- |
-| `start` | "Hi, I'm Pako! We're EPFL students building takeover, an app for passing on used stuff around campus. Got {measured} minutes? No sign-in. Everyone's welcome, also if you've never bought or sold anything used." | `go` Let's go · `demo` Just show me the app |
+| `start` | "Hi, I'm Pako! We're EPFL students building takeover, an app for passing on used stuff around campus. You describe what you need or snap a photo of what you sell, I write the listing or the offer, and you agree on a pickup with students nearby. Got {measured} minutes? No sign-in. Everyone's welcome, also if you've never bought or sold anything used." | `go` Let's go · `demo` Just show me the app |
 
 Folded toggle "What we save" below the invitation: "Your answers, which screens you see, skip or go back to, the time per screen, the link you came from, your language and whether you use a phone or a computer. Your progress stays in this tab until you close it, and this browser remembers that you finished. An email at the end is optional and kept apart from your answers. Everything is deleted by {date}. Questions: {contact}."
 
@@ -80,15 +81,29 @@ Folded toggle "What we save" below the invitation: "Your answers, which screens 
 
 "Tried" means `last-role` is not `none`. Obstacle to problem, fixed before launch: `finding` search (buyers) or reaching nearby buyers (sellers) · `listing` photo listing · `price` cited price · `replies` reply handling · `timing` pickup card and confirmations · `transport` D3 · `trust` university-only accounts.
 
-### 3. First look
+### 3. The app
 
-Pako: "Now a first look at takeover."
+Pako: "Now a first look at takeover." The poster lines come before any app screen, so the scenes do not shape the first impression.
 
 | Id | Question | Options |
 | --- | --- | --- |
 | `headline` | "Which of these, if any, would make you most likely to open the app?" | Shuffled: `h-move` "Sell your things before you move out." · `h-photo` "Snap a photo, get a ready listing with a fair price." · `h-ai` "An AI assistant writes your listing from a photo." · `h-nearby` "Find used things from people nearby, pickup on campus." · *last:* `none` None of these |
-| `autonomy` | "Would you let the app send a short update like 'On my way' for you, without checking with you first?" | Shuffled: `yes` Yes · `no` No · *last:* `unsure` Not sure |
-| `who-sends` | Card: "Pako drafts your messages. Nothing is sent until you tap Send." Then: "Say Pako drafted a message and you close the app without sending it. What happens to the message?" | Shuffled: `stays` It stays unsent until I send it · `sent-later` Pako sends it after a while · `sent-now` Pako sends it right away · *last:* `not-sure` Not sure |
+
+Then three features, in the same order for everyone: each a short scene in the phone, then one question. A short scene is the tour's scene at 0.35 of its pace, with every tap made by the scene itself; it reaches its last key moment after about 12 s. Next works from the start; Replay plays it again. Pako's line beside the phone says what the scene shows.
+
+| Id | Content | Options |
+| --- | --- | --- |
+| `app-find` | Scene "Just say what you need": "Someone near Vortex needs a desk. I check student listings and draft the offer. Nothing is sent without their tap." | |
+| `helped-find` | Title "Just say what you need". "Would this have helped you last time?" To those who never tried (`last-role` = `none`): "Would this help you?" | In this order: `yes` Yes · `partly` Partly · `no` No · `na` Doesn't apply to me |
+| `app-sell` | Scene "Start with a photo": "Léa takes a photo of her desk. I write the listing and suggest a price. She picks her own and saves it." | |
+| `helped-sell` | As `helped-find`, titled "Start with a photo" | As `helped-find` |
+| `app-deal` | Scene "Agree and pick up": "Noah offers CHF 35 and Léa confirms, so the pickup is booked. At pickup time both of them confirm the handover." | |
+| `helped-deal` | As `helped-find`, titled "Agree and pick up" | As `helped-find` |
+| `stop` | "What would stop you from using takeover? Pick any." Multiple choice; Continue moves on. | Shuffled: `ai-mistakes` The AI could get things wrong · `nobody-nearby` Not enough people nearby use it · `prefer-groups` I prefer my WhatsApp or Telegram groups · `privacy` Worries about privacy · `too-long` It takes too long · *last:* `nothing` Nothing would stop me (clears the others) · `other` Something else (short text) |
+| `try-first` | "For the next thing you buy or sell, which would you try first, if any?" | Shuffled: `describe-search` Searching by describing what I need · `photo-listing` A listing drafted from my photos, with a price and its sources · `offer-drafts` Offer drafts I can edit and send · `pickup-card` The pickup card with confirmations and reminders · *last:* `none` None of these · `need-more` I'd need to know more |
+| `sending` | Card "How the app works": "Pako drafts your messages. Nothing is sent until you tap Send." Then: "Would you let Pako send some messages for you, without asking you first?" | In this order, from nothing to more: `myself` No, I'd send every message myself · `short-updates` Only short updates like "On my way" · `replies-too` Short updates and simple replies · `not-sure` Not sure |
+
+Changed in `v3-2`: the scenes, the `helped-*` questions and `stop` are new; `try-first` moved here from the optional tour; `autonomy` and `who-sends` of `v3-1` became the single item `sending`, so the survey stays near five minutes.
 
 ### 4. Situations
 
@@ -128,15 +143,14 @@ Pako: "Last bit, all optional: it helps us understand who answered." Two rows pe
 | `level` | "What are you studying?" | `bachelor` Bachelor · `master` Master · `phd` PhD · `other` Other studies · `not-student` Not a student | students (`who` is not `no`) |
 | `exchange` | "Are you an exchange student?" | `yes` Yes · `no` No · `na` Prefer not to say | students |
 
-Then two equal buttons, saved as the answer to step `peek`: `finish` Finish · `tour` Peek at the app (1 min, optional).
+Then two equal buttons, saved as the answer to step `peek`: `finish` Finish · `tour` See the full scenes (optional).
 
 ### 7. Optional tour
 
 | Id | Content |
 | --- | --- |
 | `scene-pick` | "What would you like to see first?" Shuffled: `sell` Sell from a photo · `deal` Agree on a pickup · `find` Find something. |
-| `tour-sell`, `tour-deal`, `tour-find` | The app scenes in the phone. Next is available from the start; Replay; "Skip the rest". |
-| `try-first` | "For the next thing you buy or sell, which would you try first, if any?" Shuffled: `describe-search` Searching by describing what I need · `photo-listing` A listing drafted from my photos, with a price and its sources · `offer-drafts` Offer drafts I can edit and send · `pickup-card` The pickup card with confirmations and reminders · *last:* `none` None of these · `need-more` I'd need to know more |
+| `tour-sell`, `tour-deal`, `tour-find` | The full app scenes in the phone, with key moments the participant can tap. Next is available from the start; Replay; "Skip the rest". |
 
 ### 8. Pilot form (EPFL/UNIL students only)
 
@@ -166,7 +180,7 @@ Share: "Every answer helps, also from people who never sell anything. Share it?"
 
 ## What is stored
 
-One session per participant, created on "Let's go": a random id, `survey = 'v3'`, the wording version (`v3-1` for the run, another label for the pilot), the language at the start (`en`, `fr`, `de`), the channel tag, phone or desktop. No name, no IP address, no browser details.
+One session per participant, created on "Let's go": a random id, `survey = 'v3'`, the wording version (`v3-2` for the pilot, a raised label for the run), the language at the start (`en`, `fr`, `de`), the channel tag, phone or desktop. No name, no IP address, no browser details.
 
 One answer per session and step, replaced when the participant goes back and answers again:
 
@@ -175,7 +189,7 @@ One answer per session and step, replaced when the participant goes back and ans
 | `chosen` | The final answer; empty when skipped |
 | `first_chosen` | The first answer; the server keeps the value it received first |
 | `shown` | Option order on screen, for shuffled steps |
-| `text` | `last-story`, the `gender` self-description, or the offer as sent |
+| `text` | `last-story`, the `gender` self-description, the `stop` "Something else" text, or the offer as sent |
 | `elapsed_ms` | Time on screen |
 
 `draft` is saved at the first button tap with `chosen` = the action, then again with the final code:
@@ -195,8 +209,8 @@ Events, sent in batches and stored once per sequence number:
 | --- | --- | --- |
 | `shown`, `answered`, `skipped`, `changed` | question | |
 | `back` | step left | step returned to |
-| `scene-played`, `scene-skipped` | tour step | scene |
-| `moment-tapped`, `moment-auto` | tour step | key moment, tapped or advanced by itself |
+| `scene-played`, `scene-skipped` | scene step (`app-*` in the core, `tour-*` in the tour) | scene |
+| `moment-tapped`, `moment-auto` | tour step | key moment, tapped or advanced by itself (full scenes only) |
 | `core-complete`, `end` | | |
 | `share` | | `native`, `copy` or `qr` |
 | `language` | | language switched to |
@@ -216,6 +230,7 @@ Plausible range: two-sided 95% Wilson interval. For a network sample it only ill
 | Moving by June | `move` in `move-feb`, `move-jun` | D4, D1 |
 | Housing | `housing` = `fmel` | D1b, D1 |
 | Bulky item | `last-item` = `furniture` | D3 |
+| Tried before | `last-role` is not `none` | D7: the `helped-*` wording differs, so the two groups are reported apart |
 | Background | `age`, `gender`, `level`, `exchange` | Persona |
 | Channel, language | session | Sample description |
 
@@ -229,8 +244,12 @@ Count cutoffs (unrounded Wilson bounds):
 | `move-it` helper: go ≥ / deprioritise ≤ | D3 | answered | 11 / 1 | 15 / 3 | 22 / 8 | 40 / 20 |
 | `pack`: go ≥ / no payment ≤ | D4 | answered | 14 / 3 | 19 / 6 | 29 / 12 | 53 / 30 |
 | `draft` wrong day ≥ | D5a | completed decisions | 5 | 7 | 10 | 17 |
-| `autonomy` yes: go ≥ / keep manual ≤ | D5b | answered | 27 / 13 | 38 / 22 | 60 / 40 | 114 / 86 |
-| `who-sends` wrong + unsure ≥ | D5c | answered | 8 | 12 | 20 | 40 |
+| `sending` short-updates + replies-too: go ≥ / keep manual ≤ | D5b | answered | 27 / 13 | 38 / 22 | 60 / 40 | 114 / 86 |
+| `helped-*` yes: keep ≥ / yes + partly: deprioritise ≤ | D7 | tried, answered | 23 / 6 | 32 / 11 | 50 / 21 | 94 / 47 |
+| `try-first` top feature ≥ 25% | D7 | answered | 10 | 15 | 25 | 50 |
+| `try-first` none + need-more ≥ 40% | D7 | answered | 16 | 24 | 40 | 80 |
+| `stop` one barrier, lower bound ≥ 25% | D8 | answered | 16 | 22 | 34 | 63 |
+| `stop` nothing ≥ 40% | D8 | answered | 16 | 24 | 40 | 80 |
 
 Draft coding, over completed decisions (`sent-unchanged`, `sent-edited`, `not-sent`):
 
@@ -256,18 +275,22 @@ Frozen with a date before the first invitation, together with the script and the
 | D3 | Helper lower bound ≥ 15% → partner quote and a real booking offer in the pilot. Upper bound < 15% → deprioritise this offer. Else open. 15% is a team threshold. | Furniture subgroup |
 | D4 | Pack lower bound > 20.6% (break-even: 33 packs from 160 movers) → offer a real paid pack in February. Upper bound < 20.6% → no student payment in the pilot. Else open. | Moving by June |
 | D5a | Wrong-day sends ÷ completed decisions, lower bound ≥ 5% → test a check step. Else open; report the upper bound. | Unfinished; first vs final action |
-| D5b | Yes lower bound > 50% → prototype the opt-in. Upper bound < 50% → keep "you tap every send". Else open. | By draft code |
-| D5c | First answer wrong or unsure ≥ 20% → rewrite the sentence. Else keep. | Wrong and unsure separately |
+| D5b | `short-updates` + `replies-too` lower bound > 50% → prototype the opt-in. Upper bound < 50% → keep "you tap every send". Else open. | Each option separately; by draft code |
+| D5c | Dropped in `v3-2`: the comprehension item was merged into `sending`. The sentence stays as it is. | |
 | D6 | The two most chosen lines go to the poster test; a tie for second sends all tied lines. `none` chosen most → no shortlist, rewrite the lines. | EPFL/UNIL counts |
+| D7 | Per feature, over participants who tried (`na` stays in the denominator): `yes` lower bound ≥ 40% → keep the feature as shown in the pilot. `yes` + `partly` upper bound < 30% → deprioritise it in the pilot and the onboarding. Else open. `try-first`: the most chosen feature with ≥ 25% and no tie leads the onboarding; `none` + `need-more` ≥ 40% → rewrite how the features are introduced. 40% and 30% are team thresholds. | Never-tried answers ("Would this help you?") descriptively; scenes skipped vs played |
+| D8 | Each barrier with a lower bound ≥ 25% gets a named counter-measure in the pilot plan (for example `nobody-nearby` → one house at a time, `ai-mistakes` → the check step of D5a, `prefer-groups` → posting listings into existing groups). `nothing` ≥ 40% → no main barrier. Else open. Several barriers per participant; the denominator is participants who answered. | "Something else" texts, coded like `last-story` |
 
 ## Threats to validity
 
 | Threat | Where | Mitigation | What remains |
 | --- | --- | --- | --- |
-| Pako asks the product questions | `headline`, `autonomy`, `move-it`, `pack`, `try-first` | Neutral wording, outside options, "the app" in questions, no reaction to product answers; real behaviour weighs more | Product answers likely lean positive; size unknown |
+| Pako asks the product questions | `headline`, `helped-*`, `stop`, `try-first`, `sending`, `move-it`, `pack` | Neutral wording, outside options, "the app" in questions, no reaction to product answers; real behaviour weighs more | Product answers likely lean positive; size unknown |
 | Self-selection, course peers | Everything | Neutral invitation, channel tags, subgroups described | No campus-wide rates |
 | No time window on the last attempt | `last-trouble`, `last-item` | `last-occasion` and side describe the episode | Older episodes recalled less precisely |
-| Fixed section order | All | Shuffled options with stored order; helper before desk; autonomy before the draft | Same order for everyone |
+| Fixed section order | All | Shuffled options with stored order; headline before the scenes; helper before desk; `sending` before the draft | Same order for everyone; the features always run find, sell, deal |
+| Short scenes as the stimulus | `helped-*`, `stop`, `try-first` | Pako's line says what each scene shows; Replay; skipped scenes are logged | A 12-second demo, not use: answers describe a first impression |
+| Two wordings of one question | `helped-*` | Tried and never tried reported apart | The two groups' answers are not comparable |
 | Imagined vs real behaviour | `draft`, `pack`, `move-it`, `desk` | Every "go" leads to a real test | Stated choices run high |
 | Planted error spreading | `draft` | Share text does not mention it; reveal asks for silence; leak check | If the rate drifts by day, report both |
 | Shown results | Later participants | Only after the core, two items, from 20 answers | |
@@ -300,13 +323,19 @@ Every block: k of n with the denominator named, the range, the rule and its outc
 
 ## Before launch
 
-1. Pilot done; wording and `{measured}` fixed; wording version raised to `v3-1`.
+1. Pilot done (it runs `v3-2`); wording and `{measured}` fixed; wording version raised for the run.
 2. This protocol frozen with a date.
 3. Pilot sessions deleted, so they do not count in "How others answered".
 4. `STUDY_CONTACT` and `STUDY_DELETE_BY` set on the deployment.
 5. The migration reviewed and applied.
 6. Server logs checked for request addresses.
 7. QR codes generated per channel and tested at poster distance.
+
+## Results page
+
+Admins see the counts in the app under Admin → Study, read through `GET /api/study/report`. In account mode the server passes the signed-in user to `study_report_rows`, which refuses anyone not in `public.admins`; the server calls it with its service key. In the local demo the admin area opens in developer mode, as the rest of it does.
+
+The page shows one wording version at a time, the newest first: sessions per UTC day and channel, how many sessions reached each core screen, the last screen of those who left before the core was saved, counts per option over the participants who answered (skips excluded), typed answers sorted alphabetically without session ids (the offers of `draft` are left out; query D5a lists them) and pilot sign-ups per house and week. Any breakdown count from 1 to 4 shows as "<5". Decision outcomes come from the queries below.
 
 ## Results queries
 
@@ -360,7 +389,7 @@ order by shown desc, shown.step;
 
 ### Counts per option for one step
 
-For the descriptive steps (`who`, `last-occasion`, `why-not`, `move`, `housing`, `age`, `gender`, `level`, `exchange`, `scene-pick`, `try-first`). Change the step id. Skips are not counted.
+For the descriptive steps (`who`, `last-occasion`, `why-not`, `move`, `housing`, `age`, `gender`, `level`, `exchange`, `scene-pick`). Change the step id. Skips are not counted.
 
 ```sql
 -- split
@@ -572,23 +601,18 @@ where a.step = 'draft' and a.chosen[1] = 'sent-edited'
 order by a.saved_at;
 ```
 
-### D5b and D5c Autonomy and who sends
-
-`autonomy` counts the final answer, `who-sends` the first.
+### D5b Sending
 
 ```sql
--- d5bc
+-- d5b-sending
 with run as (
   select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v3-1'
 )
-select a.step,
-  case when a.step = 'who-sends' then a.first_chosen[1] else a.chosen[1] end as answer,
-  count(*) as chosen,
-  sum(count(*)) over (partition by a.step) as answered
+select a.chosen[1] as answer, count(*) as chosen, sum(count(*)) over () as answered
 from takeover_admin.study_answers a join run on run.id = a.session
-where a.step in ('autonomy', 'who-sends') and cardinality(a.chosen) > 0
-group by a.step, answer
-order by a.step, chosen desc, answer;
+where a.step = 'sending' and cardinality(a.chosen) > 0
+group by answer
+order by chosen desc, answer;
 ```
 
 ### D6 Headlines, with EPFL/UNIL students
@@ -610,6 +634,62 @@ select coalesce(part, 'all') as subgroup, option, count(*) as chosen,
 from answers
 group by grouping sets ((option), (part, option))
 order by subgroup, chosen desc, option;
+```
+
+### D7 Features, by whether the participant tried before
+
+```sql
+-- d7-helped
+with run as (
+  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v3-1'
+), tried as (
+  select a.session, not a.chosen && array['none'] as tried
+  from takeover_admin.study_answers a join run on run.id = a.session
+  where a.step = 'last-role' and cardinality(a.chosen) > 0
+)
+select a.step as feature, case when t.tried then 'tried' else 'never-tried' end as wording,
+  a.chosen[1] as answer, count(*) as chosen,
+  sum(count(*)) over (partition by a.step, t.tried) as answered
+from takeover_admin.study_answers a join tried t on t.session = a.session
+where a.step in ('helped-find', 'helped-sell', 'helped-deal') and cardinality(a.chosen) > 0
+group by a.step, t.tried, answer
+order by feature, wording desc, chosen desc, answer;
+```
+
+### D7 What participants would try first
+
+`feature = false` rows stay in the denominator but out of the ranking.
+
+```sql
+-- d7-try-first
+with run as (
+  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v3-1'
+)
+select option, option not in ('none', 'need-more') as feature,
+  count(*) as chosen, sum(count(*)) over () as answered
+from takeover_admin.study_answers a join run on run.id = a.session
+cross join unnest(a.chosen) as option
+where a.step = 'try-first'
+group by option
+order by feature desc, chosen desc, option;
+```
+
+### D8 Barriers
+
+A participant can name several barriers; `answered` counts participants, not choices.
+
+```sql
+-- d8-stop
+with run as (
+  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v3-1'
+), answered as (
+  select a.chosen from takeover_admin.study_answers a join run on run.id = a.session
+  where a.step = 'stop' and cardinality(a.chosen) > 0
+)
+select option, count(*) as chosen, (select count(*) from answered) as answered
+from answered cross join unnest(answered.chosen) as option
+group by option
+order by chosen desc, option;
 ```
 
 ### S Leak check

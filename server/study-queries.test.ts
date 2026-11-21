@@ -126,8 +126,12 @@ const PARTICIPANTS: Participant[] = [
       move: ["move-feb"],
       housing: ["fmel"],
       headline: ["h-photo"],
-      autonomy: ["no"],
-      "who-sends": { chosen: ["stays"], first: ["sent-later"] },
+      "helped-find": ["yes"],
+      "helped-sell": ["partly"],
+      "helped-deal": ["na"],
+      stop: ["privacy", "nobody-nearby"],
+      "try-first": ["photo-listing"],
+      sending: { chosen: ["short-updates"], first: ["myself"] },
       "move-it": ["helper"],
       desk: ["nearer"],
       pack: ["pack"],
@@ -154,8 +158,12 @@ const PARTICIPANTS: Participant[] = [
       move: ["no-plan"],
       housing: ["flat"],
       headline: ["none"],
-      autonomy: ["yes"],
-      "who-sends": ["stays"],
+      "helped-find": ["no"],
+      "helped-sell": ["yes"],
+      "helped-deal": ["no"],
+      stop: ["nothing"],
+      "try-first": ["none"],
+      sending: ["myself"],
       "move-it": ["carry-bike"],
       desk: ["cheaper"],
       pack: ["manual"],
@@ -349,12 +357,43 @@ test("the v3 results queries run on v3 sessions of the named version only", asyn
     ["sat", "Hi Mia! I can pick it up on Saturday at 17:30."],
   ]);
   assert.deepEqual(
-    rowsOf(await query("d5bc"), "step", "answer", "chosen", "answered"),
+    rowsOf(await query("d5b-sending"), "answer", "chosen", "answered"),
     [
-      ["autonomy", "no", 1, "2"],
-      ["autonomy", "yes", 1, "2"],
-      ["who-sends", "sent-later", 1, "2"],
-      ["who-sends", "stays", 1, "2"],
+      ["myself", 1, "2"],
+      ["short-updates", 1, "2"],
+    ],
+  );
+  assert.deepEqual(
+    rowsOf(
+      await query("d7-helped"),
+      "feature",
+      "wording",
+      "answer",
+      "chosen",
+      "answered",
+    ),
+    [
+      ["helped-deal", "tried", "na", 1, "1"],
+      ["helped-deal", "never-tried", "no", 1, "1"],
+      ["helped-find", "tried", "yes", 1, "1"],
+      ["helped-find", "never-tried", "no", 1, "1"],
+      ["helped-sell", "tried", "partly", 1, "1"],
+      ["helped-sell", "never-tried", "yes", 1, "1"],
+    ],
+  );
+  assert.deepEqual(
+    rowsOf(await query("d7-try-first"), "option", "feature", "chosen"),
+    [
+      ["photo-listing", true, 1],
+      ["none", false, 1],
+    ],
+  );
+  assert.deepEqual(
+    rowsOf(await query("d8-stop"), "option", "chosen", "answered"),
+    [
+      ["nobody-nearby", 1, 2],
+      ["nothing", 1, 2],
+      ["privacy", 1, 2],
     ],
   );
   assert.deepEqual(rowsOf(await query("d6-headline"), "subgroup", "option"), [
@@ -375,7 +414,7 @@ test("the v3 results queries run on v3 sessions of the named version only", asyn
       [true, 1, 1],
     ],
   );
-  assert.equal(queries.size, 15);
+  assert.equal(queries.size, 18);
 
   await runDeletion(run, deletion);
   for (const table of [

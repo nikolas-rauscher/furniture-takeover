@@ -43,8 +43,13 @@ export function sceneInAddress(search: string) {
   return scene;
 }
 
-export function sceneAddress(scene: TourScene) {
-  return `/tour?scene=${scene}`;
+/** Whether the scene page plays the short version, as the survey's core shows it. */
+export function briefInAddress(search: string) {
+  return new URLSearchParams(search).get("pace") === "brief";
+}
+
+export function sceneAddress(scene: TourScene, brief: boolean) {
+  return `/tour?scene=${scene}${brief ? "&pace=brief" : ""}`;
 }
 
 function fromTour(data: unknown): data is { source: string; kind: string } {

@@ -113,7 +113,14 @@ function useImagesLoaded(scene: TourScene) {
  * Only its key moments answer the visitor's taps; nothing in it can be focused.
  * A round that fails is reported in the console and the scene starts over.
  */
-export default function ScenePage({ scene }: { scene: TourScene }) {
+export default function ScenePage({
+  scene,
+  brief,
+}: {
+  scene: TourScene;
+  /** Plays the short version: faster, and every key moment taps itself. */
+  brief: boolean;
+}) {
   const [round, setRound] = useState(0);
   const ending = useRef<number>(undefined);
   const Scene = SCENES[scene];
@@ -153,7 +160,12 @@ export default function ScenePage({ scene }: { scene: TourScene }) {
   return (
     <MotionConfig reducedMotion="user">
       {shown && imagesLoaded && (
-        <Scene key={round} onEnd={() => next(END_HOLD_MS)} onFail={fail} />
+        <Scene
+          key={round}
+          brief={brief}
+          onEnd={() => next(END_HOLD_MS)}
+          onFail={fail}
+        />
       )}
     </MotionConfig>
   );

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  STUDY_V3_CORE_SCREENS,
   studyAnswerSchema,
   studyEventsSchema,
   studyStartSchema,
@@ -26,7 +27,8 @@ import {
   V3_VERSION,
   type V3ChoiceStep,
 } from "./v3Script.ts";
-import { optionsOf } from "./v3Words.ts";
+import { optionsOf, questionOf } from "./v3Words.ts";
+import { toggleOption } from "../optionOrder.ts";
 
 const SESSION = "6f1c1f9e-5b7a-4c1e-9a1d-2f3b4c5d6e7f";
 
@@ -72,13 +74,68 @@ test("someone who tried answers the details; someone who did not gets one reason
   assert.equal(none[none.indexOf("why-not") + 1], "move");
 });
 
-test("with the start screen, the core has 17 screens after an attempt and 14 without", () => {
+test("with the start screen, the core has 24 screens after an attempt and 21 without", () => {
   const core = (role: string) => {
     const shown = ids({ "last-role": answer(role) });
     return shown.slice(0, shown.indexOf("reveal") + 1).length;
   };
-  assert.equal(core("buying") + 1, 17);
-  assert.equal(core("none") + 1, 14);
+  assert.equal(core("buying") + 1, 24);
+  assert.equal(core("none") + 1, 21);
+});
+
+test("the core shows each feature briefly, then asks whether it would have helped", () => {
+  const core = ids({});
+  assert.deepEqual(
+    core.slice(core.indexOf("headline"), core.indexOf("move-it")),
+    [
+      "headline",
+      "app-find",
+      "helped-find",
+      "app-sell",
+      "helped-sell",
+      "app-deal",
+      "helped-deal",
+      "stop",
+      "try-first",
+      "sending",
+    ],
+  );
+  const brief = V3_STEPS.filter((step) => step.kind === "scene" && step.brief);
+  assert.equal(brief.length, 3);
+});
+
+test("the results page reads its funnel along the core screens of the script", () => {
+  const core = V3_STEPS.slice(
+    0,
+    V3_STEPS.findIndex((step) => step.kind === "reveal") + 1,
+  );
+  assert.deepEqual(
+    core.map((step) => step.id),
+    [...STUDY_V3_CORE_SCREENS],
+  );
+});
+
+test("someone who never tried is asked whether a feature would help, not have helped", () => {
+  const text = TOUR_TEXT.en;
+  const helped = v3StepById("helped-sell") as V3ChoiceStep;
+  const tried = { "last-role": answer("selling") };
+  assert.equal(
+    questionOf(text, helped, tried),
+    text.v3.steps["helped-sell"].question,
+  );
+  assert.equal(
+    questionOf(text, helped, { "last-role": answer("none") }),
+    text.v3.helpedNeverTried,
+  );
+});
+
+test("nothing would stop me clears the other obstacles", () => {
+  const stop = v3StepById("stop") as V3ChoiceStep;
+  const options = optionsOf(TOUR_TEXT.en, stop, progress);
+  assert.deepEqual(toggleOption(options, ["privacy", "too-long"], "nothing"), [
+    "nothing",
+  ]);
+  assert.deepEqual(toggleOption(options, ["nothing"], "privacy"), ["privacy"]);
 });
 
 test("the tour shows only after Peek, starting with the scene picked first", () => {
@@ -86,7 +143,7 @@ test("the tour shows only after Peek, starting with the scene picked first", () 
   const tour = ids({ peek: answer("tour"), "scene-pick": answer("find") });
   const scenes = tour.filter((id) => id.startsWith("tour-"));
   assert.deepEqual(scenes, ["tour-find", "tour-sell", "tour-deal"]);
-  assert.equal(tour[tour.indexOf("tour-deal") + 1], "try-first");
+  assert.equal(tour[tour.indexOf("tour-deal") + 1], "end");
 });
 
 test("only EPFL and UNIL students see the pilot form; students see their studies", () => {
@@ -193,7 +250,7 @@ test("sections close in order and are all done after the core", () => {
   assert.deepEqual(sectionStates(v3StepById("headline")), {
     you: "done",
     "last-time": "done",
-    "first-look": "current",
+    "the-app": "current",
     situations: "next",
   });
   assert.ok(
