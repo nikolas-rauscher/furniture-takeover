@@ -59,6 +59,7 @@ const progress: V3Progress = {
   events: [],
   queuedEvents: 0,
   pilot: null,
+  unsentDraft: null,
   skippedFrom: null,
 };
 

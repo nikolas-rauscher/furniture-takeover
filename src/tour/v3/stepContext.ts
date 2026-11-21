@@ -38,6 +38,8 @@ export type StepContext = {
   replayScene: () => void;
   sceneDone: () => void;
   sceneMoment: (moment: number, by: "visitor" | "scene") => void;
+  /** Keeps the draft's unsent words for this tab, or forgets them once decided. */
+  keepUnsentDraft: (text: string | null) => void;
   /** Stores an answer at once, without leaving the step. */
   saveNow: (id: string, answer: Given) => void;
   /** Answers the pack ladder's current price; the next price, if any, follows on the same screen. */

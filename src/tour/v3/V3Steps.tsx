@@ -372,6 +372,8 @@ export default function V3Steps({
         withMoment(current, step.id, moment, by, scene.finished),
       ),
     saveNow: (id, given) => setProgress(storeAnswers({ [id]: given })),
+    keepUnsentDraft: (unsentDraft) =>
+      setProgress((current) => ({ ...current, unsentDraft })),
     answerLadder,
     sendPilot,
     retry: recorder.retry,

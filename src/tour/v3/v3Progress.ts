@@ -36,6 +36,11 @@ export type V3Progress = {
   /** Events already handed to the save queue. */
   queuedEvents: number;
   pilot: StudyPilot | null;
+  /**
+   * The offer being written in the draft task and not sent yet. Only this tab keeps
+   * it, so a reload brings the typed words back; the server gets the message once sent.
+   */
+  unsentDraft: string | null;
   /** The tour scene "Skip the rest" left from, while on the step it led to; Back returns there. */
   skippedFrom: string | null;
 };

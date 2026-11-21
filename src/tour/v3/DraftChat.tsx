@@ -63,7 +63,7 @@ export default function DraftChat({ context }: { context: StepContext }) {
   );
   const offer = day ? draft.offer(draft.days[day]) : "";
   const [message, setMessage] = useState(
-    start.writing === "change" ? offer : "",
+    context.progress.unsentDraft ?? (start.writing === "change" ? offer : ""),
   );
   const [decision, setDecision] = useState<Given | undefined>(start.decision);
   const moveOn = useRef(context.moveOn);
@@ -119,6 +119,7 @@ export default function DraftChat({ context }: { context: StepContext }) {
       firstChosen: first ? [first] : undefined,
     };
     context.saveNow("draft", decided);
+    context.keepUnsentDraft(null);
     setDecision(decided);
     setPhase("decided");
     log.current?.focus();
@@ -127,7 +128,9 @@ export default function DraftChat({ context }: { context: StepContext }) {
   /** Opens the message for writing; the choice is saved as the first answer at once. */
   function write(choice: DraftWriting) {
     setWriting(choice);
-    setMessage(choice === "change" ? offer : "");
+    const opening = choice === "change" ? offer : "";
+    setMessage(opening);
+    context.keepUnsentDraft(opening);
     setPhase("write");
     context.saveNow("draft", { chosen: [choice], text: "" });
   }
@@ -258,7 +261,10 @@ export default function DraftChat({ context }: { context: StepContext }) {
           <TextAnswer
             label={writing === "change" ? draft.editLabel : draft.ownLabel}
             value={message}
-            onChange={setMessage}
+            onChange={(words) => {
+              setMessage(words);
+              context.keepUnsentDraft(words);
+            }}
             autoFocus
           />
           <div className="tour-draft-actions">
