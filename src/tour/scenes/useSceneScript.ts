@@ -112,7 +112,7 @@ function lastCue<State>(beats: readonly Beat<State>[]) {
 export function useSceneScript<State>(
   initial: () => State,
   beats: readonly Beat<State>[],
-  { brief, onEnd, onFail }: SceneProps,
+  { brief, still, onEnd, onFail }: SceneProps,
 ) {
   const reduced = useReducedMotion() === true;
   const [state, setState] = useState(initial);
@@ -127,6 +127,7 @@ export function useSceneScript<State>(
   }, [onEnd, onFail]);
 
   useEffect(() => {
+    if (still) return;
     const run = new AbortController();
     const { signal } = run;
     const scroll = reduced ? "auto" : "smooth";
@@ -240,7 +241,7 @@ export function useSceneScript<State>(
       if (!signal.aborted) failed.current(error);
     });
     return () => run.abort();
-  }, [beats, reduced, brief]);
+  }, [beats, reduced, brief, still]);
 
   return { state, setState, marks: { touch, glow, cue } };
 }

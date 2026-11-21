@@ -152,7 +152,11 @@ export default function ScenePage({
   useCommands((kind) => {
     if (kind === "replay") startAfter(round);
     if (kind === "pause") setHeld(true);
-    if (kind === "play") setHeld(false);
+    // Playing starts a fresh round, from the scene's first screen.
+    if (kind === "play" && held) {
+      setHeld(false);
+      startAfter(round);
+    }
     if (kind === "take-turn" || kind === "hold-cue" || kind === "release-cue")
       cueCommand(kind);
   });
@@ -181,10 +185,11 @@ export default function ScenePage({
 
   return (
     <MotionConfig reducedMotion="user">
-      {shown && !held && imagesLoaded && (
+      {shown && imagesLoaded && (
         <Scene
           key={round}
           brief={brief}
+          still={held}
           onEnd={() => next(END_HOLD_MS)}
           onFail={fail}
         />

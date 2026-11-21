@@ -6,6 +6,7 @@ import {
   useState,
   type RefObject,
 } from "react";
+import { useReducedMotion } from "motion/react";
 import type { PakoMood } from "@/components/onboarding/storyTypes";
 import {
   command,
@@ -182,8 +183,11 @@ export default function DeviceFrame({
 }: DeviceFrameProps) {
   const { slot, fit } = useFit();
   const frame = useRef<HTMLIFrameElement>(null);
-  const { near, active } = useSceneTurn(slot);
-  const { sceneTime, cameraOpen, cue } = useSceneLink(frame, replay, active, {
+  const { near, active, directed } = useSceneTurn(slot);
+  // With reduced motion a phone on the pitch plays only once the visitor asks for it.
+  const reduced = useReducedMotion() === true;
+  const plays = active && (!(reduced && directed) || replay > 0);
+  const { sceneTime, cameraOpen, cue } = useSceneLink(frame, replay, plays, {
     onMood,
     onDone,
     onMoment,

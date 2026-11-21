@@ -4,6 +4,8 @@ import type { PakoMood } from "@/components/onboarding/storyTypes";
 export type SceneProps = {
   /** The short version: holds and changes run faster, and key moments tap themselves. */
   brief: boolean;
+  /** Shows the scene where it stands without playing, while another phone plays or the visitor has not asked. */
+  still: boolean;
   onEnd: () => void;
   onFail: (error: unknown) => void;
 };

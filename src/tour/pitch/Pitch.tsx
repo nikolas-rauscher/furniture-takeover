@@ -1,4 +1,4 @@
-import { MotionConfig } from "motion/react";
+import { MotionConfig, useReducedMotion } from "motion/react";
 import { useState } from "react";
 import { ArrowRight, Banknote, GraduationCap, Send } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -122,6 +122,8 @@ function SectionFrame({
 /** Pako's part in a deal, drawn: what is tedious without takeover and what he takes over. */
 function BackAndForthSection() {
   const words = useTourText().pitch.backAndForth;
+  // With reduced motion the illustration stays settled until the visitor asks for it.
+  const reduced = useReducedMotion() === true;
   return (
     <PitchScene
       id="back-and-forth"
@@ -130,7 +132,11 @@ function BackAndForthSection() {
       waitingClass="baf-waiting"
       frame={(play) => (
         <figure className="baf-figure">
-          <BackAndForth key={play.replay} onEnd={play.onDone} />
+          <BackAndForth
+            key={play.replay}
+            playing={!reduced || play.replay > 0}
+            onEnd={play.onDone}
+          />
           <figcaption className="sr-only">{words.label}</figcaption>
         </figure>
       )}

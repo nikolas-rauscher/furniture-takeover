@@ -126,6 +126,8 @@ function observe(
 export function useSceneTurn(slot: RefObject<HTMLElement | null>): {
   near: boolean;
   active: boolean;
+  /** A director coordinates this phone, as on the pitch. */
+  directed: boolean;
 } {
   const director = useContext(DirectorContext);
   const id = useId();
@@ -153,9 +155,10 @@ export function useSceneTurn(slot: RefObject<HTMLElement | null>): {
       leave(id);
     };
   }, [slot, id, sight, leave]);
-  if (!director) return { near: painted, active: true };
+  if (!director) return { near: painted, active: true, directed: false };
   return {
     near: painted && director.decision.near.has(id),
     active: director.decision.active === id,
+    directed: true,
   };
 }

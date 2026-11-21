@@ -71,8 +71,14 @@ function shows({ index, tapped }: Progress, moment: Moment) {
 const started = ({ index }: Progress, moment: Moment) =>
   stepOf(moment) <= index;
 
-/** Steps through the script once; each tap lands a moment into its step. */
-function usePlay(onEnd: () => void): Progress {
+/** The script's last step with its tap done: what the illustration settles on. */
+const SETTLED: Progress = { index: STEPS.length - 1, tapped: true };
+
+/**
+ * Steps through the script once; each tap lands a moment into its step. While it
+ * may not play, it shows the settled end and starts no timer.
+ */
+function usePlay(onEnd: () => void, playing: boolean): Progress {
   const [index, setIndex] = useState(0);
   const [tappedStep, setTappedStep] = useState(-1);
   const ended = useRef(onEnd);
@@ -80,6 +86,7 @@ function usePlay(onEnd: () => void): Progress {
     ended.current = onEnd;
   }, [onEnd]);
   useEffect(() => {
+    if (!playing) return;
     const step = STEPS[index];
     const tap = step.tap
       ? window.setTimeout(() => setTappedStep(index), TAP_MS)
@@ -92,7 +99,8 @@ function usePlay(onEnd: () => void): Progress {
       window.clearTimeout(tap);
       window.clearTimeout(next);
     };
-  }, [index]);
+  }, [index, playing]);
+  if (!playing) return SETTLED;
   return { index, tapped: tappedStep === index };
 }
 
@@ -364,8 +372,15 @@ function ChapterView({ progress }: { progress: Progress }) {
  * takes without takeover and what Pako takes over. Pako drafts and sorts; the
  * student's own tap sends, and both students confirm the pickup.
  */
-export default function BackAndForth({ onEnd }: { onEnd: () => void }) {
-  const progress = usePlay(onEnd);
+export default function BackAndForth({
+  playing,
+  onEnd,
+}: {
+  /** False until the visitor asks for it with reduced motion: the settled end shows. */
+  playing: boolean;
+  onEnd: () => void;
+}) {
+  const progress = usePlay(onEnd, playing);
   const step = STEPS[progress.index];
   const { lines } = useTourText().pitch.backAndForth;
   return (
