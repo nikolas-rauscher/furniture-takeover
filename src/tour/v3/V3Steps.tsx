@@ -8,6 +8,7 @@ import type { StudyPilot } from "../../../shared/study.ts";
 import { useTourText } from "../i18n/TourLanguage";
 import type { TourText } from "../i18n/en";
 import { movesOn } from "../study/arrowMoves";
+import { numberPick } from "../study/numberKey";
 import { pickOption } from "../study/ChoiceStep";
 import StudyShell from "../study/StudyShell";
 import type { Recorder } from "../study/useRecorder";
@@ -382,17 +383,10 @@ export default function V3Steps({
   // Number keys pick answers and Enter moves on, as long as no control has the key.
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (step.kind === "ladder") {
-      const number = Number(event.key);
-      const target = event.target instanceof Element ? event.target : null;
-      if (target?.closest("input, textarea, select, [contenteditable]")) return;
-      if (
-        !Number.isInteger(number) ||
-        number < 1 ||
-        number > PACK_ANSWERS.length
-      )
-        return;
+      const pick = numberPick(event, PACK_ANSWERS.length);
+      if (pick === null) return;
       event.preventDefault();
-      answerLadder(PACK_ANSWERS[number - 1]);
+      answerLadder(PACK_ANSWERS[pick - 1]);
       return;
     }
     if (
@@ -406,13 +400,13 @@ export default function V3Steps({
     const target = event.target instanceof Element ? event.target : null;
     if (target?.closest("input, textarea, select, [contenteditable]")) return;
     const options = optionsOf(text, step, progress);
-    const number = Number(event.key);
-    if (Number.isInteger(number) && number >= 1 && number <= options.length) {
+    const pick = numberPick(event, options.length);
+    if (pick !== null) {
       event.preventDefault();
       const picked = pickOption(
         options,
         { ...given[step.id], shown: [] },
-        options[number - 1].id,
+        options[pick - 1].id,
         step.multiple ?? false,
       );
       answer(step.id, { chosen: picked.chosen, text: picked.text });

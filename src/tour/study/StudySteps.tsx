@@ -29,6 +29,7 @@ import {
   type StudyStep,
 } from "../tourScript";
 import { pickOption } from "./ChoiceStep";
+import { numberPick } from "./numberKey";
 import { EMPTY_CONTACT, isValidEmail, type ContactDraft } from "./ContactStep";
 import StepContent from "./StepContent";
 import { StudyEndContent, useShare } from "./StudyEnd";
@@ -213,14 +214,14 @@ export default function StudySteps({
       return;
     const target = event.target instanceof Element ? event.target : null;
     if (target?.closest("input, textarea, select, [contenteditable]")) return;
-    const number = Number(event.key);
-    if (Number.isInteger(number) && number >= 1 && number <= options.length) {
+    const pick = numberPick(event, options.length);
+    if (pick !== null) {
       event.preventDefault();
       changeAnswer(
         pickOption(
           options,
           answer,
-          options[number - 1].id,
+          options[pick - 1].id,
           step.kind === "multiple",
         ),
       );
