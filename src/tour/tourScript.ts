@@ -10,7 +10,7 @@ import { TOUR_TEXT } from "./i18n/tourText.ts";
 import { isShown, type StepCondition } from "./stepConditions.ts";
 
 /** Raised whenever a question, an option or its wording changes. */
-export const STUDY_VERSION = "pilot-1";
+export const STUDY_VERSION = "pilot-2";
 
 export type StudyOption = {
   id: string;

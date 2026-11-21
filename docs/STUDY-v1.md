@@ -6,6 +6,8 @@ Pako asks about the participant's last real purchase or sale, gives two short ta
 
 This file is the protocol. The questions in `src/tour/tourScript.ts` follow it. Decision rules are filled in before launch and not changed afterwards.
 
+Changed in `pilot-2`: the French and German wording was revised after a translation review; the German options of `last-role` now name the attempt ("Kaufen") instead of a finished purchase ("Gekauft"). The English wording and the option ids are unchanged.
+
 ## What we want to learn
 
 | # | Question | Measured by |

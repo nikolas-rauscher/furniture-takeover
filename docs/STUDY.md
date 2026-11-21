@@ -4,6 +4,8 @@ The tour page (`/tour`) has two uses. Without a tag it is the pitch: a hero and 
 
 This file is the protocol. The v3 script in `src/tour/` follows it, in English, French and German with equivalent meaning; the English wording below is the reference. The app screens inside the phone stay in English. The decision rules are frozen before launch (see [Pre-registration](#pre-registration)).
 
+Changed in `v3-6`: the French and German wording was revised after a translation review, so that each question and option says what the English says, for example moving out rather than moving in general, a transport helper rather than a courier, and short status updates rather than any message. The English wording, the steps and the option ids are unchanged.
+
 Setting: a course project. Dates, prices and the pilot are hypothetical; nothing is launched, sold or booked.
 
 ## Decisions the study informs
@@ -212,7 +214,7 @@ Share: "Every answer helps, also from people who never sell anything. Share it?"
 
 ## What is stored
 
-One session per participant, created on "Let's go": a random id, `survey = 'v3'`, the wording version (`v3-5` for the pilot, a raised label for the run), the language at the start (`en`, `fr`, `de`), the channel tag, phone or desktop. No name, no IP address, no browser details.
+One session per participant, created on "Let's go": a random id, `survey = 'v3'`, the wording version (`v3-6` for the pilot, a raised label for the run), the language at the start (`en`, `fr`, `de`), the channel tag, phone or desktop. No name, no IP address, no browser details.
 
 The tab keeps the participant's progress with the wording version the session started in. A reload continues the session only in that version: after a new version is deployed, the progress is set aside and the survey starts again with a new session and the line "The survey was updated, so it starts again."
 
@@ -363,7 +365,7 @@ Every block: k of n with the denominator named, the range, the rule and its outc
 
 ## Before launch
 
-1. Pilot done (it runs `v3-5`); wording and `{measured}` fixed; wording version raised for the run.
+1. Pilot done (it runs `v3-6`); wording and `{measured}` fixed; wording version raised for the run.
 2. This protocol frozen with a date.
 3. Pilot sessions deleted. "How others answered" counts one wording version, so pilot answers do not show there in any case.
 4. `STUDY_CONTACT` and `STUDY_DELETE_BY` set on the deployment.
