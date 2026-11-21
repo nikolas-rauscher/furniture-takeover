@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   isFinalRefusal,
+  readResults,
   readRetryAfter,
   retryDelayMs,
   saveEvents,
@@ -69,4 +70,14 @@ test("a busy or unavailable server's wait is kept up to a minute; otherwise the 
     [1, 2, 3].map((attempt) => retryDelayMs(attempt, new TypeError("Offline"))),
     [800, 1_600, 3_200],
   );
+});
+
+test("the shared results are asked for the participant's wording version", async (t) => {
+  const asked: string[] = [];
+  t.mock.method(globalThis, "fetch", async (url: string) => {
+    asked.push(url);
+    return Response.json({ ready: false });
+  });
+  assert.deepEqual(await readResults("v3-3"), { ready: false });
+  assert.deepEqual(asked, ["/api/study/results?version=v3-3"]);
 });

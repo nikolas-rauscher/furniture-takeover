@@ -36,7 +36,8 @@ export type StudyStore = {
   savePilot: (input: StudyPilot) => void | Promise<void>;
   /** Deletes the session with its answers and events; an unknown session changes nothing. */
   withdraw: (input: StudyWithdrawal) => void | Promise<void>;
-  results: () => StudyResults | Promise<StudyResults>;
+  /** The shared counts over the v3 sessions of one wording version. */
+  results: (version: string) => StudyResults | Promise<StudyResults>;
   /**
    * The rows of the admin results page. In account mode `requestedBy` is the signed-in
    * user, and the database refuses anyone who is not an admin; the demo has no accounts.

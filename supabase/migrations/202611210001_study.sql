@@ -141,13 +141,14 @@ language sql security definer set search_path='' as $$
  delete from takeover_admin.study_sessions where id=p_session;
 $$;
 
--- Counts shown at the end of the v3 survey, once 20 participants answered the desk task.
-create function public.study_results() returns jsonb
+-- Counts shown at the end of the v3 survey, over the sessions of one wording version, once 20
+-- participants of that version answered the desk task.
+create function public.study_results(p_version text) returns jsonb
 language sql stable security definer set search_path='' as $$
  with answers as (
   select a.step,a.chosen from takeover_admin.study_answers a
   join takeover_admin.study_sessions s on s.id=a.session
-  where s.survey='v3' and a.step in('desk','last-trouble')
+  where s.survey='v3' and s.version=p_version and a.step in('desk','last-trouble')
  ), tallies as (
   select t.step,jsonb_build_object(
    'answered',(select count(*) from answers a where a.step=t.step),
@@ -196,7 +197,7 @@ revoke all on function public.study_start(uuid,text,text,text,text,text),
  public.study_save_contact(text,boolean,uuid),
  public.study_save_pilot(text,text,text,text[],text[],boolean,boolean),
  public.study_withdraw(uuid),
- public.study_results(),
+ public.study_results(text),
  public.study_report_rows(uuid) from public,anon,authenticated;
 grant execute on function public.study_start(uuid,text,text,text,text,text),
  public.study_save_answer(uuid,text,text[],text[],text[],text,integer),
@@ -204,7 +205,7 @@ grant execute on function public.study_start(uuid,text,text,text,text,text),
  public.study_save_contact(text,boolean,uuid),
  public.study_save_pilot(text,text,text,text[],text[],boolean,boolean),
  public.study_withdraw(uuid),
- public.study_results(),
+ public.study_results(text),
  public.study_report_rows(uuid) to service_role;
 
 commit;

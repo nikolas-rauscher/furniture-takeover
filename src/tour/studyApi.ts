@@ -129,8 +129,10 @@ export function sendPilot(pilot: StudyPilot) {
   );
 }
 
-export async function readResults(): Promise<StudyResults> {
-  const response = await fetch(STUDY_ROUTES.results);
+/** The shared counts of one wording version: the participant's own. */
+export async function readResults(version: string): Promise<StudyResults> {
+  const query = new URLSearchParams({ version });
+  const response = await fetch(`${STUDY_ROUTES.results}?${query}`);
   if (!response.ok) throw await failure(response, "read the results");
   return studyResultsSchema.parse(await response.json());
 }

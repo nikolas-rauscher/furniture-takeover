@@ -143,10 +143,11 @@ test("the Supabase transport reads the shared results and checks their shape", a
     trouble: { answered: 0, options: [] },
   };
   const calls = fakeSupabase(t, () => Response.json(body));
-  assert.deepEqual(await store().results(), body);
+  assert.deepEqual(await store().results("v3-3"), body);
   assert.match(calls[0].url, /\/rpc\/study_results$/);
+  assert.deepEqual(bodyOf(calls[0]), { p_version: "v3-3" });
   body = { ready: true };
-  await assert.rejects(async () => store().results(), {
+  await assert.rejects(async () => store().results("v3-3"), {
     code: "STUDY_UNAVAILABLE",
     status: 503,
   });

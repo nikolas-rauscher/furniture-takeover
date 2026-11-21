@@ -76,7 +76,7 @@ export function createSqliteStudyStore(
   db.exec(SCHEMA);
   addColumnsForV3(db);
   db.exec(`CREATE TEMP VIEW study_v3_answers AS
-    SELECT a.step, a.chosen FROM study_answers a
+    SELECT s.version, a.step, a.chosen FROM study_answers a
     JOIN study_sessions s ON s.id = a.session WHERE s.survey = 'v3'`);
   const now = () => clock().toISOString();
   const exists = (condition: string, ...values: string[]) =>
@@ -105,15 +105,21 @@ export function createSqliteStudyStore(
     return String(row.survey);
   };
   const requireSession = (id: string) => void surveyOfSession(id);
-  const tally = (step: string): Tally => ({
-    answered: count("study_v3_answers", "step = ?", step),
+  const tally = (version: string, step: string): Tally => ({
+    answered: count(
+      "study_v3_answers",
+      "version = ? AND step = ?",
+      version,
+      step,
+    ),
     options: db
       .prepare(
         `SELECT option.value AS option, COUNT(*) AS count
          FROM study_v3_answers, json_each(study_v3_answers.chosen) AS option
-         WHERE step = ? GROUP BY option.value ORDER BY count DESC, option.value`,
+         WHERE version = ? AND step = ?
+         GROUP BY option.value ORDER BY count DESC, option.value`,
       )
-      .all(step)
+      .all(version, step)
       .map((row) => ({ option: String(row.option), count: Number(row.count) })),
   });
 
@@ -237,10 +243,14 @@ export function createSqliteStudyStore(
     withdraw({ session }) {
       db.prepare("DELETE FROM study_sessions WHERE id = ?").run(session);
     },
-    results(): StudyResults {
-      const desk = tally(STUDY_RESULT_STEPS.desk);
+    results(version: string): StudyResults {
+      const desk = tally(version, STUDY_RESULT_STEPS.desk);
       if (desk.answered < STUDY_RESULTS_MINIMUM) return { ready: false };
-      return { ready: true, desk, trouble: tally(STUDY_RESULT_STEPS.trouble) };
+      return {
+        ready: true,
+        desk,
+        trouble: tally(version, STUDY_RESULT_STEPS.trouble),
+      };
     },
     reportRows(): StudyReportRows {
       const sessions = db

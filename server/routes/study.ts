@@ -7,6 +7,7 @@ import {
   studyEventsSchema,
   studyPilotSchema,
   studyStartSchema,
+  studyVersionSchema,
   studyWithdrawalSchema,
   type StudyConfig,
   type StudyResults,
@@ -24,6 +25,8 @@ export const STUDY_BODY_LIMIT = 8 * 1024;
 export const STUDY_WRITES_PER_MINUTE = 300;
 /** The shared counts change slowly, so one database read serves a minute of participants. */
 export const STUDY_RESULTS_MAX_AGE_MS = 60_000;
+/** Database reads for the shared counts per minute, over all wording versions. */
+export const STUDY_RESULTS_READS_PER_MINUTE = 30;
 
 const studyClosed = () =>
   new AgentError(
@@ -44,29 +47,32 @@ function openStudy(
 }
 
 /**
- * One cap for all study writes, so the server needs no client address. Every write counts,
- * valid or not, so that malformed requests cannot be used to bypass it.
+ * A cap per minute over all clients, so the server needs no client address. Past it,
+ * the request is refused with the time until the minute ends.
  */
-function createWriteCap(now: () => Date) {
+function createMinuteCap(now: () => Date, limit: number, busy: string) {
   let windowEnd = 0;
-  let writes = 0;
+  let used = 0;
   return (response: ServerResponse) => {
     const time = now().getTime();
     if (time >= windowEnd) {
       windowEnd = time + 60_000;
-      writes = 0;
+      used = 0;
     }
-    if (writes >= STUDY_WRITES_PER_MINUTE) {
+    if (used >= limit) {
       response.setHeader("Retry-After", Math.ceil((windowEnd - time) / 1000));
-      throw new AgentError(
-        429,
-        "STUDY_BUSY",
-        "The study is receiving many answers. Please retry in a minute.",
-      );
+      throw new AgentError(429, "STUDY_BUSY", busy);
     }
-    writes++;
+    used++;
   };
 }
+
+const invalidStudyRequest = () =>
+  new AgentError(
+    400,
+    "INVALID_STUDY_REQUEST",
+    "The study request is not valid.",
+  );
 
 function parseStudyBody<T>(schema: z.ZodType<T>, body: unknown): T {
   const result = schema.safeParse(body);
@@ -76,21 +82,34 @@ function parseStudyBody<T>(schema: z.ZodType<T>, body: unknown): T {
   );
   throw consentMissing
     ? new AgentError(400, "STUDY_CONSENT_REQUIRED", "Agree before taking part.")
-    : new AgentError(
-        400,
-        "INVALID_STUDY_REQUEST",
-        "The study request is not valid.",
-      );
+    : invalidStudyRequest();
 }
 
-/** Keeps the shared counts for a minute; a failed read is not kept. */
+/**
+ * Keeps each wording version's counts for a minute; a failed read is not kept. Counts
+ * that ran out are dropped, and the reads behind the cache are capped, so asking for
+ * many versions grows neither the cache nor the load on the database.
+ */
 function createResultsCache(now: () => Date) {
-  let cached: { results: StudyResults; until: number } | undefined;
-  return async (store: StudyStore) => {
+  const cached = new Map<string, { results: StudyResults; until: number }>();
+  const capReads = createMinuteCap(
+    now,
+    STUDY_RESULTS_READS_PER_MINUTE,
+    "The study's results are asked for often. Please retry in a minute.",
+  );
+  return async (
+    store: StudyStore,
+    version: string,
+    response: ServerResponse,
+  ) => {
     const time = now().getTime();
-    if (cached && time < cached.until) return cached.results;
-    const results = await store.results();
-    cached = { results, until: time + STUDY_RESULTS_MAX_AGE_MS };
+    for (const [key, entry] of cached)
+      if (time >= entry.until) cached.delete(key);
+    const kept = cached.get(version);
+    if (kept) return kept.results;
+    capReads(response);
+    const results = await store.results(version);
+    cached.set(version, { results, until: time + STUDY_RESULTS_MAX_AGE_MS });
     return results;
   };
 }
@@ -115,17 +134,31 @@ export function createStudyRoutes(
   authorize?: CloudAccess["authorize"],
 ): RouteTable {
   const now = study?.now ?? (() => new Date());
-  const capWrites = createWriteCap(now);
+  // Every write counts, valid or not, so that malformed requests cannot bypass the cap.
+  const capWrites = createMinuteCap(
+    now,
+    STUDY_WRITES_PER_MINUTE,
+    "The study is receiving many answers. Please retry in a minute.",
+  );
   const cachedResults = createResultsCache(now);
   const config: RouteHandler = ({ response }) => {
     const open = openStudy(study, now);
     const body: StudyConfig = open ? open.config : { open: false };
     send(response, 200, body);
   };
-  const results: RouteHandler = async ({ response }) => {
+  // Each participant asks for the counts of their own wording version.
+  const results: RouteHandler = async ({ response, url }) => {
     const open = openStudy(study, now);
     if (!open) throw studyClosed();
-    send(response, 200, await cachedResults(open.store));
+    const version = studyVersionSchema.safeParse(
+      url.searchParams.get("version"),
+    );
+    if (!version.success) throw invalidStudyRequest();
+    send(
+      response,
+      200,
+      await cachedResults(open.store, version.data, response),
+    );
   };
   // Configured is enough: the counts stay readable after collection closes, until deletion.
   const report: RouteHandler = async ({ request, response, url }) => {

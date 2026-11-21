@@ -336,26 +336,27 @@ test("withdrawing removes the session with its answers and events, unlinks its c
   });
 });
 
-test("shared results appear once enough v3 participants answered the desk task, and count v3 only", async () => {
+test("shared results appear once enough v3 participants of one wording version answered the desk task", async () => {
   await withDatabase((path) => {
     const store = createSqliteStudyStore(path);
     const v1 = randomUUID();
-    store.start(v1Start(v1));
+    store.start({ ...v1Start(v1), version: "v3-1" });
     store.saveAnswer({ ...answer(v1, "desk"), chosen: ["cheaper"] });
-    const deskAnswers = (count: number, choice: string) => {
+    const deskAnswers = (count: number, choice: string, version = "v3-1") => {
       for (let n = 0; n < count; n++) {
         const { session } = v3Start();
-        store.start(v3Start(session));
+        store.start({ ...v3Start(session), version });
         store.saveAnswer(v3Answer(session, "desk", [choice]));
         if (n === 0)
           store.saveAnswer(v3Answer(session, "last-trouble", ["transport"]));
       }
     };
+    deskAnswers(STUDY_RESULTS_MINIMUM, "cheaper", "v3-0");
     deskAnswers(STUDY_RESULTS_MINIMUM - 2, "nearer");
     deskAnswers(1, "neither");
-    assert.deepEqual(store.results(), { ready: false });
+    assert.deepEqual(store.results("v3-1"), { ready: false });
     deskAnswers(1, "cheaper");
-    assert.deepEqual(store.results(), {
+    assert.deepEqual(store.results("v3-1"), {
       ready: true,
       desk: {
         answered: STUDY_RESULTS_MINIMUM,
@@ -370,6 +371,15 @@ test("shared results appear once enough v3 participants answered the desk task, 
         options: [{ option: "transport", count: 3 }],
       },
     });
+    assert.deepEqual(store.results("v3-0"), {
+      ready: true,
+      desk: {
+        answered: STUDY_RESULTS_MINIMUM,
+        options: [{ option: "cheaper", count: STUDY_RESULTS_MINIMUM }],
+      },
+      trouble: { answered: 1, options: [{ option: "transport", count: 1 }] },
+    });
+    assert.deepEqual(store.results("v3-9"), { ready: false });
     store.close?.();
   });
 });

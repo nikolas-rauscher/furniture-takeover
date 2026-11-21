@@ -205,7 +205,7 @@ const STUDY_FUNCTIONS = [
   "public.study_save_contact('a@epfl.ch',true,null)",
   "public.study_save_pilot('a@epfl.ch','buyer','atrium','{}','{}',true,false)",
   "public.study_withdraw(gen_random_uuid())",
-  "public.study_results()",
+  "public.study_results('v3-1')",
   "public.study_report_rows(gen_random_uuid())",
 ];
 
@@ -386,17 +386,29 @@ test("withdrawing removes the session with its answers and events and can be rep
   assert.equal(await count("study_events"), 0);
 });
 
-test("shared results count v3 sessions only and appear from the minimum on", async (t) => {
+test("shared results count the v3 sessions of one wording version and appear from the minimum on", async (t) => {
   const { db, startSession, startV3, saveV3Answer } = await setup(t);
-  const results = async () =>
-    (await db.query<{ r: unknown }>("select public.study_results() as r"))
-      .rows[0].r;
+  const resultsOf = async (version: string) =>
+    (
+      await db.query<{ r: unknown }>("select public.study_results($1) as r", [
+        version,
+      ])
+    ).rows[0].r;
+  const results = () => resultsOf("v3-1");
   const v1 = randomUUID();
   await startSession(v1);
   await db.query(
     "select public.study_save_answer($1,'desk','{cheaper}',null,'{}','',0)",
     [v1],
   );
+  for (let n = 0; n < STUDY_RESULTS_MINIMUM; n++) {
+    const session = randomUUID();
+    await db.query(
+      "select public.study_start($1,'v3','v3-0','en','moodle','phone')",
+      [session],
+    );
+    await saveV3Answer(session, "desk", ["cheaper"]);
+  }
   for (let n = 0; n < STUDY_RESULTS_MINIMUM; n++) {
     const session = randomUUID();
     await startV3(session);
@@ -421,6 +433,14 @@ test("shared results count v3 sessions only and appear from the minimum on", asy
     trouble: { answered: 3, options: [{ option: "price", count: 3 }] },
   });
   assert.ok(studyResultsSchema.safeParse(await results()).success);
+  assert.deepEqual(await resultsOf("v3-0"), {
+    ready: true,
+    desk: {
+      answered: STUDY_RESULTS_MINIMUM,
+      options: [{ option: "cheaper", count: STUDY_RESULTS_MINIMUM }],
+    },
+    trouble: { answered: 0, options: [] },
+  });
 });
 
 test("the tables accept every value the wire contract allows", async (t) => {

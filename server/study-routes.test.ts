@@ -14,6 +14,7 @@ import { createAgentServer } from "./http.ts";
 import {
   STUDY_BODY_LIMIT,
   STUDY_RESULTS_MAX_AGE_MS,
+  STUDY_RESULTS_READS_PER_MINUTE,
   STUDY_WRITES_PER_MINUTE,
 } from "./routes/study.ts";
 import type { StudyAccess } from "./routes/types.ts";
@@ -411,23 +412,75 @@ test("withdrawing removes a session and answers the same when repeated", async (
   assert.equal(answer.status, 404);
 });
 
-test("shared results are read at most once a minute", async (t) => {
+const resultsOf = (url: string, version: string) =>
+  fetch(`${url}${STUDY_ROUTES.results}?version=${version}`);
+
+test("shared results are read at most once a minute for each wording version", async (t) => {
   let time = Date.parse("2026-11-30T10:00:00Z");
-  let reads = 0;
+  const reads: string[] = [];
   const store = {
     ...unusedStore(),
-    results: () => ({ ready: false as const, read: ++reads }),
+    results: (version: string) => {
+      reads.push(version);
+      return { ready: false as const, read: reads.length };
+    },
   };
   const url = await startServer(t, {
     study: openStudy(t, { store, now: () => new Date(time) }),
   });
-  const read = async () =>
-    (await (await fetch(url + STUDY_ROUTES.results)).json()).read;
-  assert.equal(await read(), 1);
+  const read = async (version: string) =>
+    (await (await resultsOf(url, version)).json()).read;
+  assert.equal(await read("v3-3"), 1);
+  assert.equal(await read("v3-4"), 2);
   time += STUDY_RESULTS_MAX_AGE_MS - 1;
-  assert.equal(await read(), 1);
+  assert.equal(await read("v3-3"), 1);
+  assert.equal(await read("v3-4"), 2);
   time += 1;
-  assert.equal(await read(), 2);
+  assert.equal(await read("v3-3"), 3);
+  assert.deepEqual(reads, ["v3-3", "v3-4", "v3-3"]);
+});
+
+test("shared results are asked for with a valid wording version", async (t) => {
+  const url = await startServer(t, { study: openStudy(t) });
+  for (const query of [
+    "",
+    "?version=",
+    "?version=V3-3",
+    "?version=v3%203",
+    `?version=${"v".repeat(21)}`,
+  ]) {
+    const refused = await fetch(url + STUDY_ROUTES.results + query);
+    assert.equal(refused.status, 400, query);
+    assert.equal(await errorCode(refused), "INVALID_STUDY_REQUEST");
+  }
+  assert.deepEqual(await (await resultsOf(url, "v3-3")).json(), {
+    ready: false,
+  });
+});
+
+test("reads behind the shared results' cache are capped per minute", async (t) => {
+  let time = Date.parse("2026-11-30T10:00:00Z");
+  let reads = 0;
+  const store = {
+    ...unusedStore(),
+    results: () => {
+      reads += 1;
+      return { ready: false as const };
+    },
+  };
+  const url = await startServer(t, {
+    study: openStudy(t, { store, now: () => new Date(time) }),
+  });
+  for (let n = 0; n < STUDY_RESULTS_READS_PER_MINUTE; n++)
+    assert.equal((await resultsOf(url, `v${n}`)).status, 200);
+  const busy = await resultsOf(url, "other");
+  assert.equal(busy.status, 429);
+  assert.equal(await errorCode(busy), "STUDY_BUSY");
+  assert.equal(busy.headers.get("retry-after"), "60");
+  assert.equal((await resultsOf(url, "v0")).status, 200, "a kept version");
+  assert.equal(reads, STUDY_RESULTS_READS_PER_MINUTE);
+  time += 60_000;
+  assert.equal((await resultsOf(url, "other")).status, 200);
 });
 
 test("a contact is accepted with and without a session, and an unknown session is refused", async (t) => {

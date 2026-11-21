@@ -186,7 +186,7 @@ One form per address: the first one stands, and a later form with the same addre
 
 Pako: "Thanks! That helps us decide what to build next."
 
-"How others answered": the `desk` split and the `last-trouble` counts as bars with counts, once 20 v3 participants answered `desk`; before that "Results appear once 20 people have answered."
+"How others answered": the `desk` split and the `last-trouble` counts as bars with counts, over the sessions of the participant's own wording version, once 20 of them answered `desk`; before that "Results appear once 20 people have answered."
 
 Share: "Every answer helps, also from people who never sell anything. Share it?" Share · Copy link · Show QR. Text: "I just did a {measured}-minute phone survey for an EPFL student project. No sign-in: {link}". The link carries the tag `friend`.
 
@@ -297,7 +297,7 @@ Frozen with a date before the first invitation, together with the script and the
 | Short scenes as the stimulus | `helped-*`, `stop`, `try-first` | Pako's line says what each scene shows; Replay; skipped scenes are logged | A 12-second demo, not use: answers describe a first impression |
 | Two wordings of one question | `helped-*` | Tried and never tried reported apart | The two groups' answers are not comparable |
 | Imagined vs real behaviour | `draft`, `pack`, `move-it`, `desk` | Every "go" leads to a real test | Stated choices run high |
-| Shown results | Later participants | Only after the core, two items, from 20 answers | |
+| Shown results | Later participants | Only after the core, two items, from 20 answers of the same wording version | |
 | Three languages | All | One dictionary per language with equivalent meaning; language stored per session | Small wording differences between languages; report n per language |
 | Two versions running | v1 and v3 | Each session stores its version; analysed separately | Channels may favour one link |
 | Repeat answers | Counts | Browser marker | Private windows bypass it |
@@ -329,7 +329,7 @@ Every block: k of n with the denominator named, the range, the rule and its outc
 
 1. Pilot done (it runs `v3-3`); wording and `{measured}` fixed; wording version raised for the run.
 2. This protocol frozen with a date.
-3. Pilot sessions deleted, so they do not count in "How others answered".
+3. Pilot sessions deleted. "How others answered" counts one wording version, so pilot answers do not show there in any case.
 4. `STUDY_CONTACT` and `STUDY_DELETE_BY` set on the deployment.
 5. The migration reviewed and applied.
 6. Server logs checked for request addresses.
