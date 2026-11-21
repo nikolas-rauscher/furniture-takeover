@@ -1,4 +1,7 @@
-import { STUDY_EVENTS_PER_BATCH } from "../../../shared/study.ts";
+import {
+  STUDY_EVENTS_PER_BATCH,
+  STUDY_EVENTS_PER_SESSION,
+} from "../../../shared/study.ts";
 import type { SaveJob } from "../saveQueue.ts";
 import {
   saveAnswer,
@@ -44,6 +47,7 @@ function eventsJob(progress: V3Progress, from: number, to: number): SaveJob {
   return {
     key: eventsKey(from, to),
     send: () => saveEvents({ session: progress.session, events }),
+    telemetry: true,
   };
 }
 
@@ -74,10 +78,10 @@ export function v3Job(progress: V3Progress, key: string): SaveJob {
   return answerJob(progress, key);
 }
 
-/** The events not yet queued, in batches the server accepts. */
+/** The events not yet queued, in batches the server accepts, up to its limit per session. */
 export function eventJobs(progress: V3Progress): SaveJob[] {
   const jobs: SaveJob[] = [];
-  const end = progress.events.length;
+  const end = Math.min(progress.events.length, STUDY_EVENTS_PER_SESSION);
   for (
     let from = progress.queuedEvents;
     from < end;

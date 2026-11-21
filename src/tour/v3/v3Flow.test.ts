@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  STUDY_EVENTS_PER_SESSION,
   STUDY_V3_CORE_SCREENS,
   studyAnswerSchema,
   studyEventsSchema,
@@ -16,6 +17,7 @@ import {
   v3StepById,
   visibleV3Steps,
   withEvent,
+  withMoment,
   withV3Order,
 } from "./v3Flow.ts";
 import { eventJobs } from "./v3Jobs.ts";
@@ -281,4 +283,32 @@ test("sections close in order and are all done after the core", () => {
       (state) => state === "done",
     ),
   );
+});
+
+test("event batches are telemetry and stop at the server's limit per session", () => {
+  let recorded = progress;
+  for (let index = 0; index < STUDY_EVENTS_PER_SESSION + 10; index += 1)
+    recorded = withEvent(recorded, "shown", "who", null, new Date(0));
+  const near = eventJobs({ ...recorded, queuedEvents: 590 });
+  assert.deepEqual(
+    near.map((job) => [job.key, job.telemetry]),
+    [["events-590-600", true]],
+  );
+  assert.deepEqual(
+    eventJobs({ ...recorded, queuedEvents: STUDY_EVENTS_PER_SESSION }),
+    [],
+  );
+});
+
+test("a scene's key moments are recorded on its first play, not on replays", () => {
+  const tapped = withMoment(progress, "tour-sell", 2, "visitor", false);
+  const auto = withMoment(tapped, "tour-sell", 4, "scene", false);
+  assert.deepEqual(
+    auto.events.map(({ kind, step, detail }) => [kind, step, detail]),
+    [
+      ["moment-tapped", "tour-sell", "moment-2"],
+      ["moment-auto", "tour-sell", "moment-4"],
+    ],
+  );
+  assert.equal(withMoment(auto, "tour-sell", 2, "visitor", true), auto);
 });

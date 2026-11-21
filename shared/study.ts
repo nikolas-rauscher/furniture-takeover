@@ -23,6 +23,8 @@ export const STUDY_SURVEYS = ["v1", "v3"] as const;
 export const STUDY_LANGUAGES = ["en", "fr", "de"] as const;
 export const STUDY_TEXT_MAX = 280;
 export const STUDY_EVENTS_PER_BATCH = 40;
+/** The server keeps at most this many events per session, so the client sends no more. */
+export const STUDY_EVENTS_PER_SESSION = 600;
 /** "How others answered" appears once this many v3 participants answered the desk task. */
 export const STUDY_RESULTS_MINIMUM = 20;
 /** The two v3 steps whose counts are shown to later participants. */
@@ -106,7 +108,7 @@ export const studyAnswerSchema = z.strictObject({
  * - `back`: step = the step left, detail = the step returned to.
  * - `scene-played`, `scene-skipped`: step = the tour step, detail = the scene.
  * - `moment-tapped`, `moment-auto`: a key moment of a scene was tapped or advanced by
- *   itself; step = the tour step, detail = the moment.
+ *   itself, on the scene's first play; step = the tour step, detail = the moment.
  * - `core-complete`, `end`: no step, no detail.
  * - `share`: detail = `native`, `copy` or `qr`.
  * - `language`: detail = the language switched to.

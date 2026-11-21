@@ -20,6 +20,7 @@ import {
   v3StepById,
   visibleV3Steps,
   withEvent,
+  withMoment,
   withV3Order,
 } from "./v3Flow";
 import { PILOT_KEY, v3Job } from "./v3Jobs";
@@ -304,9 +305,8 @@ export default function V3Steps({
       log("scene-played", step.scene);
     },
     sceneMoment: (moment, by) =>
-      log(
-        by === "visitor" ? "moment-tapped" : "moment-auto",
-        `moment-${moment}`,
+      setProgress((current) =>
+        withMoment(current, step.id, moment, by, scene.finished),
       ),
     saveNow: (id, given) => setProgress(storeAnswers({ [id]: given })),
     draftDone: (given) => proceed({ [step.id]: given }),

@@ -216,14 +216,14 @@ One answer per session and step, replaced when the participant goes back and ans
 
 `first_chosen` holds the option picked first (`send`, `change`, `own` or `dont-send`); `draft-day` holds the chosen day.
 
-Events, sent in batches and stored once per sequence number:
+Events, sent in batches and stored once per sequence number, at most 600 per session. A batch the server refuses for good is dropped, so events never hold back answers, the session or the pilot form:
 
 | Kind | Step | Detail |
 | --- | --- | --- |
 | `shown`, `answered`, `skipped`, `changed` | question | |
 | `back` | step left | step returned to |
 | `scene-played`, `scene-skipped` | scene step (`app-*` in the core, `tour-*` in the tour) | scene |
-| `moment-tapped`, `moment-auto` | tour step | key moment, tapped or advanced by itself (full scenes only) |
+| `moment-tapped`, `moment-auto` | tour step | key moment, tapped or advanced by itself (full scenes only, on their first play) |
 | `core-complete`, `end` | | |
 | `share` | | `native`, `copy` or `qr` |
 | `language` | | language switched to |

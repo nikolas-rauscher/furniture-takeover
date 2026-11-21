@@ -1,14 +1,19 @@
 /**
  * Sends the study's saves one after another, in the order they were made: the session
- * has to exist before its answers. A failed save is retried a few times; if it still
- * fails, the queue stops there and keeps everything after it until `retry`, or the
- * next save, starts it again.
+ * has to exist before its answers. A failed save is retried a few times, unless the
+ * failure is final; if it still fails, the queue stops there and keeps everything after
+ * it until `retry`, or the next save, starts it again. Only telemetry is dropped instead.
  */
 
 export type SaveJob = {
   /** A later job with the same key replaces a waiting one, such as a changed answer. */
   key: string;
   send: () => Promise<void>;
+  /**
+   * Telemetry, such as a batch of events. When its failure is final it is dropped and
+   * reported in the console, so the saves after it still go out.
+   */
+  telemetry?: boolean;
 };
 
 export type SaveState = {
@@ -21,8 +26,10 @@ export type SaveState = {
 
 export type SaveQueueOptions = {
   attempts: number;
-  /** Waits before the next attempt; attempt 1 is the first retry. */
-  pause: (attempt: number) => Promise<void>;
+  /** Waits before the next attempt after `error`; attempt 1 is the first retry. */
+  pause: (attempt: number, error: Error) => Promise<void>;
+  /** Whether sending again cannot change the failure, so it is not retried. */
+  isFinal: (error: Error) => boolean;
 };
 
 export type SaveQueue = ReturnType<typeof createSaveQueue>;
@@ -30,7 +37,11 @@ export type SaveQueue = ReturnType<typeof createSaveQueue>;
 const asError = (reason: unknown) =>
   reason instanceof Error ? reason : new Error(String(reason));
 
-export function createSaveQueue({ attempts, pause }: SaveQueueOptions) {
+export function createSaveQueue({
+  attempts,
+  pause,
+  isFinal,
+}: SaveQueueOptions) {
   let jobs: SaveJob[] = [];
   let sending = false;
   let error: Error | null = null;
@@ -43,16 +54,21 @@ export function createSaveQueue({ attempts, pause }: SaveQueueOptions) {
   }
 
   async function sendWithRetries(job: SaveJob) {
-    for (let attempt = 0; ; attempt += 1) {
+    for (let attempt = 1; ; attempt += 1) {
       try {
         await job.send();
         return;
       } catch (reason) {
-        if (attempt + 1 >= attempts) throw asError(reason);
-        await pause(attempt + 1);
+        const failure = asError(reason);
+        if (attempt >= attempts || isFinal(failure)) throw failure;
+        await pause(attempt, failure);
       }
     }
   }
+
+  /** Whether the queue goes on without the failed job. */
+  const isDroppable = (job: SaveJob, failure: Error) =>
+    job.telemetry === true && isFinal(failure);
 
   async function drain() {
     if (sending) return;
@@ -64,8 +80,12 @@ export function createSaveQueue({ attempts, pause }: SaveQueueOptions) {
       try {
         await sendWithRetries(job);
       } catch (reason) {
-        error = asError(reason);
-        break;
+        const failure = asError(reason);
+        if (!isDroppable(job, failure)) {
+          error = failure;
+          break;
+        }
+        console.error(`The server refused ${job.key} for good.`, failure);
       }
       // A replacement made while this job was on its way stays queued.
       jobs = jobs.filter((queued) => queued !== job);

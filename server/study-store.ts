@@ -1,11 +1,12 @@
-import type {
-  StudyAnswer,
-  StudyContact,
-  StudyEvents,
-  StudyPilot,
-  StudyResults,
-  StudyStart,
-  StudyWithdrawal,
+import {
+  STUDY_EVENTS_PER_SESSION,
+  type StudyAnswer,
+  type StudyContact,
+  type StudyEvents,
+  type StudyPilot,
+  type StudyResults,
+  type StudyStart,
+  type StudyWithdrawal,
 } from "../shared/study.ts";
 import { adminErrors } from "../shared/admin.ts";
 import { AgentError } from "./errors.ts";
@@ -13,7 +14,7 @@ import type { StudyReportRows } from "./study-report.ts";
 
 export const STUDY_LIMITS = {
   answersPerSession: 60,
-  eventsPerSession: 600,
+  eventsPerSession: STUDY_EVENTS_PER_SESSION,
   sessions: 5_000,
   contacts: 2_000,
   pilot: 2_000,

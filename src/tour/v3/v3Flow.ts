@@ -157,6 +157,22 @@ export function withEvent(
   return { ...progress, events: [...progress.events, event] };
 }
 
+/**
+ * Adds a key moment of a full scene: tapped by the visitor or advanced by the scene.
+ * A replay shows the same moments again, so only the scene's first play records them.
+ */
+export function withMoment(
+  progress: V3Progress,
+  step: string,
+  moment: number,
+  by: "visitor" | "scene",
+  replaying: boolean,
+): V3Progress {
+  if (replaying) return progress;
+  const kind = by === "visitor" ? "moment-tapped" : "moment-auto";
+  return withEvent(progress, kind, step, `moment-${moment}`);
+}
+
 export type SectionState = "done" | "current" | "next";
 
 /** Each section's state on this step; after the core every section is done. */
