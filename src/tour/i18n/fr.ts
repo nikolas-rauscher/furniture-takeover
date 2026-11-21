@@ -448,6 +448,20 @@ export const FR: TourText = {
       draftTask: "Réponds à Mia, puis choisis quoi faire du brouillon de Pako.",
     },
     steps: {
+      "wanted-react": {
+        question: "Si takeover te montrait ceci, que ferais-tu\u00a0?",
+        options: {
+          snap: "Prendre une photo et le mettre en vente",
+          look: "Jeter un œil, peut-être plus tard",
+          ignore: "L'ignorer",
+          "rather-not": "Je préfère ne pas voir ça",
+        },
+      },
+      "wanted-share": {
+        question:
+          "Quand tu cherches quelque chose, laisserais-tu les étudiant·es près de chez toi voir ta demande\u00a0? Seuls l'objet et ton quartier sont affichés, jamais ton nom.",
+        options: { yes: "Oui", maybe: "Peut-être", no: "Non" },
+      },
       "last-cost": {
         question: "Combien t'a coûté le transport, à peu près\u00a0?",
         options: {
@@ -722,6 +736,11 @@ export const FR: TourText = {
       question: "En une phrase\u00a0: comment ça s'est passé\u00a0?",
       label: "Ta phrase",
       placeholder: "Facultatif, quelques mots suffisent",
+    },
+    wantedCard: {
+      label: "Exemple de demande dans l'app, avec un bouton Prendre en photo",
+      text: "Quelqu'un près de Vortex cherche une lampe de bureau. Tu en as une qui traîne\u00a0?",
+      button: "Prendre en photo",
     },
     whoSendsCard: {
       title: "Comment fonctionne l'app",

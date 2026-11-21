@@ -9,6 +9,9 @@ import { useAdminResource } from "./useAdminResource";
 
 type Cell = number | null;
 
+/** The two questions about the "Wanted nearby" idea, shown together. */
+const WANTED_STEPS = ["wanted-react", "wanted-share"];
+
 const HOUSES: Record<StudyReport["pilot"]["houses"][number]["house"], string> =
   {
     vortex: "Vortex",
@@ -173,18 +176,24 @@ function DropOff({ report }: { report: StudyReport }) {
   );
 }
 
-function Questions({ report }: { report: StudyReport }) {
-  if (report.questions.length === 0)
+/** Bars per question, for every question or only the steps named. */
+function Questions({
+  report,
+  only,
+}: {
+  report: StudyReport;
+  only?: readonly string[];
+}) {
+  const questions = only
+    ? report.questions.filter(({ step }) => only.includes(step))
+    : report.questions;
+  if (questions.length === 0)
     return <p className="admin-empty">No answers yet.</p>;
   return (
     <div className="admin-study-questions">
-      {report.questions.map(({ step, answered, options }) => (
-        <section
-          key={step}
-          className="admin-study-question"
-          aria-labelledby={`study-${step}`}
-        >
-          <h3 id={`study-${step}`}>
+      {questions.map(({ step, answered, options }) => (
+        <div key={step} className="admin-study-question">
+          <h3>
             {questionLabel(step)} <code>{step}</code>
           </h3>
           <ul className="admin-study-bars">
@@ -198,7 +207,7 @@ function Questions({ report }: { report: StudyReport }) {
               />
             ))}
           </ul>
-        </section>
+        </div>
       ))}
     </div>
   );
@@ -354,6 +363,9 @@ function Report({
       </Panel>
       <Panel id="study-pack" title="Move-out pack: acceptance per price">
         <PackLadder report={report} />
+      </Panel>
+      <Panel id="study-wanted" title="Wanted nearby">
+        <Questions report={report} only={WANTED_STEPS} />
       </Panel>
       <Panel id="study-questions" title="Answers per question">
         <Questions report={report} />

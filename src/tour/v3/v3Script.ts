@@ -9,7 +9,7 @@ import type { TourText } from "../i18n/en.ts";
 import type { StepCondition } from "../stepConditions.ts";
 
 /** Raised whenever a question, an option or its wording changes. */
-export const V3_VERSION = "v3-4";
+export const V3_VERSION = "v3-5";
 /** The time the start screen and the share text name, rounded up from the core's estimate. */
 export const V3_MINUTES = 5;
 /** The one open sentence is shorter than what the server accepts. */
@@ -291,6 +291,17 @@ export const V3_STEPS: readonly V3Step[] = [
   ),
   // The options go from sending nothing to sending more, so they keep their order.
   choice("sending", ["myself", "short-updates", "replies-too", "not-sure"], {
+    section: "the-app",
+    product: true,
+  }),
+  // "Wanted nearby", a feature idea: a nearby student's anonymous request, shown as a card.
+  choice("wanted-react", ["snap", "look", "ignore", "rather-not"], {
+    section: "the-app",
+    product: true,
+    shuffle: true,
+    fixedLast: 1,
+  }),
+  choice("wanted-share", ["yes", "maybe", "no"], {
     section: "the-app",
     product: true,
   }),

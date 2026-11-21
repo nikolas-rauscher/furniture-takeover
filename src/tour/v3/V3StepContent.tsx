@@ -16,11 +16,12 @@ import {
   type V3ChoiceStep,
   type V3Step,
 } from "./v3Script";
+import WantedCard from "./WantedCard";
 import WhatIsTakeover from "./WhatIsTakeover";
 import { optionsOf, questionOf } from "./v3Words";
 import V3End from "./V3End";
 
-/** One choice, Pako's card for the sending question, and the note after a pick. */
+/** One choice, the card some questions show first, and the note after a pick. */
 function ChoiceContent({
   step,
   context,
@@ -41,6 +42,7 @@ function ChoiceContent({
           <blockquote>{text.v3.whoSendsCard.sentence}</blockquote>
         </figure>
       )}
+      {step.id === "wanted-react" && <WantedCard />}
       <ChoiceStep
         question={questionOf(text, step, context.progress.answers)}
         options={options}

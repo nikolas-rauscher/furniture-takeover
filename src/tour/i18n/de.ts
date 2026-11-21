@@ -450,6 +450,20 @@ export const DE: TourText = {
         "Antworte Mia und wähle dann, was du mit Pakos Entwurf machst.",
     },
     steps: {
+      "wanted-react": {
+        question: "Wenn takeover dir das zeigen würde, was würdest du tun?",
+        options: {
+          snap: "Ein Foto machen und es inserieren",
+          look: "Mal anschauen, vielleicht später",
+          ignore: "Ignorieren",
+          "rather-not": "Ich möchte so etwas lieber nicht sehen",
+        },
+      },
+      "wanted-share": {
+        question:
+          "Wenn du etwas suchst, würdest du Studierende in der Nähe deine Anfrage sehen lassen? Gezeigt werden nur der Artikel und deine Gegend, nie dein Name.",
+        options: { yes: "Ja", maybe: "Vielleicht", no: "Nein" },
+      },
       "last-cost": {
         question: "Was hat dich der Transport ungefähr gekostet?",
         options: {
@@ -716,6 +730,11 @@ export const DE: TourText = {
       question: "In einem Satz: Wie ist es gelaufen?",
       label: "Dein Satz",
       placeholder: "Optional, ein paar Worte reichen",
+    },
+    wantedCard: {
+      label: "Beispiel einer Anfrage in der App, mit einem Knopf Foto machen",
+      text: "Jemand in der Nähe von Vortex sucht eine Schreibtischlampe. Liegt bei dir eine herum?",
+      button: "Foto machen",
     },
     whoSendsCard: {
       title: "So funktioniert die App",

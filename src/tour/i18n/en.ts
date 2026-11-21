@@ -441,6 +441,20 @@ export const EN = {
       draftTask: "Answer Mia, then pick what to do with Pako's draft.",
     },
     steps: {
+      "wanted-react": {
+        question: "If takeover showed you this, what would you do?",
+        options: {
+          snap: "Snap a photo and list it",
+          look: "Have a look, maybe later",
+          ignore: "Ignore it",
+          "rather-not": "I'd rather not see these",
+        },
+      },
+      "wanted-share": {
+        question:
+          "When you look for something, would you let students nearby see your request? Only the item and your area are shown, never your name.",
+        options: { yes: "Yes", maybe: "Maybe", no: "No" },
+      },
       "last-cost": {
         question: "What did getting it there cost you, roughly?",
         options: {
@@ -702,6 +716,11 @@ export const EN = {
       question: "In a sentence: how did it go?",
       label: "Your sentence",
       placeholder: "Optional, a few words are enough",
+    },
+    wantedCard: {
+      label: "Example request in the app, with a Snap it button",
+      text: "Someone near Vortex is looking for a desk lamp. Got one lying around?",
+      button: "Snap it",
     },
     whoSendsCard: {
       title: "How the app works",

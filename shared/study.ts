@@ -242,6 +242,8 @@ export const STUDY_V3_CORE_SCREENS = [
   "stop",
   "try-first",
   "sending",
+  "wanted-react",
+  "wanted-share",
   "move-it",
   "desk",
   "draft",

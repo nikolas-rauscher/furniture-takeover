@@ -132,6 +132,8 @@ const PARTICIPANTS: Participant[] = [
       stop: ["privacy", "nobody-nearby"],
       "try-first": ["photo-listing"],
       sending: { chosen: ["short-updates"], first: ["myself"] },
+      "wanted-react": ["snap"],
+      "wanted-share": ["yes"],
       "move-it": ["helper"],
       desk: ["nearer"],
       "last-cost": ["10-30"],
@@ -170,6 +172,8 @@ const PARTICIPANTS: Participant[] = [
       stop: ["nothing"],
       "try-first": ["none"],
       sending: ["myself"],
+      "wanted-react": ["rather-not"],
+      "wanted-share": ["no"],
       "move-it": ["carry-bike"],
       desk: ["cheaper"],
       "pay-model": ["none"],
@@ -436,7 +440,16 @@ test("the v3 results queries run on v3 sessions of the named version only", asyn
     ["epfl-unil", "h-photo"],
     ["rest", "none"],
   ]);
-  assert.equal(queries.size, 19);
+  assert.deepEqual(
+    rowsOf(await query("d11-wanted"), "step", "answer", "chosen", "answered"),
+    [
+      ["wanted-react", "rather-not", 1, "2"],
+      ["wanted-react", "snap", 1, "2"],
+      ["wanted-share", "no", 1, "2"],
+      ["wanted-share", "yes", 1, "2"],
+    ],
+  );
+  assert.equal(queries.size, 20);
 
   await runDeletion(run, deletion);
   for (const table of [

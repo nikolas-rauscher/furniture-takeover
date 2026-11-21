@@ -425,3 +425,42 @@
   font-size: var(--type-support);
   font-weight: 650;
 }
+
+/* Wanted nearby, drawn: a request card with the app's icon tile and a pill button. */
+.tour-wanted {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px 12px;
+  margin: 0;
+  padding: 14px 16px;
+}
+.tour-wanted-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--sky);
+  color: var(--blue);
+}
+.tour-wanted-text {
+  margin: 0;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.tour-wanted-button {
+  grid-column: 2;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--blue);
+  box-shadow: 0 3px 0 var(--blue-dark);
+  color: var(--on-primary);
+  font-size: var(--type-support);
+  font-weight: 700;
+}

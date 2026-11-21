@@ -22,6 +22,7 @@ Setting: a course project. Dates, prices and the pilot are hypothetical; nothing
 | D7 | Which features the pilot and the onboarding lead with | `helped-find`, `helped-sell`, `helped-deal`, `try-first` | Which features pilot users open and finish |
 | D8 | Barriers the pilot plan must answer | `stop` | Reasons pilot volunteers give for dropping out |
 | D9 | Which way of paying to test first | `pay-model` | Uptake of the model offered in the pilot |
+| D11 | Build "Wanted nearby" into the pilot | `wanted-react`, `wanted-share` | Requests posted and items listed in answer to them in the pilot |
 | D10 | Delivery feature or local pickup only | `delivery-pref`, `delivery-worth`; `last-cost` describes the last attempt | Bookings of a delivery offer at a quoted price |
 
 What the results cannot claim: shares for all EPFL/UNIL students; adoption or future use; real willingness to pay, a price or revenue; anything about the word "AI"; how carefully people read drafts in real use; differences between small subgroups; that the tour works.
@@ -116,6 +117,10 @@ Then three features, in the same order for everyone: each a short scene in the p
 | `stop` | "What would stop you from using takeover? Pick any." Multiple choice; Continue moves on. | Shuffled: `ai-mistakes` The AI could get things wrong · `nobody-nearby` Not enough people nearby use it · `prefer-groups` I prefer my WhatsApp or Telegram groups · `privacy` Worries about privacy · `too-long` It takes too long · *last:* `nothing` Nothing would stop me (clears the others) · `other` Something else (short text) |
 | `try-first` | "For the next thing you buy or sell, which would you try first, if any?" | Shuffled: `describe-search` Searching by describing what I need · `photo-listing` A listing drafted from my photos, with a price and its sources · `offer-drafts` Offer drafts I can edit and send · `pickup-card` The pickup card with confirmations and reminders · *last:* `none` None of these · `need-more` I'd need to know more |
 | `sending` | Card "How the app works": "Pako drafts your messages. Nothing is sent until you tap Send." Then: "Would you let Pako send some messages for you, without asking you first?" | In this order, from nothing to more: `myself` No, I'd send every message myself · `short-updates` Only short updates like "On my way" · `replies-too` Short updates and simple replies · `not-sure` Not sure |
+| `wanted-react` | A drawn request card in the app's style, labelled for screen readers "Example request in the app, with a Snap it button": "Someone near Vortex is looking for a desk lamp. Got one lying around?" with a "Snap it" button that does nothing. Then: "If takeover showed you this, what would you do?" | Shuffled: `snap` Snap a photo and list it · `look` Have a look, maybe later · `ignore` Ignore it · *last:* `rather-not` I'd rather not see these |
+| `wanted-share` | "When you look for something, would you let students nearby see your request? Only the item and your area are shown, never your name." | In order: `yes` Yes · `maybe` Maybe · `no` No |
+
+Changed in `v3-5`: `wanted-react` and `wanted-share` test the "Wanted nearby" idea: a student's anonymous request is shown to students nearby, who can photo-list a matching item with one tap.
 
 Changed in `v3-2`: the scenes, the `helped-*` questions and `stop` are new; `try-first` moved here from the optional tour; `autonomy` and `who-sends` of `v3-1` became the single item `sending`, so the survey stays near five minutes.
 
@@ -205,7 +210,7 @@ Share: "Every answer helps, also from people who never sell anything. Share it?"
 
 ## What is stored
 
-One session per participant, created on "Let's go": a random id, `survey = 'v3'`, the wording version (`v3-4` for the pilot, a raised label for the run), the language at the start (`en`, `fr`, `de`), the channel tag, phone or desktop. No name, no IP address, no browser details.
+One session per participant, created on "Let's go": a random id, `survey = 'v3'`, the wording version (`v3-5` for the pilot, a raised label for the run), the language at the start (`en`, `fr`, `de`), the channel tag, phone or desktop. No name, no IP address, no browser details.
 
 One answer per session and step, replaced when the participant goes back and answers again:
 
@@ -275,6 +280,9 @@ Count cutoffs (unrounded Wilson bounds):
 | `pay-model` leading model ≥ (lower bound ≥ 25%), and ≥ 10 points ahead | D9 | answered | 16 | 22 | 34 | 63 |
 | `delivery-pref` pick-up > (lower bound > 50%) | D10 | answered | 27 | 38 | 60 | 114 |
 | `delivery-pref` if-priced + always ≥ (lower bound ≥ 25%) | D10 | answered | 16 | 22 | 34 | 63 |
+| `wanted-react` snap ≥ (lower bound ≥ 25%) | D11 | answered | 16 | 22 | 34 | 63 |
+| `wanted-share` yes ≥ (lower bound ≥ 30%) | D11 | answered | 18 | 25 | 39 | 73 |
+| `wanted-react` rather-not ≥ (lower bound ≥ 40%) | D11 | answered | 23 | 32 | 50 | 94 |
 | `draft` sent as it is: keep ≥ / as it is + changed: optional ≤ | D5a | completed decisions | 27 / 13 | 38 / 22 | 60 / 40 | 114 / 86 |
 | `sending` short-updates + replies-too: go ≥ / keep manual ≤ | D5b | answered | 27 / 13 | 38 / 22 | 60 / 40 | 114 / 86 |
 | `helped-*` yes: keep ≥ / yes + partly: deprioritise ≤ | D7 | tried, answered | 23 / 6 | 32 / 11 | 50 / 21 | 94 / 47 |
@@ -304,6 +312,7 @@ Frozen with a date before the first invitation, together with the script and the
 | D6 | The two most chosen lines go to the poster test; a tie for second sends all tied lines. `none` chosen most → no shortlist, rewrite the lines. | EPFL/UNIL counts |
 | D7 | Per feature, over participants who tried (`na` stays in the denominator): `yes` lower bound ≥ 40% → keep the feature as shown in the pilot. `yes` + `partly` upper bound < 30% → deprioritise it in the pilot and the onboarding. Else open. `try-first`: the most chosen feature with ≥ 25% and no tie leads the onboarding; `none` + `need-more` ≥ 40% → rewrite how the features are introduced. 40% and 30% are team thresholds. | Never-tried answers ("Would this help you?") descriptively; scenes skipped vs played |
 | D9 | A model leads if its share's lower bound ≥ 25% and it is at least 10 percentage points ahead of the next model; it is tested first in the pilot. Else no model leads. | `none` share; EPFL/UNIL |
+| D11 | `snap` lower bound ≥ 25% and `wanted-share` `yes` lower bound ≥ 30% → build "Wanted nearby" into the pilot. `rather-not` lower bound ≥ 40% → drop it. Else open. If both the build and the drop condition hold, it stays open. | `look` and `maybe` separately; FMEL residents |
 | D10 | `pick-up` lower bound > 50% → no delivery feature; focus on local pickup. A delivery partner is explored only if `if-priced` + `always` has a lower bound ≥ 25% and the median `delivery-worth` among them (`not-sure` left out) is CHF 10–20 or more. Else open. | `depends` separately; `last-cost`; furniture subgroup |
 | D8 | Each barrier with a lower bound ≥ 25% gets a named counter-measure in the pilot plan (for example `nobody-nearby` → one house at a time, `ai-mistakes` → a check of the details before a draft is sent, `prefer-groups` → posting listings into existing groups). `nothing` ≥ 40% → no main barrier. Else open. Several barriers per participant; the denominator is participants who answered. | "Something else" texts, coded like `last-story` |
 
@@ -311,7 +320,7 @@ Frozen with a date before the first invitation, together with the script and the
 
 | Threat | Where | Mitigation | What remains |
 | --- | --- | --- | --- |
-| Pako asks the product questions | `headline`, `helped-*`, `stop`, `try-first`, `sending`, `move-it`, `pay-model`, `pack-chf-*`, `delivery-*` | Neutral wording, outside options, "the app" in questions, no reaction to product answers; real behaviour weighs more | Product answers likely lean positive; size unknown |
+| Pako asks the product questions | `headline`, `helped-*`, `stop`, `try-first`, `sending`, `wanted-react`, `wanted-share`, `move-it`, `pay-model`, `pack-chf-*`, `delivery-*` | Neutral wording, outside options, "the app" in questions, no reaction to product answers; real behaviour weighs more | Product answers likely lean positive; size unknown |
 | Self-selection, course peers | Everything | Neutral invitation, channel tags, subgroups described | No campus-wide rates |
 | No time window on the last attempt | `last-trouble`, `last-item` | `last-occasion` and side describe the episode | Older episodes recalled less precisely |
 | Fixed section order | All | Shuffled options with stored order; headline before the scenes; helper before desk; `sending` before the draft | Same order for everyone; the features always run find, sell, deal |
@@ -350,7 +359,7 @@ Every block: k of n with the denominator named, the range, the rule and its outc
 
 ## Before launch
 
-1. Pilot done (it runs `v3-4`); wording and `{measured}` fixed; wording version raised for the run.
+1. Pilot done (it runs `v3-5`); wording and `{measured}` fixed; wording version raised for the run.
 2. This protocol frozen with a date.
 3. Pilot sessions deleted, so they do not count in "How others answered".
 4. `STUDY_CONTACT` and `STUDY_DELETE_BY` set on the deployment.
@@ -362,7 +371,7 @@ Every block: k of n with the denominator named, the range, the rule and its outc
 
 Admins see the counts in the app under Admin → Study, read through `GET /api/study/report`. In account mode the server passes the signed-in user to `study_report_rows`, which refuses anyone not in `public.admins`; the server calls it with its service key. In the local demo the admin area opens in developer mode, as the rest of it does.
 
-The page shows one wording version at a time, the newest first: sessions per UTC day and channel, how many sessions reached each core screen, the last screen of those who left before the core was saved, counts per option over the participants who answered (skips excluded), typed answers sorted alphabetically without session ids (offers sent as Pako drafted them are left out) the move-out pack's acceptance per price, and pilot sign-ups per house and week. Any breakdown count from 1 to 4 shows as "<5". Decision outcomes come from the queries below.
+The page shows one wording version at a time, the newest first: sessions per UTC day and channel, how many sessions reached each core screen, the last screen of those who left before the core was saved, counts per option over the participants who answered (skips excluded), typed answers sorted alphabetically without session ids (offers sent as Pako drafted them are left out) the move-out pack's acceptance per price, the two "Wanted nearby" questions together, and pilot sign-ups per house and week. Any breakdown count from 1 to 4 shows as "<5". Decision outcomes come from the queries below.
 
 ## Results queries
 
@@ -758,6 +767,21 @@ from takeover_admin.study_answers w join prefs p on p.session = w.session
 where w.step = 'delivery-worth' and p.pref in ('if-priced', 'always') and cardinality(w.chosen) > 0
 group by w.chosen[1]
 order by item, answer;
+```
+
+### D11 Wanted nearby
+
+```sql
+-- d11-wanted
+with run as (
+  select id from takeover_admin.study_sessions where survey = 'v3' and version = 'v3-1'
+)
+select a.step, a.chosen[1] as answer, count(*) as chosen,
+  sum(count(*)) over (partition by a.step) as answered
+from takeover_admin.study_answers a join run on run.id = a.session
+where a.step in ('wanted-react', 'wanted-share') and cardinality(a.chosen) > 0
+group by a.step, answer
+order by a.step, chosen desc, answer;
 ```
 
 ### Deleting the data

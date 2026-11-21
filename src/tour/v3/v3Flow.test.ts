@@ -76,13 +76,13 @@ test("someone who tried answers the details; someone who did not gets one reason
   assert.equal(none[none.indexOf("why-not") + 1], "move");
 });
 
-test("with the start screen, the core has 27 screens after an attempt and 23 without", () => {
+test("with the start screen, the core has 29 screens after an attempt and 25 without", () => {
   const core = (role: string) => {
     const shown = ids({ "last-role": answer(role) });
     return shown.slice(0, shown.indexOf("saved")).length;
   };
-  assert.equal(core("buying") + 1, 27);
-  assert.equal(core("none") + 1, 23);
+  assert.equal(core("buying") + 1, 29);
+  assert.equal(core("none") + 1, 25);
 });
 
 test("the core shows each feature briefly, then asks whether it would have helped", () => {
@@ -100,6 +100,8 @@ test("the core shows each feature briefly, then asks whether it would have helpe
       "stop",
       "try-first",
       "sending",
+      "wanted-react",
+      "wanted-share",
     ],
   );
   const brief = V3_STEPS.filter((step) => step.kind === "scene" && step.brief);
