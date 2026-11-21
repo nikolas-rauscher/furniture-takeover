@@ -42,7 +42,7 @@ export function createAgentServer(
     ...createListingRoutes(options.listings),
     ...createMessageRoutes(options.messages),
     ...createAgentRoutes(service, options),
-    ...createStudyRoutes(options.study),
+    ...createStudyRoutes(options.study, authorize),
     "/api/account/keys": createAccountKeysRoute(options),
     "/api/location/reverse": createLocationRoute(),
   };

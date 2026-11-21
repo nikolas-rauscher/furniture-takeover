@@ -7,6 +7,7 @@ import AdminListings from "./AdminListings";
 import AdminModeration from "./AdminModeration";
 import AdminOverview from "./AdminOverview";
 import AdminSellers from "./AdminSellers";
+import AdminStudy from "./AdminStudy";
 import "./admin.css";
 
 const sections = [
@@ -14,11 +15,13 @@ const sections = [
   { id: "listings", label: "Listings", Screen: AdminListings },
   { id: "sellers", label: "Sellers", Screen: AdminSellers },
   { id: "moderation", label: "Moderation", Screen: AdminModeration },
+  { id: "study", label: "Study", Screen: AdminStudy },
 ] as const;
 type Section = (typeof sections)[number]["id"];
 
 /**
- * The admin area: the overview, the demo catalog, its sellers and moderation.
+ * The admin area: the overview, the demo catalog, its sellers, moderation and the
+ * user study's results.
  * Only administrators reach it; anyone else who opens its link is told so.
  */
 export default function AdminArea({
@@ -47,7 +50,7 @@ export default function AdminArea({
         </Button>
         <div>
           <h1>Admin</h1>
-          <p>Demo catalog, sellers and moderation.</p>
+          <p>Demo catalog, sellers, moderation and the study.</p>
         </div>
       </div>
       {api ? (

@@ -7,7 +7,9 @@ import type {
   StudyStart,
   StudyWithdrawal,
 } from "../shared/study.ts";
+import { adminErrors } from "../shared/admin.ts";
 import { AgentError } from "./errors.ts";
+import type { StudyReportRows } from "./study-report.ts";
 
 export const STUDY_LIMITS = {
   answersPerSession: 60,
@@ -31,6 +33,13 @@ export type StudyStore = {
   /** Deletes the session with its answers and events; an unknown session changes nothing. */
   withdraw: (input: StudyWithdrawal) => void | Promise<void>;
   results: () => StudyResults | Promise<StudyResults>;
+  /**
+   * The rows of the admin results page. In account mode `requestedBy` is the signed-in
+   * user, and the database refuses anyone who is not an admin; the demo has no accounts.
+   */
+  reportRows: (
+    requestedBy: string | undefined,
+  ) => StudyReportRows | Promise<StudyReportRows>;
   /** Only transports that hold a local resource have one. */
   close?: () => void;
 };
@@ -68,6 +77,11 @@ export const namedStudyErrors = {
     429,
     "STUDY_PILOT_LIMIT",
     "The pilot list has reached its maximum number of addresses.",
+  ),
+  admin_required: new AgentError(
+    403,
+    "admin_required",
+    adminErrors.admin_required,
   ),
   study_survey_mismatch: new AgentError(
     400,

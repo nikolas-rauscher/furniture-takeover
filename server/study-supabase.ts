@@ -1,3 +1,4 @@
+import type { z } from "zod";
 import {
   studyResultsSchema,
   surveyOf,
@@ -9,6 +10,7 @@ import {
   type StudyWithdrawal,
 } from "../shared/study.ts";
 import { AgentError } from "./errors.ts";
+import { studyReportRowsSchema } from "./study-report.ts";
 import {
   namedStudyErrors,
   unknownSession,
@@ -59,6 +61,19 @@ export function createSupabaseStudyStore(
   const write = async (name: string, args: Record<string, unknown>) => {
     await call(name, args);
   };
+  async function readJson<T>(
+    name: string,
+    args: Record<string, unknown>,
+    schema: z.ZodType<T>,
+  ): Promise<T> {
+    const response = await call(name, args);
+    const body = await response.json().catch((cause: unknown) => {
+      throw studyUnavailable({ cause });
+    });
+    const parsed = schema.safeParse(body);
+    if (parsed.success) return parsed.data;
+    throw studyUnavailable({ cause: parsed.error });
+  }
   return {
     start: (input: StudyStart) =>
       write("study_start", {
@@ -102,14 +117,15 @@ export function createSupabaseStudyStore(
       }),
     withdraw: (input: StudyWithdrawal) =>
       write("study_withdraw", { p_session: input.session }),
-    async results() {
-      const response = await call("study_results", {});
-      const body = await response.json().catch((cause: unknown) => {
-        throw studyUnavailable({ cause });
-      });
-      const results = studyResultsSchema.safeParse(body);
-      if (results.success) return results.data;
-      throw studyUnavailable({ cause: results.error });
+    results: () => readJson("study_results", {}, studyResultsSchema),
+    reportRows: (requestedBy: string | undefined) => {
+      if (!requestedBy)
+        throw new Error("Account mode reads the results page for a user.");
+      return readJson(
+        "study_report_rows",
+        { p_user: requestedBy },
+        studyReportRowsSchema,
+      );
     },
   };
 }

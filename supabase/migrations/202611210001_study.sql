@@ -168,19 +168,48 @@ language sql stable security definer set search_path='' as $$
   else jsonb_build_object('ready',false) end;
 $$;
 
+-- Rows of the admin results page, for a user the server signed in: no session ids, no emails.
+-- The server counts them; anyone not listed in public.admins is refused.
+create function public.study_report_rows(p_user uuid) returns jsonb
+language plpgsql stable security definer set search_path='' as $$
+begin
+ if not exists(select 1 from public.admins where user_id=p_user) then raise exception 'admin_required'; end if;
+ return jsonb_build_object(
+  'sessions',coalesce((select jsonb_agg(jsonb_build_object(
+    'version',s.version,
+    'day',to_char(s.started_at at time zone 'UTC','YYYY-MM-DD'),
+    'source',s.source,
+    'shown',coalesce((select jsonb_agg(distinct e.step) from takeover_admin.study_events e
+     where e.session=s.id and e.kind='shown' and e.step is not null),'[]'::jsonb),
+    'lastShown',(select e.step from takeover_admin.study_events e
+     where e.session=s.id and e.kind='shown' order by e.seq desc limit 1),
+    'completed',exists(select 1 from takeover_admin.study_events e where e.session=s.id and e.kind='core-complete'),
+    'ended',exists(select 1 from takeover_admin.study_events e where e.session=s.id and e.kind='end')))
+   from takeover_admin.study_sessions s where s.survey='v3'),'[]'::jsonb),
+  'answers',coalesce((select jsonb_agg(jsonb_build_object(
+    'version',s.version,'step',a.step,'chosen',to_jsonb(a.chosen),'text',a.text))
+   from takeover_admin.study_answers a join takeover_admin.study_sessions s on s.id=a.session
+   where s.survey='v3'),'[]'::jsonb),
+  'pilot',coalesce((select jsonb_agg(jsonb_build_object(
+    'house',p.house,'weeks',to_jsonb(p.weeks),'joinPilot',p.join_pilot,'laterEmail',p.later_email))
+   from takeover_admin.study_pilot p),'[]'::jsonb));
+end $$;
+
 revoke all on function public.study_start(uuid,text,text,text,text,text),
  public.study_save_answer(uuid,text,text[],text[],text[],text,integer),
  public.study_save_events(uuid,jsonb),
  public.study_save_contact(text,boolean,uuid),
  public.study_save_pilot(text,text,text,text[],text[],boolean,boolean),
  public.study_withdraw(uuid),
- public.study_results() from public,anon,authenticated;
+ public.study_results(),
+ public.study_report_rows(uuid) from public,anon,authenticated;
 grant execute on function public.study_start(uuid,text,text,text,text,text),
  public.study_save_answer(uuid,text,text[],text[],text[],text,integer),
  public.study_save_events(uuid,jsonb),
  public.study_save_contact(text,boolean,uuid),
  public.study_save_pilot(text,text,text,text[],text[],boolean,boolean),
  public.study_withdraw(uuid),
- public.study_results() to service_role;
+ public.study_results(),
+ public.study_report_rows(uuid) to service_role;
 
 commit;

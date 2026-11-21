@@ -3,7 +3,12 @@ import assert from "node:assert/strict";
 import { once } from "node:events";
 import { randomUUID } from "node:crypto";
 import type { AddressInfo } from "node:net";
-import { STUDY_EVENTS_PER_BATCH, STUDY_ROUTES } from "../shared/study.ts";
+import { demoAdminHeader } from "../shared/admin.ts";
+import {
+  STUDY_EVENTS_PER_BATCH,
+  STUDY_ROUTES,
+  studyReportSchema,
+} from "../shared/study.ts";
 import { AgentError } from "./errors.ts";
 import { createAgentServer } from "./http.ts";
 import {
@@ -111,6 +116,7 @@ const unusedStore = (): StudyStore => {
     savePilot: unused,
     withdraw: unused,
     results: unused,
+    reportRows: unused,
   };
 };
 const errorCode = async (response: Response) =>
@@ -494,3 +500,87 @@ test("study failures are logged without the request body or an address", async (
   assert.match(line, /STUDY_SESSION_UNKNOWN/);
   assert.doesNotMatch(line, /secret\.person|127\.0\.0\.1|::1/);
 });
+
+/** A v3 participant who answered `who`, saw two screens and maybe finished the core. */
+async function v3Participant(url: string, finished: boolean) {
+  const session = randomUUID();
+  await post(url, STUDY_ROUTES.sessions, v3StartBody(session));
+  await post(url, STUDY_ROUTES.answers, v3AnswerBody(session, "who", ["epfl"]));
+  const events = [
+    { ...eventBody(0), kind: "shown", step: "who" },
+    { ...eventBody(1), kind: "shown", step: "last-role" },
+    ...(finished
+      ? [{ ...eventBody(2), kind: "core-complete", step: null }]
+      : []),
+  ];
+  await post(url, STUDY_ROUTES.events, { session, events });
+  return session;
+}
+
+test("the results page is for admins: developer mode in the demo", async (t) => {
+  const url = await startServer(t, { study: openStudy(t) });
+  const sessions: string[] = [];
+  for (let index = 0; index < 6; index += 1)
+    sessions.push(await v3Participant(url, index < 5));
+  const refused = await fetch(url + STUDY_ROUTES.report);
+  assert.equal(refused.status, 403);
+  assert.equal(await errorCode(refused), "admin_required");
+  const response = await fetch(url + STUDY_ROUTES.report, {
+    headers: { [demoAdminHeader]: "1" },
+  });
+  assert.equal(response.status, 200);
+  const report = studyReportSchema.parse(await response.json());
+  assert.equal(report.version, "v3-1");
+  assert.deepEqual(report.totals, { started: 6, completed: 5, ended: 0 });
+  assert.deepEqual(report.questions, [
+    { step: "who", answered: 6, options: [{ option: "epfl", count: 6 }] },
+  ]);
+  assert.deepEqual(report.dropOff, [{ step: "last-role", count: null }]);
+  const body = JSON.stringify(report);
+  assert.ok(sessions.every((session) => !body.includes(session)));
+  const unknown = await fetch(`${url}${STUDY_ROUTES.report}?version=v9`, {
+    headers: { [demoAdminHeader]: "1" },
+  });
+  assert.equal(unknown.status, 404);
+});
+
+test("in account mode the results page is read for the signed-in user", async (t) => {
+  const study = openStudy(t);
+  const askedBy: (string | undefined)[] = [];
+  const store: StudyStore = {
+    ...study.store,
+    reportRows: (requestedBy) => {
+      askedBy.push(requestedBy);
+      return study.store.reportRows(requestedBy);
+    },
+  };
+  const url = await startServer(t, {
+    study: { ...study, store },
+    cloud: {
+      config: {
+        supabaseUrl: "https://study.supabase.example",
+        supabaseKey: "k",
+      },
+      authorize: async (header) => {
+        if (header !== "Bearer admin-token")
+          throw new AgentError(401, "AUTH_REQUIRED", "Sign in.");
+        return "admin-user";
+      },
+      quota: unusedCloud,
+      spendReplyReading: unusedCloud,
+    },
+  });
+  const anonymous = await fetch(url + STUDY_ROUTES.report, {
+    headers: { [demoAdminHeader]: "1" },
+  });
+  assert.equal(anonymous.status, 401);
+  const response = await fetch(url + STUDY_ROUTES.report, {
+    headers: { Authorization: "Bearer admin-token" },
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(askedBy, ["admin-user"]);
+});
+
+function unusedCloud(): never {
+  throw new Error("The study routes do not spend AI allowances.");
+}

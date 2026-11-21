@@ -10,6 +10,7 @@ import {
   type StudyResults,
   type StudyStart,
 } from "../shared/study.ts";
+import { studyReportRowsSchema, type StudyReportRows } from "./study-report.ts";
 import {
   STUDY_LIMITS,
   namedStudyErrors,
@@ -245,6 +246,55 @@ export function createSqliteStudyStore(
       const desk = tally(STUDY_RESULT_STEPS.desk);
       if (desk.answered < STUDY_RESULTS_MINIMUM) return { ready: false };
       return { ready: true, desk, trouble: tally(STUDY_RESULT_STEPS.trouble) };
+    },
+    reportRows(): StudyReportRows {
+      const sessions = db
+        .prepare(
+          `SELECT s.version, substr(s.started_at, 1, 10) AS day, s.source,
+             (SELECT json_group_array(DISTINCT e.step) FROM study_events e
+              WHERE e.session = s.id AND e.kind = 'shown' AND e.step IS NOT NULL) AS shown,
+             (SELECT e.step FROM study_events e WHERE e.session = s.id AND e.kind = 'shown'
+              ORDER BY e.seq DESC LIMIT 1) AS last_shown,
+             EXISTS (SELECT 1 FROM study_events e
+               WHERE e.session = s.id AND e.kind = 'core-complete') AS completed,
+             EXISTS (SELECT 1 FROM study_events e
+               WHERE e.session = s.id AND e.kind = 'end') AS ended
+           FROM study_sessions s WHERE s.survey = 'v3'`,
+        )
+        .all()
+        .map((row) => ({
+          version: row.version,
+          day: row.day,
+          source: row.source,
+          shown: JSON.parse(String(row.shown)),
+          lastShown: row.last_shown,
+          completed: row.completed === 1,
+          ended: row.ended === 1,
+        }));
+      const answers = db
+        .prepare(
+          `SELECT s.version, a.step, a.chosen, a.text FROM study_answers a
+           JOIN study_sessions s ON s.id = a.session WHERE s.survey = 'v3'`,
+        )
+        .all()
+        .map((row) => ({
+          version: row.version,
+          step: row.step,
+          chosen: JSON.parse(String(row.chosen)),
+          text: row.text,
+        }));
+      const pilot = db
+        .prepare(
+          "SELECT house, weeks, join_pilot, later_email FROM study_pilot",
+        )
+        .all()
+        .map((row) => ({
+          house: row.house,
+          weeks: JSON.parse(String(row.weeks)),
+          joinPilot: row.join_pilot === 1,
+          laterEmail: row.later_email === 1,
+        }));
+      return studyReportRowsSchema.parse({ sessions, answers, pilot });
     },
     close: () => db.close(),
   };

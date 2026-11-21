@@ -10,6 +10,11 @@ import {
   type AdminInput,
   type AdminOutput,
 } from "../../shared/admin.ts";
+import {
+  STUDY_ROUTES,
+  studyReportSchema,
+  type StudyReport,
+} from "../../shared/study.ts";
 import type { AccountConnection } from "../cloud/connection";
 
 export { adminIllustrations, adminMeetingPoints } from "../../shared/admin.ts";
@@ -89,6 +94,47 @@ export function createAdminApi(scope: AdminScope) {
     return output.data as AdminOutput<A>;
   }
 
+  /** The server checks the admin: the account's sign-in, or the demo's developer mode. */
+  async function studyHeaders(): Promise<Record<string, string>> {
+    if (!("client" in scope)) {
+      if (!scope.developerMode) throw new AdminApiError("admin_required");
+      return { [demoAdminHeader]: "1" };
+    }
+    const { data } = await scope.client.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new AdminApiError("admin_required");
+    return { Authorization: `Bearer ${token}` };
+  }
+
+  /** Error codes of the study route, in the admin area's words. */
+  function studyFailure(code: unknown) {
+    if (code === "STUDY_CLOSED") return new AdminApiError("admin_study_closed");
+    if (code === "STUDY_VERSION_UNKNOWN")
+      return new AdminApiError("admin_invalid_input");
+    return failure(code);
+  }
+
+  async function studyReport(version: string | null): Promise<StudyReport> {
+    const query = version ? `?version=${encodeURIComponent(version)}` : "";
+    const response = await fetch(`${STUDY_ROUTES.report}${query}`, {
+      headers: await studyHeaders(),
+    }).catch(() => {
+      throw new AdminApiError("admin_unavailable");
+    });
+    const payload: unknown = await response.json().catch(() => {
+      throw new AdminApiError(
+        response.ok ? "admin_invalid_response" : "admin_unavailable",
+      );
+    });
+    if (!response.ok) {
+      const body = payload as { error?: { code?: unknown } } | null;
+      throw studyFailure(body?.error?.code);
+    }
+    const report = studyReportSchema.safeParse(payload);
+    if (!report.success) throw new AdminApiError("admin_invalid_response");
+    return report.data;
+  }
+
   async function changeCatalog<A extends AdminAction>(
     action: A,
     input: AdminInput<A>,
@@ -118,6 +164,7 @@ export function createAdminApi(scope: AdminScope) {
       run("set_student_blocked", input),
     listModerationLog: () => run("list_moderation_log", null),
     overview: () => run("overview", null),
+    studyReport,
   };
 }
 

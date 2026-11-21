@@ -186,6 +186,8 @@ export const adminErrors = {
   admin_student_blocked:
     "This student cannot create listings or send messages.",
   admin_listing_hidden: "This listing is hidden.",
+  admin_study_closed:
+    "The study is not set up on this server: set STUDY_CONTACT and STUDY_DELETE_BY.",
 } as const;
 export type AdminErrorKey = keyof typeof adminErrors;
 

@@ -1,4 +1,4 @@
-import type { ServerResponse } from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import type { z } from "zod";
 import {
   STUDY_ROUTES,
@@ -11,7 +11,11 @@ import {
   type StudyConfig,
   type StudyResults,
 } from "../../shared/study.ts";
+import { demoAdminHeader } from "../../shared/admin.ts";
+import type { CloudAccess } from "../cloud.ts";
+import { adminFailure } from "../demo-admin.ts";
 import { AgentError } from "../errors.ts";
+import { buildStudyReport } from "../study-report.ts";
 import { readBody, requireJson, send } from "../http-io.ts";
 import type { StudyStore } from "../study-store.ts";
 import type { RouteHandler, RouteTable, StudyAccess } from "./types.ts";
@@ -89,7 +93,25 @@ function createResultsCache(now: () => Date) {
   };
 }
 
-export function createStudyRoutes(study?: StudyAccess): RouteTable {
+/**
+ * Who asks for the results page. In account mode it is the signed-in user, whom the
+ * database checks against the admins; the demo has no accounts, so its admin area
+ * opens in developer mode, as the rest of the demo's admin area does.
+ */
+async function reportRequester(
+  request: IncomingMessage,
+  authorize: CloudAccess["authorize"] | undefined,
+) {
+  if (authorize) return authorize(request.headers.authorization, false);
+  if (request.headers[demoAdminHeader.toLowerCase()] !== "1")
+    throw adminFailure("admin_required", 403);
+  return undefined;
+}
+
+export function createStudyRoutes(
+  study?: StudyAccess,
+  authorize?: CloudAccess["authorize"],
+): RouteTable {
   const now = study?.now ?? (() => new Date());
   const capWrites = createWriteCap(now);
   const cachedResults = createResultsCache(now);
@@ -102,6 +124,17 @@ export function createStudyRoutes(study?: StudyAccess): RouteTable {
     const open = openStudy(study, now);
     if (!open) throw studyClosed();
     send(response, 200, await cachedResults(open.store));
+  };
+  // Configured is enough: the counts stay readable after collection closes, until deletion.
+  const report: RouteHandler = async ({ request, response, url }) => {
+    if (!study) throw studyClosed();
+    const requestedBy = await reportRequester(request, authorize);
+    const rows = await study.store.reportRows(requestedBy);
+    send(
+      response,
+      200,
+      buildStudyReport(rows, url.searchParams.get("version")),
+    );
   };
   const write =
     <T>(
@@ -124,6 +157,7 @@ export function createStudyRoutes(study?: StudyAccess): RouteTable {
   return {
     [`GET ${STUDY_ROUTES.config}`]: config,
     [`GET ${STUDY_ROUTES.results}`]: results,
+    [`GET ${STUDY_ROUTES.report}`]: report,
     [`POST ${STUDY_ROUTES.sessions}`]: write(studyStartSchema, (store, input) =>
       store.start(input),
     ),

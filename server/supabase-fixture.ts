@@ -85,12 +85,14 @@ export async function marketplace() {
 export const count = async (db: PGlite, sql: string) =>
   (await db.query(sql)).rows.length;
 
-/** An empty database with only the study migration, connected as the service role. */
+/** An empty database with the study migration and the admins table, connected as the service role. */
 export async function studyDatabase() {
   const db = new PGlite();
   await db.exec(`create role anon; create role authenticated; create role service_role;
     create schema takeover_admin;
-    revoke all on schema takeover_admin from public, anon, authenticated;`);
+    revoke all on schema takeover_admin from public, anon, authenticated;
+    create table public.admins (user_id uuid primary key);
+    revoke all on public.admins from public, anon, authenticated;`);
   await applyMigrations(db, ["202611210001_study.sql"]);
   await db.exec("set role service_role");
   /** Runs as the tables' owner, which students and the service role are not. */

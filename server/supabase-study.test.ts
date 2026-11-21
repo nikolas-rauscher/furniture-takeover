@@ -13,6 +13,7 @@ import {
   STUDY_SURVEYS,
   studyResultsSchema,
 } from "../shared/study.ts";
+import { studyReportRowsSchema } from "./study-report.ts";
 import { STUDY_LIMITS } from "./study-store.ts";
 
 async function setup(t: TestContext) {
@@ -201,6 +202,7 @@ const STUDY_FUNCTIONS = [
   "public.study_save_pilot('a@epfl.ch','buyer','atrium','{}','{}',true,false)",
   "public.study_withdraw(gen_random_uuid())",
   "public.study_results()",
+  "public.study_report_rows(gen_random_uuid())",
 ];
 
 test("students cannot read the tables or call the functions", async (t) => {
@@ -459,4 +461,42 @@ test("the tables accept every value the wire contract allows", async (t) => {
     await count("study_pilot"),
     STUDY_PILOT_ROLES.length * STUDY_PILOT_HOUSES.length,
   );
+});
+
+test("the results page rows are for admins and carry no session ids or emails", async (t) => {
+  const { db, asOwner, startV3, saveV3Answer, saveEvents, savePilot } =
+    await setup(t);
+  const admin = randomUUID();
+  await asOwner("insert into public.admins(user_id) values($1)", [admin]);
+  const session = randomUUID();
+  await startV3(session);
+  await saveV3Answer(session, "who", ["epfl"]);
+  await saveEvents(session, [0, 1]);
+  await savePilot("ada@epfl.ch");
+  await assert.rejects(
+    db.query("select public.study_report_rows($1)", [randomUUID()]),
+    /admin_required/,
+  );
+  const { rows } = await db.query<{ r: unknown }>(
+    "select public.study_report_rows($1) as r",
+    [admin],
+  );
+  const report = studyReportRowsSchema.parse(rows[0].r);
+  assert.deepEqual(report.sessions, [
+    {
+      version: "v3-1",
+      day: new Date().toISOString().slice(0, 10),
+      source: "moodle",
+      shown: ["who"],
+      lastShown: "who",
+      completed: false,
+      ended: false,
+    },
+  ]);
+  assert.deepEqual(report.answers, [
+    { version: "v3-1", step: "who", chosen: ["epfl"], text: "" },
+  ]);
+  assert.equal(report.pilot.length, 1);
+  const body = JSON.stringify(rows[0].r);
+  assert.ok(!body.includes(session) && !body.includes("ada@epfl.ch"));
 });

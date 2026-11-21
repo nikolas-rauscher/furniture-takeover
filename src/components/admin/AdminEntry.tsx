@@ -16,7 +16,7 @@ export default function AdminEntry({ onOpen }: { onOpen: () => void }) {
       </span>
       <span className="settings-row-text">
         <strong>Admin</strong>
-        <small>Demo catalog, sellers, reports and blocks.</small>
+        <small>Demo catalog, sellers, reports, blocks and the study.</small>
       </span>
       <ChevronRight size={18} aria-hidden="true" />
     </Button>

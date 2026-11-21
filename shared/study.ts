@@ -15,6 +15,8 @@ export const STUDY_ROUTES = {
   pilot: "/api/study/pilot",
   withdrawals: "/api/study/withdrawals",
   results: "/api/study/results",
+  /** Admins only: the counts of the results page. */
+  report: "/api/study/report",
 } as const;
 
 export const STUDY_SURVEYS = ["v1", "v3"] as const;
@@ -214,6 +216,92 @@ export const studyResultsSchema = z.discriminatedUnion("ready", [
   }),
 ]);
 
+/**
+ * The v3 core screens in their order, conditional ones included. The results page reads
+ * its funnel along this list; the client's script test keeps the two in step.
+ */
+export const STUDY_V3_CORE_SCREENS = [
+  "who",
+  "last-role",
+  "last-item",
+  "last-occasion",
+  "last-story",
+  "last-trouble",
+  "why-not",
+  "move",
+  "housing",
+  "headline",
+  "app-find",
+  "helped-find",
+  "app-sell",
+  "helped-sell",
+  "app-deal",
+  "helped-deal",
+  "stop",
+  "try-first",
+  "sending",
+  "move-it",
+  "desk",
+  "pack",
+  "draft",
+  "reveal",
+] as const;
+
+/** On the results page, a breakdown cell with fewer answers than this is hidden. */
+export const STUDY_REPORT_MIN_CELL = 5;
+
+const count = z.number().int().min(0);
+/** A breakdown count; null when it lies between 1 and the minimum, so it stays hidden. */
+const cell = count.nullable();
+
+/** Aggregates of one v3 wording version for the admin results page; nothing per person. */
+export const studyReportSchema = z.strictObject({
+  /** Every v3 wording version with sessions, newest first. */
+  versions: z.array(z.string()),
+  /** The version counted below; null before the first v3 session. */
+  version: z.string().nullable(),
+  minCell: z.number().int().min(1),
+  totals: z.strictObject({ started: count, completed: count, ended: count }),
+  /** The channels with sessions, in the order the day rows list them. */
+  sources: z.array(z.string()),
+  /** Sessions started per UTC day, in total and per channel. */
+  days: z.array(
+    z.strictObject({
+      day: z.iso.date(),
+      total: cell,
+      sources: z.array(z.strictObject({ source: z.string(), count: cell })),
+    }),
+  ),
+  /** Sessions that were shown each core screen, in the order of the survey. */
+  funnel: z.array(z.strictObject({ step: stepId, reached: cell })),
+  /** Sessions that left before the core was saved, by the last screen they saw. */
+  dropOff: z.array(z.strictObject({ step: stepId, count: cell })),
+  /** Counts per option; `answered` is the denominator, skips excluded. */
+  questions: z.array(
+    z.strictObject({
+      step: stepId,
+      answered: count,
+      options: z.array(z.strictObject({ option: optionId, count: cell })),
+    }),
+  ),
+  /** Typed answers per step, sorted alphabetically so their order says nothing. */
+  texts: z.array(z.strictObject({ step: stepId, texts: z.array(z.string()) })),
+  pilot: z.strictObject({
+    forms: count,
+    joinPilot: count,
+    laterEmail: count,
+    houses: z.array(
+      z.strictObject({
+        house: z.enum(STUDY_PILOT_HOUSES),
+        total: cell,
+        weeks: z.array(
+          z.strictObject({ week: z.enum(STUDY_PILOT_WEEKS), count: cell }),
+        ),
+      }),
+    ),
+  }),
+});
+
 export type StudySurvey = z.infer<typeof studySurveySchema>;
 export type StudyLanguage = z.infer<typeof studyLanguageSchema>;
 export type StudyConfig = z.infer<typeof studyConfigSchema>;
@@ -225,3 +313,4 @@ export type StudyContact = z.infer<typeof studyContactSchema>;
 export type StudyPilot = z.infer<typeof studyPilotSchema>;
 export type StudyWithdrawal = z.infer<typeof studyWithdrawalSchema>;
 export type StudyResults = z.infer<typeof studyResultsSchema>;
+export type StudyReport = z.infer<typeof studyReportSchema>;
