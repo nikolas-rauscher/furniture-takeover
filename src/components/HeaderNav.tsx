@@ -1,5 +1,11 @@
-import { motion } from "motion/react";
-import type { MobileDestination } from "../MobileNav";
+import {
+  animate,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+} from "motion/react";
+import { useLayoutEffect, useRef, type RefObject } from "react";
+import { TAB_GLIDE, type MobileDestination } from "../MobileNav";
 import { Button } from "./ui/button";
 
 export type HeaderDestination =
@@ -50,12 +56,70 @@ function itemName(
   return undefined;
 }
 
+/**
+ * The active tab's pill, placed from the tab's offset within the nav, so page
+ * scroll never enters its path. It glides when the page changes, follows its tab
+ * at once when a label's width changes, and fades in after a page without a tab.
+ */
+function TabPill({
+  nav,
+  active,
+}: {
+  nav: RefObject<HTMLElement | null>;
+  active: HeaderDestination | null;
+}) {
+  const x = useMotionValue(0);
+  const width = useMotionValue(0);
+  const opacity = useMotionValue(0);
+  const shown = useRef<HeaderDestination | null>(null);
+  const reduce = useReducedMotion();
+  useLayoutEffect(() => {
+    const element = nav.current;
+    if (!element) return;
+    const activeTab = () =>
+      element.querySelector<HTMLElement>('[aria-current="page"]');
+    const tab = activeTab();
+    if (!tab) {
+      opacity.jump(0);
+      shown.current = null;
+      return;
+    }
+    if (shown.current === null || reduce) {
+      x.jump(tab.offsetLeft);
+      width.jump(tab.offsetWidth);
+      if (reduce) opacity.jump(1);
+      else animate(opacity, 1, { duration: 0.15 });
+    } else {
+      animate(x, tab.offsetLeft, TAB_GLIDE);
+      animate(width, tab.offsetWidth, TAB_GLIDE);
+    }
+    shown.current = active;
+    const follow = new ResizeObserver(() => {
+      const current = activeTab();
+      if (!current) return;
+      x.jump(current.offsetLeft);
+      width.jump(current.offsetWidth);
+    });
+    for (const child of element.children) follow.observe(child);
+    return () => follow.disconnect();
+  }, [nav, active, reduce, x, width, opacity]);
+  return (
+    <motion.span
+      className="header-nav-highlight"
+      style={{ x, width, opacity }}
+      aria-hidden="true"
+    />
+  );
+}
+
 /** Desktop navigation: a pill glides to the page on screen, like the phone tab bar. */
 export default function HeaderNav(props: HeaderNavProps) {
   const { active, savedSearches, unreadMatches, unreadMessages, onNavigate } =
     props;
+  const nav = useRef<HTMLElement>(null);
   return (
-    <nav aria-label="Main navigation">
+    <nav ref={nav} aria-label="Main navigation">
+      <TabPill nav={nav} active={active} />
       {items.map(({ id, label }) => (
         <Button
           key={id}
@@ -65,17 +129,6 @@ export default function HeaderNav(props: HeaderNavProps) {
           aria-label={itemName(id, label, props)}
           onClick={() => onNavigate(id)}
         >
-          {active === id && (
-            // Measured only when the page changes: a pill that loads or moves
-            // with its tab stays put, and glides only to another tab.
-            <motion.span
-              layoutId="header-nav-highlight"
-              layoutDependency={active}
-              className="header-nav-highlight"
-              transition={{ type: "spring", stiffness: 420, damping: 36 }}
-              aria-hidden="true"
-            />
-          )}
           <span className="header-nav-label">{label}</span>
           {id === "searches" && (
             <span
