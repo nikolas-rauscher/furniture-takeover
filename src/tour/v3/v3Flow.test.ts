@@ -62,6 +62,7 @@ const progress: V3Progress = {
   queuedEvents: 0,
   pilot: null,
   unsentDraft: null,
+  moments: {},
   skippedFrom: null,
 };
 
@@ -356,9 +357,9 @@ test("event batches are telemetry and stop at the server's limit per session", (
   );
 });
 
-test("a scene's key moments are recorded on its first play, not on replays", () => {
-  const tapped = withMoment(progress, "tour-sell", 2, "visitor", false);
-  const auto = withMoment(tapped, "tour-sell", 4, "scene", false);
+test("a scene's key moments are recorded once, across replays and reloads", () => {
+  const tapped = withMoment(progress, "tour-sell", 2, "visitor");
+  const auto = withMoment(tapped, "tour-sell", 4, "scene");
   assert.deepEqual(
     auto.events.map(({ kind, step, detail }) => [kind, step, detail]),
     [
@@ -366,7 +367,13 @@ test("a scene's key moments are recorded on its first play, not on replays", () 
       ["moment-auto", "tour-sell", "moment-4"],
     ],
   );
-  assert.equal(withMoment(auto, "tour-sell", 2, "visitor", true), auto);
+  // A replay taps moment 2 again: nothing new.
+  assert.equal(withMoment(auto, "tour-sell", 2, "visitor"), auto);
+  // A reload keeps the progress, moments included, so the same holds after it.
+  const reloaded = JSON.parse(JSON.stringify(auto)) as V3Progress;
+  assert.deepEqual(withMoment(reloaded, "tour-sell", 4, "scene"), reloaded);
+  // The same moment in another scene still counts.
+  assert.equal(withMoment(auto, "tour-deal", 2, "scene").events.length, 3);
 });
 
 test("going back from last-trouble and changing last-role to none empties the answers left behind", async (t) => {

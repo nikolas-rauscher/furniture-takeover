@@ -366,9 +366,7 @@ export default function V3Steps({
       log("scene-played", step.scene);
     },
     sceneMoment: (moment, by) =>
-      setProgress((current) =>
-        withMoment(current, step.id, moment, by, scene.finished),
-      ),
+      setProgress((current) => withMoment(current, step.id, moment, by)),
     saveNow: (id, given) => setProgress(storeAnswers({ [id]: given })),
     keepUnsentDraft: (unsentDraft) =>
       setProgress((current) => ({ ...current, unsentDraft })),

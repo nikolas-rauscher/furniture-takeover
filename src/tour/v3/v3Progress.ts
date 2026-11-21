@@ -43,6 +43,8 @@ export type V3Progress = {
    * it, so a reload brings the typed words back; the server gets the message once sent.
    */
   unsentDraft: string | null;
+  /** Each full scene's key moments already recorded, so a replay or reload adds none twice. */
+  moments: Record<string, number[]>;
   /** The tour scene "Skip the rest" left from, while on the step it led to; Back returns there. */
   skippedFrom: string | null;
 };
