@@ -181,8 +181,13 @@ export function useSceneScript<State>(
         setCue(null);
         report({ kind: "cue-ended" });
       });
-      report({ kind: "moment", moment: key, by: turn.by });
-      if (turn.by === "scene") return touchItself(beat, key);
+      report({
+        kind: "moment",
+        moment: key,
+        by: turn.by === "scene" ? "scene" : "visitor",
+      });
+      // A keyboard turn carries out the scripted tap or drag, so a slider's value moves.
+      if (turn.by !== "visitor") return touchItself(beat, key);
       setTouch({ x: turn.x, y: turn.y, key });
       if (beat.tap) control.click();
     }

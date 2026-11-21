@@ -3,8 +3,14 @@ import { readVisitorPointer } from "./visitorPointer.ts";
 /** How far outside a control a finger still counts, in pixels: fingers are wider than buttons. */
 const SLACK = 10;
 
-/** Who took the key moment's turn: the visitor, where they let go, or the scene. */
-export type Turn = { by: "visitor"; x: number; y: number } | { by: "scene" };
+/**
+ * Who took the key moment's turn: the visitor's finger, where they let go; the
+ * visitor's keyboard, from the page's button; or the scene.
+ */
+export type Turn =
+  | { by: "visitor"; x: number; y: number }
+  | { by: "keyboard" }
+  | { by: "scene" };
 
 type CueCommand = "take-turn" | "hold-cue" | "release-cue";
 
@@ -82,17 +88,11 @@ export function visitorTurn({
     }
     startClock();
     const stopReading = readVisitorPointer({ move, down, up, cancel });
-    // The keyboard turn taps the control's middle; holding stops the clock while
-    // the page's button has focus, so a keyboard user has the time they need.
+    // The keyboard turn is taken as the scene would take it, slider drags included;
+    // holding stops the clock while the page's button has focus, so a keyboard user
+    // has the time they need.
     waiting = {
-      "take-turn": () => {
-        const box = control.getBoundingClientRect();
-        finish({
-          by: "visitor",
-          x: box.left + box.width / 2,
-          y: box.top + box.height / 2,
-        });
-      },
+      "take-turn": () => finish({ by: "keyboard" }),
       "hold-cue": () => window.clearTimeout(timer),
       "release-cue": () => {
         window.clearTimeout(timer);
