@@ -4,7 +4,7 @@ services:
   - type: web
     name: takeover
     runtime: node
-    plan: starter
+    plan: free
     branch: study-tour
     buildCommand: npm ci && npm run build
     startCommand: npm start
