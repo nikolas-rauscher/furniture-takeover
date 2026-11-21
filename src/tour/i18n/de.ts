@@ -5,8 +5,7 @@ import type { TourText } from "./en";
  * to its unit and CHF to its amount.
  */
 const helped = {
-  question:
-    "Denk noch einmal an deine letzte Erfahrung. Hätte dir diese Funktion geholfen?",
+  question: "Hätte dir diese Funktion beim letzten Mal geholfen?",
   options: {
     yes: "Ja",
     partly: "Teilweise",
@@ -412,10 +411,10 @@ export const DE: TourText = {
     },
     start: {
       bubble: (minutes) =>
-        `Hallo, ich bin Pako! Ich bin der Assistent in takeover, einer App, in der Studierende rund um EPFL und UNIL gebrauchte Sachen kaufen, verkaufen und verschenken. Wir sind Studierende der EPFL und entwickeln diese App. Mit dieser Umfrage möchten wir herausfinden, wie du mit gebrauchten Sachen umgehst und was du von der App hältst. Sie dauert etwa ${minutes} Minuten, und du brauchst kein Konto. Du kannst auch mitmachen, wenn du noch nie etwas Gebrauchtes gekauft oder verkauft hast.`,
+        `Hallo, ich bin Pako! Ich bin der Assistent der App takeover. Ein Team von Studierenden der EPFL entwickelt die App, damit Studierende rund um die EPFL und die UNIL gebrauchte Sachen kaufen, verkaufen und verschenken können. Mit dieser Umfrage möchten wir herausfinden, wie du mit gebrauchten Sachen umgehst und was du von der App hältst. Die Umfrage dauert etwa ${minutes}\u00a0Minuten, und du brauchst kein Konto. Du kannst auch mitmachen, wenn du noch nie etwas Gebrauchtes gekauft oder verkauft hast.`,
       saveTitle: "Was wir speichern",
       save: (date) =>
-        `Deine Antworten, welche Seiten der Umfrage du ansiehst, überspringst oder erneut öffnest, wie lange du auf jeder Seite bleibst, über welchen Link du gekommen bist, deine Sprache und ob du ein Handy oder einen Computer nutzt. Dein Fortschritt bleibt in diesem Tab, bis du ihn schliesst. Dein Browser merkt sich, dass du die Umfrage abgeschlossen hast. Am Schluss kannst du eine E-Mail-Adresse angeben. Sie wird getrennt von deinen Antworten gespeichert. Alles wird bis zum ${date} gelöscht.`,
+        `Wir speichern deine Antworten und erfassen, welche Seiten du ansiehst, überspringst oder erneut öffnest und wie lange du auf jeder Seite bleibst. Ausserdem erfassen wir, über welchen Link du zur Umfrage gekommen bist, welche Sprache du verwendest und ob du ein Handy oder einen Computer nutzt. Dein Fortschritt bleibt in diesem Tab, bis du ihn schliesst. Dein Browser merkt sich, dass du die Umfrage abgeschlossen hast. Am Schluss kannst du eine E-Mail-Adresse angeben. Sie wird getrennt von deinen Antworten gespeichert. Alles wird bis zum ${date} gelöscht.`,
       questions: "Fragen zur Umfrage:",
       go: "Umfrage starten",
       demo: "Zeig mir nur die App",
@@ -424,7 +423,7 @@ export const DE: TourText = {
       bubble:
         "Vor der ersten Frage: Hier siehst du, was takeover macht und worum es in dieser Umfrage geht.",
       title: "Was ist takeover?",
-      lead: "Eine App für Studierende rund um EPFL, UNIL und die FMEL-Wohnheime, um gebrauchte Sachen zu kaufen, zu verkaufen und zu verschenken. Pako, der Assistent der App, hilft dir bei drei Schritten:",
+      lead: "Mit takeover können Studierende rund um die EPFL, die UNIL und die FMEL-Wohnheime gebrauchte Sachen kaufen, verkaufen und verschenken. Pako, der Assistent der App, hilft dir dabei in drei Schritten:",
       find: {
         title: "Finden",
         text: "Du beschreibst, was du brauchst, und Pako sucht in den Inseraten von Studierenden in deiner Nähe.",
@@ -435,7 +434,7 @@ export const DE: TourText = {
       },
       agree: {
         title: "Sich einigen",
-        text: "Ihr einigt euch im Chat auf Preis und Abholzeit, und Pako formuliert die Nachrichten für dich vor. Dann trefft ihr euch auf dem Campus.",
+        text: "Im Chat vereinbarst du mit der anderen Person einen Preis und einen Abholtermin. Pako schlägt dir vor, was du schreiben könntest. Dann trefft ihr euch auf dem Campus.",
       },
       nextTitle: "Worum es in dieser Umfrage geht",
       next: [
@@ -444,32 +443,32 @@ export const DE: TourText = {
         "Drei Alltagssituationen, in denen du wählst, was du tun würdest",
         "Mögliche Preise für die App und Lieferung nach Hause",
       ],
-      duration: (minutes) => `Etwa ${minutes} Minuten`,
+      duration: (minutes) => `Etwa ${minutes}\u00a0Minuten`,
     },
     parts: {
       label: (current, total) => `Teil ${current} von ${total}`,
       "last-time": {
         bubble:
           "In diesem Teil geht es um deine eigene Erfahrung mit gebrauchten Sachen.",
-        text: "Wir möchten wissen, wie es war, als du das letzte Mal etwas Gebrauchtes gekauft, verkauft oder verschenkt hast, auch wenn es nicht geklappt hat. Es gibt keine richtigen oder falschen Antworten.",
+        text: "Wir möchten wissen, wie es dir beim letzten Mal ergangen ist, als du etwas Gebrauchtes kaufen, verkaufen, verschenken oder gratis bekommen wolltest. Uns interessiert auch, was passiert ist, wenn es nicht geklappt hat. Es gibt keine richtigen oder falschen Antworten.",
       },
       "the-app": {
         bubble: "In diesem Teil geht es um takeover selbst.",
-        text: "Zuerst eine Frage zu Werbesätzen. Dann siehst du drei kurze Szenen aus der App, und nach jeder fragen wir, ob dir die Funktion helfen würde. Danach folgen ein paar Fragen zur App als Ganzes.",
+        text: "Zuerst vergleichst du verschiedene Slogans für die App. Dann siehst du drei kurze Szenen. Nach jeder Szene fragen wir dich, ob dir die gezeigte Funktion helfen würde. Zum Schluss geht es um die App insgesamt.",
       },
       situations: {
-        bubble: "In diesem Teil kommen drei Alltagssituationen.",
-        text: "Stell dir vor, du bist in der jeweiligen Situation, und wähle, was du wirklich tun würdest. In der letzten schreibst du im Chat mit einer Verkäuferin.",
+        bubble: "In diesem Teil geht es um drei Situationen aus dem Alltag.",
+        text: "Stell dir jede Situation vor und wähle die Antwort, die am ehesten zu dir passt. In der letzten schreibst du im Chat mit einer Verkäuferin.",
       },
       price: {
         bubble: "In diesem letzten Teil geht es um Geld und Lieferung.",
-        text: "Wir zeigen dir vier Möglichkeiten, wie takeover Geld verdienen könnte, und fragen, welche du wählen würdest. Danach fragen wir, was du für ein Auszugspaket und für eine Lieferung bezahlen würdest.",
+        text: "Wir zeigen dir vier Möglichkeiten, wie takeover Geld verdienen könnte, und fragen, welche du wählen würdest. Danach fragen wir, was du für ein Auszugspaket und für eine Lieferung bezahlen würdest. Du kannst weiterhin gratis suchen, inserieren und Nachrichten schreiben. Etwas Hilfe von Pako ist jeden Tag inbegriffen.",
       },
     },
     scenes: {
       find: {
         title: "Etwas finden",
-        text: "Jemand beim Vortex braucht einen Schreibtisch und beschreibt ihn einfach in eigenen Worten. Pako durchsucht die Inserate von Studierenden in der Nähe und bereitet ein Angebot vor. Gesendet wird erst, wenn die Person auf «Senden» tippt.",
+        text: "Jemand beim Vortex braucht einen Schreibtisch und beschreibt, wie der Schreibtisch sein soll. Pako durchsucht die Inserate von Studierenden in der Nähe und bereitet ein Angebot vor. Gesendet wird erst, wenn die Person auf «Senden» tippt.",
       },
       sell: {
         title: "Verkaufen mit einem Foto",
@@ -477,7 +476,7 @@ export const DE: TourText = {
       },
       deal: {
         title: "Eine Abholung vereinbaren",
-        text: "Noah bietet CHF\u00a035 für den Schreibtisch, und Léa nimmt an. Damit ist die Abholung gebucht. Bei der Abholung bestätigen beide die Übergabe.",
+        text: "Noah bietet CHF\u00a035 für den Schreibtisch, und Léa nimmt an. Damit steht der Abholtermin fest. Bei der Übergabe bestätigen beide, dass Noah den Schreibtisch abgeholt hat.",
       },
     },
     situations: {
@@ -493,23 +492,22 @@ export const DE: TourText = {
     },
     steps: {
       "wanted-react": {
-        question:
-          "Stell dir vor, takeover zeigt dir diese Anfrage. Was würdest du tun?",
+        question: "Wie würdest du auf diese Anfrage reagieren?",
         options: {
           snap: "Ein Foto machen und meinen Gegenstand inserieren",
-          look: "Mal anschauen, vielleicht später",
+          look: "Die Anfrage anschauen und später entscheiden",
           ignore: "Ignorieren",
           "rather-not": "Solche Anfragen möchte ich lieber nicht sehen",
         },
       },
       "wanted-share": {
         question:
-          "Und umgekehrt: Wenn du etwas suchst, würdest du Studierende in der Nähe deine Anfrage sehen lassen? Sie würden nur den Gegenstand und deine Gegend sehen, nie deinen Namen.",
+          "Würdest du eine Suchanfrage mit Studierenden in deiner Nähe teilen? Sie sehen, was du suchst und in welcher Gegend. Dein Name bleibt verborgen.",
         options: { yes: "Ja", maybe: "Vielleicht", no: "Nein" },
       },
       "last-cost": {
         question:
-          "Wie viel hast du ungefähr ausgegeben, um es von A nach B zu bringen, zum Beispiel für einen Transporter, ein Taxi oder eine Lieferung?",
+          "Wie viel hast du ungefähr für den Transport des Gegenstands ausgegeben?",
         options: {
           nothing: "Nichts",
           "under-10": "Unter CHF\u00a010",
@@ -520,7 +518,7 @@ export const DE: TourText = {
       },
       "pay-model": {
         question:
-          "Suchen, Inserieren und Nachrichten bleiben gratis, mit etwas Hilfe von Pako jeden Tag. Wenn takeover Geld verdienen müsste, welche dieser Möglichkeiten würdest du wählen?",
+          "Welches dieser Preismodelle würdest du bei einer App wie dieser bevorzugen?",
         options: {
           "seller-fee": "Gebühr pro Verkauf",
           "move-pack": "Auszugspaket",
@@ -531,7 +529,7 @@ export const DE: TourText = {
       },
       "delivery-pref": {
         question:
-          "Stell dir vor, du kaufst etwas Sperriges gebraucht, etwa einen Schreibtisch oder ein Regal. Wie würdest du es am liebsten nach Hause bringen?",
+          "Du kaufst einen gebrauchten Schreibtisch oder ein Regal. Wie kommt das Möbelstück für dich am besten nach Hause?",
         options: {
           "pick-up": "Ich hole es selbst ab, um Geld zu sparen",
           "if-priced": "Ich lasse es liefern, wenn der Preis stimmt",
@@ -541,7 +539,7 @@ export const DE: TourText = {
       },
       "delivery-worth": {
         question:
-          "Wie viel würdest du für eine Lieferung bis vor deine Tür innerhalb von Lausanne (bis etwa 5\u00a0km) bezahlen?",
+          "Wie viel würdest du für die Lieferung eines sperrigen Gegenstands bis vor deine Haustür in Lausanne bezahlen (bis etwa 5\u00a0km)?",
         options: {
           "only-free": "Nichts, nur wenn sie gratis ist",
           "up-to-5": "Bis CHF\u00a05",
@@ -552,7 +550,7 @@ export const DE: TourText = {
         },
       },
       who: {
-        question: "Zuerst eine Frage zu dir: Studierst du?",
+        question: "Studierst du?",
         options: {
           epfl: "Ja, an der EPFL",
           unil: "Ja, an der UNIL",
@@ -562,7 +560,7 @@ export const DE: TourText = {
       },
       "last-role": {
         question:
-          "Denk an das letzte Mal, als du versucht hast, etwas Gebrauchtes zu kaufen, zu verkaufen, zu verschenken oder gratis zu bekommen, auch wenn es nicht geklappt hat. Was wolltest du tun?",
+          "Was hattest du beim letzten Mal mit einem gebrauchten Gegenstand vor?",
         options: {
           buying: "Etwas kaufen",
           "getting-free": "Etwas gratis bekommen",
@@ -572,7 +570,8 @@ export const DE: TourText = {
         },
       },
       "last-item": {
-        question: "Was für ein Gegenstand war es?",
+        question:
+          "Um was für einen gebrauchten Gegenstand ging es beim letzten Mal?",
         options: {
           furniture: "Möbel (Schreibtisch, Stuhl, Regal, Bett)",
           household: "Kleine Haushaltssachen",
@@ -584,7 +583,7 @@ export const DE: TourText = {
         },
       },
       "last-occasion": {
-        question: "Hatte es mit einem Ein- oder Auszug zu tun?",
+        question: "Hatte das Ganze mit einem Einzug oder einem Auszug zu tun?",
         options: {
           "moving-in": "Ja, ich bin eingezogen",
           "moving-out": "Ja, ich bin ausgezogen",
@@ -593,8 +592,7 @@ export const DE: TourText = {
         },
       },
       "last-trouble": {
-        question:
-          "Wenn du zurückdenkst: Was war am schwierigsten, falls überhaupt etwas?",
+        question: "Was war beim letzten Mal für dich am schwierigsten?",
         options: {
           finding: "Den richtigen Gegenstand finden",
           listing: "Das Inserat schreiben oder Fotos machen",
@@ -640,12 +638,11 @@ export const DE: TourText = {
         },
       },
       headline: {
-        question:
-          "Stell dir vor, takeover wirbt mit einem dieser Sätze. Welcher würde dich am ehesten dazu bringen, die App zu öffnen?",
+        question: "Bei welchem Slogan würdest du takeover am ehesten öffnen?",
         options: {
           "h-move": "«Verkauf deine Sachen, bevor du ausziehst.»",
           "h-photo":
-            "«Mach ein Foto, bekomm ein fertiges Inserat mit fairem Preis.»",
+            "«Mach ein Foto und erhalte ein fertiges Inserat mit einem fairen Preis.»",
           "h-ai":
             "«Ein KI-Assistent schreibt dein Inserat anhand eines Fotos.»",
           "h-nearby":
@@ -671,8 +668,7 @@ export const DE: TourText = {
         },
       },
       sending: {
-        question:
-          "Würdest du Pako einige deiner Nachrichten selbstständig senden lassen, ohne dass er dich vorher fragt?",
+        question: "Dürfte Pako Nachrichten senden, ohne dich vorher zu fragen?",
         options: {
           myself: "Nein, ich würde jede Nachricht selbst senden",
           "short-updates": "Nur kurze Statusmeldungen wie «Bin unterwegs»",
@@ -681,11 +677,10 @@ export const DE: TourText = {
         },
       },
       "move-it": {
-        question:
-          "Bevor du zusagst, denkst du an den Transport. Wie würdest du den Schreibtisch am ehesten nach Hause bringen?",
+        question: "Wie würdest du den Schreibtisch nach Hause bringen?",
         options: {
-          "carry-bike": "Tragen oder mit dem Velo",
-          "public-transport": "Mit dem ÖV",
+          "carry-bike": "Ihn tragen oder mit dem Velo transportieren",
+          "public-transport": "Ihn im ÖV mitnehmen",
           "friend-car": "Ein Auto leihen oder jemanden mit Auto fragen",
           helper:
             "In der App eine Transporthilfe mit Lastenvelo buchen: CHF\u00a015 für die ganze Fahrt bis 4\u00a0km, bis vor deine Tür getragen (Erdgeschoss oder Lift; Treppen können extra kosten)",
@@ -711,14 +706,15 @@ export const DE: TourText = {
       },
       "try-first": {
         question:
-          "Welche dieser Funktionen würdest du beim nächsten Kauf oder Verkauf als Erstes ausprobieren, wenn überhaupt eine?",
+          "Welche Funktion würdest du beim nächsten Kauf oder Verkauf zuerst ausprobieren?",
         options: {
-          "describe-search": "Suchen, indem ich beschreibe, was ich brauche",
+          "describe-search":
+            "Beschreiben, was ich suche, um passende Inserate zu finden",
           "photo-listing":
-            "Ein Inseratentwurf aus meinen Fotos, mit Preis und Quellen",
-          "offer-drafts":
-            "Angebotsentwürfe, die ich bearbeiten und senden kann",
-          "pickup-card": "Die Abholkarte mit Bestätigungen und Erinnerungen",
+            "Ein Inserat aus Fotos erstellen lassen, mit Preisvorschlag und Quellen",
+          "offer-drafts": "Einen Angebotsentwurf bearbeiten und senden",
+          "pickup-card":
+            "Die Abholkarte für Bestätigungen und Erinnerungen nutzen",
           none: "Keine davon",
           "need-more": "Ich müsste zuerst mehr darüber wissen",
         },
@@ -768,7 +764,7 @@ export const DE: TourText = {
         "Jetzt schauen wir uns eine dieser Möglichkeiten genauer an: das Auszugspaket.",
       title: "Auszugspaket",
       price: (price) => `CHF\u00a0${price}, einmalig`,
-      text: "Fünf zusätzliche Inseratentwürfe per Foto mit Preisprüfung, 30 Tage gültig.",
+      text: "Du kannst während 30\u00a0Tagen aus deinen Fotos fünf zusätzliche Inseratentwürfe mit Preisprüfung erstellen lassen.",
       question: (price) =>
         `Würdest du für dieses Paket bei deinem nächsten Umzug CHF\u00a0${price} aus eigener Tasche bezahlen?`,
       options: { yes: "Ja", no: "Nein", "not-sure": "Weiss nicht" },
@@ -776,7 +772,8 @@ export const DE: TourText = {
     plans: {
       "seller-fee": {
         price: "5\u00a0% des Preises",
-        detail: "Zahlt, wer verkauft, und nur, wenn etwas verkauft wird.",
+        detail:
+          "Die Gebühr zahlt die Person, die den Gegenstand verkauft, sobald der Verkauf zustande kommt.",
         benefits: [
           "Inserieren und Kaufen bleiben gratis",
           "Nichts zu zahlen, solange nichts verkauft wird",
@@ -785,7 +782,7 @@ export const DE: TourText = {
       "move-pack": {
         price: "CHF\u00a05, einmalig",
         detail:
-          "Fünf zusätzliche Inseratentwürfe per Foto mit Preisprüfung, 30 Tage gültig.",
+          "Du kannst während 30\u00a0Tagen aus deinen Fotos fünf zusätzliche Inseratentwürfe mit Preisprüfung erstellen lassen.",
         benefits: ["Kein Abo", "Gemacht für die Wochen rund um einen Umzug"],
       },
       monthly: {
@@ -793,7 +790,7 @@ export const DE: TourText = {
         detail: "Unbegrenzte Hilfe von Pako, dem Assistenten der App.",
         benefits: [
           "So viele Entwürfe und Preisprüfungen, wie du willst",
-          "Lohnt sich, wenn du oft kaufst und verkaufst",
+          "Deckt auch häufige Käufe und Verkäufe ab",
         ],
       },
       institution: {
@@ -807,7 +804,7 @@ export const DE: TourText = {
       },
     },
     lastStory: {
-      question: "Wie ist es gelaufen? Beschreib es in einem Satz.",
+      question: "Wie ist es beim letzten Mal gelaufen? Ein Satz genügt.",
       label: "Dein Satz",
       placeholder: "Optional, ein paar Worte reichen",
     },
@@ -822,7 +819,7 @@ export const DE: TourText = {
     whoSendsCard: {
       title: "So funktioniert die App",
       sentence:
-        "Pako, der Assistent der App, formuliert deine Nachrichten vor. Gesendet wird erst, wenn du auf «Senden» tippst.",
+        "Pako, der Assistent der App, macht dir Vorschläge für deine Nachrichten. Gesendet wird erst, wenn du auf «Senden» tippst.",
     },
     helperMissing: "Hinweis: Diese Transporthilfe gibt es noch nicht.",
     packMissing: "Hinweis: Dieses Paket gibt es noch nicht.",
@@ -851,15 +848,16 @@ export const DE: TourText = {
       you: "Du",
       pako: "Pako",
       askDay:
-        "Hallo! Der Schreibtisch ist noch zu haben. An welchem Tag könntest du ihn abholen? Ich habe ab 17 Uhr Zeit.",
+        "Hallo! Der Schreibtisch ist noch zu haben. An welchem Tag könntest du ihn abholen? Ich habe ab 17\u00a0Uhr Zeit.",
       pickDay: "Deine Antwort an Mia",
       days: { sat: "Samstag", sun: "Sonntag" },
-      yourDay: (day) => `${day} passt mir. Geht es um 17.30 Uhr?`,
-      confirm: "17.30 Uhr passt. Schick mir ein Angebot, dann bestätige ich.",
+      yourDay: (day) => `${day} passt mir. Geht es um 17.30\u00a0Uhr?`,
+      confirm:
+        "17.30\u00a0Uhr passt. Schick mir ein Angebot, dann bestätige ich.",
       typing: (name) => `${name} schreibt`,
       offerReady: "Ich habe ein Angebot für dich geschrieben.",
       offer: (day) =>
-        `Hallo Mia! Ich hätte gern deinen weissen Schreibtisch für CHF\u00a040. Ich kann ihn am ${day} um 17.30 Uhr beim Rolex Learning Center abholen.`,
+        `Hallo Mia! Ich hätte gern deinen weissen Schreibtisch für CHF\u00a040. Ich kann ihn am ${day} um 17.30\u00a0Uhr beim Rolex Learning Center abholen.`,
       offerTitle: "Angebotsentwurf",
       question: "Was würdest du mit diesem Entwurf machen?",
       sendAsIs: "So senden, wie er ist",

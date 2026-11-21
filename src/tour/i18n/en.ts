@@ -3,8 +3,7 @@
  * The app's own screens inside the phones stay in English and are not listed here.
  */
 const helped = {
-  question:
-    "Think of your last experience again. Would this feature have helped you?",
+  question: "Would this feature have helped you last time?",
   options: {
     yes: "Yes",
     partly: "Partly",
@@ -402,10 +401,10 @@ export const EN = {
     },
     start: {
       bubble: (minutes: number) =>
-        `Hi, I'm Pako, the assistant in takeover: an app where students around EPFL and UNIL buy, sell and give away used things. We're EPFL students building it. In this survey, we'd like to learn how you deal with used things and what you think of the app. It takes about ${minutes} minutes, and you don't need an account. Everyone can take part, even if you've never bought or sold anything used.`,
+        `Hi, I'm Pako, the assistant in the takeover app. A team of EPFL students is building the app so students around EPFL and UNIL can buy, sell and give away second-hand items. In this survey, we'd like to learn how you deal with used things and what you think of the app. It takes about ${minutes} minutes, and you don't need an account. Everyone can take part, even if you've never bought or sold anything used.`,
       saveTitle: "What we save",
       save: (date: string) =>
-        `Your answers, which screens you see, skip or go back to, the time per screen, the link you came from, your language and whether you use a phone or a computer. Your progress stays in this tab until you close it, and this browser remembers that you finished. An email at the end is optional and kept apart from your answers. Everything is deleted by ${date}.`,
+        `We save your answers and record which screens you visit, skip or return to and how long you spend on each one. We also record which link you followed, your language and whether you're using a phone or a computer. Your progress stays in this tab until you close it, and this browser remembers that you finished. You can leave an email address at the end. We store it separately from your answers. Everything is deleted by ${date}.`,
       questions: "Questions about the survey:",
       go: "Start the survey",
       demo: "Just show me the app",
@@ -414,10 +413,10 @@ export const EN = {
       bubble:
         "Before the first question, here's what takeover does and what this survey asks.",
       title: "What is takeover?",
-      lead: "An app for students around EPFL, UNIL and the FMEL residences to buy, sell and give away used things. Pako, the app's assistant, helps with three steps:",
+      lead: "With takeover, students around EPFL, UNIL and the FMEL residences can buy, sell and give away second-hand items. Pako, the app's assistant, helps at three points along the way:",
       find: {
         title: "Find",
-        text: "You describe what you need, and Pako searches the listings of students nearby.",
+        text: "You describe what you need, and Pako searches listings posted by students nearby.",
       },
       sell: {
         title: "Sell",
@@ -432,7 +431,7 @@ export const EN = {
         "Your last experience with buying, selling or giving away something used",
         "Three short scenes from the app, each followed by a question",
         "Three everyday situations in which you choose what you would do",
-        "What the app could cost, and delivery",
+        "What you would pay for the app and for delivery",
       ],
       duration: (minutes: number) => `About ${minutes} minutes`,
     },
@@ -440,11 +439,11 @@ export const EN = {
       label: (current: number, total: number) => `Part ${current} of ${total}`,
       "last-time": {
         bubble: "This part is about your own experience with used things.",
-        text: "We'd like to hear about the last time you bought, sold or gave away something used, even if it didn't work out. There are no right or wrong answers.",
+        text: "We'd like to hear about the last time you tried to buy, sell, give away or get a second-hand item, whether or not it worked out. There are no right or wrong answers.",
       },
       "the-app": {
         bubble: "This part is about takeover itself.",
-        text: "First, a question about slogans. Then you'll see three short scenes from the app, and after each one we ask whether the feature would help you. A few questions about the app as a whole follow.",
+        text: "First, you'll compare some slogans for the app. Then you'll see three short scenes and tell us whether each feature would help you. We'll finish with a few questions about the app as a whole.",
       },
       situations: {
         bubble: "This part has three everyday situations.",
@@ -452,13 +451,13 @@ export const EN = {
       },
       price: {
         bubble: "This last part is about money and delivery.",
-        text: "We show you four ways takeover could earn money and ask which one you'd choose. Then we ask what you'd pay for a move-out pack and for delivery.",
+        text: "We show you four ways takeover could earn money and ask which one you'd choose. Then we ask what you'd pay for a move-out pack and for delivery. Searching, listing and messaging would stay free, along with some help from Pako each day.",
       },
     },
     scenes: {
       find: {
         title: "Finding something",
-        text: "A student near Vortex needs a desk and simply describes it. Pako searches the listings of students nearby and drafts an offer. Nothing is sent until the student taps Send.",
+        text: "A student near Vortex needs a desk and describes what they're looking for. Pako searches listings posted by students nearby and drafts an offer. Nothing is sent until the student taps Send.",
       },
       sell: {
         title: "Selling with a photo",
@@ -483,23 +482,21 @@ export const EN = {
     },
     steps: {
       "wanted-react": {
-        question:
-          "Imagine takeover showed you this request. What would you do?",
+        question: "How would you respond to this request?",
         options: {
           snap: "Take a photo and list my item",
-          look: "Have a look, maybe later",
+          look: "Look at the request and decide later",
           ignore: "Ignore it",
           "rather-not": "I'd rather not see requests like this",
         },
       },
       "wanted-share": {
         question:
-          "Now the other way round: if you were looking for something, would you let students nearby see your request? They would see only the item and your area, never your name.",
+          "Would you share a request with students nearby? They’d see the item and your area, but not your name.",
         options: { yes: "Yes", maybe: "Maybe", no: "No" },
       },
       "last-cost": {
-        question:
-          "Roughly how much did you spend on getting it from A to B, for example on a van, a taxi or a delivery?",
+        question: "Roughly how much did you spend on transporting the item?",
         options: {
           nothing: "Nothing",
           "under-10": "Under CHF 10",
@@ -510,7 +507,7 @@ export const EN = {
       },
       "pay-model": {
         question:
-          "Searching, listing and messaging stay free, with some help from Pako every day. If takeover had to earn money, which of these options would you choose?",
+          "Which of these pricing models would you prefer for an app like this?",
         options: {
           "seller-fee": "Fee per sale",
           "move-pack": "Move-out pack",
@@ -520,8 +517,7 @@ export const EN = {
         },
       },
       "delivery-pref": {
-        question:
-          "Imagine you buy something bulky second-hand, such as a desk or a shelf. How would you prefer to get it home?",
+        question: "How would you prefer to get a bulky second-hand item home?",
         options: {
           "pick-up": "I'd pick it up myself to save money",
           "if-priced": "I'd have it delivered if the price is right",
@@ -531,7 +527,7 @@ export const EN = {
       },
       "delivery-worth": {
         question:
-          "How much would you pay to have it delivered to your door within Lausanne (up to about 5 km)?",
+          "What would you pay for home delivery of a bulky item in Lausanne (up to about 5 km)?",
         options: {
           "only-free": "Nothing, only if it's free",
           "up-to-5": "Up to CHF 5",
@@ -542,7 +538,7 @@ export const EN = {
         },
       },
       who: {
-        question: "First, a question about you: are you a student?",
+        question: "Are you a student?",
         options: {
           epfl: "Yes, at EPFL",
           unil: "Yes, at UNIL",
@@ -552,7 +548,7 @@ export const EN = {
       },
       "last-role": {
         question:
-          "Think of the last time you tried to buy, sell or give away something used, or to get something for free, even if it didn't work out. What were you trying to do?",
+          "Think of your last experience with a second-hand item. What were you trying to do?",
         options: {
           buying: "Buy something",
           "getting-free": "Get something for free",
@@ -562,10 +558,10 @@ export const EN = {
         },
       },
       "last-item": {
-        question: "What kind of item was it?",
+        question: "What kind of second-hand item was involved last time?",
         options: {
           furniture: "Furniture (desk, chair, shelf, bed)",
-          household: "Small household things",
+          household: "Small household items",
           electronics: "Electronics",
           bike: "Bike or scooter",
           books: "Books or course material",
@@ -574,7 +570,7 @@ export const EN = {
         },
       },
       "last-occasion": {
-        question: "Did it have to do with moving in or out?",
+        question: "Was this related to moving in or moving out?",
         options: {
           "moving-in": "Yes, I was moving in",
           "moving-out": "Yes, I was moving out",
@@ -583,7 +579,7 @@ export const EN = {
         },
       },
       "last-trouble": {
-        question: "Looking back, which part was the most difficult, if any?",
+        question: "Which part was hardest for you last time, if any?",
         options: {
           finding: "Finding the right item",
           listing: "Writing the listing or taking photos",
@@ -629,14 +625,14 @@ export const EN = {
         },
       },
       headline: {
-        question:
-          "Imagine you came across takeover with one of these slogans. Which one would make you most likely to open the app?",
+        question: "Which slogan would make you most likely to open takeover?",
         options: {
           "h-move": "“Sell your things before you move out.”",
-          "h-photo": "“Snap a photo, get a ready listing with a fair price.”",
+          "h-photo":
+            "“Take a photo and get a listing with a fair price, ready to post.”",
           "h-ai": "“An AI assistant writes your listing from a photo.”",
           "h-nearby":
-            "“Find used things from people nearby, pickup on campus.”",
+            "“Find second-hand items nearby and pick them up on campus.”",
           none: "None of these",
         },
       },
@@ -658,7 +654,7 @@ export const EN = {
       },
       sending: {
         question:
-          "Would you let Pako send some of your messages on its own, without asking you first?",
+          "Would you let Pako send messages without checking with you first?",
         options: {
           myself: "No, I'd send every message myself",
           "short-updates": "Only short updates like “On my way”",
@@ -667,11 +663,10 @@ export const EN = {
         },
       },
       "move-it": {
-        question:
-          "Before you agree to buy it, you think about the transport. How would you most likely get the desk home?",
+        question: "How would you get the desk home?",
         options: {
           "carry-bike": "Carry it or take it by bike",
-          "public-transport": "By public transport",
+          "public-transport": "Take it on public transport",
           "friend-car": "Borrow a car, or ask a friend who has one",
           helper:
             "Book a helper with a cargo bike in the app: CHF 15 for the whole trip up to 4 km, carried to your door (ground floor or lift; stairs may cost extra)",
@@ -693,13 +688,13 @@ export const EN = {
       },
       "try-first": {
         question:
-          "The next time you buy or sell something, which of these features would you try first, if any?",
+          "Which feature would you try first the next time you buy or sell something?",
         options: {
-          "describe-search": "Searching by describing what I need",
+          "describe-search": "Describe what I need to search the listings",
           "photo-listing":
-            "A listing drafted from my photos, with a price and its sources",
-          "offer-drafts": "Offer drafts that I can edit and send",
-          "pickup-card": "The pickup card with confirmations and reminders",
+            "Draft a listing from photos, with a suggested price and sources",
+          "offer-drafts": "Edit and send a draft offer",
+          "pickup-card": "Use the pickup card for confirmations and reminders",
           none: "None of these",
           "need-more": "I'd need to know more first",
         },
@@ -748,7 +743,7 @@ export const EN = {
       bubble: "Now a closer look at one of these options: the move-out pack.",
       title: "Move-out pack",
       price: (price: number) => `CHF ${price}, paid once`,
-      text: "Five extra photo drafts with price checks, valid for 30 days.",
+      text: "For 30 days, you can use photos to draft five extra listings with price checks.",
       question: (price: number) =>
         `Would you pay CHF ${price} of your own money for this pack when you next move?`,
       options: { yes: "Yes", no: "No", "not-sure": "Not sure" },
@@ -764,7 +759,8 @@ export const EN = {
       },
       "move-pack": {
         price: "CHF 5, paid once",
-        detail: "Five extra photo drafts with price checks, valid for 30 days.",
+        detail:
+          "For 30 days, you can use photos to draft five extra listings with price checks.",
         benefits: ["No subscription", "Made for the weeks around a move"],
       },
       monthly: {
@@ -772,7 +768,7 @@ export const EN = {
         detail: "Unlimited help from Pako, the app's assistant.",
         benefits: [
           "As many drafts and price checks as you like",
-          "Worth it if you buy and sell often",
+          "Covers frequent buying and selling",
         ],
       },
       institution: {
@@ -785,7 +781,8 @@ export const EN = {
       },
     },
     lastStory: {
-      question: "How did it go? Describe it in one sentence.",
+      question:
+        "In one sentence, how did your last experience with a second-hand item go?",
       label: "Your sentence",
       placeholder: "Optional, a few words are enough",
     },
@@ -831,7 +828,7 @@ export const EN = {
         "Hi! The desk is still available. Which day could you pick it up? I'm free from 17:00.",
       pickDay: "Your answer to Mia",
       days: { sat: "Saturday", sun: "Sunday" },
-      yourDay: (day: string) => `${day} works for me, 17:30?`,
+      yourDay: (day: string) => `${day} works for me. How about 17:30?`,
       confirm: "17:30 is fine. Send me an offer and I'll confirm.",
       typing: (name: string) => `${name} is typing`,
       offerReady: "I've written an offer for you.",
