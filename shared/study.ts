@@ -291,11 +291,14 @@ export const studyReportSchema = z.strictObject({
   funnel: z.array(z.strictObject({ step: stepId, reached: cell })),
   /** Sessions that left before the core was saved, by the last screen they saw. */
   dropOff: z.array(z.strictObject({ step: stepId, count: cell })),
-  /** Counts per option; `answered` is the denominator, skips excluded. */
+  /**
+   * Counts per option; `answered` is the denominator, skips excluded. A denominator
+   * is a breakdown too, so it is hidden like the counts.
+   */
   questions: z.array(
     z.strictObject({
       step: stepId,
-      answered: count,
+      answered: cell,
       options: z.array(z.strictObject({ option: optionId, count: cell })),
     }),
   ),

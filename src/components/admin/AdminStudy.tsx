@@ -21,6 +21,11 @@ const HOUSES: Record<StudyReport["pilot"]["houses"][number]["house"], string> =
     "not-fmel": "Not FMEL",
   };
 
+/** A count the page works out itself, hidden from 1 to the minimum like the server's. */
+function smallHidden(count: number, minCell: number): Cell {
+  return count > 0 && count < minCell ? null : count;
+}
+
 /** A hidden count reads as "<5", the minimum the server applies. */
 function cellText(count: Cell, minCell: number) {
   return count === null ? `<${minCell}` : String(count);
@@ -118,10 +123,10 @@ function Bar({
   label: string;
   detail?: string;
   count: Cell;
-  of: number;
+  of: Cell;
   minCell: number;
 }) {
-  const share = count === null || of === 0 ? 0 : count / of;
+  const share = count === null || of === null || of === 0 ? 0 : count / of;
   return (
     <li className="admin-study-bar">
       <span className="admin-study-bar-label">
@@ -129,7 +134,7 @@ function Bar({
         {detail && <code>{detail}</code>}
       </span>
       <span className="admin-study-bar-count">
-        {cellText(count, minCell)} / {of}
+        {cellText(count, minCell)} / {cellText(of, minCell)}
       </span>
       <span className="admin-study-bar-track" aria-hidden="true">
         <span style={{ width: `${share * 100}%` }} />
@@ -148,7 +153,7 @@ function Funnel({ report }: { report: StudyReport }) {
           label={questionLabel(step)}
           detail={step}
           count={reached}
-          of={started}
+          of={smallHidden(started, report.minCell)}
           minCell={report.minCell}
         />
       ))}
@@ -168,7 +173,7 @@ function DropOff({ report }: { report: StudyReport }) {
           label={questionLabel(step)}
           detail={step}
           count={count}
-          of={left}
+          of={smallHidden(left, report.minCell)}
           minCell={report.minCell}
         />
       ))}

@@ -158,3 +158,25 @@ test("pilot sign-ups are counted per house and week", () => {
   const atrium = pilot.houses.find(({ house }) => house === "atrium");
   assert.equal(atrium?.total, null);
 });
+
+test("a question's denominator from 1 to the minimum is hidden like its counts", () => {
+  const answer = (chosen: string) => ({
+    version: "v3-2",
+    step: "pack-chf-2",
+    chosen: [chosen],
+    text: "",
+  });
+  const few = buildStudyReport(
+    rows({ sessions: [session()], answers: [answer("yes"), answer("no")] }),
+    null,
+  );
+  assert.equal(few.questions[0].answered, null);
+  const many = buildStudyReport(
+    rows({
+      sessions: [session()],
+      answers: times(STUDY_REPORT_MIN_CELL, () => answer("no")),
+    }),
+    null,
+  );
+  assert.equal(many.questions[0].answered, STUDY_REPORT_MIN_CELL);
+});

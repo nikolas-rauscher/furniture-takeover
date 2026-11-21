@@ -117,7 +117,7 @@ function questions(answers: readonly Answer[]) {
     const rows = bySteps.get(step) ?? [];
     return {
       step,
-      answered: rows.length,
+      answered: shown(rows.length),
       options: byCount(countBy(rows, (row) => row.chosen)).map(
         ([option, count]) => ({ option, count: shown(count) }),
       ),
