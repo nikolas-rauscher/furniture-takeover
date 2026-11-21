@@ -21,12 +21,19 @@ export type SceneReport =
       by: "visitor" | "scene";
     }
   /** The scene's last key moment has passed. */
-  | { source: typeof SOURCE; kind: "done" };
+  | { source: typeof SOURCE; kind: "done" }
+  /** A key moment waits for the visitor, with Pako's hint; the page offers a keyboard turn. */
+  | { source: typeof SOURCE; kind: "cue"; text: string }
+  | { source: typeof SOURCE; kind: "cue-ended" };
 
 /** Messages the page sends to its scene: start again, or play or wait while another phone plays. */
 export type SceneCommand = {
   source: typeof SOURCE;
-  kind: "replay" | "play" | "pause";
+  /**
+   * The key moment's keyboard turn: take it, or hold its countdown while the page's
+   * button has focus and release it again.
+   */
+  kind: "replay" | "play" | "pause" | "take-turn" | "hold-cue" | "release-cue";
 };
 
 const SOURCE = "takeover-tour-scene";

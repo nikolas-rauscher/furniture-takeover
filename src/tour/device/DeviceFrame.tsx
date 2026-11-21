@@ -81,6 +81,7 @@ function useSceneLink(
 ) {
   const [sceneTime, setSceneTime] = useState<Date>();
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [cue, setCue] = useState<string | null>(null);
   const turn = useRef(active);
   const tellTurn = useCallback(() => {
     const scene = frame.current?.contentWindow;
@@ -100,6 +101,8 @@ function useSceneLink(
       if (message?.kind === "camera") setCameraOpen(message.open);
       if (message?.kind === "moment") onMoment?.(message.moment, message.by);
       if (message?.kind === "done") onDone?.();
+      if (message?.kind === "cue") setCue(message.text);
+      if (message?.kind === "cue-ended") setCue(null);
     };
     window.addEventListener("message", listen);
     return () => window.removeEventListener("message", listen);
@@ -112,7 +115,45 @@ function useSceneLink(
     // A scene whose iframe is not made yet starts from the beginning when it is.
     if (scene) command(scene, { kind: "replay" });
   }, [frame, replay]);
-  return { sceneTime, cameraOpen };
+  return { sceneTime, cameraOpen, cue };
+}
+
+/**
+ * The key moment's keyboard turn: a button named after Pako's hint, hidden until
+ * it has focus. While it has focus the moment waits; pressing it takes the turn.
+ * A moment that ends while it has focus leaves it in place, inactive, until focus
+ * moves on, so the keyboard user keeps their place.
+ */
+function CueKey({
+  cue,
+  send,
+}: {
+  cue: string | null;
+  send: (kind: "take-turn" | "hold-cue" | "release-cue") => void;
+}) {
+  const [focused, setFocused] = useState<string | null>(null);
+  const label = cue ?? focused;
+  if (label === null) return null;
+  return (
+    <button
+      type="button"
+      className="tour-cue-key"
+      aria-disabled={cue === null || undefined}
+      onFocus={() => {
+        setFocused(label);
+        send("hold-cue");
+      }}
+      onBlur={() => {
+        setFocused(null);
+        send("release-cue");
+      }}
+      onClick={() => {
+        if (cue !== null) send("take-turn");
+      }}
+    >
+      {label}
+    </button>
+  );
 }
 
 export type DeviceFrameProps = {
@@ -142,56 +183,63 @@ export default function DeviceFrame({
   const { slot, fit } = useFit();
   const frame = useRef<HTMLIFrameElement>(null);
   const { near, active } = useSceneTurn(slot);
-  const { sceneTime, cameraOpen } = useSceneLink(frame, replay, active, {
+  const { sceneTime, cameraOpen, cue } = useSceneLink(frame, replay, active, {
     onMood,
     onDone,
     onMoment,
   });
+  const send = (kind: "take-turn" | "hold-cue" | "release-cue") => {
+    const scene = frame.current?.contentWindow;
+    if (scene) command(scene, { kind });
+  };
   return (
-    <div
-      ref={slot}
-      className="tour-device-slot"
-      data-ready={fit ? true : undefined}
-      role="img"
-      aria-label={label}
-    >
+    <>
       <div
-        className="tour-device"
-        style={{ scale: fit?.scale ?? 0, left: fit?.left ?? 0 }}
+        ref={slot}
+        className="tour-device-slot"
+        data-ready={fit ? true : undefined}
+        role="img"
+        aria-label={label}
       >
-        <span className="tour-device-key" data-key="action" />
-        <span className="tour-device-key" data-key="volume-up" />
-        <span className="tour-device-key" data-key="volume-down" />
-        <span className="tour-device-key" data-key="power" />
-        <span className="tour-device-key" data-key="camera" />
-        <span className="tour-device-shadow" />
-        <div className="tour-device-edge">
-          <div className="tour-device-bezel">
-            <div
-              className="tour-device-screen"
-              data-camera={cameraOpen || undefined}
-            >
-              <StatusBar sceneTime={sceneTime} />
-              <span className="tour-device-camera" />
-              {near && (
-                <iframe
-                  ref={frame}
-                  className="tour-device-app"
-                  src={sceneAddress(scene, brief, true)}
-                  title={label}
-                  tabIndex={-1}
-                  aria-hidden="true"
-                  style={{
-                    width: SCREEN.width,
-                    height: SCREEN.height - STATUS_BAR - HOME_STRIP,
-                  }}
-                />
-              )}
-              <span className="tour-device-home" />
+        <div
+          className="tour-device"
+          style={{ scale: fit?.scale ?? 0, left: fit?.left ?? 0 }}
+        >
+          <span className="tour-device-key" data-key="action" />
+          <span className="tour-device-key" data-key="volume-up" />
+          <span className="tour-device-key" data-key="volume-down" />
+          <span className="tour-device-key" data-key="power" />
+          <span className="tour-device-key" data-key="camera" />
+          <span className="tour-device-shadow" />
+          <div className="tour-device-edge">
+            <div className="tour-device-bezel">
+              <div
+                className="tour-device-screen"
+                data-camera={cameraOpen || undefined}
+              >
+                <StatusBar sceneTime={sceneTime} />
+                <span className="tour-device-camera" />
+                {near && (
+                  <iframe
+                    ref={frame}
+                    className="tour-device-app"
+                    src={sceneAddress(scene, brief, true)}
+                    title={label}
+                    tabIndex={-1}
+                    aria-hidden="true"
+                    style={{
+                      width: SCREEN.width,
+                      height: SCREEN.height - STATUS_BAR - HOME_STRIP,
+                    }}
+                  />
+                )}
+                <span className="tour-device-home" />
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+      <CueKey cue={cue} send={send} />
+    </>
   );
 }

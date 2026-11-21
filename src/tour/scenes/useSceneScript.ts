@@ -161,6 +161,7 @@ export function useSceneScript<State>(
       bringIntoView(control, "nearest", scroll);
       if (!reduced) await pause(SCROLL_MS, signal);
       const area = control.closest("[data-cue-area]") ?? control;
+      report({ kind: "cue", text });
       setCue({
         box: control.getBoundingClientRect(),
         area: area.getBoundingClientRect(),
@@ -175,7 +176,10 @@ export function useSceneScript<State>(
         onDrag: slider
           ? (x) => setSlider(slider, sliderValueAt(slider, x))
           : undefined,
-      }).finally(() => setCue(null));
+      }).finally(() => {
+        setCue(null);
+        report({ kind: "cue-ended" });
+      });
       report({ kind: "moment", moment: key, by: turn.by });
       if (turn.by === "scene") return touchItself(beat, key);
       setTouch({ x: turn.x, y: turn.y, key });

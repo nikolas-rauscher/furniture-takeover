@@ -6,6 +6,19 @@ const SLACK = 10;
 /** Who took the key moment's turn: the visitor, where they let go, or the scene. */
 export type Turn = { by: "visitor"; x: number; y: number } | { by: "scene" };
 
+type CueCommand = "take-turn" | "hold-cue" | "release-cue";
+
+/** The key moment waiting now, which the page's keyboard turn reaches. */
+let waiting: Record<CueCommand, () => void> | null = null;
+
+/**
+ * The page's keyboard turn for the key moment that waits now. A command that
+ * arrives just after the moment ended has nothing left to act on.
+ */
+export function cueCommand(command: CueCommand) {
+  waiting?.[command]();
+}
+
 function within(box: DOMRect, event: PointerEvent, slack: number) {
   return (
     event.clientX >= box.left - slack &&
@@ -69,8 +82,26 @@ export function visitorTurn({
     }
     startClock();
     const stopReading = readVisitorPointer({ move, down, up, cancel });
+    // The keyboard turn taps the control's middle; holding stops the clock while
+    // the page's button has focus, so a keyboard user has the time they need.
+    waiting = {
+      "take-turn": () => {
+        const box = control.getBoundingClientRect();
+        finish({
+          by: "visitor",
+          x: box.left + box.width / 2,
+          y: box.top + box.height / 2,
+        });
+      },
+      "hold-cue": () => window.clearTimeout(timer),
+      "release-cue": () => {
+        window.clearTimeout(timer);
+        if (dragging === null) startClock();
+      },
+    };
     function stop() {
       window.clearTimeout(timer);
+      waiting = null;
       stopReading();
       signal.removeEventListener("abort", abort);
       root.removeAttribute("data-over");

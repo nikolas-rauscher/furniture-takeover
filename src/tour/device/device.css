@@ -185,3 +185,39 @@
   translate: -50% 0;
   pointer-events: none;
 }
+
+/* The key moment's keyboard turn: hidden until it has focus, then shown above the
+   page's bottom edge, so it never moves anything around it. */
+.tour-cue-key {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.tour-cue-key:focus-visible {
+  position: fixed;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  left: 50%;
+  z-index: 300;
+  width: auto;
+  height: auto;
+  min-height: 44px;
+  padding: 10px 18px;
+  overflow: visible;
+  clip-path: none;
+  border: 0;
+  border-radius: 999px;
+  background: var(--blue);
+  box-shadow: 0 4px 0 var(--blue-dark);
+  color: var(--on-primary);
+  font: inherit;
+  font-weight: 700;
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+  transform: translateX(-50%);
+}
+.tour-cue-key[aria-disabled="true"] {
+  opacity: 0.6;
+}

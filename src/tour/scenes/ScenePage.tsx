@@ -14,6 +14,7 @@ import { preloadImages, SCENE_IMAGES } from "./sceneImages";
 import { keepScrollsInScene } from "./sceneScroll";
 import type { SceneProps } from "./sceneScript";
 import { shieldSceneFromVisitor } from "./visitorPointer";
+import { cueCommand } from "./visitorTurn";
 import "./scene.css";
 
 const SCENES: Record<TourScene, ComponentType<SceneProps>> = {
@@ -152,6 +153,8 @@ export default function ScenePage({
     if (kind === "replay") startAfter(round);
     if (kind === "pause") setHeld(true);
     if (kind === "play") setHeld(false);
+    if (kind === "take-turn" || kind === "hold-cue" || kind === "release-cue")
+      cueCommand(kind);
   });
   useEffect(() => () => window.clearTimeout(ending.current), []);
   useEffect(() => {
