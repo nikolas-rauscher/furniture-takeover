@@ -36,16 +36,16 @@ The student describes what they need. Pako lists matching student listings first
 
 ## 3. Selling
 
-The student adds a photo. Pako describes the item, asks one question at a time, and suggests a price based on comparable used offers. The student sets the price with the slider or the field and saves the listing. Nothing is published without the student's tap.
+The student adds a photo. Pako describes the item and drafts the listing. Below the draft he asks one question at a time and suggests a price based on comparable used offers; each answer shows on the draft. The student sets the price with the slider or the field and saves the listing. Nothing is published without the student's tap.
 
 ![Selling](screenshots/map-selling.png)
 
 1. [New listing: add photos and pickup location.](screenshots/flow-selling-01-start.png)
 2. [Pako's description of the photo.](screenshots/flow-selling-02-photo-read.png)
-3. [First question with tap answers (pickup times).](screenshots/flow-selling-03-question.png)
-4. [Price card with the suggested price and its basis.](screenshots/flow-selling-04-price-card.png)
-5. [Price changed with the slider.](screenshots/flow-selling-05-slider.png)
-6. [Draft complete, Save on this device.](screenshots/flow-selling-06-ready.png)
+3. [Draft listing on top, Pako's first question below, with tap answers (pickup times).](screenshots/flow-selling-03-question.png)
+4. [Pickup answer on the draft; price card with the suggested price and its basis.](screenshots/flow-selling-04-price-card.png)
+5. [Price changed with the slider; the draft keeps the suggestion until Use CHF 32.](screenshots/flow-selling-05-slider.png)
+6. [Draft complete with the chosen price; Save on this device.](screenshots/flow-selling-06-ready.png)
 7. [The saved listing in My listings.](screenshots/flow-selling-07-my-listings.png)
 
 ## 4. Pickup day

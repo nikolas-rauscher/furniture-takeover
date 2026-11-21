@@ -52,30 +52,30 @@
       0 16px 28px -10px rgb(41 41 41 / 0.22);
   }
 
+  .mobile-nav-tabs {
+    position: relative;
+    display: flex;
+  }
+  /* Sits on the first tab; MobileNav moves it by whole tab widths. */
   .mobile-nav-highlight {
     position: absolute;
-    inset: 0;
+    top: 4px;
+    left: 4px;
+    width: var(--mobile-nav-tab-width);
+    height: 50px;
     border-radius: 999px;
+    pointer-events: none;
     background: var(--selected);
     box-shadow: inset 0 0 0 2px rgb(52 78 181 / 0.14);
   }
 
   /*
-   * The list item owns the tab's size and animates it with CSS. The primitive
-   * morphs the button's own box and can leave inline sizes behind when that is
-   * interrupted (a narrow, tall tab with the icon at the top); the button just
-   * fills its list item, so those values never show.
+   * The bar keeps one size while the page scrolls: Safari already collapses its own
+   * toolbar on the same swipe, and a bar that shrinks with it moves every icon.
    */
   .mobile-nav-items > li {
     width: var(--mobile-nav-tab-width);
     height: 50px;
-    transition:
-      width 300ms var(--ease-out),
-      height 300ms var(--ease-out);
-  }
-  .mobile-nav[data-minimized] .mobile-nav-items > li {
-    width: 44px;
-    height: 44px;
   }
   .mobile-nav-items > li > [data-slot="bottom-navigation-highlight-item"] {
     width: 100%;
@@ -88,9 +88,9 @@
     justify-content: center;
     position: relative;
     z-index: 1;
-    width: 100% !important;
-    height: 100% !important;
-    padding: 4px 0 0 !important;
+    width: 100%;
+    height: 100%;
+    padding: 4px 0 0;
     border: 0;
     border-radius: 999px;
     background: none;
@@ -101,14 +101,10 @@
     letter-spacing: -0.01em;
     transition:
       color 160ms ease,
-      scale 120ms var(--ease-out),
-      padding-top 300ms var(--ease-out);
+      scale 120ms var(--ease-out);
   }
   .mobile-nav-item:active {
     scale: 0.92;
-  }
-  .mobile-nav-item[data-minimized] {
-    padding: 0 !important;
   }
   /* On narrow phones the bar gives its tabs a few more pixels, so the labels keep apart. */
   @media (max-width: 370px) {
@@ -121,20 +117,10 @@
   .mobile-nav-item > svg {
     flex-shrink: 0;
   }
-  /*
-   * The primitive folds a label's height on the bar's own spring, so the icon
-   * glides to the middle. Its text fades out at once as the bar minimises, and
-   * back in only once the tab is nearly wide again, so it never shows clipped.
-   */
   .mobile-nav-label {
     display: block;
     padding-top: 3px;
     white-space: nowrap;
-    transition: opacity 120ms ease 200ms;
-  }
-  .mobile-nav-item[data-minimized] .mobile-nav-label {
-    opacity: 0;
-    transition: opacity 90ms ease;
   }
   .mobile-nav-item[aria-current="page"] {
     color: var(--blue-dark);
@@ -144,17 +130,10 @@
   }
 
   .mobile-nav-accessory {
-    width: var(--mobile-nav-sell-size) !important;
-    height: var(--mobile-nav-sell-size) !important;
+    width: var(--mobile-nav-sell-size);
+    height: var(--mobile-nav-sell-size);
     border-radius: 999px;
     pointer-events: auto;
-    transition:
-      width 300ms var(--ease-out),
-      height 300ms var(--ease-out);
-  }
-  .mobile-nav-accessory[data-minimized] {
-    width: 52px !important;
-    height: 52px !important;
   }
   /* Selling is the app's main action: a blue tactile button that sinks when pressed. */
   .mobile-nav-sell {
@@ -199,10 +178,7 @@
   }
 }
 @media (max-width: 760px) and (prefers-reduced-motion: reduce) {
-  .mobile-nav-items > li,
-  .mobile-nav-accessory,
   .mobile-nav-item,
-  .mobile-nav-label,
   .mobile-nav-sell {
     transition: none;
   }

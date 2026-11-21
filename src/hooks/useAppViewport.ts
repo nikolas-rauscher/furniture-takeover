@@ -39,13 +39,12 @@ export function useAppViewport() {
           mobile.matches && unzoomed && height < 460,
         );
         watchNavigation();
-        // Enlarged text can grow the navigation. Its minimized size while
-        // scrolling is ignored, so pages keep their spacing instead of reflowing.
-        // The bar is measured even while it steps aside: the stylesheet takes
-        // its room away then, so it is back as soon as the bar returns.
+        // Enlarged text can grow the navigation. The bar is measured even while
+        // it steps aside: the stylesheet takes its room away then, so it is back
+        // as soon as the bar returns.
         if (!mobile.matches || !navigation)
           root.style.removeProperty("--mobile-nav-height");
-        else if (!navigation.hasAttribute("data-minimized"))
+        else
           root.style.setProperty(
             "--mobile-nav-height",
             `${navigation.getBoundingClientRect().height}px`,

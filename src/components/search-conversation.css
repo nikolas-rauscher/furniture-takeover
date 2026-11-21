@@ -96,7 +96,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  height: min(680px, 72dvh);
+  height: min(680px, 72svh);
   min-height: 340px;
   min-width: 0;
   overflow: hidden;
@@ -185,7 +185,7 @@
 }
 @media (max-width: 760px) {
   .chat-workspace {
-    height: 68dvh;
+    height: 68svh;
     min-height: 320px;
   }
 }

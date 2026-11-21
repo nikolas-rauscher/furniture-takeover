@@ -2,11 +2,12 @@ import {
   AnimatePresence,
   MotionConfig,
   motion,
+  useInView,
   useReducedMotion,
   type TargetAndTransition,
   type Transition,
 } from "motion/react";
-import type { ComponentType, ReactNode } from "react";
+import { useRef, type ComponentType, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { PakoMood } from "./storyTypes";
 import "./pako.css";
@@ -949,12 +950,18 @@ export default function Pako({
   className?: string;
 }) {
   const reduced = Boolean(useReducedMotion());
-  const choreography = CHOREOGRAPHY[still ? "idle" : mood];
-  const moving = !still && !reduced;
+  // His loops run on every frame; once he is scrolled out of view he rests,
+  // and he picks his mood up again on the way back.
+  const drawing = useRef<SVGSVGElement>(null);
+  const visible = useInView(drawing, { initial: true, margin: "120px 0px" });
+  const resting = still || !visible;
+  const choreography = CHOREOGRAPHY[resting ? "idle" : mood];
+  const moving = !resting && !reduced;
   const rest = reduced ? choreography.rest : undefined;
   return (
     <MotionConfig reducedMotion="user">
       <svg
+        ref={drawing}
         className={cn("ob-pako", className)}
         width={size}
         height={size}

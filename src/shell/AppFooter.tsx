@@ -8,7 +8,6 @@ import type { Destination } from "../navigation";
 /** What rests over the bottom of the app: the mobile bar, the comparison tray and the note. */
 export default function AppFooter({
   destination,
-  pageKey,
   badges,
   onNavigate,
   compare,
@@ -18,8 +17,6 @@ export default function AppFooter({
   toastOnTop,
 }: {
   destination: Destination;
-  /** Identifies the page on screen; each page restores its own scroll position. */
-  pageKey: string;
   badges: { unreadMatches: number; unreadMessages: number };
   onNavigate: (destination: Destination) => void;
   compare: Comparison;
@@ -34,7 +31,6 @@ export default function AppFooter({
     <>
       <MobileNav
         active={destination === "settings" ? null : destination}
-        pageKey={pageKey}
         onNavigate={onNavigate}
         newMatches={badges.unreadMatches}
         unreadMessages={badges.unreadMessages}

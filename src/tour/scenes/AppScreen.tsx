@@ -38,7 +38,6 @@ export default function AppScreen({
   return (
     <>
       <AppHeader
-        scrolled={false}
         destination={page.destination}
         settingsOpen={false}
         badges={NO_BADGES}
@@ -68,7 +67,6 @@ export default function AppScreen({
       </div>
       <MobileNav
         active={page.destination}
-        pageKey={page.key}
         onNavigate={INERT}
         newMatches={0}
         unreadMessages={0}

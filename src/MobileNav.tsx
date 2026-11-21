@@ -1,13 +1,11 @@
 import {
   BottomNavigation,
   BottomNavigationAccessory,
-  BottomNavigationHighlight,
-  BottomNavigationHighlightItem,
   BottomNavigationItem,
-  BottomNavigationLabel,
 } from "@animate-ui/react/primitives/bottom-navigation";
 import { AnimateIcon } from "@animate-ui/react/icons";
-import { useEffect, useRef, useState } from "react";
+import { motion } from "motion/react";
+import { useEffect, useRef } from "react";
 import { Button } from "./components/ui/button";
 import { useMediaQuery } from "./hooks/useMediaQuery";
 import {
@@ -25,8 +23,6 @@ export type MobileDestination =
 
 type MobileNavProps = {
   active: MobileDestination | null;
-  /** Identifies the page on screen; each page restores its own scroll position. */
-  pageKey: string;
   onNavigate: (destination: MobileDestination) => void;
   /** New matches for saved searches, counted on the Searches tab. */
   newMatches: number;
@@ -62,7 +58,6 @@ const tabs = [
   { id: "account", label: "Listings", name: "Listings", Icon: List },
 ] as const;
 
-/** Floating tab bar: the highlight glides between tabs; Sell sits beside it as the primary action. */
 /** A tab's name with its news, such as "Messages, 2 new". */
 function tabName(name: string, count: number, unit?: [string, string]) {
   if (!count) return name;
@@ -71,14 +66,36 @@ function tabName(name: string, count: number, unit?: [string, string]) {
     : `${name}, ${count} new`;
 }
 
-/** A fresh scroll root for one page, so its restored scroll position is the bar's baseline. */
-function pageScrollRoot(pageKey: string | undefined) {
-  return { pageKey, ref: { current: null } as { current: HTMLElement | null } };
+/** The pill's glide from one tab to the next, shared with the desktop header. */
+export const TAB_GLIDE = {
+  type: "spring",
+  stiffness: 420,
+  damping: 36,
+} as const;
+
+/**
+ * The active tab's pill. Tabs are equally wide, so it moves by whole tab widths
+ * with a transform inside the bar: nothing is measured, and neither page scroll
+ * nor a page transition can enter its path. Coming back from a page without a
+ * tab, it fades in where it belongs.
+ */
+function TabHighlight({ index }: { index: number }) {
+  if (index < 0) return null;
+  const x = `${index * 100}%`;
+  return (
+    <motion.span
+      className="mobile-nav-highlight"
+      aria-hidden="true"
+      initial={{ x, opacity: 0 }}
+      animate={{ x, opacity: 1 }}
+      transition={{ x: TAB_GLIDE, opacity: { duration: 0.15 } }}
+    />
+  );
 }
 
+/** Floating tab bar: the highlight glides between tabs; Sell sits beside it as the primary action. */
 export default function MobileNav({
   active,
-  pageKey,
   onNavigate,
   newMatches,
   unreadMessages,
@@ -88,12 +105,7 @@ export default function MobileNav({
     messages: unreadMessages,
   };
   const selling = active === "sell";
-  // The bar measures scrolling from where a page starts. A fresh (window) scroll root per
-  // page makes a restored scroll position its baseline, so switching tabs never shrinks it.
-  const [scrollRoot, setScrollRoot] = useState(() => pageScrollRoot(pageKey));
-  if (scrollRoot.pageKey !== pageKey) setScrollRoot(pageScrollRoot(pageKey));
-  // Wider screens navigate from the header. The bar is not mounted there, because its
-  // size animations cannot run, nor be interrupted, on an element that is not rendered.
+  // Wider screens navigate from the header, so the bar is only mounted on phones.
   const phone = useMediaQuery("(max-width: 760px)");
   if (!phone) return null;
   return (
@@ -101,48 +113,43 @@ export default function MobileNav({
       className="mobile-nav"
       aria-label="Mobile navigation"
       value={active ?? ""}
-      scrollBehavior="minimize"
-      scrollContainer={scrollRoot.ref}
       onValueChange={(value) => {
         if (value !== active) onNavigate(value as MobileDestination);
       }}
     >
-      <BottomNavigationHighlight className="mobile-nav-highlight">
+      <div className="mobile-nav-tabs">
+        <TabHighlight index={tabs.findIndex(({ id }) => id === active)} />
         <ul className="mobile-nav-items">
           {tabs.map(({ id, label, name, Icon }) => (
             <li key={id}>
-              <BottomNavigationHighlightItem value={id}>
-                <BottomNavigationItem value={id} asChild>
-                  <AnimateIcon animateOnTap completeOnStop asChild>
-                    <Button
-                      className="mobile-nav-item"
-                      type="button"
-                      data-prefetch={id === "messages" ? id : undefined}
-                      aria-label={
-                        id === "searches"
-                          ? tabName(name, newMatches, ["match", "matches"])
-                          : id === "messages"
-                            ? tabName(name, unreadMessages)
-                            : name
-                      }
-                    >
-                      <Icon
-                        size={22}
-                        strokeWidth={active === id ? 2 : 1.65}
-                        aria-hidden="true"
-                      />
-                      <BottomNavigationLabel className="mobile-nav-label">
-                        {label}
-                      </BottomNavigationLabel>
-                      <CountBadge count={counts[id] ?? 0} />
-                    </Button>
-                  </AnimateIcon>
-                </BottomNavigationItem>
-              </BottomNavigationHighlightItem>
+              <BottomNavigationItem value={id} asChild>
+                <AnimateIcon animateOnTap completeOnStop asChild>
+                  <Button
+                    className="mobile-nav-item"
+                    type="button"
+                    data-prefetch={id === "messages" ? id : undefined}
+                    aria-label={
+                      id === "searches"
+                        ? tabName(name, newMatches, ["match", "matches"])
+                        : id === "messages"
+                          ? tabName(name, unreadMessages)
+                          : name
+                    }
+                  >
+                    <Icon
+                      size={22}
+                      strokeWidth={active === id ? 2 : 1.65}
+                      aria-hidden="true"
+                    />
+                    <span className="mobile-nav-label">{label}</span>
+                    <CountBadge count={counts[id] ?? 0} />
+                  </Button>
+                </AnimateIcon>
+              </BottomNavigationItem>
             </li>
           ))}
         </ul>
-      </BottomNavigationHighlight>
+      </div>
       <BottomNavigationAccessory className="mobile-nav-accessory">
         <AnimateIcon animateOnTap completeOnStop asChild>
           <Button

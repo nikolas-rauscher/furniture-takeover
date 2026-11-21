@@ -486,7 +486,7 @@
   /* A wider, shorter stage on phones leaves the name, price and first facts above the dock. */
   .listing-detail .photo-gallery-stage {
     aspect-ratio: 16 / 10;
-    max-height: 52dvh;
+    max-height: 52svh;
   }
   .listing-detail-heading h1 {
     margin-bottom: 4px;

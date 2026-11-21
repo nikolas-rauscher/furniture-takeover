@@ -9,7 +9,6 @@ import {
 import type { AccountConnection } from "./cloud/connection";
 import { useMarketplaceListings } from "./hooks/useMarketplaceListings";
 import { useAppViewport } from "./hooks/useAppViewport";
-import { useWindowScrolled } from "./hooks/useWindowScrolled";
 import AccountScreen from "./shell/AccountScreen";
 import DetailScreen from "./shell/DetailScreen";
 import SavedSearchesScreen from "./shell/SavedSearchesScreen";
@@ -87,7 +86,6 @@ export default function App({
 }) {
   useAppViewport();
   const toast = useToast();
-  const pageScrolled = useWindowScrolled();
   const signedIn = !account || !!account.session;
   const [pickupRegion, setPickupRegion] = usePickupRegion(account);
   const [lastSearch] = useState(readLastSearch);
@@ -403,7 +401,6 @@ export default function App({
     <>
       <ListingsStatus database={database} savedError={savedItems.error} />
       <AppHeader
-        scrolled={pageScrolled}
         destination={currentDestination}
         settingsOpen={view === "settings"}
         badges={{
@@ -734,7 +731,6 @@ export default function App({
 
       <AppFooter
         destination={currentDestination}
-        pageKey={pageKey}
         badges={{
           unreadMatches: watches.unread,
           unreadMessages: messages.unread,
