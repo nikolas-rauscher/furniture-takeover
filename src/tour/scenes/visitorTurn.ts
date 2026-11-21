@@ -1,4 +1,4 @@
-import { readVisitorPointer } from "./visitorPointer";
+import { readVisitorPointer } from "./visitorPointer.ts";
 
 /** How far outside a control a finger still counts, in pixels: fingers are wider than buttons. */
 const SLACK = 10;
@@ -17,9 +17,11 @@ function within(box: DOMRect, event: PointerEvent, slack: number) {
 
 /**
  * Waits for the visitor's own tap on a control, or their drag along it. The
- * scene stays inert, so the pointer is read by position. After
- * `waitMs` without a touch the scene takes the turn; a drag under way stops
- * that clock.
+ * scene stays inert, so the pointer is read by position. After `waitMs`
+ * without a turn the scene takes it. A tap leaves that clock running, so a
+ * press released off the control or cancelled still ends in the scene's turn.
+ * A drag stops the clock; it ends when its finger lets go anywhere, and a
+ * cancelled drag starts the clock again, so the cue never stays waiting.
  */
 export function visitorTurn({
   control,
@@ -36,26 +38,37 @@ export function visitorTurn({
   return new Promise<Turn>((resolve, reject) => {
     const root = document.documentElement;
     const slack = onDrag ? SLACK * 2 : SLACK;
-    let dragging = false;
-    const timer = window.setTimeout(() => finish({ by: "scene" }), waitMs);
+    /** The pointer dragging the slider, while one does. */
+    let dragging: number | null = null;
+    let timer = 0;
+    const startClock = () => {
+      timer = window.setTimeout(() => finish({ by: "scene" }), waitMs);
+    };
     const hit = (event: PointerEvent) =>
       within(control.getBoundingClientRect(), event, slack);
+    const isDragging = (event: PointerEvent) => event.pointerId === dragging;
 
     function move(event: PointerEvent) {
-      root.toggleAttribute("data-over", dragging || hit(event));
-      if (dragging) onDrag?.(event.clientX);
+      root.toggleAttribute("data-over", isDragging(event) || hit(event));
+      if (isDragging(event)) onDrag?.(event.clientX);
     }
     function down(event: PointerEvent) {
-      if (!hit(event)) return;
+      if (!onDrag || dragging !== null || !hit(event)) return;
       window.clearTimeout(timer);
-      dragging = Boolean(onDrag);
-      onDrag?.(event.clientX);
+      dragging = event.pointerId;
+      onDrag(event.clientX);
     }
     function up(event: PointerEvent) {
-      if (dragging || hit(event))
+      if (dragging === null ? hit(event) : isDragging(event))
         finish({ by: "visitor", x: event.clientX, y: event.clientY });
     }
-    const stopReading = readVisitorPointer({ move, down, up });
+    function cancel(event: PointerEvent) {
+      if (!isDragging(event)) return;
+      dragging = null;
+      startClock();
+    }
+    startClock();
+    const stopReading = readVisitorPointer({ move, down, up, cancel });
     function stop() {
       window.clearTimeout(timer);
       stopReading();
