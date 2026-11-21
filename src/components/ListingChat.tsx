@@ -13,11 +13,9 @@ import { AnimatePresence, motion } from "motion/react";
 import { useScrollFade } from "@animate-ui/react/primitives/effects/scroll-fade";
 import { ChevronDown } from "@/components/icons";
 import { motionBehavior } from "../uiMotion";
+import { revealTop } from "./listingReveal";
 import { Button } from "./ui/button";
 import "./listing-chat.css";
-
-/** Room kept above Pako when the column brings him into view. */
-const REVEAL_MARGIN = 12;
 
 type PakoPlace = {
   /** Marks the element where Pako speaks now. */
@@ -35,26 +33,88 @@ export function usePakoPlace() {
   return place;
 }
 
+/** The input with which the student scrolls the column by hand. */
+const HAND_SCROLL = ["wheel", "touchstart", "pointerdown", "keydown"] as const;
+
+/** An element ListingChat always renders, read once it is on the page. */
+function rendered<T>(ref: RefObject<T | null>): T {
+  if (!ref.current) throw new Error("ListingChat has not rendered its column.");
+  return ref.current;
+}
+
 /**
- * Scrolls the least that shows the whole element, or its top when it is taller than
- * the column.
+ * Brings Pako's words into view with the least scrolling from where the student
+ * left the column. Until they scroll it by hand, the column follows the listing as
+ * it settles: whenever the column, its content or Pako changes size, it is aligned
+ * anew in the same frame, so lines that leave after Pako spoke (his working line,
+ * the card's "Pako is writing…") do not keep the draft's top scrolled away.
  */
-function scrollToShow(element: HTMLElement, column: HTMLElement) {
-  const top =
-    element.getBoundingClientRect().top -
-    column.getBoundingClientRect().top +
-    column.scrollTop;
-  const bottom = top + element.offsetHeight;
-  const room = column.clientHeight - 2 * REVEAL_MARGIN;
-  const shownTop = column.scrollTop + REVEAL_MARGIN;
-  const target =
-    element.offsetHeight > room || top < shownTop
-      ? top - REVEAL_MARGIN
-      : bottom > shownTop + room
-        ? bottom - room - REVEAL_MARGIN
-        : column.scrollTop;
-  if (target !== column.scrollTop)
-    column.scrollTo({ top: target, behavior: motionBehavior() });
+function usePakoReveal(
+  column: RefObject<HTMLElement | null>,
+  content: RefObject<HTMLElement | null>,
+  pako: RefObject<HTMLElement | null>,
+  pakoNode: HTMLElement | null,
+) {
+  /** Where the student left the column; null once they scroll it by hand. */
+  const origin = useRef<number | null>(null);
+  /** Where the column was last sent. */
+  const aim = useRef(0);
+  const align = useCallback(
+    (cause: "reveal" | "layout") => {
+      const scroller = rendered(column);
+      const block = pako.current;
+      if (!block || origin.current === null) return;
+      // Still gliding to the last place (as far as the content still reaches): the new
+      // one is sent even if the column is there now.
+      const furthest = scroller.scrollHeight - scroller.clientHeight;
+      const gliding =
+        Math.abs(scroller.scrollTop - Math.min(aim.current, furthest)) >= 1;
+      aim.current = revealTop(
+        {
+          top:
+            block.getBoundingClientRect().top -
+            scroller.getBoundingClientRect().top +
+            scroller.scrollTop,
+          height: block.offsetHeight,
+        },
+        { height: scroller.clientHeight, scrollHeight: scroller.scrollHeight },
+        origin.current,
+      );
+      if (!gliding && Math.abs(aim.current - scroller.scrollTop) < 1) return;
+      // A glide goes on to the new place; a column at rest moves with the layout, in the same frame.
+      scroller.scrollTo({
+        top: aim.current,
+        behavior: cause === "layout" && !gliding ? "auto" : motionBehavior(),
+      });
+    },
+    [column, pako],
+  );
+  const reveal = useCallback(() => {
+    const scroller = rendered(column);
+    if (origin.current === null) {
+      origin.current = scroller.scrollTop;
+      aim.current = scroller.scrollTop;
+    }
+    align("reveal");
+  }, [column, align]);
+  useEffect(() => {
+    const scroller = rendered(column);
+    const inner = rendered(content);
+    const follow = new ResizeObserver(() => align("layout"));
+    for (const element of [scroller, inner, ...inner.children, pakoNode])
+      if (element) follow.observe(element);
+    const release = () => {
+      origin.current = null;
+    };
+    for (const type of HAND_SCROLL)
+      scroller.addEventListener(type, release, { passive: true });
+    return () => {
+      follow.disconnect();
+      for (const type of HAND_SCROLL)
+        scroller.removeEventListener(type, release);
+    };
+  }, [column, content, pakoNode, align]);
+  return reveal;
 }
 
 /** Whether the element is out of the column's view. */
@@ -93,17 +153,15 @@ export default function ListingChat({
   children: ReactNode;
 }) {
   const column = useRef<HTMLDivElement>(null);
+  const content = useRef<HTMLDivElement>(null);
   const pako = useRef<HTMLElement | null>(null);
   const [pakoNode, setPakoNode] = useState<HTMLElement | null>(null);
   useScrollFade(column, { size: 24, shrink: 0, blur: 0 });
   const away = useOutOfView(pakoNode, column);
+  const reveal = usePakoReveal(column, content, pako, pakoNode);
   const mark = useCallback((node: HTMLElement | null) => {
     pako.current = node;
     setPakoNode(node);
-  }, []);
-  const reveal = useCallback(() => {
-    if (pako.current && column.current)
-      scrollToShow(pako.current, column.current);
   }, []);
   const place = useMemo(() => ({ mark, reveal }), [mark, reveal]);
   return (
@@ -117,7 +175,7 @@ export default function ListingChat({
             aria-label="Your listing"
             tabIndex={0}
           >
-            <div className="listing-chat-column">
+            <div ref={content} className="listing-chat-column">
               {card}
               {children}
               {needed}
