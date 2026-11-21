@@ -1,11 +1,33 @@
+import { motion } from "motion/react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Item, ItemHeader, ItemContent, ItemActions } from "./ui/item";
+import { X } from "@/components/icons";
 import type { Negotiation } from "../../shared/negotiation";
-import { money } from "../../shared/marketplace";
+import { PakoLabel } from "./ChatParts";
+import { termPrice } from "../dealWords";
+import { DealTermsGrid, DealTile } from "./DealTerms";
+import "./negotiation.css";
+
+/** The agreed terms slide up like the deal card in the intro. */
+const SLIDE_UP = { type: "spring", stiffness: 380, damping: 32 } as const;
+/** What an offer draft's tiles say while Pako and the buyer have not settled a term. */
+const UNDECIDED = {
+  amount: "Not decided",
+  fulfillment: "Not decided",
+  pickupTime: "Not decided",
+  pickupPoint: "Ask the seller",
+};
+
+function dealStatus(proposal: Negotiation, unavailable: boolean) {
+  if (unavailable) return "Listing unavailable";
+  return proposal.draft ? "Ready for review" : "In progress";
+}
+
 export default function NegotiationSummary({
   proposal,
   title,
+  image,
   onReview,
   onContinue,
   onDiscard,
@@ -15,6 +37,7 @@ export default function NegotiationSummary({
 }: {
   proposal: Negotiation;
   title: string;
+  image?: string;
   onReview: () => void;
   onContinue?: () => void;
   onDiscard: () => void;
@@ -24,11 +47,15 @@ export default function NegotiationSummary({
 }) {
   if (compact)
     return (
-      <section
-        className="proposal-chat-bar"
-        aria-label={`Offer proposal for ${title}`}
+      <motion.section
+        className="deal-bar"
+        aria-label={`Offer draft for ${title}`}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={SLIDE_UP}
       >
-        <div>
+        <DealTile image={image} />
+        <div className="deal-bar-copy">
           <strong title={title}>{title}</strong>
           <span>
             {unavailable
@@ -36,101 +63,93 @@ export default function NegotiationSummary({
               : [
                   proposal.terms.amount === null
                     ? "Offer draft"
-                    : money(proposal.terms.amount),
-                  proposal.draft ? "Message ready" : "Draft in progress",
+                    : termPrice(proposal.terms.amount),
+                  proposal.draft ? "Draft ready" : "Draft in progress",
                 ].join(" · ")}
           </span>
         </div>
         <Button
           type="button"
-          className="button"
+          className="button primary small"
           disabled={disabled || unavailable}
           onClick={onReview}
         >
-          Open chat
+          Open in Messages
         </Button>
         <Button
           type="button"
-          className="text-button proposal-dismiss"
+          className="icon-button deal-bar-dismiss"
           disabled={disabled}
           onClick={onDiscard}
-          aria-label="Discard proposal"
+          aria-label="Discard draft"
         >
-          ×
+          <X size={16} />
         </Button>
-      </section>
+      </motion.section>
     );
   return (
-    <section
-      className="negotiation-summary"
-      aria-label={`Offer proposal for ${title}`}
+    <motion.section
+      className="deal-card offer-proposal"
+      data-unavailable={unavailable || undefined}
+      aria-label={`Offer draft for ${title}`}
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={SLIDE_UP}
     >
-      <div>
-        <strong>{title}</strong>
-        <span>
-          {proposal.draft ? "Draft ready for review" : "Your offer proposal"}
-        </span>
+      <div className="deal-card-item">
+        <DealTile image={image} />
+        <div className="deal-card-heading">
+          <strong>{title}</strong>
+          <span>
+            <PakoLabel>Drafted with Pako</PakoLabel>
+            <span
+              className="chip deal-card-status"
+              data-tone={unavailable ? "danger" : undefined}
+            >
+              {dealStatus(proposal, unavailable)}
+            </span>
+          </span>
+        </div>
       </div>
-      <dl>
-        <div>
-          <dt>Offer</dt>
-          <dd>
-            {proposal.terms.amount === null
-              ? "Not decided"
-              : money(proposal.terms.amount)}
-          </dd>
-        </div>
-        <div>
-          <dt>Handover</dt>
-          <dd>{proposal.terms.fulfillment ?? "Not decided"}</dd>
-        </div>
-        {proposal.terms.fulfillment !== "shipping" && (
-          <>
-            <div>
-              <dt>Time proposal</dt>
-              <dd>{proposal.terms.pickupTime ?? "Not decided"}</dd>
-            </div>
-            <div>
-              <dt>Meeting point proposal</dt>
-              <dd>{proposal.terms.pickupPoint ?? "Ask the seller"}</dd>
-            </div>
-          </>
-        )}
-      </dl>
+      <DealTermsGrid terms={proposal.terms} unknown={UNDECIDED} />
       {proposal.draft && (
-        <div className="proposal-message-preview" aria-label="Message draft">
-          <strong>Message to seller</strong>
-          <p>{proposal.draft.message}</p>
+        <div className="deal-card-message" aria-label="Message draft">
+          <strong>Message draft</strong>
+          <p className="deal-card-bubble">{proposal.draft.message}</p>
         </div>
       )}
-      <p>
+      <p className="deal-card-note">
         {unavailable
-          ? "This listing is no longer available. You can discard the proposal."
-          : "Draft only · Awaiting seller agreement"}
+          ? "This listing is no longer available. You can discard the draft."
+          : "Not sent · Review and send in Messages"}
       </p>
-      <div className="offer-draft-actions">
+      <div className="deal-card-actions">
         <Button
           animateIcon
           className="button primary"
           disabled={disabled || unavailable}
           onClick={onReview}
         >
-          Open seller chat
+          Open in Messages
         </Button>
         {onContinue && (
           <Button
-            className="text-button"
+            className="button quiet"
             disabled={disabled}
             onClick={onContinue}
           >
-            Continue with agent
+            Continue with Pako
           </Button>
         )}
-        <Button className="text-button" disabled={disabled} onClick={onDiscard}>
-          Discard proposal
+        <Button
+          className="button quiet"
+          disabled={disabled}
+          onClick={onDiscard}
+        >
+          Discard draft
         </Button>
       </div>
-    </section>
+    </motion.section>
   );
 }
 
@@ -150,31 +169,32 @@ export function MessageDraftPreview({
   return (
     <Item
       render={<section />}
-      className="chat-message-draft"
+      className="pako-draft"
       aria-label={`Message draft for ${title}`}
     >
-      <ItemHeader className="chat-message-draft-heading">
-        <strong>Message to seller</strong>
+      <ItemHeader className="pako-draft-heading">
+        <PakoLabel>Drafted with Pako</PakoLabel>
         <Badge variant="secondary">
           {sent ? "Sent" : onReview ? "Ready for review" : "Earlier draft"}
         </Badge>
       </ItemHeader>
-      <ItemContent>
-        <p>{proposal.draft.message}</p>
+      <ItemContent className="pako-draft-content">
+        <strong>Message draft</strong>
+        <p className="pako-draft-bubble">{proposal.draft.message}</p>
       </ItemContent>
       {onReview && (
         <ItemActions>
           <Button
             animateIcon
             type="button"
-            className="button primary"
+            className="button primary small"
             onClick={onReview}
           >
-            Open seller chat
+            Open in Messages
           </Button>
         </ItemActions>
       )}
-      <small>
+      <small className="pako-draft-note">
         {sent
           ? "Message sent · View it in Messages"
           : onReview

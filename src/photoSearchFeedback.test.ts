@@ -9,11 +9,9 @@ import {
 test("an unrecognised photo asks for an item without treating it as a failure", () => {
   const notice = photoSearchClarification();
   assert.equal(notice.kind, "clarification");
-  assert.match(notice.description, /search box.*clearer photo/);
-  assert.doesNotMatch(
-    notice.title + notice.description,
-    /furniture|error|failed/i,
-  );
+  assert.equal(notice.mood, "think");
+  assert.match(notice.line, /search box.*clearer photo/);
+  assert.doesNotMatch(notice.line, /furniture|error|failed/i);
 });
 
 test("technical failures retain their actionable error and have a fallback", () => {
@@ -21,26 +19,29 @@ test("technical failures retain their actionable error and have a fallback", () 
     photoSearchFailure(new Error("Check your connection and retry.")),
     {
       kind: "error",
-      title: "Photo search couldn't finish",
-      description: "Check your connection and retry.",
+      mood: "dizzy",
+      line: "Check your connection and retry.",
     },
   );
-  assert.match(photoSearchFailure(null).description, /again.*search box/);
+  assert.match(photoSearchFailure(null).line, /another photo or describe/);
 });
 
 test("new searches clear notices and cancel pending photo recognition", () => {
-  const app = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
-  const search = app.slice(
-    app.indexOf("async function runSearch("),
-    app.indexOf("async function searchByPhoto("),
+  const session = readFileSync(
+    new URL("./hooks/useSearchSession.ts", import.meta.url),
+    "utf8",
   );
-  assert.match(search, /photoSearchRequest\.current\?\.abort\(\)/);
-  assert.match(search, /setPhotoSearchNotice\(null\)/);
-  const photo = app.slice(
-    app.indexOf("async function searchByPhoto("),
-    app.indexOf("function continueOffer("),
+  const search = session.slice(
+    session.indexOf("async function runSearch("),
+    session.indexOf("async function searchByPhoto("),
   );
-  assert.match(photo, /setPhotoSearchNotice\(null\)/);
+  assert.match(search, /photoRequest\.current\?\.abort\(\)/);
+  assert.match(search, /setPhotoNotice\(null\)/);
+  const photo = session.slice(
+    session.indexOf("async function searchByPhoto("),
+    session.indexOf("function continueOffer("),
+  );
+  assert.match(photo, /setPhotoNotice\(null\)/);
   assert.match(
     photo,
     /if \(controller.signal.aborted\) return;\s+if \(!item\)/,

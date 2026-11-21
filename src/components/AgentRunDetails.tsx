@@ -1,41 +1,60 @@
 import { useState, type ReactNode } from "react";
 import type { AgentReasoningPart } from "../../shared/runs";
 import type { AgentRunStep } from "../hooks/useAgentRun";
-import AgentActivity, { visibleTaskSteps } from "./AgentActivity";
+import { settledSteps, stepsSummary, type StepVoice } from "../pakoMoods";
+import { activityLines } from "../activityLines";
+import AgentActivity, { StepMark } from "./AgentActivity";
 import AgentReasoning from "./AgentReasoning";
-import { Check, LoaderCircle, X } from "./icons";
 import {
   Trace,
   TraceCollapsible,
   TraceCollapsibleContent,
   TraceCollapsibleTrigger,
   TraceDescription,
-  TraceIcon,
   TraceLine,
   TraceTitle,
 } from "./ui/trace";
 
 export default function AgentRunDetails({
   reasoning = [],
-  steps = [],
-  running,
+  steps: reported = [],
+  place,
+  voice = "search",
+  sourceCount = 0,
+  workingLine,
   heading,
   actions,
   status,
+  summaryTitle = false,
+  children,
 }: {
   reasoning?: readonly AgentReasoningPart[];
   steps?: readonly AgentRunStep[];
-  running: boolean;
+  /** The search area as Pako names it in the steps. */
+  place?: string;
+  voice?: StepVoice;
+  /** The search results the turn brought back, which a listing turn compared. */
+  sourceCount?: number;
+  /** What Pako is doing while the agent works; absent once the turn has stopped. */
+  workingLine?: string;
   heading?: ReactNode;
   actions?: ReactNode;
   status?: string;
+  /** Names the activity by its summary, as a header does, also without one. */
+  summaryTitle?: boolean;
+  /** What the activity brought back, such as the sources it read, shown with its steps. */
+  children?: ReactNode;
 }) {
   const [open, setOpen] = useState<boolean>();
-  const taskSteps = visibleTaskSteps(steps);
+  const running = workingLine !== undefined;
+  const steps = settledSteps(reported);
+  const taskSteps = activityLines(steps, place, voice);
+  const summary = stepsSummary(taskSteps.length, sourceCount, voice);
   const hasReasoning = reasoning.some(
     (part) => part.text || (running && part.status === "streaming"),
   );
   const hasHeader = Boolean(heading || actions);
+  const titledBySummary = hasHeader || summaryTitle;
   const hasDetails = hasReasoning || steps.length > 0 || running;
   const header = (trigger?: ReactNode) => (
     <div className="agent-run-details-header">
@@ -58,38 +77,44 @@ export default function AgentRunDetails({
   const trigger = (
     <TraceCollapsibleTrigger
       aria-label={
-        hasHeader
-          ? `Agent activity${steps.length ? `, ${taskSteps.length} ${taskSteps.length === 1 ? "step" : "steps"}` : ""}`
+        titledBySummary
+          ? `Agent activity${steps.length ? `, ${summary}` : ""}`
           : undefined
       }
     >
       <TraceLine status={failed ? "error" : undefined}>
-        <TraceIcon>
-          {running ? (
-            <LoaderCircle animate />
-          ) : failed ? (
-            <X />
-          ) : unfinished || !hasDetails ? (
-            <span className="agent-trace-dot" />
-          ) : (
-            <Check />
-          )}
-        </TraceIcon>
+        <StepMark
+          state={
+            running
+              ? "running"
+              : failed
+                ? "failed"
+                : unfinished || !hasDetails
+                  ? "paused"
+                  : "done"
+          }
+        />
+        {/* One line updates in place while the agent works; an open list would grow step
+            by step and push the results below it around. */}
         <TraceTitle>
-          {steps.length
-            ? hasHeader
-              ? `${taskSteps.length} ${taskSteps.length === 1 ? "step" : "steps"}`
-              : "Activity"
-            : hasReasoning
-              ? "Reasoning"
-              : running
-                ? "Working…"
-                : (status ?? "Activity")}
+          {running ? (
+            <span key={workingLine} className="agent-run-current-step">
+              {workingLine}
+            </span>
+          ) : steps.length ? (
+            titledBySummary ? (
+              summary
+            ) : (
+              "Activity"
+            )
+          ) : hasReasoning ? (
+            "Pako's thoughts"
+          ) : (
+            (status ?? "Activity")
+          )}
         </TraceTitle>
-        {!hasHeader && steps.length > 0 && (
-          <TraceDescription>
-            {taskSteps.length} {taskSteps.length === 1 ? "step" : "steps"}
-          </TraceDescription>
+        {!titledBySummary && steps.length > 0 && (
+          <TraceDescription>{summary}</TraceDescription>
         )}
       </TraceLine>
     </TraceCollapsibleTrigger>
@@ -100,14 +125,20 @@ export default function AgentRunDetails({
       aria-label="Agent activity"
       aria-busy={running}
     >
-      <TraceCollapsible open={open ?? running} onOpenChange={setOpen}>
+      <TraceCollapsible open={open ?? false} onOpenChange={setOpen}>
         {hasHeader ? header(trigger) : trigger}
         <TraceCollapsibleContent
           keepMounted
           className="agent-run-details-content"
         >
-          <AgentActivity steps={steps} running={running} />
+          <AgentActivity
+            steps={steps}
+            running={running}
+            place={place}
+            voice={voice}
+          />
           <AgentReasoning parts={reasoning} running={running} />
+          {children}
         </TraceCollapsibleContent>
       </TraceCollapsible>
     </Trace>

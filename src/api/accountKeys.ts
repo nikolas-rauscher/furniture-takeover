@@ -1,7 +1,7 @@
 import { accountAccessToken } from "../cloud/session.ts";
 
 export type KeyProvider = "deepseek" | "brave";
-export type ProviderKeyStatus = {
+type ProviderKeyStatus = {
   saved: boolean;
   lastFour?: string;
   updatedAt?: string;
@@ -46,7 +46,9 @@ async function requestKeys(
     });
   } catch (error) {
     if (signal?.aborted) throw error;
-    throw new Error("Could not reach the server. Try again.");
+    throw new Error("Couldn't connect. Check your connection and try again.", {
+      cause: error,
+    });
   }
   // Never display an arbitrary server response that could contain a credential.
   if (!response.ok) {
@@ -54,8 +56,8 @@ async function requestKeys(
       response.status === 401
         ? "Your session has expired. Sign in again to manage your keys."
         : response.status === 400
-          ? "That key could not be saved. Check the key and try again."
-          : "Could not update API key settings. Try again in a moment.",
+          ? "Couldn't save that key. Check it and try again."
+          : "Couldn't update your API keys. Try again in a moment.",
     );
   }
   const data: unknown = await response.json().catch(() => null);
@@ -66,7 +68,7 @@ async function requestKeys(
     !isKeyStatus(data.providers.deepseek) ||
     !isKeyStatus(data.providers.brave)
   ) {
-    throw new Error("Could not read API key settings. Reload and try again.");
+    throw new Error("Couldn't load your API keys. Reload and try again.");
   }
   return data as AccountKeysStatus;
 }

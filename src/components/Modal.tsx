@@ -5,15 +5,32 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Dialog, DialogContent, DialogTitle, DialogClose } from "./ui/dialog";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "./ui/dialog";
 import { X } from "@/components/icons";
 import { fitTextarea } from "../textarea";
+import { useInertApp } from "../hooks/useInertApp";
+import { useMediaQuery } from "../hooks/useMediaQuery";
+import { wrapTabInDialog } from "../dialogFocus";
 
 type ModalProps = {
   title: string;
   onClose: () => void;
   children: ReactNode;
   wide?: boolean;
+  /** On phones the dialog rises from the bottom edge as a sheet. */
+  sheet?: boolean;
+  /** Set to false to close it from outside, with its closing animation. */
+  open?: boolean;
+  /** A line under the title. */
+  description?: ReactNode;
+  /** The id of the field that takes focus when the dialog opens; the dialog itself by default. */
+  initialFocus?: string;
 };
 
 export default function Modal({
@@ -21,8 +38,15 @@ export default function Modal({
   onClose,
   children,
   wide = false,
+  sheet = false,
+  open: openFromOutside = true,
+  description,
+  initialFocus,
 }: ModalProps) {
-  const [open, setOpen] = useState(true);
+  const [openHere, setOpenHere] = useState(true);
+  const open = openFromOutside && openHere;
+  const phone = useMediaQuery("(max-width: 760px)");
+  useInertApp(open);
   const dialogRef = useRef<HTMLDivElement>(null);
   const fitFields = useCallback(() => {
     if (window.matchMedia("(max-width: 760px)").matches)
@@ -30,7 +54,7 @@ export default function Modal({
         ?.querySelectorAll("textarea")
         .forEach((field) => fitTextarea(field));
   }, []);
-  useLayoutEffect(fitFields, [children]);
+  useLayoutEffect(fitFields, [children, fitFields]);
   const observeDialog = useCallback(
     (element: HTMLDivElement | null) => {
       dialogRef.current = element;
@@ -54,15 +78,19 @@ export default function Modal({
   return (
     <Dialog
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={setOpenHere}
       onOpenChangeComplete={(isOpen) => {
         if (!isOpen) onClose();
       }}
     >
       <DialogContent
         className={wide ? "wide" : ""}
+        sheet={sheet && phone}
         ref={observeDialog}
-        initialFocus={dialogRef}
+        initialFocus={
+          initialFocus ? () => document.getElementById(initialFocus) : dialogRef
+        }
+        onKeyDown={wrapTabInDialog}
         onInputCapture={(event) => {
           if (
             event.target instanceof HTMLTextAreaElement &&
@@ -72,7 +100,14 @@ export default function Modal({
         }}
       >
         <div className="modal-heading">
-          <DialogTitle>{title}</DialogTitle>
+          {description ? (
+            <div className="modal-title">
+              <DialogTitle>{title}</DialogTitle>
+              <DialogDescription>{description}</DialogDescription>
+            </div>
+          ) : (
+            <DialogTitle>{title}</DialogTitle>
+          )}
           <DialogClose
             className="icon-button shrink-0 min-h-11 min-w-11"
             type="button"

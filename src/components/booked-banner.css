@@ -1,0 +1,42 @@
+/* A booked pickup: a blue tile with a calendar, the words, and a check that draws itself. */
+.booked-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 14px;
+  border-radius: 14px;
+  background: var(--selected);
+  color: var(--blue-dark);
+  font-weight: 700;
+}
+.booked-banner:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+.booked-banner-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: var(--on-primary);
+}
+.booked-banner-words {
+  display: grid;
+  min-width: 0;
+  padding: 8px 0;
+  line-height: 1.3;
+}
+.booked-banner-words > small {
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 600;
+}
+.booked-banner-check {
+  flex: none;
+  margin-left: auto;
+  color: var(--blue);
+}

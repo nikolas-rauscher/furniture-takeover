@@ -132,3 +132,43 @@ export function parseAnswerInline(
       return { kind: "text", text: part };
     });
 }
+
+/** Ends a line that stops without punctuation, so lines read aloud stay apart. */
+const asSentence = (line: string) =>
+  /[.!?:…]$/.test(line) ? line : `${line}.`;
+
+/** The answer as plain sentences for one screen reader announcement: no markup, no citations. */
+export function plainAnswer(text: string): string {
+  return parseAnswerBlocks(text)
+    .flatMap((block) =>
+      block.kind === "list"
+        ? block.items.map((item) => item.text)
+        : [block.kind === "heading" ? `${block.text}:` : block.text],
+    )
+    .map((line) =>
+      parseAnswerInline(line)
+        .filter((part) => part.kind !== "citation")
+        .map((part) => part.text)
+        .join("")
+        .replace(/\s+([.,;:!?])/g, "$1")
+        .trim(),
+    )
+    .filter(Boolean)
+    .map(asSentence)
+    .join(" ");
+}
+
+/**
+ * Pako's answer beside the questions he asks in their own place: a question is not
+ * repeated at the end of the answer, and an answer that is only that question goes.
+ */
+export function shownAnswerText(
+  text: string,
+  questions: readonly { question: string }[],
+): string {
+  const answer = text.trim();
+  const repeated = questions
+    .map(({ question }) => question.trim())
+    .find((question) => question && answer.endsWith(question));
+  return repeated ? answer.slice(0, -repeated.length).trim() : answer;
+}

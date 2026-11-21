@@ -19,6 +19,13 @@ const contentTypes: Record<string, string> = {
   ".woff2": "font/woff2",
 };
 
+/** Built assets carry a hash in their name; the demo illustrations keep theirs, so they are only cached for a day. */
+function cacheControl(path: string): string {
+  if (path.startsWith("/assets/")) return "public, max-age=31536000, immutable";
+  if (path.startsWith("/samples/")) return "public, max-age=86400";
+  return "no-cache";
+}
+
 export async function serveFrontend(
   request: IncomingMessage,
   response: ServerResponse,
@@ -51,9 +58,7 @@ export async function serveFrontend(
     response.writeHead(200, {
       "Content-Type": contentType,
       "Content-Length": body.length,
-      "Cache-Control": path.startsWith("/assets/")
-        ? "public, max-age=31536000, immutable"
-        : "no-cache",
+      "Cache-Control": cacheControl(path),
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "no-referrer",
     });

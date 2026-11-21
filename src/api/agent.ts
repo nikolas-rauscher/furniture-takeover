@@ -88,7 +88,8 @@ function isMetadata(value: unknown): value is AgentMetadata {
   return true;
 }
 
-async function requestJson(
+/** Sends a JSON request to the agent API; an error response becomes an AgentApiError with its code. */
+export async function requestJson(
   path: string,
   options: RequestInit,
 ): Promise<unknown> {
@@ -98,7 +99,7 @@ async function requestJson(
   } catch (error) {
     if (options.signal?.aborted) throw error;
     throw new AgentApiError(
-      "The assistant is unavailable. You can keep writing and try again.",
+      "I lost the connection. You can keep writing and try again.",
       "NETWORK_ERROR",
     );
   }
@@ -112,15 +113,20 @@ async function requestJson(
   reportAgentQuota(response);
   if (!response.ok) {
     const error = isRecord(body) && isRecord(body.error) ? body.error : null;
-    throw new AgentApiError(
+    const failure = new AgentApiError(
       typeof error?.message === "string"
         ? error.message
         : response.status >= 500
-          ? "The AI service is temporarily unavailable. Retry in a moment."
-          : "The assistant could not complete that request. Try again.",
+          ? "Pako is unavailable right now. Try again in a moment."
+          : "I couldn't finish. Try again.",
       typeof error?.code === "string" ? error.code : "REQUEST_FAILED",
       response.status,
     );
+    if (response.status >= 400 && response.status < 500)
+      console.warn(
+        `[agent] ${path} ${failure.status} ${failure.code}: ${failure.message}`,
+      );
+    throw failure;
   }
   return body;
 }
@@ -130,7 +136,7 @@ export async function getAgentHealth({
   accessToken,
 }: RequestOptions = {}): Promise<HealthResponse> {
   // Browsing works as a guest; a signed-in health check also sees the user's keys.
-  accessToken ??= await accountAccessToken().catch(() => undefined);
+  accessToken ??= await accountAccessToken(true);
   const data = await requestJson("/api/health", {
     signal,
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
@@ -142,7 +148,7 @@ export async function getAgentHealth({
     typeof data.model !== "string"
   ) {
     throw new AgentApiError(
-      "The assistant returned an unreadable response. Try again.",
+      "I couldn't finish. Try again.",
       "INVALID_RESPONSE",
     );
   }
@@ -173,7 +179,7 @@ export async function requestAgentAssist(
     !isMetadata(data.metadata)
   ) {
     throw new AgentApiError(
-      "The assistant returned an unreadable response. Try again.",
+      "I couldn't finish. Try again.",
       "INVALID_RESPONSE",
     );
   }
@@ -216,7 +222,7 @@ export async function requestPhotoGroups(
     )
   ) {
     throw new AgentApiError(
-      "The assistant returned an unreadable response. Try again.",
+      "I couldn't finish. Try again.",
       "INVALID_RESPONSE",
     );
   }

@@ -9,9 +9,9 @@ import {
   groupPhotosWithDeepSeek,
   type ProviderConfig,
 } from "./deepseek.ts";
-import { explicitPrice } from "./facts.ts";
+import { appPrices, explicitPrice } from "./facts.ts";
 import { validatePhotoGroupRequest, validateRequest } from "./validation.ts";
-import { AgentError, invalidOutput } from "./errors.ts";
+import { AgentError, agentNotConfigured, invalidOutput } from "./errors.ts";
 import {
   defaults,
   extractSearchConstraints,
@@ -75,11 +75,14 @@ function groundSearch(
     const words = normalized(candidate.query).split(/[^\p{L}\p{N}]+/u);
     return (
       identityWords.every((word) => words.includes(word)) &&
-      (stated.maxPrice === undefined || supplied.maxPrice === stated.maxPrice) &&
-      (supplied.maxPrice === undefined || constraints.maxPrice === undefined ||
+      (stated.maxPrice === undefined ||
+        supplied.maxPrice === stated.maxPrice) &&
+      (supplied.maxPrice === undefined ||
+        constraints.maxPrice === undefined ||
         supplied.maxPrice === constraints.maxPrice) &&
       (stated.radius === undefined || supplied.radius === stated.radius) &&
-      (supplied.radius === undefined || constraints.radius === undefined ||
+      (supplied.radius === undefined ||
+        constraints.radius === undefined ||
         supplied.radius === constraints.radius) &&
       (!constraints.pickupBy || supplied.pickup === constraints.pickupBy)
     );
@@ -162,7 +165,13 @@ function groundListing(
 ): AssistResponse {
   if (request.intent !== "listing") return response;
   if (!response.metadata.title?.trim()) throw invalidOutput();
-  const metadata = { ...response.metadata };
+  const metadata = {
+    ...response.metadata,
+    title: appPrices(response.metadata.title),
+    ...(response.metadata.description
+      ? { description: appPrices(response.metadata.description) }
+      : {}),
+  };
   const notes = normalized(request.text);
   const providedPrice = explicitPrice(request.text);
   // These details must come from the seller, even when a photo is supplied.
@@ -229,12 +238,7 @@ export function createAgentService(config: ProviderConfig): AgentService {
       );
   };
   const requireKey = () => {
-    if (!apiKey)
-      throw new AgentError(
-        503,
-        "AGENT_NOT_CONFIGURED",
-        "Add a DeepSeek API key to the server .env to enable the agent.",
-      );
+    if (!apiKey) throw agentNotConfigured();
   };
   return {
     health,

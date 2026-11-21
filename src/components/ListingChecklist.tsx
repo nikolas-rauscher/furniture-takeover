@@ -1,58 +1,54 @@
+import { useId } from "react";
 import { Button } from "./ui/button";
-import { Check, Pencil } from "./icons";
-import {
-  Trace,
-  TraceCollapsible,
-  TraceCollapsibleContent,
-  TraceCollapsibleTrigger,
-  TraceDescription,
-  TraceIcon,
-  TraceLine,
-  TraceTitle,
-} from "./ui/trace";
+import { ChevronRight } from "./icons";
 
+/** A required detail: filled in, missing, or only suggested by Pako so far. */
+export type ListingCheck = {
+  label: string;
+  state: "ready" | "missing" | "suggested";
+  open: () => void;
+};
+
+type OpenCheck = ListingCheck & { state: "missing" | "suggested" };
+
+const STEP_WORDS: Record<OpenCheck["state"], string> = {
+  missing: "Add",
+  suggested: "Suggested",
+};
+
+/** The required details still open, each a tap away; nothing once all are in. */
 export default function ListingChecklist({
   checks,
+  hint,
 }: {
-  checks: readonly { label: string; ready: boolean; open: () => void }[];
+  checks: readonly ListingCheck[];
+  /** An optional detail that would help buyers. */
+  hint?: string;
 }) {
-  const missing = checks.filter((check) => !check.ready).length;
+  const headingId = useId();
+  const unfinished = checks.filter(
+    (check): check is OpenCheck => check.state !== "ready",
+  );
+  if (!unfinished.length && !hint) return null;
   return (
-    <Trace className="listing-checklist">
-      <TraceCollapsible>
-        <TraceCollapsibleTrigger>
-          <TraceLine>
-            <TraceTitle>
-              {missing
-                ? `${missing} detail${missing === 1 ? "" : "s"} to complete`
-                : "Required details complete"}
-            </TraceTitle>
-            <TraceDescription>
-              {checks.length - missing}/{checks.length}
-            </TraceDescription>
-          </TraceLine>
-        </TraceCollapsibleTrigger>
-        <TraceCollapsibleContent>
-          <Trace>
-            {checks.map((check) => (
-              <Button
-                key={check.label}
-                className="listing-checklist-step"
-                onClick={check.open}
-                aria-label={`Edit ${check.label}`}
-              >
-                <TraceLine>
-                  <TraceIcon>{check.ready ? <Check /> : <Pencil />}</TraceIcon>
-                  <TraceTitle>{check.label}</TraceTitle>
-                  <TraceDescription>
-                    {check.ready ? "Ready" : "Add"}
-                  </TraceDescription>
-                </TraceLine>
+    <section className="listing-needs" aria-labelledby={headingId}>
+      <h2 id={headingId}>
+        {unfinished.length ? "Still needed" : "Good to add"}
+      </h2>
+      {unfinished.length > 0 && (
+        <ul>
+          {unfinished.map((check) => (
+            <li key={check.label}>
+              <Button className="listing-needs-item" onClick={check.open}>
+                {check.label}
+                <small>{STEP_WORDS[check.state]}</small>
+                <ChevronRight size={16} aria-hidden="true" />
               </Button>
-            ))}
-          </Trace>
-        </TraceCollapsibleContent>
-      </TraceCollapsible>
-    </Trace>
+            </li>
+          ))}
+        </ul>
+      )}
+      {hint && <p>{hint}</p>}
+    </section>
   );
 }

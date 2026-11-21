@@ -58,3 +58,106 @@ test("buyer questions are not blocked by unscoped answers about another listing"
     undefined,
   );
 });
+
+test("a skipped question stays skipped when Pako rewords it or leads in with a remark", () => {
+  const request: AgentRunRequest = {
+    text: "Polish the description",
+    context: {
+      intent: "listing_assist",
+      currentDraft: {
+        title: "MacBook Pro with 16 GB RAM",
+        description: "",
+        price: 1250,
+        condition: "",
+        dimensions: "",
+        location: "Lausanne",
+        pickup: "",
+        raw: "",
+      },
+      skippedQuestions: [
+        {
+          question: "Which model year or chip is this MacBook Pro?",
+          listingField: "other",
+        },
+      ],
+    },
+  };
+  for (const reworded of [
+    "Thanks — I've noted 512 GB. Next: which model year or chip is this MacBook Pro?",
+    "Which chip does it have?",
+    "What model year is it?",
+  ])
+    assert.equal(repeatedQuestion(reworded, request)?.answer, "Skipped");
+  for (const other of [
+    "How much storage does it have?",
+    "Is this MacBook Pro's battery still good?",
+    "Which one is it?",
+  ])
+    assert.equal(repeatedQuestion(other, request), undefined);
+});
+
+test("a skipped question asked again with the same answers stays skipped, in any words", () => {
+  const request: AgentRunRequest = {
+    text: "Improve my description using the photos and details I provided.",
+    context: {
+      intent: "listing_assist",
+      currentDraft: {
+        title: "MacBook Pro, 16 GB RAM",
+        description: "",
+        price: 1250,
+        condition: "",
+        dimensions: "",
+        location: "Lausanne",
+        pickup: "",
+        raw: "",
+      },
+      skippedQuestions: [
+        {
+          question: "What screen size is your MacBook Pro?",
+          listingField: "other",
+          choices: ["13 inch", "14 inch", "15 inch", "16 inch", "Not sure"],
+        },
+        {
+          question: "Does the sale include the charger?",
+          listingField: "other",
+          choices: [
+            "Yes, charger included",
+            "No, charger not included",
+            "Not sure yet",
+          ],
+        },
+      ],
+    },
+  };
+  assert.equal(
+    repeatedQuestion(
+      "Which MacBook Pro model is it (e.g. 13-inch, 14-inch or 16-inch, and the year)?",
+      request,
+      "other",
+      [
+        "MacBook Pro 13-inch",
+        "MacBook Pro 14-inch",
+        "MacBook Pro 16-inch",
+        "Not sure",
+      ],
+    )?.answer,
+    "Skipped",
+  );
+  assert.equal(
+    repeatedQuestion("Is the box included?", request, "other", [
+      "Yes, box included",
+      "No, box not included",
+      "Not sure",
+    ]),
+    undefined,
+    "yes, no and not sure are no evidence of the same question",
+  );
+  assert.equal(
+    repeatedQuestion("How much RAM does it have?", request, "other", [
+      "8 GB",
+      "16 GB",
+      "32 GB",
+    ]),
+    undefined,
+  );
+});

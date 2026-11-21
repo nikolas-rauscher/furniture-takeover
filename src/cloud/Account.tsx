@@ -13,8 +13,10 @@ import { LogOut } from "@/components/icons";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { fail } from "./client";
 import AccountApiKeys from "./AccountApiKeys";
+import { accountExport } from "./accountExport";
 
-type AccountSection = "profile" | "keys" | "payments" | "security" | "privacy";
+export type AccountSection =
+  "profile" | "keys" | "payments" | "security" | "privacy";
 type Handover = "" | "pickup" | "shipping" | "both";
 const accountSections = [
   ["profile", "Profile & pickup"],
@@ -26,15 +28,24 @@ const accountSections = [
 export default function Account({
   client,
   session,
+  startSection,
+  pakoSetting,
   onProfileSaved,
   browserTools,
+  adminEntry,
 }: {
   client: SupabaseClient;
   session: Session;
+  /** The section on screen when the settings open. */
+  startSection: AccountSection;
+  /** Whether Pako reads new replies in Messages by himself. */
+  pakoSetting: ReactNode;
   onProfileSaved?: (region: string) => void;
   browserTools?: ReactNode;
+  /** The way into the admin area, for administrators only. */
+  adminEntry?: ReactNode;
 }) {
-  const [section, setSection] = useState<AccountSection>("profile");
+  const [section, setSection] = useState<AccountSection>(startSection);
   const [name, setName] = useState(""),
     [bio, setBio] = useState(""),
     [region, setRegion] = useState(""),
@@ -110,7 +121,9 @@ export default function Account({
       } catch (err) {
         if (alive)
           setLoadError(
-            err instanceof Error ? err.message : "Could not load your account.",
+            err instanceof Error
+              ? err.message
+              : "Couldn't load your account. Try again.",
           );
       }
     })();
@@ -118,48 +131,26 @@ export default function Account({
       alive = false;
     };
   }, [client, session.user.id, loadAttempt]);
-  async function act(action: () => Promise<void>, success: string) {
+  /** Runs an account change; a failure names the change, since provider wording varies. */
+  async function act(
+    action: () => Promise<void>,
+    success: string,
+    failure: string,
+  ) {
     setBusy(true);
     setNotice("");
     try {
       await action();
       setNotice(success);
     } catch (err) {
-      setNotice(err instanceof Error ? err.message : "Please try again.");
+      console.error(err);
+      setNotice(failure);
     } finally {
       setBusy(false);
     }
   }
   async function exportData() {
-    const tables = [
-      "profiles",
-      "account_preferences",
-      "saved_listings",
-      "blocked_users",
-      "reports",
-      "conversations",
-      "messages",
-    ];
-    const data: Record<string, unknown> = {
-      account: {
-        id: session.user.id,
-        email: session.user.email,
-        created_at: session.user.created_at,
-      },
-    };
-    for (const table of tables) {
-      let request = client.from(table).select("*");
-      if (table === "profiles") request = request.eq("id", session.user.id);
-      const result = await request;
-      fail(result.error);
-      data[table] = result.data;
-    }
-    const listings = await client
-      .from("listings")
-      .select("*")
-      .eq("owner_id", session.user.id);
-    fail(listings.error);
-    data.listings = listings.data;
+    const data = await accountExport(client, session.user);
     const url = URL.createObjectURL(
       new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
     );
@@ -170,6 +161,7 @@ export default function Account({
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   async function deleteAccount() {
+    fail((await client.rpc("check_account_deletion")).error);
     // Paginate by always removing the first batch. Listing paths are flat owner/UUID filenames.
     for (;;) {
       const files = await client.storage
@@ -193,16 +185,19 @@ export default function Account({
       <div className="page-title title-with-action">
         <div>
           <h1>Account settings</h1>
-          <p>Your profile, preferences and connected services.</p>
         </div>
         <Button
           className="button secondary account-signout"
           aria-label="Sign out"
           disabled={busy}
           onClick={() =>
-            void act(async () => {
-              fail((await client.auth.signOut({ scope: "local" })).error);
-            }, "Signed out.")
+            void act(
+              async () => {
+                fail((await client.auth.signOut({ scope: "local" })).error);
+              },
+              "Signed out.",
+              "Couldn't sign out. Try again.",
+            )
           }
         >
           <LogOut size={18} aria-hidden="true" />
@@ -249,6 +244,7 @@ export default function Account({
               }))}
             />
           </label>
+          {adminEntry && <div className="settings-admin">{adminEntry}</div>}
         </aside>
         <div
           className="account-settings"
@@ -270,7 +266,7 @@ export default function Account({
             <p className="settings-verification">
               {session.user.email_confirmed_at
                 ? "Email confirmed"
-                : "Email confirmation pending"}
+                : "Check your email to confirm your address."}
             </p>
           )}
           {notice && (
@@ -282,39 +278,46 @@ export default function Account({
             hidden={section !== "profile"}
             onSubmit={(e) => {
               e.preventDefault();
-              void act(async () => {
-                const old = await client
-                  .from("profiles")
-                  .select("id")
-                  .eq("id", session.user.id)
-                  .maybeSingle();
-                fail(old.error);
-                fail(
-                  (old.data
-                    ? await client
-                        .from("profiles")
-                        .update({ display_name: name.trim(), bio: bio.trim() })
-                        .eq("id", session.user.id)
-                    : await client.from("profiles").insert({
-                        id: session.user.id,
-                        display_name: name.trim(),
-                        bio: bio.trim(),
+              void act(
+                async () => {
+                  const old = await client
+                    .from("profiles")
+                    .select("id")
+                    .eq("id", session.user.id)
+                    .maybeSingle();
+                  fail(old.error);
+                  fail(
+                    (old.data
+                      ? await client
+                          .from("profiles")
+                          .update({
+                            display_name: name.trim(),
+                            bio: bio.trim(),
+                          })
+                          .eq("id", session.user.id)
+                      : await client.from("profiles").insert({
+                          id: session.user.id,
+                          display_name: name.trim(),
+                          bio: bio.trim(),
+                        })
+                    ).error,
+                  );
+                  fail(
+                    (
+                      await client.from("account_preferences").upsert({
+                        user_id: session.user.id,
+                        pickup_region: region.trim(),
+                        postal_code: postalCode.trim(),
+                        country: country.trim(),
+                        handover,
                       })
-                  ).error,
-                );
-                fail(
-                  (
-                    await client.from("account_preferences").upsert({
-                      user_id: session.user.id,
-                      pickup_region: region.trim(),
-                      postal_code: postalCode.trim(),
-                      country: country.trim(),
-                      handover,
-                    })
-                  ).error,
-                );
-                onProfileSaved?.(region.trim());
-              }, "Profile saved.");
+                    ).error,
+                  );
+                  onProfileSaved?.(region.trim());
+                },
+                "Profile saved.",
+                "Couldn't save your profile. Try again.",
+              );
             }}
           >
             <h2>Profile & pickup</h2>
@@ -361,14 +364,13 @@ export default function Account({
               className="account-field-group"
               disabled={!loaded || busy}
             >
-              <legend>Private location & handover</legend>
+              <legend>Private pickup preferences</legend>
               <p className="quiet-caption">
-                These optional details stay in your account. Your town can
-                prefill a listing’s public location; review it before
-                publishing.
+                These optional details stay in your account. We can suggest your
+                town for your listing. Check it before publishing.
               </p>
               <label>
-                Town / area of residence
+                Town or area
                 <Input
                   autoComplete="address-level2"
                   maxLength={180}
@@ -398,9 +400,9 @@ export default function Account({
                 </label>
               </div>
               <label>
-                Preferred handover
+                Pickup or shipping
                 <SelectField
-                  aria-label="Preferred handover"
+                  aria-label="Pickup or shipping"
                   value={handover}
                   onValueChange={(value) => setHandover(value as Handover)}
                   options={[
@@ -412,8 +414,8 @@ export default function Account({
                 />
               </label>
               <small>
-                Arrange exact addresses and handover details privately with the
-                other person when needed.
+                Share exact addresses and pickup details privately with the
+                other student when needed.
               </small>
             </fieldset>
             <Button
@@ -429,16 +431,12 @@ export default function Account({
           <section hidden={section !== "payments"} className="account-payments">
             <div className="account-section-heading">
               <h2>Payments</h2>
-              <span className="account-coming-soon">Coming soon</span>
             </div>
-            <p className="quiet-caption">
-              Pay and get paid through Takeover, all in one place.
-            </p>
             <div className="account-payments-preview">
-              <strong>Payment methods will live here.</strong>
+              <strong>Payments are unavailable in takeover.</strong>
               <p>
-                Payments aren’t available yet. There’s nothing to set up, and
-                Takeover doesn’t collect card or bank details.
+                There’s nothing to set up, and takeover doesn’t collect card or
+                bank details. Agree on payment with the other student.
               </p>
             </div>
           </section>
@@ -446,16 +444,20 @@ export default function Account({
             hidden={section !== "security"}
             onSubmit={(e) => {
               e.preventDefault();
-              void act(async () => {
-                fail(
-                  (
-                    await client.auth.updateUser(
-                      { email },
-                      { emailRedirectTo: location.origin },
-                    )
-                  ).error,
-                );
-              }, "Check your inbox to confirm the email change.");
+              void act(
+                async () => {
+                  fail(
+                    (
+                      await client.auth.updateUser(
+                        { email },
+                        { emailRedirectTo: location.origin },
+                      )
+                    ).error,
+                  );
+                },
+                "Check your inbox to confirm the email change.",
+                "Couldn't change your email. Check the address and try again.",
+              );
             }}
           >
             <h2>Email</h2>
@@ -470,6 +472,7 @@ export default function Account({
             </label>
             <Button
               type="submit"
+              className="button secondary"
               disabled={busy || email === session.user.email}
             >
               Change email
@@ -479,10 +482,14 @@ export default function Account({
             hidden={section !== "security"}
             onSubmit={(e) => {
               e.preventDefault();
-              void act(async () => {
-                fail((await client.auth.updateUser({ password })).error);
-                setPassword("");
-              }, "Password updated.");
+              void act(
+                async () => {
+                  fail((await client.auth.updateUser({ password })).error);
+                  setPassword("");
+                },
+                "Password updated.",
+                "Couldn't update your password. Try again.",
+              );
             }}
           >
             <h2>Password</h2>
@@ -493,25 +500,44 @@ export default function Account({
                 autoComplete="new-password"
                 minLength={8}
                 required
+                aria-describedby="account-password-hint"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+              <small id="account-password-hint" className="quiet-caption">
+                At least 8 characters
+              </small>
             </label>
-            <Button type="submit" disabled={busy || password.length < 8}>
+            <Button
+              type="submit"
+              className="button secondary"
+              disabled={busy || password.length < 8}
+            >
               Update password
             </Button>
             <Button
               type="button"
+              className="button quiet"
               disabled={busy}
               onClick={() =>
-                void act(async () => {
-                  fail((await client.auth.signOut({ scope: "others" })).error);
-                }, "Other sessions signed out. Existing access tokens can remain valid until they expire.")
+                void act(
+                  async () => {
+                    fail(
+                      (await client.auth.signOut({ scope: "others" })).error,
+                    );
+                  },
+                  "Other devices will need to sign in again when their current sessions expire.",
+                  "Couldn't sign out your other devices. Try again.",
+                )
               }
             >
               Sign out other devices
             </Button>
           </form>
+          <section hidden={section !== "privacy"}>
+            <h2>Pako in Messages</h2>
+            {pakoSetting}
+          </section>
           {browserTools && (
             <section hidden={section !== "privacy"}>
               <h2>Browser tools</h2>
@@ -529,22 +555,27 @@ export default function Account({
                 <div className="account-blocked" key={b.blocked_id}>
                   <span>{b.name}</span>
                   <Button
+                    className="button secondary small"
                     disabled={busy}
                     onClick={() =>
-                      void act(async () => {
-                        fail(
-                          (
-                            await client
-                              .from("blocked_users")
-                              .delete()
-                              .eq("user_id", session.user.id)
-                              .eq("blocked_id", b.blocked_id)
-                          ).error,
-                        );
-                        setBlocked((xs) =>
-                          xs.filter((x) => x.blocked_id !== b.blocked_id),
-                        );
-                      }, "User unblocked.")
+                      void act(
+                        async () => {
+                          fail(
+                            (
+                              await client
+                                .from("blocked_users")
+                                .delete()
+                                .eq("user_id", session.user.id)
+                                .eq("blocked_id", b.blocked_id)
+                            ).error,
+                          );
+                          setBlocked((xs) =>
+                            xs.filter((x) => x.blocked_id !== b.blocked_id),
+                          );
+                        },
+                        `${b.name} unblocked.`,
+                        `Couldn't unblock ${b.name}. Try again.`,
+                      )
                     }
                   >
                     Unblock
@@ -559,12 +590,18 @@ export default function Account({
             <h2>Your data</h2>
             <p>
               Download your profile, listings, saved items, reports and
-              conversations as JSON. Photo files remain available at their
-              listing URLs.
+              conversations as a JSON file. It contains links to listing photos.
             </p>
             <Button
+              className="button secondary"
               disabled={busy}
-              onClick={() => void act(exportData, "Account export downloaded.")}
+              onClick={() =>
+                void act(
+                  exportData,
+                  "Your data was downloaded.",
+                  "Couldn't download your data. Try again.",
+                )
+              }
             >
               Export my data
             </Button>
@@ -575,15 +612,22 @@ export default function Account({
             onSubmit={(e) => {
               e.preventDefault();
               if (confirmation === "DELETE")
-                void act(deleteAccount, "Account deleted.");
+                void act(
+                  deleteAccount,
+                  "Account deleted.",
+                  "Couldn't finish deleting your account. Try again to finish.",
+                );
             }}
           >
             <h2>Delete account</h2>
             <p>
-              This permanently removes your account, saved API keys, photos,
-              listings and conversations, including messages for the other
-              participants. This cannot be undone. Photo removal happens first;
-              if deletion fails, retry to finish.
+              Deleting your account permanently removes your photos, listings,
+              saved keys and conversations. The other students lose those
+              conversations too. This can’t be undone.
+            </p>
+            <p className="quiet-caption">
+              Your photos are removed first. If deletion stops, try again to
+              finish.
             </p>
             <label>
               Type DELETE to confirm
@@ -593,8 +637,12 @@ export default function Account({
                 autoComplete="off"
               />
             </label>
-            <Button type="submit" disabled={busy || confirmation !== "DELETE"}>
-              Delete my account permanently
+            <Button
+              type="submit"
+              className="button danger"
+              disabled={busy || confirmation !== "DELETE"}
+            >
+              Delete my account
             </Button>
           </form>
         </div>

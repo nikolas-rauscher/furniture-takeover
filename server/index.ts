@@ -3,6 +3,7 @@ import { createMessagesStore } from "./messages.ts";
 import { createAgentService } from "./service.ts";
 import { createAgentServer } from "./http.ts";
 import { createAgentRuntime } from "./runtime.ts";
+import { createThreadAgent } from "./thread-agent.ts";
 import { isLoopbackHost, readServerConfig } from "./config.ts";
 import { createListingsStore } from "./database.ts";
 import { createAccountKeyStore } from "./account-keys.ts";
@@ -57,9 +58,11 @@ const runtime = createAgentRuntime({
     ? () => cloud.inventory()
     : () => listings!.listDemo(),
 });
+const threads = createThreadAgent({ apiKey, model, baseUrl });
 const messages = cloud ? undefined : createMessagesStore(config.databasePath);
 const server = createAgentServer(service, {
   runtime,
+  threads,
   cloud,
   accountKeys,
   forAccount: accountKeys
@@ -83,12 +86,18 @@ const server = createAgentServer(service, {
             inventoryAuthoritative: !!cloud,
             inventoryProvider: () => cloud!.inventory(),
           }),
+          threads: createThreadAgent({
+            apiKey: userApiKey,
+            model,
+            baseUrl: userBaseUrl,
+          }),
         };
       }
     : undefined,
   listings,
   messages,
   allowedOrigins: config.allowedOrigins,
+  maxConcurrent: config.maxConcurrent,
   staticDirectory,
 });
 server.once("close", () => messages?.close());

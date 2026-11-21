@@ -11,6 +11,7 @@ import {
   getCloudClient,
   restoreAccountSession,
 } from "../cloud/session.ts";
+import { cloudClient } from "../cloud/cloudClient.ts";
 
 const validResponse = {
   mode: "live",
@@ -108,10 +109,13 @@ test("photo grouping uses the restored account session and lets explicit credent
       return Response.json(validPhotoGroups);
     },
   );
-  configureCloud({
-    supabaseUrl: "https://example.supabase.co",
-    supabaseKey: "sb_publishable_test",
-  });
+  configureCloud(
+    {
+      supabaseUrl: "https://example.supabase.co",
+      supabaseKey: "sb_publishable_test",
+    },
+    cloudClient,
+  );
   const client = getCloudClient()!;
   assert.equal(
     (
@@ -163,7 +167,7 @@ test("a proxy outage during a health check reports service connectivity, not a f
     assert.equal(error.status, 502);
     assert.equal(
       error.message,
-      "The AI service is temporarily unavailable. Retry in a moment.",
+      "Pako is unavailable right now. Try again in a moment.",
     );
     return true;
   });
@@ -234,8 +238,7 @@ test("network errors explain that writing can continue", async (context) => {
     requestAgentAssist({ intent: "listing", text: "wooden chair" }),
     {
       code: "NETWORK_ERROR",
-      message:
-        "The assistant is unavailable. You can keep writing and try again.",
+      message: "I lost the connection. You can keep writing and try again.",
     },
   );
 });

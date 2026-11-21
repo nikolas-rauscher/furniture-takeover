@@ -1,6 +1,15 @@
-import { Clock, MapPin } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import type { ReactNode } from "react";
+import {
+  CalendarCheck,
+  Clock,
+  MapPin,
+  MessageCircle,
+} from "@/components/icons";
+import PakoReaction from "../components/PakoReaction";
+import { Button } from "../components/ui/button";
 import type { Product } from "../../shared/marketplace";
-import { HOLD_HOURS, SELLER_REPLY_HOURS } from "./config";
+import { HOLD_HOURS, OPEN_QUESTIONS, SELLER_REPLY_HOURS } from "./config";
 import { formatDay, formatDeadline, formatTimeLeft } from "./format";
 import type { ListingAvailability } from "./reservations";
 
@@ -17,8 +26,50 @@ type DetailPanelProps = {
   onFindSimilar(): void;
 };
 
-/** Replaces the detail page's "Message seller" button while the flag is on. */
-export default function DetailPanel({
+/** A reservation's state changes slide up like the deal card. */
+const SLIDE_UP = { type: "spring", stiffness: 380, damping: 32 } as const;
+
+function Status({
+  tone,
+  icon,
+  title,
+  detail,
+}: {
+  tone: "butter" | "sky" | "canvas";
+  icon?: ReactNode;
+  title: string;
+  detail?: string;
+}) {
+  return (
+    <div className="availability-status" data-tone={tone} role="status">
+      {icon}
+      <p>
+        <strong>{title}</strong>
+        {detail && <span>{detail}</span>}
+      </p>
+    </div>
+  );
+}
+
+/** Replaces the detail page's "Message seller" button while the prototype runs. */
+export default function DetailPanel(props: DetailPanelProps) {
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={props.view.kind}
+        className="availability-panel"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -4 }}
+        transition={SLIDE_UP}
+      >
+        <PanelContent {...props} />
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+function PanelContent({
   listing,
   view,
   now,
@@ -31,135 +82,129 @@ export default function DetailPanel({
   onFindSimilar,
 }: DetailPanelProps) {
   const messageSeller = (enabled: boolean) => (
-    <button
+    <Button
+      animateIcon
       className="button secondary full"
       disabled={!enabled}
       onClick={onMessage}
     >
+      <MessageCircle size={17} aria-hidden="true" />
       Message seller
-    </button>
+    </Button>
   );
   if (view.kind === "pending")
     return (
-      <div className="availability-panel">
-        <div className="availability-status" role="status">
-          <Clock size={17} aria-hidden="true" />
-          <div>
-            <strong>
-              Waiting for seller · confirms by{" "}
-              {formatDeadline(view.reservation.replyBy)}
-            </strong>
-            <span>
-              You asked to pick it up by {formatDay(view.reservation.pickupBy)}.
-              The seller has {formatTimeLeft(view.reservation.replyBy, now)}{" "}
-              left to reply.
-            </span>
-          </div>
-        </div>
+      <>
+        <Status
+          tone="butter"
+          icon={<Clock size={18} aria-hidden="true" />}
+          title={`Waiting for ${listing.seller || "the seller"} · confirms by ${formatDeadline(view.reservation.replyBy)}`}
+          detail={`You asked to pick it up by ${formatDay(view.reservation.pickupBy)}. ${formatTimeLeft(view.reservation.replyBy, now)} left to reply.`}
+        />
         {messageSeller(true)}
-        <button className="text-button availability-cancel" onClick={onCancel}>
+        <Button className="button quiet" onClick={onCancel}>
           Cancel request
-        </button>
-      </div>
+        </Button>
+      </>
     );
   if (view.kind === "held")
     return (
-      <div className="availability-panel">
-        <div className="availability-status confirmed" role="status">
-          <MapPin size={17} aria-hidden="true" />
-          <div>
-            <strong>
-              Reserved for you until{" "}
-              {formatDeadline(view.reservation.holdUntil!)}
-            </strong>
-            <span>
-              Pickup:{" "}
-              {listing.pickupPoint
-                ? `${listing.pickupPoint.name}, ${listing.pickupPoint.address}`
-                : listing.location}
-            </span>
-          </div>
-        </div>
+      <>
+        <Status
+          tone="sky"
+          icon={<MapPin size={18} aria-hidden="true" />}
+          title={`Reserved for you until ${formatDeadline(view.reservation.holdUntil!)}`}
+          detail={`Pickup at ${
+            listing.pickupPoint
+              ? `${listing.pickupPoint.name}, ${listing.pickupPoint.address}`
+              : listing.location
+          }`}
+        />
         {messageSeller(true)}
-        <button className="text-button availability-cancel" onClick={onCancel}>
+        <Button className="button quiet" onClick={onCancel}>
           Cancel reservation
-        </button>
-      </div>
+        </Button>
+      </>
     );
   if (view.kind === "reserved")
     return (
-      <div className="availability-panel">
-        <div className="availability-status muted" role="status">
-          <div>
-            <strong>
-              {view.position
-                ? `You're #${view.position} in line.`
-                : "Reserved by another buyer."}
-            </strong>
-            <span>
-              {view.position
-                ? "We'll tell you if the reservation ends. You'll get first chance to reserve it."
-                : "Join the waitlist to get first chance if their reservation ends."}
-            </span>
-          </div>
-        </div>
+      <>
+        <Status
+          tone="canvas"
+          title={
+            view.position
+              ? `Position ${view.position} on the waitlist`
+              : "Someone reserved it."
+          }
+          detail={
+            view.position
+              ? "If the item becomes available, the first person on the waitlist gets priority."
+              : "Join the waitlist. If the item becomes available, the first person on it gets priority."
+          }
+        />
         {view.position ? (
-          <button className="text-button availability-cancel" onClick={onLeave}>
-            Leave waitlist
-          </button>
+          <Button className="button quiet" onClick={onLeave}>
+            Leave the waitlist
+          </Button>
         ) : (
-          <button className="button primary full" onClick={onJoin}>
-            Join waitlist
-          </button>
+          <Button className="button secondary full" onClick={onJoin}>
+            Join the waitlist
+          </Button>
         )}
         {messageSeller(false)}
-      </div>
+      </>
     );
   if (view.kind === "sold" || view.kind === "removed")
     return (
-      <div className="availability-panel">
-        <div className="availability-status muted" role="status">
-          <div>
-            <strong>
-              {view.kind === "sold"
-                ? view.declined
+      <>
+        <div className="availability-gone" role="status">
+          <PakoReaction mood="sad" size={48} />
+          <p>
+            <strong>This one&apos;s gone.</strong>
+            <span>
+              {view.kind === "removed"
+                ? "The listing was removed."
+                : view.declined
                   ? "The seller says it's no longer available."
-                  : "This item has been sold."
-                : "This listing was removed."}
-            </strong>
-          </div>
+                  : "It has been sold."}
+            </span>
+          </p>
         </div>
-        <button className="button primary full" onClick={onFindSimilar}>
-          Find similar
-        </button>
-        {messageSeller(false)}
-      </div>
+        <Button
+          animateIcon
+          className="button primary full"
+          onClick={onFindSimilar}
+        >
+          Find something similar
+        </Button>
+      </>
     );
   return (
-    <div className="availability-panel">
+    <>
       {view.priorityUntil && (
-        <div className="availability-status confirmed" role="status">
-          <div>
-            <strong>It's available again.</strong>
-            <span>
-              You're first in line for {formatTimeLeft(view.priorityUntil, now)}
-              .
-            </span>
-          </div>
-        </div>
+        <Status
+          tone="sky"
+          title="It's available again."
+          detail={`You're first in line for ${formatTimeLeft(view.priorityUntil, now)}.`}
+        />
       )}
-      <button
-        className="button primary full"
+      <Button
+        animateIcon
+        className="button primary large full"
         disabled={busy}
         onClick={onRequest}
       >
+        <CalendarCheck size={18} aria-hidden="true" />
         Request reservation
-      </button>
+      </Button>
       {messageSeller(true)}
-      <p className="quiet-caption">
-        The seller has {SELLER_REPLY_HOURS}h to confirm. Then it's held for you
-        for {HOLD_HOURS}h.
-      </p>
-    </div>
+      <ul className="availability-rules" aria-label="How reserving works">
+        <li className="chip">
+          The seller has {SELLER_REPLY_HOURS} h to respond
+        </li>
+        <li className="chip">Reserved for {HOLD_HOURS} h</li>
+      </ul>
+      <p className="availability-open-questions">{OPEN_QUESTIONS}</p>
+    </>
   );
 }

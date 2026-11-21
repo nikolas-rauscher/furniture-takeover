@@ -1,7 +1,8 @@
-import { TriangleAlert } from "lucide-react";
+import { CalendarCheck, Clock } from "@/components/icons";
+import { Button } from "../components/ui/button";
 import type { Product } from "../../shared/marketplace";
 import type { SellerConversation } from "../../shared/messages";
-import { HOLD_HOURS } from "./config";
+import { HOLD_HOURS, OPEN_QUESTIONS } from "./config";
 import { formatDay, formatDeadline, formatTimeLeft } from "./format";
 import type { Reservation } from "./reservations";
 
@@ -22,7 +23,7 @@ type ThreadBannerProps = {
   onDecline(): void;
 };
 
-/** Shown above a Messages thread with an open reservation. */
+/** Pinned above a Messages thread with an open reservation, like the deal bar. */
 export default function ThreadBanner({
   context,
   listing,
@@ -34,17 +35,19 @@ export default function ThreadBanner({
 }: ThreadBannerProps) {
   if (reservation.status === "held")
     return (
-      <p className="thread-reservation compact" role="status">
+      <p className="chip thread-reservation-chip" role="status">
+        <CalendarCheck size={15} aria-hidden="true" />
         {context.role === "seller"
-          ? `Held for this buyer until ${formatDeadline(reservation.holdUntil!)}.`
-          : `Reserved for you until ${formatDeadline(reservation.holdUntil!)}.`}
+          ? `Reserved for this buyer until ${formatDeadline(reservation.holdUntil!)}`
+          : `Reserved for you until ${formatDeadline(reservation.holdUntil!)}`}
       </p>
     );
   if (context.role === "buyer")
     return (
-      <p className="thread-reservation compact" role="status">
-        Reservation requested · the seller confirms by{" "}
-        {formatDeadline(reservation.replyBy)}.
+      <p className="chip thread-reservation-chip" role="status">
+        <Clock size={15} aria-hidden="true" />
+        Reservation requested · the seller has until{" "}
+        {formatDeadline(reservation.replyBy)} to respond
       </p>
     );
   const left = formatTimeLeft(reservation.replyBy, now);
@@ -57,25 +60,26 @@ export default function ThreadBanner({
         </span>
       </p>
       <p className="thread-reservation-warning">
-        <TriangleAlert size={15} aria-hidden="true" />
-        Reply within {left} or your listing will be hidden.
+        <Clock size={15} aria-hidden="true" />
+        Reply within {left}, or your listing is hidden.
       </p>
       <div className="thread-reservation-actions">
-        <button
+        <Button
           className="button primary small"
           disabled={busy}
           onClick={onConfirm}
         >
-          Confirm & hold {HOLD_HOURS}h
-        </button>
-        <button
+          Confirm reservation · {HOLD_HOURS} h
+        </Button>
+        <Button
           className="button secondary small"
           disabled={busy}
           onClick={onDecline}
         >
-          It's no longer available
-        </button>
+          Mark sold
+        </Button>
       </div>
+      <p className="availability-open-questions">{OPEN_QUESTIONS}</p>
     </section>
   );
 }

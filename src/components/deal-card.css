@@ -1,0 +1,1021 @@
+/* A deal between two students: the listing's tile, the terms as tiles on a tactile card,
+   and the slim bar that stands for the card where room is short. */
+.deal-tile {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--sand);
+  color: var(--kraft-deep);
+  object-fit: cover;
+}
+
+.deal-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-stage);
+  background: var(--surface);
+  box-shadow:
+    0 4px 0 var(--lip),
+    0 18px 34px -26px rgb(41 41 41 / 0.45);
+}
+.deal-card[data-unavailable] {
+  background: var(--canvas);
+}
+.deal-card-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.deal-card-heading {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.deal-card-heading > strong {
+  overflow: hidden;
+  font-size: var(--type-item);
+  font-weight: 700;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.deal-card-heading > span {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  color: var(--muted);
+  font-size: var(--type-caption);
+}
+/* Where the deal stands: a small chip, red when the listing is gone. */
+.deal-card-status.chip {
+  padding: 1px 9px;
+  font-size: var(--type-caption);
+}
+.deal-card-status[data-tone="danger"] {
+  background: #fbe9ea;
+  color: var(--danger);
+}
+.deal-card-terms {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.deal-card-terms > div {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+  padding: 9px 12px;
+  border-radius: 14px;
+  background: var(--canvas);
+}
+.deal-card-terms > div[data-term="amount"] {
+  background: var(--selected);
+}
+.deal-card-terms dt {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 600;
+}
+/* The icon sits on the label's first line, also when a long label wraps. */
+.deal-card-terms dt svg {
+  margin-top: 2px;
+  color: var(--blue);
+}
+.deal-card-terms dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--type-label);
+  font-weight: 700;
+  line-height: 1.35;
+}
+.deal-card-terms > div[data-term="amount"] dd {
+  color: var(--blue-dark);
+  font-size: var(--type-item);
+  font-variant-numeric: tabular-nums;
+}
+.deal-card-note {
+  color: var(--muted);
+  font-size: var(--type-caption);
+}
+.deal-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 20px;
+}
+/* The text actions line up with the card's content instead of their own padding. */
+.deal-card-actions > .button.quiet {
+  padding-inline: 0;
+}
+
+/* Where room is short, the deal waits in a slim bar. */
+.deal-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 8px 8px 8px 10px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 3px 0 var(--lip);
+}
+.deal-bar .deal-tile {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+.deal-bar-copy {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.35;
+}
+.deal-bar-copy strong,
+.deal-bar-copy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.deal-bar-copy strong {
+  font-size: var(--type-label);
+  font-weight: 700;
+}
+.deal-bar-copy span {
+  color: var(--muted);
+  font-size: var(--type-caption);
+}
+
+/* Phones keep the four terms as a compact 2 × 2 grid. */
+@media (max-width: 560px) {
+  .deal-card {
+    padding: 14px;
+  }
+  .deal-card-terms {
+    gap: 6px;
+  }
+  .deal-card-terms > div {
+    padding: 8px 10px;
+    border-radius: 12px;
+  }
+  .deal-card-actions {
+    justify-content: center;
+  }
+  .deal-card-actions > .button.primary {
+    width: 100%;
+  }
+}
+
+/* A few choices as soft pills on a small lip; the chosen one turns blue. */
+.tap-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 8px 15px;
+  border: 2px solid var(--card-line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--blue-dark);
+  font-size: var(--type-label);
+  font-weight: 650;
+  line-height: 1.3;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  box-shadow: 0 2px 0 var(--lip);
+  transition:
+    transform 90ms var(--ease-out),
+    box-shadow 90ms var(--ease-out),
+    border-color 160ms ease,
+    background-color 120ms ease,
+    color 120ms ease;
+}
+.tap-chip:hover:not(:disabled) {
+  border-color: var(--blue);
+  background: var(--selected);
+}
+.tap-chip:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 var(--lip);
+}
+.tap-chip[aria-pressed="true"],
+.tap-chip[aria-pressed="true"]:hover:not(:disabled) {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: var(--on-primary);
+  box-shadow: 0 2px 0 var(--blue-dark);
+}
+
+/* The offer card: Pako's proposal in his bubble, the terms as tiles that open their chips,
+   the message as the other student will read it, and one Send. */
+.offer-editor {
+  display: grid;
+  gap: 16px;
+}
+.offer-pako {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+.offer-pako-figure {
+  margin-top: 4px;
+}
+.offer-pako-bubble {
+  position: relative;
+  padding: 12px 14px;
+  border: 2px solid var(--card-line);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 3px 0 var(--lip);
+}
+/* The tail points at Pako, like his bubbles above a thread's composer. */
+.offer-pako-bubble::before {
+  content: "";
+  position: absolute;
+  top: 18px;
+  left: -9px;
+  width: 14px;
+  height: 14px;
+  border-bottom: 2px solid var(--card-line);
+  border-left: 2px solid var(--card-line);
+  border-bottom-left-radius: 3px;
+  background: var(--surface);
+  transform: rotate(45deg);
+}
+.offer-pako-bubble > p {
+  margin: 0;
+  font-size: var(--type-label);
+  font-weight: 600;
+  line-height: 1.5;
+}
+.offer-terms {
+  display: grid;
+  gap: 10px;
+}
+.offer-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px;
+}
+/* A term on a small lip; the open one turns blue like a chosen chip. */
+.offer-tile.button {
+  --button-depth: 2px;
+  display: grid;
+  align-content: start;
+  justify-content: stretch;
+  justify-items: start;
+  gap: 2px;
+  min-width: 0;
+  min-height: 64px;
+  padding: 9px 12px;
+  border-radius: 14px;
+  text-align: left;
+  white-space: normal;
+}
+.offer-tile.button:not(:disabled):hover {
+  --button-face: var(--selected);
+  border-color: var(--blue);
+}
+.offer-tile.button[aria-expanded="true"] {
+  --button-face: var(--selected);
+  --button-lip: var(--blue-dark);
+  border-color: var(--blue);
+}
+.offer-tile-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 600;
+}
+.offer-tile-label svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--blue);
+}
+.offer-tile-value {
+  max-width: 100%;
+  color: var(--blue-dark);
+  font-size: var(--type-item);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.offer-tile[data-unset] .offer-tile-value {
+  color: var(--blue);
+}
+.offer-tile.button[data-unset]:not([aria-expanded="true"]) {
+  --button-face: var(--butter);
+  border-style: dashed;
+}
+.offer-panel {
+  display: grid;
+  gap: 10px;
+  padding: 2px 0;
+}
+.offer-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.offer-stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.offer-stepper .offer-step {
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--card-line);
+  background: var(--surface);
+  color: var(--blue-dark);
+}
+.offer-stepper .offer-step:hover:not(:disabled) {
+  border-color: var(--blue);
+  background: var(--selected);
+}
+.offer-price-field {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 14px;
+  background: var(--selected);
+  color: var(--blue-dark);
+  font-weight: 700;
+}
+.offer-price-field > span {
+  font-size: var(--type-label);
+}
+.offer-price-field > input {
+  width: 4.5ch;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: var(--type-section);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.offer-price-field:focus-within {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.offer-price-field > input:focus-visible {
+  outline: none;
+}
+.offer-field {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 600;
+}
+.offer-field > input {
+  width: 100%;
+  min-height: 44px;
+  color: var(--ink);
+  font-size: var(--type-body);
+  font-weight: 400;
+}
+.offer-field-hint {
+  color: var(--danger);
+  font-size: var(--type-caption);
+}
+.offer-message-preview {
+  display: grid;
+  gap: 6px;
+}
+.offer-message-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+.offer-message-head > h3 {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 700;
+}
+.offer-message-head > .button.quiet {
+  margin-inline-end: -13px;
+}
+/* The message as it will arrive: a blue bubble like the student's own in a thread. */
+.offer-message-bubble {
+  margin: 0;
+  padding: 11px 14px;
+  border-radius: 18px 18px 6px 18px;
+  background: var(--selected);
+  color: var(--ink);
+  font-size: var(--type-label);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.offer-message {
+  width: 100%;
+  min-height: 88px;
+  font-size: var(--type-label);
+  line-height: 1.5;
+  resize: none;
+}
+.offer-blocker {
+  margin: 0;
+  color: var(--kraft-deep);
+  font-size: var(--type-support);
+  font-weight: 600;
+}
+.offer-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  line-height: 1.45;
+}
+.offer-send {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  text-align: center;
+}
+
+/* The deal in a thread: a calm strip under the header that grows into the card. */
+.thread-deal {
+  container-type: inline-size;
+  flex-shrink: 0;
+  margin-top: 12px;
+  overflow: hidden;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 3px 0 var(--lip);
+}
+.thread-deal[data-expanded] {
+  border-radius: var(--radius-stage);
+  box-shadow:
+    0 4px 0 var(--lip),
+    0 18px 34px -26px rgb(41 41 41 / 0.45);
+}
+/* The other student's move waits for this student: the card stands in blue. */
+.thread-deal[data-tone="needs"] {
+  border-color: var(--blue);
+  box-shadow: 0 3px 0 var(--blue-dark);
+}
+.thread-deal[data-tone="needs"][data-expanded] {
+  box-shadow:
+    0 4px 0 var(--blue-dark),
+    0 18px 34px -26px rgb(41 41 41 / 0.45);
+}
+.thread-deal[data-tone="closed"] {
+  background: var(--canvas);
+  box-shadow: none;
+}
+.deal-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  padding: 7px 12px 7px 7px;
+  border-radius: 0;
+  text-align: left;
+}
+button.deal-strip:hover {
+  background: var(--canvas);
+}
+.thread-deal[data-tone="needs"] button.deal-strip:hover {
+  background: var(--selected);
+}
+.deal-strip .deal-tile {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+.thread-deal[data-tone="closed"] .deal-tile {
+  filter: grayscale(1);
+  opacity: 0.7;
+}
+.deal-strip-words {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--type-label);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.deal-strip-words strong {
+  font-weight: 700;
+}
+.thread-deal[data-tone="booked"] .deal-strip-words strong,
+.thread-deal[data-tone="needs"] .deal-strip-words strong {
+  color: var(--blue-dark);
+}
+.deal-strip-detail {
+  color: var(--muted);
+}
+/* A closed deal has room to say why in full: its words wrap beside the action. */
+.thread-deal[data-tone="closed"] .deal-strip-words {
+  white-space: normal;
+}
+.thread-deal[data-tone="closed"] .deal-strip-detail {
+  display: block;
+}
+.thread-deal[data-tone="closed"] .deal-strip-detail > [aria-hidden] {
+  display: none;
+}
+.deal-strip-status {
+  flex: none;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--selected);
+  color: var(--blue-dark);
+  font-size: var(--type-caption);
+  font-weight: 700;
+  line-height: 1.4;
+}
+.deal-strip-chevron {
+  flex: none;
+  color: var(--muted);
+  transition: rotate 220ms var(--ease-out);
+}
+.thread-deal[data-expanded] .deal-strip-chevron {
+  rotate: 180deg;
+}
+.deal-strip > .button.small {
+  flex: none;
+}
+.deal-card-body {
+  display: grid;
+  gap: 12px;
+  padding: 2px 14px 14px;
+}
+/* Who confirmed: a check for the side whose offer it is, dots for the side that decides. */
+.deal-seats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.deal-seat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--canvas);
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 700;
+}
+.deal-seat[data-done] {
+  background: var(--selected);
+  color: var(--blue-dark);
+}
+.deal-card-term-note {
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 500;
+}
+.deal-card-quote {
+  font-style: italic;
+}
+.deal-card-term-note a {
+  color: var(--blue);
+  font-weight: 700;
+}
+.deal-card-term-note a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* One main action with its lip and what it sends right under it, the quieter actions
+   after them; a wide card puts the quieter ones beside the main one. */
+.deal-card-choices,
+.deal-card-confirm {
+  display: grid;
+  gap: 8px;
+}
+.deal-card-choices {
+  grid-template-areas: "primary" "sends" "others";
+  gap: 6px;
+}
+.deal-card-choices > .button.primary {
+  grid-area: primary;
+}
+.deal-card-choices > .deal-card-sends {
+  grid-area: sends;
+}
+.deal-card-choices > .deal-card-actions {
+  grid-area: others;
+}
+/* Exactly what a tap sends, under the button that sends it. */
+.deal-card-sends {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.deal-card-sends q {
+  color: var(--ink);
+}
+.deal-card-question {
+  font-size: var(--type-label);
+  font-weight: 700;
+}
+.thread-deal .deal-card-actions {
+  justify-content: flex-start;
+  gap: 0 18px;
+}
+.thread-deal .deal-card-actions > .button.quiet {
+  min-height: 44px;
+}
+/* A wide thread lays the four terms out in one row and the main action beside the others. */
+@container (min-width: 640px) {
+  .thread-deal .deal-card-terms {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .deal-card-choices:has(> .button.primary) {
+    grid-template-columns: minmax(220px, auto) 1fr;
+    grid-template-areas: "primary others" "sends sends";
+    align-items: center;
+    column-gap: 20px;
+  }
+}
+
+/* What a message changed in the deal, centred under it like the date. */
+.chat-event {
+  display: flex;
+  justify-content: center;
+  margin: 2px 0;
+}
+.chat-event > span {
+  max-width: 100%;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--selected);
+  color: var(--blue-dark);
+  font-size: var(--type-caption);
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+}
+.chat-event[data-system] > span {
+  background: var(--canvas);
+  color: var(--muted);
+}
+.chat-event[data-pako] > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 6px;
+  border: 2px solid var(--card-line);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+/* After a released pickup: the next interested buyer, one tap to prepare the message. */
+.deal-next-buyer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  padding: 0 14px 14px;
+}
+.deal-next-buyer > p {
+  flex: 1 1 220px;
+  font-size: var(--type-label);
+  font-weight: 600;
+  line-height: 1.45;
+}
+@media (max-width: 560px) {
+  .deal-next-buyer > .button {
+    width: 100%;
+  }
+}
+
+/* Pickup day: the countdown leads, then what and where, the other student's news,
+   Pako's line and the actions the pickup allows now. */
+.pickup-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--selected);
+  color: var(--blue-dark);
+}
+.pickup-head-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: var(--on-primary);
+}
+.pickup-head-words {
+  display: grid;
+  min-width: 0;
+  line-height: 1.3;
+}
+.pickup-countdown {
+  font-size: var(--type-item);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.pickup-head-words > span {
+  color: var(--ink);
+  font-size: var(--type-label);
+  font-weight: 600;
+}
+.pickup-card[data-phase="overdue"] .pickup-head {
+  background: var(--butter);
+  color: var(--ink);
+}
+.pickup-card[data-phase="overdue"] .pickup-head-icon {
+  background: var(--kraft-deep);
+}
+.pickup-facts {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: 8px;
+  margin: 0;
+}
+.pickup-facts > div {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+  padding: 9px 12px;
+  border-radius: 14px;
+  background: var(--canvas);
+}
+.pickup-facts dt {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 600;
+}
+.pickup-facts dt svg {
+  color: var(--blue);
+}
+.pickup-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--type-label);
+  font-weight: 700;
+  line-height: 1.35;
+}
+.pickup-facts dd.deal-card-term-note {
+  font-size: var(--type-caption);
+  font-weight: 500;
+}
+/* The other student's news stands out on a lip; the student's own stays quiet. */
+.pickup-signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pickup-signal {
+  padding: 7px 12px;
+  border: 2px solid var(--blue);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: 0 2px 0 var(--blue-dark);
+  color: var(--blue-dark);
+  font-size: var(--type-label);
+  font-weight: 800;
+}
+.pickup-signal[data-mine] {
+  border-color: transparent;
+  background: var(--canvas);
+  box-shadow: none;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 700;
+}
+/* The booked time and the new one side by side until the other side answers. */
+.pickup-compare {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: 8px;
+}
+.pickup-compare > p {
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 2px solid var(--card-line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.pickup-compare > p[data-side="current"] {
+  background: var(--canvas);
+  color: var(--muted);
+}
+.pickup-compare > p[data-side="proposed"] {
+  border-color: var(--blue);
+  box-shadow: 0 2px 0 var(--blue-dark);
+  color: var(--blue-dark);
+}
+.pickup-compare small {
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 600;
+}
+.pickup-compare strong {
+  overflow-wrap: anywhere;
+  font-size: var(--type-label);
+}
+.pickup-compare-arrow {
+  align-self: center;
+  color: var(--muted);
+}
+/* Pako's line for the moment, in a small bubble beside him. */
+.pickup-pako {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+.pickup-pako-bubble {
+  position: relative;
+  padding: 9px 12px;
+  border: 2px solid var(--card-line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 2px 0 var(--lip);
+  font-size: var(--type-label);
+  font-weight: 600;
+  line-height: 1.45;
+}
+.pickup-pako-bubble::before {
+  content: "";
+  position: absolute;
+  top: calc(50% - 6px);
+  left: -8px;
+  width: 12px;
+  height: 12px;
+  border-bottom: 2px solid var(--card-line);
+  border-left: 2px solid var(--card-line);
+  border-bottom-left-radius: 3px;
+  background: var(--surface);
+  transform: rotate(45deg);
+}
+/* The exact message stays readable in full before it goes out. */
+.pickup-card .deal-card-sends {
+  display: block;
+  overflow: visible;
+}
+.pickup-card .deal-card-choices > .pickup-choice[data-primary] {
+  grid-area: primary;
+}
+.pickup-card .deal-card-choices > .pickup-actions {
+  grid-area: others;
+}
+.pickup-choice {
+  display: inline-grid;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+}
+.pickup-choice[data-primary] {
+  display: grid;
+}
+.pickup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0 18px;
+}
+.pickup-actions > .pickup-choice > .button.quiet {
+  min-height: 44px;
+  padding-inline: 0;
+  justify-content: flex-start;
+}
+.pickup-reason {
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 500;
+  line-height: 1.4;
+}
+.pickup-actions .pickup-reason {
+  max-width: 22ch;
+  margin-top: -6px;
+}
+/* A day after the pickup: Pako's question in a warm head, each answer with its message. */
+.pickup-head[data-check="open"] {
+  background: var(--butter);
+  color: var(--ink);
+}
+.pickup-head[data-check="open"] .pickup-head-icon {
+  background: var(--kraft-deep);
+}
+.pickup-head[data-check="expired"] {
+  background: var(--canvas);
+  color: var(--muted);
+}
+.pickup-head[data-check="expired"] .pickup-head-icon {
+  background: var(--lip);
+  color: var(--ink);
+}
+.pickup-answers {
+  display: grid;
+  gap: 12px;
+}
+.pickup-answer {
+  display: grid;
+  gap: 4px;
+}
+.pickup-answer > .button {
+  width: 100%;
+}
+.pickup-answer-effect {
+  display: block;
+  margin-top: 2px;
+  font-weight: 600;
+}
+@container (min-width: 640px) {
+  .pickup-answers {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 16px;
+  }
+}
+@container (min-width: 640px) {
+  .pickup-card .deal-card-choices:has(> .pickup-choice[data-primary]) {
+    grid-template-columns: minmax(220px, auto) 1fr;
+    grid-template-areas: "primary others" "sends sends";
+    align-items: center;
+    column-gap: 20px;
+  }
+}
+
+@media (max-width: 760px) {
+  .thread-deal {
+    margin-top: 8px;
+  }
+  /* The terms matter more than whose turn it is, which the card and Pako say too. */
+  .deal-strip-status {
+    display: none;
+  }
+  /* While the keyboard is open the card folds into its strip, leaving room to write. */
+  :root[data-keyboard-open] .thread-deal .deal-card-body {
+    display: none;
+  }
+  :root[data-keyboard-open] .thread-deal .deal-strip-chevron {
+    rotate: 0deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .deal-strip-chevron {
+    transition: none;
+  }
+}
+
+/* Home: the student's live deals as slim bars above their listings. */
+.home-deals-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: 12px;
+  margin: 0 0 var(--space-section);
+  padding: 0;
+  list-style: none;
+}
+.home-deal[data-tone="needs"] {
+  border-color: var(--blue);
+  box-shadow: 0 3px 0 var(--blue-dark);
+}
+.home-deal > .button.small {
+  flex: none;
+  min-height: 44px;
+}

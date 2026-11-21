@@ -1,0 +1,455 @@
+/* "Just take photos": a camera shot turns into a written listing. */
+.ob-snap {
+  display: flex;
+  flex-direction: column;
+  height: 356px;
+  padding: 14px;
+}
+/* The tag sits on the camera's top bar, then beside the listing title. */
+.ob-snap .ob-demo-tag {
+  top: 19px;
+  right: 22px;
+}
+
+.ob-snap-camera,
+.ob-snap-listing {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Camera */
+.ob-snap-viewfinder {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 14px 14px;
+  border-radius: 18px;
+  background: #1f2330;
+}
+.ob-snap-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  height: 32px;
+  color: rgb(255 255 255 / 0.72);
+}
+/* Room around the frame keeps its corner brackets clear of the camera bar and its tag. */
+.ob-snap-lens {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  min-height: 0;
+  padding-block: 10px;
+  container-type: size;
+}
+.ob-snap-frame {
+  position: relative;
+  width: min(100cqw, 100cqh * 4 / 3);
+  aspect-ratio: 4 / 3;
+}
+.ob-snap-corner {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 0 solid #fff;
+  pointer-events: none;
+}
+.ob-snap-corner.tl {
+  top: -8px;
+  left: -8px;
+  border-top-width: 3px;
+  border-left-width: 3px;
+  border-top-left-radius: 6px;
+}
+.ob-snap-corner.tr {
+  top: -8px;
+  right: -8px;
+  border-top-width: 3px;
+  border-right-width: 3px;
+  border-top-right-radius: 6px;
+}
+.ob-snap-corner.bl {
+  bottom: -8px;
+  left: -8px;
+  border-bottom-width: 3px;
+  border-left-width: 3px;
+  border-bottom-left-radius: 6px;
+}
+.ob-snap-corner.br {
+  right: -8px;
+  bottom: -8px;
+  border-right-width: 3px;
+  border-bottom-width: 3px;
+  border-bottom-right-radius: 6px;
+}
+.ob-snap-focus {
+  position: absolute;
+  top: 54%;
+  left: 50%;
+  width: 44%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border: 2.5px solid var(--sun);
+  border-radius: 12px;
+  filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.35));
+  pointer-events: none;
+}
+
+.ob-snap-controls {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding-top: 12px;
+}
+.ob-snap-shutter {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  padding: 4px;
+  border: 4px solid var(--blue);
+  border-radius: 50%;
+  background: var(--surface);
+}
+.ob-snap-shutter:disabled {
+  opacity: 1;
+}
+.ob-snap-shutter-core {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--blue);
+  color: var(--on-primary);
+  transition:
+    transform 120ms var(--ease-out),
+    background-color 160ms ease;
+}
+.ob-snap-shutter:not(:disabled):hover .ob-snap-shutter-core {
+  background: var(--blue-dark);
+}
+.ob-snap-shutter:active .ob-snap-shutter-core,
+.ob-snap-shutter:disabled .ob-snap-shutter-core {
+  transform: scale(0.86);
+}
+
+/* The snapshot: a room corner drawn in proportions, so it scales as one piece. */
+.ob-snap-photo {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #f1e3cf;
+}
+.ob-snap-window {
+  position: absolute;
+  top: 12%;
+  left: 11%;
+  width: 21%;
+  height: 31%;
+  border-radius: 6% / 4.5%;
+  background: #d9e3fa;
+}
+.ob-snap-window::before,
+.ob-snap-window::after {
+  content: "";
+  position: absolute;
+  background: #f1e3cf;
+}
+.ob-snap-window::before {
+  top: 0;
+  bottom: 0;
+  left: 46%;
+  width: 8%;
+}
+.ob-snap-window::after {
+  top: 46%;
+  right: 0;
+  left: 0;
+  height: 6%;
+}
+.ob-snap-floor {
+  position: absolute;
+  inset: auto 0 0;
+  height: 30%;
+  background: #dcc09a;
+}
+.ob-snap-floor::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 10%;
+  background: #cba97d;
+}
+.ob-snap-shadow {
+  position: absolute;
+  bottom: 17.5%;
+  left: 50%;
+  width: 36%;
+  height: 7%;
+  translate: -50% 0;
+  border-radius: 50%;
+  background: rgb(41 41 41 / 0.14);
+}
+.ob-snap-item {
+  position: absolute;
+  bottom: 19%;
+  left: 50%;
+  width: 40%;
+  height: auto;
+  translate: -50% 0;
+  color: #2d2c29;
+}
+
+/* Listing draft */
+.ob-snap-listing {
+  position: relative;
+}
+.ob-snap-listing:focus {
+  outline: none;
+}
+.ob-snap-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.ob-snap-head-text {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+  padding-top: 2px;
+}
+.ob-snap-title {
+  /* Keeps the first lines clear of the Example tag. */
+  padding-right: 66px;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+}
+.ob-snap-price {
+  color: var(--blue);
+  font-size: 1.375rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+.ob-snap-thumb {
+  position: relative;
+  flex: none;
+  width: 80px;
+  aspect-ratio: 4 / 3;
+}
+.ob-snap-details {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.ob-snap-facts {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+.ob-snap-facts > div {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  align-items: center;
+  min-height: 24px;
+}
+.ob-snap-facts dt {
+  color: var(--muted);
+  font-size: var(--type-support);
+  font-weight: 500;
+}
+.ob-snap-facts dd {
+  margin: 0;
+  font-size: var(--type-label);
+  font-weight: 600;
+  line-height: 1.5;
+}
+.ob-snap-pickup {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.ob-snap-pickup > svg {
+  color: var(--blue);
+}
+.ob-snap-description {
+  padding-top: 8px;
+  border-top: 1px solid var(--card-line);
+  color: var(--muted);
+  font-size: 0.84375rem;
+  line-height: 1.45;
+}
+
+/* A field keeps the finished text's box; skeleton and typed ink sit on top of it. */
+.ob-snap-field {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: top;
+}
+.ob-snap-ghost {
+  visibility: hidden;
+}
+.ob-snap-ink {
+  position: absolute;
+  inset: 0;
+}
+.ob-snap-description .ob-snap-ghost,
+.ob-snap-description .ob-snap-ink {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.ob-snap-spark {
+  margin-left: 3px;
+  color: var(--blue);
+  vertical-align: -2px;
+}
+.ob-snap-skeleton {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 0.62em;
+  translate: 0 -50%;
+  border-radius: 6px;
+  background: #ebebe5;
+}
+.ob-snap-description .ob-snap-skeleton {
+  top: 0;
+  bottom: 0;
+  display: grid;
+  grid-auto-rows: 1.45em;
+  align-items: center;
+  height: auto;
+  overflow: hidden;
+  translate: none;
+  background: none;
+}
+.ob-snap-description .ob-snap-skeleton > i {
+  height: 0.62em;
+  border-radius: 6px;
+  background: #ebebe5;
+}
+.ob-snap-description .ob-snap-skeleton > i:nth-child(2) {
+  width: 92%;
+}
+.ob-snap-description .ob-snap-skeleton > i:nth-child(3) {
+  width: 58%;
+}
+
+.ob-snap-footer {
+  display: flex;
+  align-items: flex-end;
+  min-height: 66px;
+  margin-top: auto;
+  padding-top: 10px;
+}
+.ob-snap-publish {
+  width: 100%;
+}
+.ob-snap-live {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 14px;
+  border-radius: 14px;
+  background: var(--selected);
+  color: var(--blue-dark);
+  font-size: var(--type-label);
+  font-weight: 600;
+  line-height: 1.35;
+}
+.ob-snap-live:focus {
+  outline: none;
+}
+.ob-snap-live > svg {
+  flex: none;
+  color: var(--blue);
+}
+
+/* A rubber stamp in packing-tape blue: two crisp rules, no texture. */
+.ob-snap-stamp {
+  position: absolute;
+  top: 92px;
+  right: 6px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px 6px 10px;
+  border: 3px solid var(--blue);
+  border-radius: 10px;
+  outline: 1.5px solid var(--blue);
+  outline-offset: 2px;
+  background: rgb(255 255 255 / 0.9);
+  color: var(--blue);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.ob-snap-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: #fff;
+  pointer-events: none;
+}
+
+@media (min-width: 761px) {
+  .ob-snap {
+    height: 392px;
+    padding: 16px;
+  }
+  .ob-snap .ob-demo-tag {
+    top: 21px;
+    right: 24px;
+  }
+  .ob-snap-thumb {
+    width: 96px;
+  }
+  .ob-snap-title {
+    padding-right: 72px;
+  }
+  .ob-snap-stamp {
+    top: 104px;
+    right: 12px;
+  }
+}
+
+@media (max-width: 340px) {
+  .ob-snap {
+    padding: 12px;
+  }
+  .ob-snap .ob-demo-tag {
+    top: 17px;
+    right: 20px;
+  }
+  .ob-snap-viewfinder {
+    padding: 0 12px 12px;
+  }
+  .ob-snap-thumb {
+    width: 72px;
+  }
+  .ob-snap-facts > div {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+}

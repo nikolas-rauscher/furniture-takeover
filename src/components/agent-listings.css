@@ -2,127 +2,296 @@
   container: agent-listings / inline-size;
   min-width: 0;
 }
+/* Keeps the arrows' height, so the cards don't move when the arrows appear. */
 .agent-listings-heading {
   display: flex;
   align-items: center;
-  gap: var(--space-label);
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 47px;
+  margin-bottom: 12px;
 }
 .agent-listings-heading h3 {
   margin: 0;
   font-size: var(--type-label);
-  font-weight: 550;
+  font-weight: 700;
 }
-.agent-listings [data-slot="item-group"] {
-  gap: 0;
+.agent-listings-heading [data-slot="badge"] {
+  height: auto;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--selected);
+  color: var(--blue-dark);
+  font-weight: 700;
 }
-.agent-listings [data-slot="item-separator"] {
-  margin-block: 0;
-}
-.agent-listing[data-slot="item"] {
-  display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
-  align-items: start;
-  gap: var(--space-label) var(--space-field);
-  padding: var(--space-label) 0;
-  border: 0;
-  border-radius: 0;
-}
-.agent-listing [data-slot="item-media"] {
-  width: 64px;
-  height: 64px;
-  transform: none;
-  background: var(--mist);
-}
-.agent-listing .agent-listing-photo {
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  color: var(--muted);
-}
-.agent-listing [data-slot="item-content"] {
-  min-width: 0;
-  gap: 3px;
-}
-.agent-listing [data-slot="item-title"] {
-  display: block;
-  width: 100%;
-  overflow: visible;
-}
-.agent-listing .agent-listing-title {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  justify-content: flex-start;
-  min-height: 44px;
-  padding: 0;
-  text-align: left;
-  white-space: normal;
-  font-size: var(--type-label);
-  font-weight: 550;
-  line-height: 1.4;
-  color: var(--ink);
-}
-.agent-listing-price {
-  font-size: var(--type-support);
-  font-weight: 400;
-  line-height: 1.5;
-  color: var(--muted);
-}
-.agent-listing-price strong {
-  color: var(--ink);
-  font-weight: 550;
-}
-.agent-listing [data-slot="item-description"] {
-  display: block;
-  -webkit-line-clamp: unset;
-  overflow: visible;
-  margin: 0;
-  font-size: var(--type-support);
-  line-height: 1.5;
-  color: var(--muted);
-}
-.agent-listing [data-slot="item-description"] strong {
-  color: var(--ink);
-  font-weight: 550;
-}
-.agent-listing [data-slot="item-actions"] {
-  grid-column: 1 / -1;
-  justify-content: flex-end;
-  flex-wrap: wrap;
+.agent-carousel-controls {
+  display: flex;
+  align-items: center;
   gap: 8px;
+  margin-left: auto;
 }
-.agent-listing [data-slot="item-actions"] > .agent-listing-offer {
-  min-height: var(--control-size);
-  padding: var(--space-label) var(--space-field);
-  font-size: var(--type-caption);
+.agent-carousel-controls [data-slot^="carousel-"] {
+  position: static;
+  inset: auto;
+  translate: none;
+  /* Animate UI aligns overlay arrows; these controls belong in the header. */
+  transform: none !important;
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  margin: 0 0 3px;
+  padding: 0;
+  border-radius: 50%;
   color: var(--blue);
 }
-@container agent-listings (min-width: 560px) {
-  .agent-listing[data-slot="item"] {
-    grid-template-columns: 64px minmax(0, 1fr) auto;
-  }
-  .agent-listing [data-slot="item-actions"] {
-    grid-column: 3;
-    align-self: center;
+/* Base UI keeps boundary controls focusable via aria-disabled. */
+.agent-carousel-controls [aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.45;
+}
+.agent-product-track {
+  margin-left: -12px;
+  /* Room for the card lips and the sticker above the first card. */
+  padding-block: 12px 4px;
+  align-items: stretch;
+}
+.agent-product-slide {
+  display: flex;
+  flex-basis: calc(100% - 28px);
+  padding-left: 12px;
+}
+/* A result is the intro's offer card: photo tile, the facts, the price, one action.
+   It stays compact so Pako's explanation below remains in view. */
+.agent-product-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 3px 0 var(--lip);
+  transition: border-color 160ms ease;
+}
+.agent-product-card.arriving {
+  animation: agent-card-rise 460ms var(--ease-out) both;
+  animation-delay: calc(140ms + var(--stagger, 0) * 70ms);
+}
+.agent-product-card:hover {
+  border-color: #c9d2f3;
+}
+@keyframes agent-card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
   }
 }
-@media (max-width: 760px) {
-  .agent-listing[data-slot="item"] {
-    gap: 8px 12px;
-    padding-block: 8px;
+.has-single-product .agent-product-card {
+  max-width: 36rem;
+  margin-top: 10px;
+}
+/* Pako's first pick stands on a kraft lip, with a sticker like a label on a moving box. */
+.agent-product-card.is-best {
+  border-color: var(--kraft-light);
+  background: linear-gradient(var(--butter), var(--surface) 70%);
+  box-shadow: 0 3px 0 var(--kraft-shade);
+}
+.agent-product-best {
+  position: absolute;
+  top: -11px;
+  left: 18px;
+  z-index: 1;
+  padding: 2px 9px;
+  border-radius: 6px;
+  background: var(--kraft);
+  color: var(--ink);
+  font-size: var(--type-caption);
+  font-weight: 700;
+  line-height: 1.4;
+  box-shadow: 0 2px 6px -2px rgb(41 41 41 / 0.3);
+  transform: rotate(-2deg);
+  pointer-events: none;
+}
+.agent-product-card .agent-product-photo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 88px;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border-radius: 12px;
+  color: var(--kraft-deep);
+  background: var(--sand);
+}
+.agent-product-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: scale 260ms var(--ease-out);
+}
+.agent-product-card:hover .agent-product-photo img {
+  scale: 1.04;
+}
+.agent-product-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 88px;
+  gap: 2px;
+}
+.agent-product-content h4 {
+  margin: 0;
+}
+.agent-product-card .agent-product-title {
+  justify-content: flex-start;
+  min-height: 0;
+  padding: 0;
+  color: var(--ink);
+  text-align: left;
+  white-space: normal;
+  font-size: var(--type-item);
+  font-weight: 650;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.agent-product-card .agent-product-title:hover {
+  color: var(--blue);
+}
+.agent-product-content p {
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--muted);
+  font-size: var(--type-support);
+  line-height: 1.45;
+}
+.agent-product-content .agent-product-pickup {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--kraft-deep);
+  font-weight: 600;
+}
+.agent-product-pickup svg {
+  flex: none;
+}
+.agent-product-pickup span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* While Pako ranks, one card-sized place holds the lane so nothing below moves. */
+.agent-product-placeholder {
+  box-sizing: border-box;
+  min-height: 183px;
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  max-width: 36rem;
+  margin-block: 12px 4px;
+  padding: 10px;
+  border: 2px dashed var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.agent-product-placeholder .agent-product-photo {
+  display: block;
+  width: 88px;
+  height: 88px;
+  border-radius: 12px;
+  background: var(--sand);
+}
+.agent-product-placeholder-lines {
+  display: grid;
+  gap: 10px;
+}
+.agent-product-placeholder-lines > span {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--canvas);
+  animation: agent-placeholder-breathe 1.6s ease-in-out infinite alternate;
+}
+.agent-product-placeholder-lines > span:nth-child(1) {
+  width: 70%;
+}
+.agent-product-placeholder-lines > span:nth-child(2) {
+  width: 52%;
+}
+.agent-product-placeholder-lines > span:nth-child(3) {
+  width: 36%;
+}
+@keyframes agent-placeholder-breathe {
+  to {
+    opacity: 0.45;
   }
-  .agent-listing .agent-listing-title {
-    font-size: var(--type-item);
+}
+.agent-product-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+.agent-product-price {
+  color: var(--ink);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+.agent-product-card .agent-product-offer {
+  color: var(--blue);
+}
+@container agent-listings (max-width: 22rem) {
+  .agent-product-card {
+    grid-template-columns: 72px minmax(0, 1fr);
   }
-  .agent-listing [data-slot="item-description"] {
-    font-size: var(--type-support);
-    line-height: 1.45;
+  .agent-product-card .agent-product-photo {
+    width: 72px;
+    height: 72px;
   }
-  .agent-listing [data-slot="item-actions"] {
-    flex-wrap: nowrap;
+  .agent-product-content {
+    min-height: 72px;
   }
-  .agent-listing [data-slot="item-actions"] > .agent-listing-offer {
-    flex: 1;
-    font-size: var(--type-label);
+  .agent-product-placeholder {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+  .agent-product-placeholder .agent-product-photo {
+    width: 72px;
+    height: 72px;
+  }
+}
+@container agent-listings (min-width: 35rem) {
+  .agent-product-slide {
+    flex-basis: 50%;
+  }
+  /* Two cards side by side keep their titles on one line, so a card is a little shorter. */
+  .agent-product-placeholder {
+    min-height: 171px;
+  }
+}
+@container agent-listings (min-width: 58rem) {
+  .agent-product-slide {
+    flex-basis: 33.333333%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent-product-card.arriving,
+  .agent-product-placeholder-lines > span {
+    animation: none;
+  }
+  .agent-product-photo img {
+    transition: none;
   }
 }

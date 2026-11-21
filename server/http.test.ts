@@ -11,7 +11,14 @@ import {
   fakeFetch,
 } from "./testing/provider.ts";
 import { unavailableKeyStatus } from "./account-keys.ts";
+import {
+  MAX_BATCH_PHOTOS,
+  MAX_PHOTO_PREVIEW_BYTES,
+} from "../shared/listingPhotos.ts";
 import { mkdtemp, mkdir, writeFile, symlink, rm } from "node:fs/promises";
+import type { ThreadAgent } from "./thread-agent.ts";
+import type { ThreadTurn, ThreadTurnRequest } from "../shared/threadTurn.ts";
+import { AgentError } from "./errors.ts";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -33,6 +40,44 @@ async function startServer(
     url: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
   };
 }
+
+const readingRequest: ThreadTurnRequest = {
+  intent: "thread_turn",
+  trigger: "reply",
+  role: "seller",
+  listing: { title: "Desk chair", price: 30, status: "active" },
+  deal: null,
+  messages: [
+    {
+      id: "m1",
+      from: "them",
+      text: "Hi! Could I get it for 20?",
+      at: "2026-11-19T13:00:00.000Z",
+    },
+  ],
+};
+const reading: ThreadTurn = {
+  forMessageId: "m1",
+  summary: "{other} offers CHF 20.",
+  language: "en",
+  stance: "offer",
+  facts: {},
+  pickupAt: null,
+  agreement: { status: "none", missing: [] },
+  options: [
+    {
+      id: "opt-1",
+      label: "Meet at CHF 25",
+      kind: "counter",
+      message: "Could we meet at CHF 25?",
+      terms: null,
+    },
+  ],
+};
+const readerOf = (turn: ThreadAgent["turn"]): ThreadAgent => ({
+  configured: true,
+  turn,
+});
 
 test("production hosting serves built assets but never source, secrets or escaped paths", async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "takeover-hosting-"));
@@ -113,9 +158,13 @@ test("daily allowance blocks both agent routes before provider work and health c
           supabaseKey: "public-test-key",
         },
         authorize: async () => "alice",
-        quota: async (_authorization, spend = false) => {
+        quota: async (userId, spend = false) => {
+          assert.equal(userId, "alice");
           reservations.push(spend);
           return { allowed, limit: 50, remaining: allowed ? 49 : 0, resetAt };
+        },
+        spendReplyReading: async () => {
+          throw new Error("Searches never spend reply readings");
         },
       },
       runtime: {
@@ -148,6 +197,15 @@ test("daily allowance blocks both agent routes before provider work and health c
     assert.ok(Number(result.headers.get("Retry-After")) > 0);
   }
   assert.equal(providerCalls, 0);
+  assert.deepEqual(reservations, [false, true, true]);
+  for (const path of ["/api/agent/assist", "/api/agent/run"]) {
+    const invalid = await fetch(url + path, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ intent: "search" }),
+    });
+    assert.equal(invalid.status, 400);
+  }
   assert.deepEqual(reservations, [false, true, true]);
   allowed = true;
   assert.equal(
@@ -187,6 +245,9 @@ test("too many pending token validations are rejected before another Supabase au
         throw new AgentError(401, "AUTH_REQUIRED", "Sign in.");
       },
       quota: async () => {
+        throw new Error("Must not reach quotas without auth");
+      },
+      spendReplyReading: async () => {
         throw new Error("Must not reach quotas without auth");
       },
     },
@@ -249,6 +310,9 @@ test("account keys and AI requests use only the authenticated owner's credential
           remaining: 49,
           resetAt: "2026-12-01T00:00:00Z",
         }),
+        spendReplyReading: async () => {
+          throw new Error("This test reads no replies");
+        },
       },
       accountKeys: {
         status: async (owner) => status(owner),
@@ -291,6 +355,10 @@ test("account keys and AI requests use only the authenticated owner's credential
               });
             },
           },
+          threads: readerOf(async () => {
+            seen.push(owner);
+            return reading;
+          }),
         };
       },
     },
@@ -368,6 +436,34 @@ test(
   },
 );
 
+test("a failed photo reading answers 502 and leaves one log line with the provider's status", async (t) => {
+  const logged: unknown[][] = [];
+  t.mock.method(console, "error", (...line: unknown[]) => logged.push(line));
+  const service = createAgentService({
+    ...fakeConfig,
+    fetchImpl: fakeFetch(async () => new Response("down", { status: 500 })),
+  });
+  const instance = await startServer(t, service);
+  const response = await fetch(`${instance.url}/api/agent/assist`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ intent: "listing", text: "desk" }),
+  });
+  assert.equal(response.status, 502);
+  assert.equal((await response.json()).error.code, "PROVIDER_ERROR");
+  assert.deepEqual(logged, [
+    [
+      "[request]",
+      JSON.stringify({
+        path: "/api/agent/assist",
+        status: 502,
+        code: "PROVIDER_ERROR",
+        cause: { providerStatus: 500 },
+      }),
+    ],
+  ]);
+});
+
 test(
   "HTTP rejects malformed and oversized bodies before provider work",
   { timeout: 5000 },
@@ -431,6 +527,45 @@ test(
     assert.equal((await first).status, 200);
   },
 );
+
+test("HTTP gives a queued agent request the next available slot", async (t) => {
+  let finished!: () => void;
+  let entered!: () => void;
+  const firstStarted = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const firstGate = new Promise<void>((resolve) => {
+    finished = resolve;
+  });
+  let starts = 0;
+  const service = createAgentService({
+    ...fakeConfig,
+    fetchImpl: fakeFetch(async () => {
+      if (++starts === 1) {
+        entered();
+        await firstGate;
+      }
+      return completion(output);
+    }),
+  });
+  t.after(finished);
+  const { url } = await startServer(t, service, { maxConcurrent: 1 });
+  const assist = () =>
+    fetch(url + "/api/agent/assist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ intent: "search", text: "desk" }),
+    });
+  const first = assist();
+  await firstStarted;
+  const second = assist();
+  await new Promise((resolve) => setTimeout(resolve, 40));
+  assert.equal(starts, 1);
+  finished();
+  assert.equal((await first).status, 200);
+  assert.equal((await second).status, 200);
+  assert.equal(starts, 2);
+});
 
 test(
   "disconnecting an HTTP caller cancels the provider request",
@@ -578,6 +713,34 @@ test(
     assert.equal(invalid.status, 400);
   },
 );
+
+test(
+  "sorting the most photos, each at its full preview share, fits the request body limit",
+  { timeout: 5000 },
+  async (t) => {
+    const preview = Buffer.alloc(Math.floor(MAX_PHOTO_PREVIEW_BYTES));
+    preview.set([0xff, 0xd8, 0xff]);
+    const images = Array<string>(MAX_BATCH_PHOTOS).fill(
+      `data:image/jpeg;base64,${preview.toString("base64")}`,
+    );
+    const body = JSON.stringify({ images, itemCount: MAX_BATCH_PHOTOS });
+    assert.ok(Buffer.byteLength(body) <= MAX_BODY_BYTES);
+    const service = createAgentService({
+      ...fakeConfig,
+      fetchImpl: fakeFetch(async () =>
+        completion({ groups: images.map((_, index) => ({ photos: [index] })) }),
+      ),
+    });
+    const { url } = await startServer(t, service);
+    const response = await fetch(`${url}/api/agent/group-photos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).groups.length, MAX_BATCH_PHOTOS);
+  },
+);
 test("cloud mode exposes only public config and guards all AI and old demo routes", async (t) => {
   const { AgentError } = await import("./errors.ts");
   let calls = 0;
@@ -602,6 +765,9 @@ test("cloud mode exposes only public config and guards all AI and old demo route
           remaining: 49,
           resetAt: "2026-12-01T00:00:00Z",
         }),
+        spendReplyReading: async () => {
+          throw new Error("This test reads no replies");
+        },
       },
     },
   );
@@ -610,13 +776,17 @@ test("cloud mode exposes only public config and guards all AI and old demo route
     supabaseUrl: "https://example.supabase.co",
     supabaseKey: "public-test-key",
   });
-  for (const route of ["/api/agent/assist", "/api/agent/run"])
+  for (const route of [
+    "/api/agent/assist",
+    "/api/agent/run",
+    "/api/agent/thread",
+  ])
     assert.equal(
       (await fetch(instance.url + route, { method: "POST", body: "{}" }))
         .status,
       401,
     );
-  assert.equal(calls, 2);
+  assert.equal(calls, 3);
   for (const route of [
     "/api/listings",
     "/api/listings/demo/update",
@@ -632,4 +802,308 @@ test("cloud mode exposes only public config and guards all AI and old demo route
     body: JSON.stringify({ intent: "search", text: "desk" }),
   });
   assert.equal(allowed.status, 503); // Passed auth; deliberately unconfigured provider.
+});
+
+const signedIn = {
+  Authorization: "Bearer alice",
+  "Content-Type": "application/json",
+};
+
+test("each reply reading spends one reading of its own allowance, only after its request is valid", async (t) => {
+  const log = t.mock.method(console, "error", () => {});
+  let remaining = 2,
+    readings = 0;
+  const spent: string[] = [];
+  const resetAt = new Date(Date.now() + 3600_000).toISOString();
+  const { url } = await startServer(t, undefined, {
+    cloud: {
+      config: {
+        supabaseUrl: "https://example.supabase.co",
+        supabaseKey: "public-test-key",
+      },
+      authorize: async (header) => {
+        if (header !== "Bearer alice")
+          throw new AgentError(401, "AUTH_REQUIRED", "Sign in.");
+        return "alice";
+      },
+      quota: async () => {
+        throw new Error("Reading replies never spends searches");
+      },
+      spendReplyReading: async (userId) => {
+        spent.push(userId);
+        const allowed = remaining > 0;
+        if (allowed) remaining--;
+        return { allowed, limit: 150, remaining, resetAt };
+      },
+    },
+    threads: readerOf(async () => {
+      readings++;
+      return reading;
+    }),
+  });
+  const read = (body: unknown, headers: Record<string, string> = signedIn) =>
+    fetch(`${url}/api/agent/thread`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+  assert.equal(
+    (await read(readingRequest, { "Content-Type": "application/json" })).status,
+    401,
+  );
+  const invalid = await read({ ...readingRequest, messages: [] });
+  assert.equal(invalid.status, 400);
+  const { error } = await invalid.json();
+  assert.equal(error.code, "INVALID_THREAD_REQUEST");
+  assert.match(error.message, /needs the other student's message last/);
+  assert.deepEqual(JSON.parse(log.mock.calls[1].arguments[1]), {
+    path: "/api/agent/thread",
+    status: 400,
+    code: error.code,
+    reason: error.message,
+  });
+  assert.deepEqual(spent, []);
+  const first = await read(readingRequest);
+  assert.equal(first.status, 200);
+  assert.deepEqual(await first.json(), {
+    turn: reading,
+    allowance: { limit: 150, remaining: 1, resetAt },
+  });
+  assert.equal((await read(readingRequest)).status, 200);
+  const exhausted = await read(readingRequest);
+  assert.equal(exhausted.status, 429);
+  assert.equal((await exhausted.json()).error.code, "THREAD_QUOTA_EXCEEDED");
+  assert.ok(Number(exhausted.headers.get("Retry-After")) > 0);
+  assert.equal(readings, 2);
+  assert.deepEqual(spent, Array(3).fill("alice"));
+});
+
+test("the local demo reads replies without accounts, within the route's size, method and origin", async (t) => {
+  const { url } = await startServer(t, undefined, {
+    threads: readerOf(async () => reading),
+  });
+  const read = (init: RequestInit) =>
+    fetch(`${url}/api/agent/thread`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      ...init,
+    });
+  const local = await read({ body: JSON.stringify(readingRequest) });
+  assert.equal(local.status, 200);
+  assert.deepEqual(await local.json(), { turn: reading });
+  const large = JSON.stringify({
+    ...readingRequest,
+    messages: [{ ...readingRequest.messages[0], text: "x".repeat(70_000) }],
+  });
+  assert.equal((await read({ body: large })).status, 413);
+  assert.equal((await read({ method: "GET" })).status, 405);
+  assert.equal(
+    (
+      await read({
+        headers: {
+          "Content-Type": "application/json",
+          Origin: "https://untrusted.example",
+        },
+        body: JSON.stringify(readingRequest),
+      })
+    ).status,
+    403,
+  );
+});
+
+test("an account server without the reply reading update says so instead of reading", async (t) => {
+  let readings = 0;
+  const { url } = await startServer(t, undefined, {
+    cloud: {
+      config: {
+        supabaseUrl: "https://example.supabase.co",
+        supabaseKey: "public-test-key",
+      },
+      authorize: async () => "alice",
+      quota: async () => {
+        throw new Error("Reading replies never spends searches");
+      },
+      spendReplyReading: async () => {
+        throw new AgentError(
+          503,
+          "THREAD_READING_UNAVAILABLE",
+          "Pako can't read replies here yet.",
+        );
+      },
+    },
+    threads: readerOf(async () => {
+      readings++;
+      return reading;
+    }),
+  });
+  const response = await fetch(`${url}/api/agent/thread`, {
+    method: "POST",
+    headers: signedIn,
+    body: JSON.stringify(readingRequest),
+  });
+  assert.equal(response.status, 503);
+  assert.equal(
+    (await response.json()).error.code,
+    "THREAD_READING_UNAVAILABLE",
+  );
+  assert.equal(readings, 0);
+});
+
+test("deal messages keep one version and one receipt across HTTP retries", async (t) => {
+  const { createMessagesStore } = await import("./messages.ts");
+  const messages = createMessagesStore(":memory:");
+  t.after(() => messages.close());
+  const { url } = await startServer(t, undefined, { messages });
+  const workspace = crypto.randomUUID();
+  const send = (workspace: string, body: object) =>
+    fetch(url + "/api/messages/deal", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Message-Workspace": workspace,
+      },
+      body: JSON.stringify(body),
+    });
+  const terms = {
+    amount: 25,
+    fulfillment: "shipping",
+    pickupTime: null,
+    pickupAt: null,
+    pickupPoint: null,
+  };
+  const input = {
+    title: "Lamp",
+    listingId: "lamp",
+    seller: "Seller",
+    sender: "buyer",
+    messageId: crypto.randomUUID(),
+    text: "CHF 25 shipped?",
+    action: { type: "propose", terms },
+    listingStatus: "active",
+    expectedVersion: 0,
+  };
+  const first = await (await send(workspace, input)).json();
+  assert.equal(first.conversation.deal.version, 1);
+  assert.deepEqual(await (await send(workspace, input)).json(), first);
+  for (const [patch, key] of [
+    [{ text: "Another message" }, "message_conflict"],
+    [{ messageId: crypto.randomUUID() }, "deal_changed"],
+  ] as const) {
+    assert.equal(
+      (await (await send(workspace, { ...input, ...patch })).json()).error.code,
+      key,
+    );
+  }
+  assert.equal(messages.list(workspace)[0].messages.length, 1);
+  assert.equal(
+    (
+      await (
+        await send(crypto.randomUUID(), { ...input, sender: "seller" })
+      ).json()
+    ).error.code,
+    "NO_CONVERSATION",
+  );
+  assert.equal(
+    (await send(workspace, { ...input, text: "x".repeat(65536) })).status,
+    413,
+  );
+});
+
+test("reverse location validates its method, forwards rounded coordinates and throttles repeats", async (t) => {
+  const originalFetch = globalThis.fetch;
+  let lookups = 0;
+  globalThis.fetch = (input, init) => {
+    if (
+      !(input instanceof URL) ||
+      input.hostname !== "nominatim.openstreetmap.org"
+    )
+      return originalFetch(input, init);
+    lookups++;
+    assert.equal(input.pathname, "/reverse");
+    assert.equal(input.searchParams.get("lat"), "46.520");
+    assert.equal(input.searchParams.get("lon"), "6.567");
+    assert.ok(init?.signal);
+    return Promise.resolve(
+      Response.json({
+        address: {
+          road: "Route Cantonale",
+          postcode: "1015",
+          town: "Lausanne",
+        },
+      }),
+    );
+  };
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+  const { url } = await startServer(t);
+  const endpoint = url + "/api/location/reverse";
+  const wrongMethod = await fetch(endpoint);
+  assert.equal(wrongMethod.status, 405);
+  assert.deepEqual(await wrongMethod.json(), {
+    error: {
+      code: "METHOD_NOT_ALLOWED",
+      message: "Use POST for location lookups.",
+    },
+  });
+  const unsupported = await fetch(endpoint, { method: "POST", body: "{}" });
+  assert.equal(unsupported.status, 415);
+  const lookup = () =>
+    fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ latitude: 46.5198, longitude: 6.5672 }),
+    });
+  const found = await lookup();
+  assert.equal(found.status, 200);
+  assert.deepEqual(await found.json(), {
+    location: "Route Cantonale, 1015 Lausanne",
+  });
+  const busy = await lookup();
+  assert.equal(busy.status, 429);
+  assert.equal(busy.headers.get("retry-after"), "2");
+  assert.equal(lookups, 1);
+});
+
+test("cloud guards and preflight keep their precedence over route matching", async (t) => {
+  let authChecks = 0;
+  const unusedAllowance = async () => {
+    throw new Error("No allowance should be read");
+  };
+  const { url } = await startServer(t, undefined, {
+    cloud: {
+      config: {
+        supabaseUrl: "https://example.supabase.co",
+        supabaseKey: "public-test-key",
+      },
+      authorize: async (header) => {
+        authChecks++;
+        if (!header) throw new AgentError(401, "AUTH_REQUIRED", "Sign in.");
+        return "alice";
+      },
+      quota: unusedAllowance,
+      spendReplyReading: unusedAllowance,
+    },
+  });
+  const unknownAgent = url + "/api/agent/unknown";
+  const preflight = await fetch(unknownAgent, { method: "OPTIONS" });
+  assert.equal(preflight.status, 204);
+  assert.equal(
+    preflight.headers.get("access-control-allow-methods"),
+    "GET, POST, PUT, DELETE, OPTIONS",
+  );
+  assert.equal(authChecks, 0);
+  assert.equal((await fetch(unknownAgent)).status, 401);
+  assert.equal(
+    (await fetch(unknownAgent, { headers: { Authorization: "Bearer valid" } }))
+      .status,
+    404,
+  );
+  assert.equal(authChecks, 2);
+  assert.equal((await fetch(url + "/api/listings/unknown")).status, 410);
+  const postingCheck = await fetch(url + "/api/listings/permission");
+  assert.equal(postingCheck.status, 404);
+  assert.equal((await postingCheck.json()).error.code, "admin_unavailable");
+  for (const path of ["/api/health", "/api/config"])
+    assert.equal((await fetch(url + path, { method: "POST" })).status, 404);
 });

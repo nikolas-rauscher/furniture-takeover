@@ -7,10 +7,12 @@ import {
 } from "../searchRequest.ts";
 import { NO_BUDGET } from "./matching.ts";
 
+/** What a watch looks out for: the item, the budget if any, and how far to look. */
+export type WatchTarget = { query: string; maxPrice?: number; radius: number };
+
 export function watchSearch(
-  query: string,
+  { query, maxPrice, radius }: WatchTarget,
   location: string,
-  maxPrice?: number,
 ): SearchSnapshot | undefined {
   const text = query.trim().slice(0, 120);
   if (!text) return;
@@ -19,7 +21,7 @@ export function watchSearch(
       ? NO_BUDGET
       : Math.min(Math.max(maxPrice, 0), NO_BUDGET);
   return preferenceSearch(
-    { ...defaults, query: text, maxPrice: price },
+    { ...defaults, query: text, maxPrice: price, radius },
     location,
   );
 }

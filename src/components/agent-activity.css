@@ -29,41 +29,151 @@
   min-height: var(--control-size);
 }
 .agent-run-details-header > [data-slot="trace-collapsible-trigger"] {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   min-width: 0;
+}
+/* Beside Pako's name the live step stays on one line, so the header keeps its height
+   while steps change. */
+.agent-run-details-header
+  > [data-slot="trace-collapsible-trigger"]
+  :is([data-slot="trace-line"], [data-slot="trace-title"]) {
+  min-width: 0;
+}
+.agent-run-details-header
+  > [data-slot="trace-collapsible-trigger"]
+  [data-slot="trace-title"] {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.agent-run-current-step {
+  animation: agent-step-enter 180ms ease-out both;
+}
+@keyframes agent-step-enter {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent-run-current-step {
+    animation: none;
+  }
 }
 .agent-run-details-header > .agent-run-actions {
   margin-left: auto;
 }
+/* The sender keeps its width; only the live step beside it truncates. */
 .agent-run-details-header .agent-run-sender {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
   min-width: 0;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
-@media (max-width: 480px) {
-  .agent-run-sender .agent-run-header-status {
-    flex-basis: 100%;
-    padding-left: 26px;
-  }
-}
-.agent-run-sender .agent-avatar {
-  width: 20px;
-  min-width: 20px;
-  height: 20px;
-  align-self: center;
-  border-radius: 4px;
-  background: var(--mist);
-  color: var(--blue);
+/* Pako signs every reply, like the sender of a chat message. */
+.agent-pako {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  margin: -8px -2px -6px -6px;
 }
 .agent-run-details-header .agent-run-sender h2 {
   margin: 0;
-  font-size: var(--type-caption);
-  line-height: 1.5;
-  font-weight: 550;
+  white-space: nowrap;
+  font-size: var(--type-label);
+  line-height: 1.4;
+  font-weight: 700;
+  color: var(--ink);
+}
+/* On phones Pako's name sits above his live line, like a chat contact's status, so the
+   line beside his avatar has the width to be read. */
+@media (max-width: 600px) {
+  .agent-run-details-header {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "avatar name status actions"
+      "avatar line line line";
+    align-items: center;
+    gap: 0 var(--space-label);
+  }
+  .agent-run-details-header > .agent-run-sender {
+    display: contents;
+  }
+  .agent-run-details-header .agent-pako {
+    grid-area: avatar;
+  }
+  .agent-run-details-header .agent-run-sender > h2 {
+    grid-area: name;
+    align-self: end;
+  }
+  .agent-run-details-header .agent-run-header-status {
+    grid-area: status;
+  }
+  /* The menu keeps its full tap target without setting the height of the name's row. */
+  .agent-run-details-header > .agent-run-actions {
+    grid-area: actions;
+    margin-block: -7px;
+  }
+  .agent-run-details-header > [data-slot="trace-collapsible-trigger"] {
+    position: relative;
+    grid-area: line;
+    min-height: 28px;
+  }
+  /* An invisible margin keeps the slim line as easy to tap as the other controls. */
+  .agent-run-details-header > [data-slot="trace-collapsible-trigger"]::after {
+    content: "";
+    position: absolute;
+    inset: -8px 0;
+  }
+  /* Under the name a long step, such as a search near a long place name, takes a
+     second line instead of losing its end. */
+  .agent-run-details-header
+    > [data-slot="trace-collapsible-trigger"]
+    [data-slot="trace-title"] {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    white-space: normal;
+  }
 }
 .agent-run-details [data-slot="trace-line"] {
-  font-size: var(--type-label);
+  gap: 8px;
+  font-size: var(--type-support);
+}
+/* Round step marks from the intro: a spinner on light blue, then a drawn check on blue. */
+.agent-step-mark {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--selected);
+  color: var(--blue);
+  transition:
+    background-color 220ms ease,
+    color 220ms ease;
+}
+.agent-step-mark svg {
+  width: 13px;
+  height: 13px;
+}
+.agent-step-mark[data-mark="done"] {
+  background: var(--blue);
+  color: var(--on-primary);
+}
+.agent-step-mark[data-mark="done"] svg {
+  stroke-width: 3;
+}
+.agent-step-mark[data-mark="failed"] {
+  background: #fbe4e0;
+  color: var(--danger);
+}
+.agent-step-mark[data-mark="paused"] {
+  background: var(--canvas);
+  color: var(--muted);
 }
 .agent-run-details [data-slot="trace-description"] {
   color: var(--muted);
@@ -85,16 +195,17 @@
 }
 .agent-activity-list .agent-activity-step {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr);
+  grid-template-columns: 22px minmax(0, 1fr);
   align-items: start;
   width: 100%;
-  gap: 2px var(--space-label);
+  gap: 2px 10px;
   padding-block: 4px;
-  font-size: var(--type-label);
+  color: var(--ink);
+  font-size: var(--type-support);
   line-height: 1.5;
 }
 .agent-activity-step > [data-slot="trace-icon"] {
-  margin-top: 2px;
+  margin-top: -1px;
 }
 .agent-activity-step > [data-slot="trace-title"] {
   min-width: 0;
@@ -136,7 +247,8 @@
   box-shadow: none;
 }
 .agent-reasoning [data-slot="trace-line"] {
-  font-size: var(--type-label);
+  gap: 10px;
+  font-size: var(--type-support);
 }
 .agent-reasoning [data-slot="trace-description"] {
   color: var(--muted);

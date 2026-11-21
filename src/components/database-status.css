@@ -1,0 +1,34 @@
+/*
+ * Slow loads, saves and errors float in a pill under the header. Fixed, so the
+ * page beneath never moves when it comes or goes; under the tab bar and toasts.
+ */
+.database-status {
+  position: fixed;
+  top: calc(var(--app-header-height) + 8px);
+  right: 0;
+  left: 0;
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 12px;
+  width: fit-content;
+  max-width: calc(100vw - 2 * var(--space-page));
+  margin-inline: auto;
+  padding: 6px 16px;
+  border: 2px solid #dbe3fa;
+  border-radius: 22px;
+  background: var(--selected);
+  color: var(--blue-dark);
+  font-size: var(--type-support);
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 10px 22px -14px rgb(41 41 41 / 0.32);
+  /* It floats over the page's controls, so only its own button takes taps. */
+  pointer-events: none;
+}
+.database-status button {
+  min-height: 44px;
+  pointer-events: auto;
+}

@@ -291,20 +291,9 @@ test("researching an asking price emits real source evidence and an acceptance-o
         { query: "bureau blanc occasion Lausanne", purpose: "offers" },
         "price-research",
       ),
-      toolCall(
-        "update_listing",
-        {
-          patch: { price: 80 },
-          reason:
-            "A tentative starting price based on one comparable asking price; review it before accepting.",
-          evidence: [
-            { kind: "source", sourceId: "web-1", quote: "Asking CHF 80" },
-          ],
-        },
-        "price-proposal",
-      ),
+      toolCall("propose_price", {}, "price-proposal"),
       answer(
-        "One comparable asks CHF 80 [web-1]. You can accept or keep your price.",
+        "One of the two desks asks CHF 80 [web-1]. You can accept or keep your price.",
       ),
     ],
   });
@@ -322,6 +311,11 @@ test("researching an asking price emits real source evidence and an acceptance-o
                 url: "https://www.ricardo.ch/fr/a/test-desk-123456789/",
                 description: "Asking CHF 80. Pickup in Lausanne.",
               },
+              {
+                title: "White desk",
+                url: "https://www.ricardo.ch/fr/a/another-desk-234567890/",
+                description: "Asking CHF 85.",
+              },
             ],
           },
         }),
@@ -337,7 +331,7 @@ test("researching an asking price emits real source evidence and an acceptance-o
   const change = events.find((event) => event.type === "listing_patch");
   assert.ok(change?.type === "listing_patch");
   assert.equal(change.requiresAcceptance, true);
-  assert.deepEqual(change.patch, { price: 80 });
+  assert.deepEqual(change.patch, { price: 83 });
   assert.ok(
     events.findIndex((event) => event.type === "sources") <
       events.findIndex((event) => event.type === "listing_patch"),
@@ -423,7 +417,7 @@ test("listing specification research returns actual sources but cannot authorize
       text: "Research manufacturer specifications",
       context: {
         intent: "listing_assist",
-        currentDraft: { ...blankDraft, title: "Desk" },
+        currentDraft: { ...blankDraft, title: "Desk", price: 60 },
       },
     },
   );
@@ -443,7 +437,7 @@ test("listing specification research returns actual sources but cannot authorize
       (event) =>
         event.type === "status" &&
         event.id === "invalid-spec-price" &&
-        event.state === "error",
+        event.state === "needs_input",
     ),
   );
 });
@@ -648,4 +642,77 @@ test("seller may explicitly revise an already saved asking price", async () => {
     },
   );
   assert.ok(events.some((event) => event.type === "question"));
+});
+
+test("description additions can use the typed reply alongside the photo-derived draft", async () => {
+  const photo = "Silver laptop with a black keyboard.";
+  const reply = "14 inch, small scratch on the lid";
+  for (const [addition, accepted] of [
+    [reply, true],
+    ["14 inch, small scratch on the lid. Includes charger.", false],
+  ] as const) {
+    const description = photo + "\n" + addition;
+    const model = new MockLanguageModelV4({
+      doStream: [
+        toolCall(
+          "update_listing",
+          {
+            patch: { description },
+            evidence: [{ kind: "seller", quote: "14 inch" }],
+            reason: "Add the seller's details.",
+          },
+          "add-facts",
+        ),
+        accepted
+          ? answer("Ready.")
+          : toolCall("ask_user", { question: "Anything to add?" }, "ask"),
+      ],
+    });
+    const events = await eventsFor(
+      createAgentRuntime({ apiKey: "test", modelImpl: model }),
+      {
+        text: reply,
+        context: {
+          intent: "listing_assist",
+          currentDraft: { ...blankDraft, description: photo, price: 40 },
+        },
+      },
+    );
+    assert.equal(
+      events.find((event) => event.type === "listing_patch")?.patch.description,
+      accepted ? description : undefined,
+    );
+  }
+});
+
+test("listing text Pako writes shows four-digit prices like the app's price cards", async () => {
+  const note = "MacBook Pro, 16 GB RAM. Asking CHF 1250.";
+  const model = new MockLanguageModelV4({
+    doStream: [
+      toolCall(
+        "update_listing",
+        {
+          patch: { description: note },
+          evidence: [{ kind: "seller", quote: note }],
+          reason: "Use the seller's note.",
+        },
+        "note",
+      ),
+      answer("Ready."),
+    ],
+  });
+  const events = await eventsFor(
+    createAgentRuntime({ apiKey: "test", modelImpl: model }),
+    {
+      text: note,
+      context: {
+        intent: "listing_assist",
+        currentDraft: { ...blankDraft, price: 1250 },
+      },
+    },
+  );
+  assert.equal(
+    events.find((event) => event.type === "listing_patch")?.patch.description,
+    "MacBook Pro, 16 GB RAM. Asking CHF 1,250.",
+  );
 });

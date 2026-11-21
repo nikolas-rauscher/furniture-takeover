@@ -1,3 +1,5 @@
+import { listingInventory } from "../shared/listingInventory.ts";
+import { products } from "./testing/fixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { defaults, type Product } from "../shared/marketplace.ts";
@@ -8,6 +10,7 @@ import {
   listingReviewSearch,
   newSearch,
   preferenceSearch,
+  refilterCatalog,
   restoreSearch,
   type SavedSearch,
 } from "./searchRequest.ts";
@@ -150,7 +153,7 @@ test("explicit source changes leave a previous own-only restriction", () => {
   );
 });
 
-test("agent inventory includes active Takeover listings from every owner, without photos and bounded fields", () => {
+test("agent inventory holds other students' active Takeover listings, never the student's own, without photos and bounded fields", () => {
   const active = {
     id: "own",
     title: "Desk",
@@ -171,8 +174,9 @@ test("agent inventory includes active Takeover listings from every owner, withou
   ]);
   assert.deepEqual(
     payload.inventory?.map((item) => item.id),
-    ["own", "other"],
+    ["other"],
   );
+  assert.deepEqual(payload.context?.ownListingIds, ["own"]);
   assert.equal(payload.inventory?.[0].description.length, 1500);
   assert.equal("image" in payload.inventory![0], false);
 });
@@ -263,5 +267,90 @@ test("a default budget remains unspecified until the user supplies one", () => {
       [],
     ).context?.budgetSpecified,
     true,
+  );
+});
+
+test("the closer reply filters browser and database inventory before the result cap", () => {
+  const initial = newSearch("desk", defaults, "Lausanne");
+  const closer = newSearch(
+    "Closer: within 2 km",
+    initial.criteria,
+    "Lausanne",
+    initial,
+  );
+  const item = {
+    ...products[0],
+    source: "takeover" as const,
+    status: "active" as const,
+  };
+  const outside = Array.from({ length: 100 }, (_, index) => ({
+    ...item,
+    id: String(index),
+    distance: 2.1,
+  }));
+  const inventory = [...outside, { ...item, id: "boundary", distance: 2 }];
+  const request = agentSearchRequest(closer, inventory);
+  assert.deepEqual(
+    request.inventory?.map(({ id }) => id),
+    ["boundary"],
+  );
+  assert.deepEqual(
+    listingInventory(inventory, request.context),
+    request.inventory,
+  );
+});
+
+test("buyer constraints survive the header, request and radius-only follow-up", () => {
+  const desk = newSearch(
+    "Find all local Takeover study desks under CHF 80 around EPFL, within 10 km. Use Takeover only. Show all matches.",
+    defaults,
+    "Lausanne",
+  );
+  const piano = newSearch(
+    "Find a free antique concert grand piano within 1 km of EPFL, Takeover only. Please run the search now without asking questions.",
+    defaults,
+    "Lausanne",
+  );
+  const wider = newSearch("Search within 2 km", piano.criteria, "EPFL", piano);
+  for (const [search, query, maxPrice, radius] of [
+    [desk, "study desks", 80, 10],
+    [piano, "antique concert grand piano", 0, 1],
+    [wider, "antique concert grand piano", 0, 2],
+  ] as const) {
+    assert.equal(search.criteria.source, "takeover");
+    assert.equal(search.criteria.maxPrice, maxPrice);
+    const { context } = agentSearchRequest(search, []);
+    assert.equal(context?.location, "EPFL");
+    assert.equal(context?.currentQuery, query);
+    assert.equal(context?.maxPrice, maxPrice);
+    assert.equal(context?.source, "takeover");
+    assert.equal(context?.radius, radius);
+    assert.equal(context?.budgetSpecified, true);
+  }
+  const unspecified = newSearch("desk with free delivery", defaults, "EPFL");
+  assert.equal(
+    agentSearchRequest(unspecified, []).context?.maxPrice,
+    undefined,
+  );
+});
+
+test("changing preferences filters available catalog items and preserves their existing ranking", () => {
+  const desk = {
+    ...products[0],
+    title: "Study desk",
+    price: 40,
+    condition: "Used",
+    status: "active",
+  } as Product;
+  const other = { ...desk, id: "another-desk", title: "Wood desk", price: 55 };
+  const excluded = { ...desk, id: "out-of-budget", price: 100 };
+  const initial = newSearch("desk under CHF 80", defaults, "Lausanne");
+  const filtered = refilterCatalog([desk, other, excluded], [other, excluded], {
+    ...initial.criteria,
+    condition: "Used",
+  });
+  assert.deepEqual(
+    filtered.map(({ id }) => id),
+    [other.id, desk.id],
   );
 });

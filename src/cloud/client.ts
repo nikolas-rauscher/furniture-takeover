@@ -1,4 +1,11 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type {
+  Deal,
+  DealRole,
+  LateMinutes,
+  PickupSignals,
+} from "../../shared/deal";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { isDemoIllustration } from "../../shared/listingPhotos.ts";
 export type CloudConfig = { supabaseUrl: string; supabaseKey: string };
 /** Supabase dashboard invitations use a token fragment, rather than a PKCE code. */
 export function readAuthRedirect(url: URL) {
@@ -17,7 +24,7 @@ export function readAuthRedirect(url: URL) {
       : null;
   const error =
     failed || (invite && !invitation)
-      ? "This sign-in link is invalid or has expired. Ask for a new invitation or reset your password."
+      ? "This link is invalid or has expired. Sign in, reset your password, or create your account again for a new link."
       : "";
   if (invitation || error) {
     url.hash = "settings";
@@ -25,11 +32,6 @@ export function readAuthRedirect(url: URL) {
       url.searchParams.delete(key);
   }
   return { invitation, error };
-}
-export function cloudClient(config: CloudConfig): SupabaseClient {
-  return createClient(config.supabaseUrl, config.supabaseKey, {
-    auth: { flowType: "pkce" },
-  });
 }
 export type Listing = {
   id: string;
@@ -42,9 +44,12 @@ export type Listing = {
   dimensions: string;
   pickup: string;
   images: string[];
+  card_images: string[];
   status: "active" | "reserved" | "sold" | "withdrawn";
   created_at: string;
   pickup_by?: string | null;
+  hidden_at?: string | null;
+  demo_meeting_point?: string;
   tags?: string[];
 };
 export type Conversation = {
@@ -62,9 +67,54 @@ export type Message = {
   created_at: string;
 };
 export function photoUrl(client: SupabaseClient, path: string) {
-  return client.storage.from("listing-photos").getPublicUrl(path).data
-    .publicUrl;
+  return isDemoIllustration(path)
+    ? path
+    : client.storage.from("listing-photos").getPublicUrl(path).data.publicUrl;
 }
 export function fail(error: { message: string } | null) {
   if (error) throw new Error(error.message);
 }
+/** PostgREST and Postgres codes for a table, column or function that no update has created yet. */
+const MISSING_FROM_SCHEMA = new Set([
+  "PGRST202",
+  "PGRST204",
+  "PGRST205",
+  "42P01",
+  "42703",
+  "42883",
+]);
+/** Whether a query failed only because the server lacks a database update. */
+export const missingFromSchema = (error: { code?: string } | null) =>
+  Boolean(error?.code && MISSING_FROM_SCHEMA.has(error.code));
+
+export type StoredDealTerms = {
+  amount: number | null;
+  fulfillment: "pickup" | "shipping" | null;
+  pickup_time: string | null;
+  pickup_at: string | null;
+  pickup_point: string | null;
+};
+
+export type DealRow = {
+  conversation_id: string;
+  listing_id: string;
+  version: number;
+  status: Deal["status"];
+  proposal: StoredDealTerms | null;
+  proposal_by: DealRole | null;
+  proposal_message_id: string | null;
+  agreed: StoredDealTerms | null;
+  agreed_at: string | null;
+  updated_at: string;
+  outcome: NonNullable<Deal["outcome"]>["kind"] | null;
+  outcome_by: DealRole | null;
+  buyer_on_way_at?: string | null;
+  seller_on_way_at?: string | null;
+  late_minutes?: LateMinutes | null;
+  late_by?: DealRole | null;
+  late_at?: string | null;
+  buyer_picked_up_at?: string | null;
+  no_show_by?: DealRole | null;
+  no_show_at?: string | null;
+  pickup_cancel_reason?: PickupSignals["cancelReason"];
+};

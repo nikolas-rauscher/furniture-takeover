@@ -15,7 +15,7 @@ export class ListingOutbox {
     if (raw) {
       const value: unknown = JSON.parse(raw);
       if (!isProducts(value) || value.some((item) => !item.demo || !item.own))
-        throw new Error("The pending listing changes could not be read.");
+        throw new Error("Couldn't open your unsaved listing changes.");
       this.records = value;
     }
   }

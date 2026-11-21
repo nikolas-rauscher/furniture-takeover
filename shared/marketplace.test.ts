@@ -1,27 +1,34 @@
+import { listingInventory } from "./listingInventory.ts";
 import { products } from "../src/testing/fixtures.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
   parseSearch as parseSearchAtDate,
-  filterProducts,
+  filterProducts as filterProductsAtDate,
+  type Product,
   defaults,
   migrateSaved,
   listingTitle,
   parsePickupDate,
   criteriaTitle,
+  isMine,
 } from "./marketplace.ts";
 
 // Calendar examples use a fixed Monday, independent of when CI runs.
 const parseSearch = (text: string, base = defaults) =>
   parseSearchAtDate(text, base, "2026-10-12");
-test("unverified legacy distances cannot exclude local offers or prove radius matches", () => {
-  const item = { ...products[0], location: "Berlin", distance: 0 };
-  const criteria = { ...defaults, radius: 1 };
-  // These are candidates requiring a pickup-distance check, not verified radius matches.
-  assert.equal(filterProducts([item], criteria).length, 1);
-  assert.equal(
-    filterProducts([{ ...item, distance: 400 }], criteria).length,
-    1,
+const filterProducts = (items: Product[], criteria: typeof defaults) =>
+  filterProductsAtDate(items, criteria, "2026-10-12");
+
+test("radius includes the boundary and keeps listings without a recorded distance", () => {
+  const items = [0, 1, 1.1].map((distance) => ({ ...products[0], distance }));
+  assert.deepEqual(
+    filterProducts(items, { ...defaults, radius: 1 }),
+    items.slice(0, 2),
+  );
+  assert.deepEqual(
+    filterProducts(items, { ...defaults, radius: 0 }),
+    items.slice(0, 1),
   );
 });
 for (const text of [
@@ -114,7 +121,7 @@ for (const [text, expectedTitle] of [
   ["Bench for the garden, CHF 50", "Bench for the garden"],
   ["Oak wardrobe, CHF 120, pickup Friday", "Oak wardrobe"],
   ["Desk, CHF 65. Collection by Friday.", "Desk"],
-  ["", "Furniture for sale"],
+  ["", "Second-hand item"],
 ]) {
   test(`listing title preserves item words: ${JSON.stringify(text)}`, () => {
     assert.equal(listingTitle(text), expectedTitle);
@@ -122,8 +129,8 @@ for (const [text, expectedTitle] of [
 }
 
 for (const [text, expectedBudget] of [
-  ["Sofa bis 5 km", 500],
-  ["Chair within 5 km", 500],
+  ["Sofa bis 5 km", defaults.maxPrice],
+  ["Chair within 5 km", defaults.maxPrice],
   ["Sofa under 150 CHF", 150],
   ["Lamp under 25", 25],
 ] as const) {
@@ -350,6 +357,36 @@ test("supported marketplace source phrases are preferences rather than item keyw
   }
 });
 
+test("a buyer can collect through Friday while both pickup windows overlap", () => {
+  const dates = [
+    ["mover leaving Sunday", "Pickup by Sunday", "2026-10-18"],
+    ["seller leaving Wednesday", "Flexible pickup", "2026-10-14"],
+    ["Friday handover", "Available from 2026-10-16", "2026-10-16"],
+    ["flexible", "Flexible pickup", ""],
+    ["already expired", "Flexible pickup", "2026-10-11"],
+    ["Saturday start", "Weekend pickup", ""],
+    ["moving in next week", "Available from 2026-10-19", ""],
+  ];
+  const items = dates.map(([id, available, pickupBy]) => ({
+    ...products[0],
+    id,
+    available,
+    pickupBy,
+  }));
+  const criteria = parseSearch("pickup by Friday");
+  const expected = dates.slice(0, 4).map(([id]) => id);
+  assert.deepEqual(
+    filterProducts(items, criteria).map((item) => item.id),
+    expected,
+  );
+  assert.deepEqual(
+    listingInventory(items, { pickupBy: criteria.pickup }, "2026-10-12").map(
+      (item) => item.id,
+    ),
+    expected,
+  );
+});
+
 test("an any-budget search is titled without a price", () => {
   const criteria = { ...defaults, query: "desk", maxPrice: 1_000_000 };
   assert.equal(criteriaTitle(criteria), "desk");
@@ -357,4 +394,11 @@ test("an any-budget search is titled without a price", () => {
     criteriaTitle({ ...criteria, maxPrice: 80 }),
     "desk under CHF 80",
   );
+});
+
+test("sample listings play other students' items, so only a student's own listing is theirs", () => {
+  assert.equal(isMine({ own: true }), true);
+  assert.equal(isMine({ own: true, demo: true }), false);
+  assert.equal(isMine({ own: false }), false);
+  assert.equal(isMine({}), false);
 });

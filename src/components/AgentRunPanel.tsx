@@ -1,18 +1,20 @@
 import { Button } from "./ui/button";
 import {
   AgentQuestion,
+  AgentChangeLine,
   AgentChanges,
   type AgentActionHandlers,
 } from "./AgentActionControls";
-import { answerParts, answerBlocks } from "./AgentAnswerContent";
-import SmoothHeight from "./SmoothHeight";
+import { answerBlocks } from "./AgentAnswerContent";
+import { AutoHeight } from "@animate-ui/react/primitives/effects/auto-height";
 import { useStreamingText } from "../hooks/useStreamingText";
 import { useId, type ReactNode } from "react";
 import AgentRunDetails from "./AgentRunDetails";
+import AgentRunDebug from "./AgentRunDebug";
 import AgentSources from "./AgentSources";
 import AgentWebResults from "./AgentWebResults";
-import { Ellipsis, MessageCircle } from "./icons";
-import { MessageAvatar } from "./ui/message";
+import { Ellipsis } from "./icons";
+import PakoReaction from "./PakoReaction";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,7 +23,13 @@ import {
 } from "./ui/dropdown-menu";
 import type { AgentRunState } from "../hooks/useAgentRun";
 import { safeSourceUrl } from "../api/runs";
-import { splitSearchAnswer } from "./agentAnswer";
+import { shownAnswerText, splitSearchAnswer } from "./agentAnswer";
+import {
+  agentTurnPako,
+  busyGuide,
+  settledSteps,
+  workingLine,
+} from "../pakoMoods";
 import "./agent-run-panel.css";
 
 type AgentRunPanelProps = AgentActionHandlers & {
@@ -32,11 +40,16 @@ type AgentRunPanelProps = AgentActionHandlers & {
   className?: string;
   localListings?: ReactNode;
   outcome?: ReactNode;
+  /** Replies the student can tap; they appear once the answer is fully shown. */
+  quickReplies?: ReactNode;
+  /** The search area as Pako names it while he searches. */
+  place?: string;
   showHistory?: boolean;
   splitSearchResults?: boolean;
-  conversational?: boolean;
   externalComposer?: boolean;
   readOnly?: boolean;
+  /** The composer has text, so Pako listens once the turn has ended. */
+  typing?: boolean;
   appliedActionIds?: readonly string[];
   undoneActionIds?: readonly string[];
   actionNotices?: Readonly<Record<string, string>>;
@@ -50,11 +63,13 @@ export default function AgentRunPanel({
   className = "",
   localListings,
   outcome,
+  quickReplies,
+  place,
   showHistory = true,
   splitSearchResults = false,
-  conversational = false,
   externalComposer = false,
   readOnly = false,
+  typing = false,
   onAnswer,
   onSkipQuestion,
   onApplyAction,
@@ -64,14 +79,15 @@ export default function AgentRunPanel({
   undoneActionIds = [],
   actionNotices = {},
 }: AgentRunPanelProps) {
-  const compact = conversational || splitSearchResults;
+  const compact = splitSearchResults;
   const headingId = useId();
+  const answerText = shownAnswerText(state.text, state.questions);
   const displayText = useStreamingText(
-    state.text,
+    answerText,
     state.turnKey || state.id || "",
     state.status === "running" || state.status === "complete",
   );
-  const textArriving = state.status === "running" || displayText !== state.text;
+  const textArriving = state.status === "running" || displayText !== answerText;
   if (!state.id && state.status === "idle") return null;
   const running = state.status === "running";
   const stopped = state.status === "idle";
@@ -80,31 +96,25 @@ export default function AgentRunPanel({
   );
   const webSearches = state.steps.filter((step) => step.task === "web");
   const webRetry = !readOnly && state.status !== "error" ? onRetry : undefined;
-  const priceQuestion = state.questions.find(
-    (question) => question.input?.type === "price",
+  // Search changes apply as they arrive, so one that changed nothing has nothing to report.
+  const shownActions = state.actions.filter(
+    (action) =>
+      action.type !== "preferences_patch" ||
+      appliedActionIds.includes(action.id),
   );
-  const priceSuggestions = priceQuestion
-    ? state.actions.filter(
-        (action) =>
-          action.type === "listing_patch" &&
-          action.requiresAcceptance &&
-          "price" in action.patch,
-      )
-    : [];
-  const standaloneActions = state.actions.filter(
-    (action) => !priceSuggestions.includes(action),
-  );
-  const questionOnlyAnswer = state.questions.some(
-    (question) => question.question.trim() === state.text.trim(),
-  );
-  const waitingForAnswer = state.questions.some(
+  const steps = settledSteps(state.steps);
+  // Pako ran out of activities mid-comparison: the student taps to let him go on.
+  const unfinished = state.diagnostic?.code === "STEP_LIMIT";
+  // Queued questions wait their turn: only the next one shows beside the answered ones.
+  const nextQuestion = state.questions.find(
     (question) => !state.answers[question.id],
   );
-
-  const searchAnswer = splitSearchAnswer(
-    questionOnlyAnswer ? "" : displayText,
-    textArriving,
+  const waitingForAnswer = nextQuestion !== undefined;
+  const shownQuestions = state.questions.filter(
+    (question) => question === nextQuestion || state.answers[question.id],
   );
+
+  const searchAnswer = splitSearchAnswer(displayText, textArriving);
   const sourceLinks =
     safeSources.length > 0 ? <AgentSources sources={safeSources} /> : null;
   const statusLabel = waitingForAnswer
@@ -115,51 +125,71 @@ export default function AgentRunPanel({
         : "Starting your request"
       : stopped
         ? "Stopped"
-        : state.status === "error"
-          ? "Could not finish"
-          : state.steps.some((step) => step.state === "error")
-            ? "Partly completed"
-            : state.steps.some((step) => step.state === "needs_input")
-              ? "Some changes need more details"
-              : "Finished";
+        : state.congested === "failed"
+          ? "Busy right now"
+          : state.status === "error"
+            ? "Couldn't finish"
+            : steps.some((step) => step.state === "error")
+              ? "Some results are ready"
+              : steps.some((step) => step.state === "needs_input")
+                ? "Some changes need more details"
+                : "Finished";
 
+  // Without steps or reasoning, the activity line itself names the status.
+  // Only the live turn moves; earlier turns keep a resting Pako beside them.
+  const pako = agentTurnPako(
+    { ...state, text: answerText },
+    { textShown: displayText, typing },
+  );
+  const pakoLine = running
+    ? state.congested === "retrying"
+      ? busyGuide(true, "search").line
+      : workingLine(state, place)
+    : undefined;
+  const avatar = (
+    <span className="agent-pako" aria-hidden="true">
+      <PakoReaction
+        size={42}
+        mood={pako.mood}
+        talking={pako.talking}
+        still={readOnly}
+      />
+    </span>
+  );
+  const detailsShowStatus =
+    !running &&
+    !state.steps.length &&
+    !(state.reasoning ?? []).some((part) => part.text);
   const heading = (
     <div className={`agent-run-heading${compact ? " agent-run-sender" : ""}`}>
-      {compact && (
-        <MessageAvatar className="agent-avatar" aria-hidden="true">
-          <MessageCircle size={14} />
-        </MessageAvatar>
-      )}
+      {compact && avatar}
       <h2 id={headingId}>
         {compact
-          ? "Takeover AI"
+          ? "Pako"
           : waitingForAnswer
             ? "Let’s narrow it down"
             : running
               ? "Working on your request…"
               : stopped
-                ? "Run stopped"
+                ? "Search stopped"
                 : state.status === "error"
                   ? "Let’s try that again"
                   : state.proposal?.draft
                     ? "Your message draft"
                     : state.inventoryMatchIds !== null || safeSources.length > 0
                       ? "Here’s what I found"
-                      : "Your agent’s response"}
+                      : "Pako’s answer"}
       </h2>
       {compact && (
         <span
           className={
-            [
-              "Finished",
-              "Working",
-              "Starting your request",
-              "Waiting for your answer",
-            ].includes(statusLabel)
+            detailsShowStatus ||
+            ["Finished", "Working", "Starting your request"].includes(
+              statusLabel,
+            )
               ? "sr-only"
               : "agent-run-header-status"
           }
-          role="status"
         >
           {statusLabel}
         </span>
@@ -176,19 +206,51 @@ export default function AgentRunPanel({
       <DropdownMenu>
         <DropdownMenuTrigger
           render={<Button size="icon-sm" className="agent-run-more" />}
-          aria-label="Response actions"
+          aria-label="Pako reply options"
         >
           <Ellipsis size={18} aria-hidden="true" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {!running && !state.error && (
-            <DropdownMenuItem onClick={onRetry}>Run again</DropdownMenuItem>
+            <DropdownMenuItem onClick={onRetry}>Search again</DropdownMenuItem>
           )}
           <DropdownMenuItem onClick={onReset}>
             Clear conversation
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+    </div>
+  );
+
+  // Search changes sit right under Pako's name, so the student reads what he changed before the results.
+  const changes = shownActions.length > 0 && (
+    <div className="agent-run-changes">
+      {shownActions.map((action) =>
+        action.type === "preferences_patch" ? (
+          <AgentChangeLine
+            key={action.id}
+            action={action}
+            sources={safeSources}
+            applied={appliedActionIds.includes(action.id)}
+            undone={undoneActionIds.includes(action.id)}
+            notice={actionNotices[action.id]}
+            onApply={readOnly ? undefined : onApplyAction}
+            onUndo={readOnly ? undefined : onUndoAction}
+          />
+        ) : (
+          <AgentChanges
+            key={action.id}
+            action={action}
+            sources={safeSources}
+            applied={appliedActionIds.includes(action.id)}
+            undone={undoneActionIds.includes(action.id)}
+            notice={actionNotices[action.id]}
+            onApply={onApplyAction}
+            onUndo={onUndoAction}
+            onEdit={onEditFields}
+          />
+        ),
+      )}
     </div>
   );
 
@@ -199,16 +261,11 @@ export default function AgentRunPanel({
       aria-labelledby={headingId}
       aria-busy={running}
     >
-      <div className="agent-run-progress" aria-hidden="true">
-        <span />
-      </div>
       {!compact && (
         <div className="agent-run-identity">
-          <span className="agent-run-symbol" aria-hidden="true">
-            ✳
-          </span>
-          <span>Your agent</span>
-          <span className="agent-run-status" role="status">
+          {avatar}
+          <span className="agent-run-name">Pako</span>
+          <span className="agent-run-status">
             <span key={statusLabel} className="agent-run-status-text">
               {statusLabel}
             </span>
@@ -220,7 +277,9 @@ export default function AgentRunPanel({
           key={`details-${state.turnKey || state.id}`}
           reasoning={state.reasoning}
           steps={state.steps}
-          running={running}
+          place={place}
+          sourceCount={safeSources.length}
+          workingLine={pakoLine}
           heading={heading}
           actions={actions}
           status={statusLabel}
@@ -231,6 +290,7 @@ export default function AgentRunPanel({
           {actions}
         </div>
       )}
+      {splitSearchResults && changes}
       {!splitSearchResults && localListings && (
         <div className="agent-local-listings">{localListings}</div>
       )}
@@ -247,7 +307,7 @@ export default function AgentRunPanel({
               <AgentRunDetails
                 reasoning={turn.reasoning}
                 steps={turn.steps}
-                running={false}
+                sourceCount={turn.sources.length}
               />
               {turn.text && (
                 <div className="agent-run-answer">
@@ -286,7 +346,9 @@ export default function AgentRunPanel({
           key={`details-${state.turnKey || state.id}`}
           reasoning={state.reasoning}
           steps={state.steps}
-          running={running}
+          place={place}
+          sourceCount={safeSources.length}
+          workingLine={pakoLine}
         />
       )}
       {splitSearchResults &&
@@ -300,22 +362,22 @@ export default function AgentRunPanel({
             {(localListings || searchAnswer.takeover) && (
               <section
                 className="agent-search-result-message"
-                aria-label="Takeover results"
+                aria-label="takeover results"
               >
-                {!localListings && <h3>Takeover</h3>}
+                {!localListings && <h3>On takeover</h3>}
                 {localListings && (
                   <div className="agent-local-listings">{localListings}</div>
                 )}
                 {searchAnswer.takeover && (
                   <div className="agent-run-answer">
-                    {answerBlocks(searchAnswer.takeover, [], textArriving)}
+                    {answerBlocks(searchAnswer.takeover, [])}
                   </div>
                 )}
               </section>
             )}
             {searchAnswer.answer && (
               <div className="agent-run-answer">
-                {answerBlocks(searchAnswer.answer, safeSources, textArriving)}
+                {answerBlocks(searchAnswer.answer, safeSources)}
               </div>
             )}
             <AgentWebResults
@@ -327,17 +389,17 @@ export default function AgentRunPanel({
             >
               {searchAnswer.web ? (
                 <div className="agent-run-answer">
-                  {answerBlocks(searchAnswer.web, safeSources, textArriving)}
+                  {answerBlocks(searchAnswer.web, safeSources)}
                 </div>
               ) : null}
             </AgentWebResults>
           </div>
         )}
-      {!splitSearchResults && state.text && !questionOnlyAnswer && (
+      {!splitSearchResults && answerText && (
         <>
           <div className={compact ? "agent-search-result-message" : undefined}>
             <div className="agent-run-answer">
-              {answerBlocks(displayText, safeSources, textArriving)}
+              {answerBlocks(displayText, safeSources)}
             </div>
           </div>
         </>
@@ -351,24 +413,8 @@ export default function AgentRunPanel({
           onRetry={webRetry}
         />
       )}
-      {standaloneActions.length > 0 && (
-        <div className="agent-run-changes">
-          {standaloneActions.map((action) => (
-            <AgentChanges
-              key={action.id}
-              action={action}
-              sources={safeSources}
-              applied={appliedActionIds.includes(action.id)}
-              undone={undoneActionIds.includes(action.id)}
-              notice={actionNotices[action.id]}
-              onApply={onApplyAction}
-              onUndo={onUndoAction}
-              onEdit={onEditFields}
-            />
-          ))}
-        </div>
-      )}
-      {state.questions.map((question) => (
+      {!splitSearchResults && changes}
+      {shownQuestions.map((question) => (
         <AgentQuestion
           key={question.id}
           question={question}
@@ -379,80 +425,35 @@ export default function AgentRunPanel({
           externalComposer={externalComposer}
           disabled={running}
           readOnly={readOnly}
-          suggestion={
-            question.id === priceQuestion?.id && priceSuggestions.length > 0 ? (
-              <details className="agent-run-evidence price-suggestion-details">
-                <summary>Why this suggested price</summary>
-                {priceSuggestions.map((action) => (
-                  <div key={action.id}>
-                    {Object.keys(action.patch).some(
-                      (field) => field !== "price",
-                    ) ? (
-                      <AgentChanges
-                        action={action}
-                        sources={safeSources}
-                        applied={appliedActionIds.includes(action.id)}
-                        undone={undoneActionIds.includes(action.id)}
-                        notice={actionNotices[action.id]}
-                        onApply={onApplyAction}
-                        onUndo={onUndoAction}
-                        onEdit={onEditFields}
-                      />
-                    ) : (
-                      <p>{action.reason}</p>
-                    )}
-                    {action.evidence.map((evidence, index) => (
-                      <p key={index}>
-                        <q>{evidence.quote}</q>
-                        {evidence.kind === "source" &&
-                          answerParts(` [${evidence.sourceId}]`, safeSources)}
-                      </p>
-                    ))}
-                  </div>
-                ))}
-              </details>
-            ) : undefined
-          }
         />
       ))}
       {outcome}
+      {!textArriving && quickReplies}
       {state.error && (
         <div className="agent-run-recovery">
-          <p className="agent-run-error" role="alert">
-            {state.error}
+          <p
+            className="agent-run-error"
+            role={state.congested === "failed" ? "status" : "alert"}
+          >
+            {state.congested === "failed" ? (
+              busyGuide(false, "search").line
+            ) : unfinished ? (
+              <strong>{state.error}</strong>
+            ) : (
+              <>
+                <strong>I couldn't finish this request.</strong> {state.error}
+              </>
+            )}
           </p>
           {!readOnly && !running && (
             <Button type="button" variant="outline" size="sm" onClick={onRetry}>
-              Try again
+              {unfinished ? "Continue" : "Try again"}
             </Button>
           )}
         </div>
       )}
-      {!running && state.status !== "idle" && state.diagnostic && (
-        <details className="agent-run-debug">
-          <summary>Error details</summary>
-          <p>{state.diagnostic.hint}</p>
-          <dl>
-            <dt>Run ID</dt>
-            <dd>{state.diagnostic.runId}</dd>
-            <dt>Error</dt>
-            <dd>
-              {state.diagnostic.code} · {state.diagnostic.errorType}
-            </dd>
-            <dt>Model</dt>
-            <dd>{state.diagnostic.model}</dd>
-            <dt>Stage</dt>
-            <dd>{state.diagnostic.stage}</dd>
-            <dt>Duration</dt>
-            <dd>{(state.diagnostic.elapsedMs / 1000).toFixed(1)} s</dd>
-            {state.diagnostic.providerStatus && (
-              <>
-                <dt>Provider HTTP</dt>
-                <dd>{state.diagnostic.providerStatus}</dd>
-              </>
-            )}
-          </dl>
-        </details>
+      {!running && state.status !== "idle" && (
+        <AgentRunDebug diagnostic={state.diagnostic} />
       )}
       {stopped && !state.text && (
         <p className="agent-run-empty">
@@ -461,5 +462,9 @@ export default function AgentRunPanel({
       )}
     </section>
   );
-  return compact ? panel : <SmoothHeight>{panel}</SmoothHeight>;
+  return compact ? (
+    panel
+  ) : (
+    <AutoHeight className="auto-height">{panel}</AutoHeight>
+  );
 }

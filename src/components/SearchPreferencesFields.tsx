@@ -1,6 +1,10 @@
 import { SelectField } from "./ui/select-field";
 import { Input } from "./ui/input";
-import { TODAY, type Criteria } from "../../shared/marketplace";
+import {
+  listingConditions,
+  TODAY,
+  type Criteria,
+} from "../../shared/marketplace";
 
 type SearchPreferencesFieldsProps = {
   value: Criteria;
@@ -41,7 +45,7 @@ export default function SearchPreferencesFields({
         />
       </label>
       <label>
-        Distance (km)
+        Maximum listed distance (km)
         <Input
           type="number"
           required
@@ -54,9 +58,10 @@ export default function SearchPreferencesFields({
             onChange({ ...value, radius: event.target.valueAsNumber })
           }
         />
+        <small>Listings with unknown distance are also shown.</small>
       </label>
       <label>
-        Pickup by
+        I can collect by
         <Input
           type="date"
           min={TODAY}
@@ -73,7 +78,7 @@ export default function SearchPreferencesFields({
           value={value.condition}
           onValueChange={(condition) => onChange({ ...value, condition })}
           options={[
-            ...new Set(["All", "Very good", "Good", "Used", value.condition]),
+            ...new Set(["All", ...listingConditions, value.condition]),
           ].map((option) => ({ value: option, label: option }))}
         />
       </label>
@@ -99,7 +104,7 @@ export default function SearchPreferencesFields({
             ]),
           ].map((option) => ({
             value: option,
-            label: option === "takeover" ? "Takeover" : option,
+            label: option,
           }))}
         />
       </label>

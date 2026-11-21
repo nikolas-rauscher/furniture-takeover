@@ -1,0 +1,139 @@
+/* A price on a chunky track: the value in the app's price type, a blue fill up to a
+   tactile thumb on its lip, and the range's ends below. */
+.price-slider {
+  display: grid;
+  gap: 6px;
+}
+.price-slider-readout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+.price-slider-readout > label {
+  color: var(--muted);
+  font-size: var(--type-support);
+  font-weight: 700;
+}
+.price-slider-readout > output {
+  color: var(--blue-dark);
+  font-size: var(--type-price);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.price-slider-track,
+.price-slider-track:hover,
+.price-slider-track:focus {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.price-slider-track {
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  touch-action: pan-y;
+}
+.price-slider-track:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+/* The thumb carries the focus ring. */
+.price-slider-track:focus-visible {
+  outline: none;
+}
+.price-slider-track::-webkit-slider-runnable-track {
+  height: 14px;
+  border: 2px solid var(--card-line);
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--blue) var(--filled),
+    var(--canvas) var(--filled)
+  );
+  box-shadow: 0 3px 0 var(--lip);
+}
+.price-slider-track::-webkit-slider-thumb {
+  width: 32px;
+  height: 32px;
+  margin-top: -11px;
+  border: 3px solid var(--blue);
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 3px 0 var(--blue-dark);
+  appearance: none;
+  -webkit-appearance: none;
+  transition:
+    transform 90ms var(--ease-out),
+    box-shadow 90ms var(--ease-out),
+    background-color 120ms ease;
+}
+.price-slider-track:not(:disabled):hover::-webkit-slider-thumb {
+  background: var(--selected);
+}
+/* Pressed, the thumb sinks onto its lip and grows a little under the finger. */
+.price-slider-track:not(:disabled):active::-webkit-slider-thumb {
+  box-shadow: 0 0 0 var(--blue-dark);
+  transform: translateY(3px) scale(1.08);
+}
+.price-slider-track:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    0 3px 0 var(--blue-dark),
+    0 0 0 4px var(--focus-ring);
+}
+.price-slider-track::-moz-range-track {
+  height: 14px;
+  border: 2px solid var(--card-line);
+  border-radius: 999px;
+  background: var(--canvas);
+  box-shadow: 0 3px 0 var(--lip);
+}
+.price-slider-track::-moz-range-progress {
+  height: 14px;
+  border-radius: 999px;
+  background: var(--blue);
+}
+.price-slider-track::-moz-range-thumb {
+  width: 26px;
+  height: 26px;
+  border: 3px solid var(--blue);
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 3px 0 var(--blue-dark);
+  transition:
+    transform 90ms var(--ease-out),
+    box-shadow 90ms var(--ease-out);
+}
+.price-slider-track:not(:disabled):active::-moz-range-thumb {
+  box-shadow: 0 0 0 var(--blue-dark);
+  transform: translateY(3px) scale(1.08);
+}
+.price-slider-track:focus-visible::-moz-range-thumb {
+  box-shadow:
+    0 3px 0 var(--blue-dark),
+    0 0 0 4px var(--focus-ring);
+}
+.price-slider-bounds {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+/* Each engine's thumb in its own rule: one unknown pseudo-element drops a whole list. */
+@media (prefers-reduced-motion: reduce) {
+  .price-slider-track::-webkit-slider-thumb {
+    transition: none;
+  }
+  .price-slider-track::-moz-range-thumb {
+    transition: none;
+  }
+}

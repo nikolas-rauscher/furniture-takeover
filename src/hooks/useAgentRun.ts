@@ -11,7 +11,9 @@ import type {
   AgentActionEvent,
   AgentQuestionEvent,
 } from "../../shared/actions";
+import { isAgentBusy, retryOnceWhenBusy } from "../api/busyRetry.ts";
 import { streamAgentRun } from "../api/runs.ts";
+import { randomUuid } from "../randomUuid.ts";
 
 export type AgentRunStep = Extract<AgentRunEvent, { type: "status" }>;
 export type AgentRunAction = Exclude<AgentActionEvent, AgentQuestionEvent>;
@@ -33,6 +35,8 @@ export type AgentRunTurn = {
   watchSuggestion?: { query: string; maxPrice?: number };
 };
 export type AgentRunState = AgentRunTurn & {
+  /** The server was busy: Pako is retrying once, or it stayed busy and nothing started. */
+  congested?: "retrying" | "failed";
   offerListingIds?: string[];
   inventoryMatchIds: string[] | null;
   diagnostic?: AgentRunDiagnostic;
@@ -178,14 +182,17 @@ export function applyAgentRunEvent(
       };
     case "inventory_matches":
       return { ...state, inventoryMatchIds: event.ids };
-    case "question":
+    case "question": {
+      const asked = queuedQuestions(event);
+      const ids = new Set(asked.map((question) => question.id));
       return {
         ...state,
         questions: [
-          ...state.questions.filter((question) => question.id !== event.id),
-          event,
+          ...state.questions.filter((question) => !ids.has(question.id)),
+          ...asked,
         ],
       };
+    }
     case "listing_patch":
     case "preferences_patch":
       return {
@@ -224,6 +231,19 @@ function stopReasoning(parts?: AgentReasoningPart[]) {
   );
 }
 
+/** The questions Pako queued behind one are asked on their own, right after it. */
+function queuedQuestions(event: AgentQuestionEvent): AgentQuestionEvent[] {
+  const { followUps = [], ...asked } = event;
+  return [
+    asked,
+    ...followUps.map((followUp, index) => ({
+      ...followUp,
+      type: "question" as const,
+      id: `${event.id}:${index + 1}`,
+    })),
+  ];
+}
+
 export function answerAgentQuestion(
   state: AgentRunState,
   id: string,
@@ -237,8 +257,37 @@ export function answerAgentQuestion(
   };
 }
 
-export function useAgentRun() {
-  const [state, setState] = useState<AgentRunState>(emptyAgentRunState);
+/** Takes an answer back, so the question waits in its place again. */
+export function unanswerAgentQuestion(
+  state: AgentRunState,
+  id: string,
+): AgentRunState {
+  if (!Object.hasOwn(state.answers, id)) return state;
+  return {
+    ...state,
+    answers: Object.fromEntries(
+      Object.entries(state.answers).filter(([answered]) => answered !== id),
+    ),
+  };
+}
+
+/** A question Pako asks without a run joins the turn once the student answers it. */
+export function answerLocalQuestion(
+  state: AgentRunState,
+  question: AgentQuestionEvent,
+  answer: string,
+): AgentRunState {
+  const asked = state.questions.some((item) => item.id === question.id)
+    ? state
+    : { ...state, questions: [...state.questions, question] };
+  return answerAgentQuestion(asked, question.id, answer);
+}
+
+/** A restored conversation, such as the tab's last search, starts where it ended. */
+export function useAgentRun(restored?: AgentRunState) {
+  const [state, setState] = useState<AgentRunState>(
+    () => restored ?? emptyAgentRunState(),
+  );
   const active = useRef<AbortController | null>(null);
   const lastRequest = useRef<{
     input: AgentRunRequest;
@@ -266,7 +315,7 @@ export function useAgentRun() {
       active.current = controller;
       const input = structuredClone(request);
       lastRequest.current = { input, options };
-      const id = crypto.randomUUID();
+      const id = randomUuid();
       setState((previous) =>
         beginAgentRun(
           previous,
@@ -281,30 +330,38 @@ export function useAgentRun() {
         active.current === controller &&
         !controller.signal.aborted;
       try {
-        await streamAgentRun(input, {
-          signal: controller.signal,
-          onEvent: (event) => {
-            if (!isCurrent()) return;
-            if (event.type === "negotiation_update")
-              options.onNegotiation?.(event);
-            setState((previous) => applyAgentRunEvent(previous, event));
-            if (
-              event.type === "listing_patch" ||
-              event.type === "preferences_patch"
-            )
-              options.onAction?.(event);
+        const onEvent = (event: AgentRunEvent) => {
+          if (!isCurrent()) return;
+          if (event.type === "negotiation_update")
+            options.onNegotiation?.(event);
+          setState((previous) =>
+            applyAgentRunEvent({ ...previous, congested: undefined }, event),
+          );
+          if (
+            event.type === "listing_patch" ||
+            event.type === "preferences_patch"
+          )
+            options.onAction?.(event);
+        };
+        await retryOnceWhenBusy(
+          () => streamAgentRun(input, { signal: controller.signal, onEvent }),
+          {
+            signal: controller.signal,
+            onRetry: () =>
+              setState((previous) => ({ ...previous, congested: "retrying" })),
           },
-        });
+        );
       } catch (error) {
         if (isCurrent())
           setState((previous) => ({
             ...previous,
             status: "error",
+            congested: isAgentBusy(error) ? "failed" : undefined,
             reasoning: stopReasoning(previous.reasoning),
             error:
               error instanceof Error
                 ? error.message
-                : "The agent stopped unexpectedly. Please try again.",
+                : "I stopped before I finished. Try again.",
           }));
       } finally {
         if (active.current === controller) active.current = null;
@@ -348,6 +405,24 @@ export function useAgentRun() {
       setState((previous) => answerAgentQuestion(previous, id, answer)),
     [],
   );
+  const unanswerQuestion = useCallback(
+    (id: string) => setState((previous) => unanswerAgentQuestion(previous, id)),
+    [],
+  );
+  const answerOwnQuestion = useCallback(
+    (question: AgentQuestionEvent, answer: string) =>
+      setState((previous) => answerLocalQuestion(previous, question, answer)),
+    [],
+  );
 
-  return { state, run, cancel, reset, retry, markQuestionAnswered };
+  return {
+    state,
+    run,
+    cancel,
+    reset,
+    retry,
+    markQuestionAnswered,
+    unanswerQuestion,
+    answerOwnQuestion,
+  };
 }

@@ -1,8 +1,23 @@
 /* New account controls use the existing app typography, palette and modal. */
-.account-auth h1,
-.account-settings h1 {
-  font-size: 20px;
-  margin: 0 0 16px;
+.account-auth h1 {
+  margin: 0 0 8px;
+  font-size: var(--type-title);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  text-align: center;
+}
+.account-auth-pako {
+  display: block;
+  margin: 0 auto 10px;
+}
+.account-auth > .quiet-caption {
+  margin-bottom: 16px;
+  color: var(--muted);
+  font-size: var(--type-support);
+  line-height: 1.5;
+}
+.account-auth .account-actions {
+  justify-content: center;
 }
 .account-auth form,
 .account-settings form {
@@ -16,22 +31,18 @@
   flex-wrap: wrap;
   margin-top: 16px;
 }
-.account-auth .account-actions button,
-.account-settings button:not(.button),
-.account-report > button {
-  font: inherit;
-  color: var(--ink);
-  padding: 9px 12px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: #fff;
-  cursor: pointer;
+/* Each settings section is a card; the danger zone is tinted. */
+.account-settings {
+  display: grid;
+  gap: 16px;
 }
 .account-settings > section,
 .account-settings > form {
-  padding: 20px 0;
-  border-top: 1px solid var(--line);
-  margin-top: 20px;
+  margin: 0;
+  padding: var(--space-panel) clamp(16px, 2.5vw, 24px);
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
 }
 .account-settings h2 {
   font-size: var(--type-section);
@@ -49,7 +60,10 @@
   font-size: var(--type-label);
 }
 .account-settings .account-danger {
-  color: #a42c36;
+  border-color: #efcdd0;
+}
+.account-settings .account-danger h2 {
+  color: var(--danger);
 }
 .account-blocked {
   display: flex;
@@ -65,43 +79,10 @@
 }
 .account-notice {
   font-size: 14px;
-  padding: 12px;
-  background: var(--mist);
-}
-.account-report {
-  font-size: 13px;
-  margin-top: 14px;
-}
-.account-report > button {
-  background: none;
-  border: 0;
-  padding: 0;
-  color: var(--muted);
-}
-.account-report textarea {
-  width: 100%;
-  min-height: 70px;
-  margin: 10px 0;
-}
-.account-report form {
-  display: grid;
-  gap: 8px;
-}
-.account-message-tools {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.account-chat-error {
-  font-size: 13px;
-  color: #a42c36;
-  margin: 8px 0;
-}
-.account-inbox-notice {
-  display: flex;
-  gap: 12px;
-  align-items: center;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--selected);
+  color: var(--blue-dark);
 }
 .account-settings input,
 .account-settings select,
@@ -163,31 +144,34 @@
   place-items: center;
   width: 48px;
   height: 48px;
-  border-radius: 50%;
-  background: var(--mist);
-  color: var(--blue);
+  border-radius: 14px;
+  background: var(--sand);
+  color: var(--kraft-deep);
   font-size: 17px;
-  font-weight: 600;
+  font-weight: 700;
 }
 .settings-sidebar nav {
   display: grid;
   gap: 4px;
 }
 .settings-sidebar nav button {
-  text-align: left;
-  padding: 12px;
-  border-radius: 6px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  color: var(--muted);
   font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+.settings-sidebar nav button:hover {
+  background: var(--canvas);
+  color: var(--ink);
 }
 .settings-sidebar nav button.active {
-  background: var(--mist);
-  color: var(--blue);
-  font-weight: 600;
-}
-.account-settings > form,
-.account-settings > section {
-  margin: 0;
-  padding: var(--space-group) 0;
+  background: var(--selected);
+  color: var(--blue-dark);
 }
 .account-settings [hidden] {
   display: none !important;
@@ -205,24 +189,149 @@
   line-height: 1.6;
   max-width: var(--measure-prose);
 }
-.account-settings .account-danger {
-  margin-top: 24px;
-}
-.account-settings .account-danger button {
-  color: #a42c36;
-  border-color: #e1b8bd;
-}
 .settings-auth-page {
   max-width: 440px;
   margin: 24px auto;
+}
+.settings-auth-page .account-auth {
+  padding: 28px 24px 24px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-stage);
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--lip);
 }
 .local-settings-page {
   display: grid;
   gap: 16px;
   max-width: 620px;
 }
-.local-settings-page > button {
-  justify-self: start;
+/* Settings rows stand on a lip like the intro's answer cards. */
+.settings-rows {
+  display: grid;
+  gap: 12px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.settings-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--lip);
+  color: var(--ink);
+  text-align: left;
+  transition:
+    transform 90ms var(--ease-out),
+    box-shadow 90ms var(--ease-out),
+    border-color 160ms ease;
+}
+.settings-row:hover {
+  border-color: var(--lip);
+}
+.settings-row:active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 var(--lip);
+}
+.settings-row > svg {
+  color: var(--muted);
+}
+.settings-row-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--sand);
+  color: var(--kraft-deep);
+}
+.settings-row[data-tone="sky"] .settings-row-icon {
+  background: var(--sky);
+  color: var(--blue);
+}
+.settings-row[data-tone="danger"] .settings-row-icon {
+  background: #fbe9ea;
+  color: var(--danger);
+}
+.settings-row-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+/* A row with a switch toggles it from anywhere on the row; it keeps its lip still. The
+   switch sits on the title's line and the explanation runs underneath across the card. */
+.settings-switch-row {
+  grid-template-areas:
+    "icon title switch"
+    "detail detail detail";
+  row-gap: 10px;
+  font-size: var(--type-body);
+  font-weight: 400;
+  cursor: pointer;
+  transition:
+    border-radius 160ms ease,
+    box-shadow 160ms ease;
+}
+.settings-switch-row > .settings-row-text {
+  display: contents;
+}
+.settings-switch-row > .settings-row-icon {
+  grid-area: icon;
+}
+.settings-switch-row .settings-row-text > strong {
+  grid-area: title;
+}
+.settings-switch-row .settings-row-text > small {
+  grid-area: detail;
+}
+.settings-switch-row > .switch {
+  grid-area: switch;
+}
+.settings-switch-row:active {
+  transform: none;
+  box-shadow: 0 4px 0 var(--lip);
+}
+.settings-switch-row:has(:focus-visible) {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+.settings-switch-row .switch:focus-visible {
+  outline: none;
+}
+/* Developer mode holds its demo tool in the same card, under the switch; the tool's
+   lip stays inside the space it unfolds into. */
+.settings-group {
+  display: grid;
+}
+.settings-group:has(> .settings-row-unfold) > .settings-switch-row {
+  border-bottom-width: 0;
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+  box-shadow: none;
+}
+.settings-row-unfold {
+  overflow: hidden;
+  margin-bottom: -4px;
+  padding-bottom: 4px;
+}
+.settings-row-unfold > .settings-row {
+  border-top-style: dashed;
+  border-top-right-radius: 0;
+  border-top-left-radius: 0;
+}
+.settings-row-text strong {
+  font-size: var(--type-item);
+  font-weight: 700;
+}
+.settings-row-text small {
+  color: var(--muted);
+  font-size: var(--type-support);
+  line-height: 1.45;
 }
 .listing-toolbar {
   display: grid;
@@ -236,43 +345,6 @@
 .listing-toolbar input {
   width: 100%;
   min-width: 0;
-}
-.listing-readiness {
-  padding: 16px;
-  border-bottom: 1px solid var(--line);
-}
-.listing-readiness > strong {
-  font-size: 14px;
-}
-.listing-readiness > div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 12px 0 8px;
-}
-.listing-readiness button {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 5px 8px;
-}
-.listing-readiness .complete {
-  color: var(--blue);
-  background: var(--mist);
-}
-.listing-readiness .missing {
-  border-color: #bb8042;
-  color: #84501e;
-}
-.listing-readiness small {
-  font-size: 12px;
-  color: var(--muted);
-}
-.listing-research-actions {
-  flex-wrap: wrap;
 }
 @media (max-width: 760px) {
   .settings-layout {
@@ -375,7 +447,7 @@
   font-weight: 600;
 }
 .account-field-group + .account-field-group {
-  border-top: 1px solid var(--line);
+  border-top: 2px solid var(--card-line);
   padding-top: 16px;
 }
 .account-field-group .quiet-caption {
@@ -413,7 +485,7 @@
   margin: 12px 0 24px;
 }
 .account-key-provider {
-  border-top: 1px solid var(--line);
+  border-top: 2px solid var(--card-line);
   padding: 24px 0;
 }
 .account-key-provider:last-child {
@@ -432,8 +504,7 @@
   font-weight: 600;
   margin: 0;
 }
-.account-key-status,
-.account-coming-soon {
+.account-key-status {
   display: inline-block;
   color: var(--muted);
   font-size: 12px;
@@ -462,17 +533,11 @@
 .account-section-heading h2 {
   margin: 0;
 }
-.account-coming-soon {
-  padding: 3px 8px;
-  border-radius: 4px;
-  background: var(--mist);
-  color: var(--blue);
-}
 .account-payments-preview {
   padding: 24px;
   margin-top: 24px;
-  border: 1px dashed var(--line);
-  border-radius: 6px;
+  border: 2px dashed var(--lip);
+  border-radius: var(--radius-card);
 }
 .account-payments-preview strong {
   font-size: 14px;
@@ -482,7 +547,7 @@
   margin: 8px 0 0;
   color: var(--muted);
 }
-.account-settings button:disabled,
+.account-settings button:not(.button):disabled,
 .account-settings fieldset:disabled {
   opacity: 0.65;
 }
@@ -502,36 +567,8 @@
     padding: 18px;
   }
 }
-.listing-readiness-mobile {
-  display: none;
-}
-@media (max-width: 760px) {
-  .selling-chat-layout .listing-preview .listing-readiness {
-    display: none;
-  }
-  .listing-readiness-mobile {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    flex-shrink: 0;
-    text-align: left;
-    border-bottom: 1px solid var(--line);
-    padding: 8px 0;
-    font-size: 12px;
-  }
-  .listing-readiness-mobile span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .listing-readiness-mobile small {
-    white-space: nowrap;
-    color: var(--blue);
-  }
-}
 
-/* Owned listings use compact rows; saved items stay in the browsing grid. */
+/* Owned listings are tactile cards; saved items stay in the browsing grid. */
 .focused-layout .main-content.view-account:has(> .items-page) {
   padding: var(--space-section) var(--space-page) calc(2 * var(--space-section));
 }
@@ -545,9 +582,9 @@
 .items-page .page-title h1 {
   font-size: var(--type-title);
   line-height: 1.2;
-  font-weight: 550;
+  font-weight: 700;
   margin: 0;
-  letter-spacing: -0.6px;
+  letter-spacing: -0.025em;
 }
 .items-page .page-title p {
   grid-column: 1 / -1;
@@ -556,75 +593,116 @@
   color: var(--muted);
 }
 .items-page .page-title > .button {
-  min-height: var(--control-size);
   font-size: var(--type-label);
 }
+/* The tabs are a segmented control: the open one is a raised face. Celebration
+   confetti flies behind them, so their labels stay readable. */
 .items-page .account-tabs {
-  display: flex;
-  gap: var(--space-group);
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  gap: 4px;
   margin: 0 0 var(--space-group);
+  padding: 4px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--canvas);
 }
 .items-page .account-tabs button {
-  min-height: 44px;
-  padding: 8px 0;
-  gap: 6px;
+  min-height: 40px;
+  padding: 8px 16px;
+  gap: 8px;
+  border: 0;
+  border-radius: 999px;
   color: var(--muted);
-  border-bottom: 2px solid transparent;
+  font-size: var(--type-label);
+  font-weight: 600;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
 }
 .items-page .account-tabs [aria-selected="true"] {
+  background: var(--surface);
   color: var(--blue);
-  border-bottom-color: var(--blue);
+  box-shadow: 0 2px 0 var(--lip);
+}
+.items-page .account-tabs button > span {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: var(--type-caption);
+}
+.items-page .account-tabs [aria-selected="true"] > span {
+  background: var(--selected);
 }
 .items-page .listing-toolbar {
-  max-width: 720px;
   margin-bottom: var(--space-group);
 }
 .items-page .listing-toolbar:has([data-slot="select-trigger"]) {
   grid-template-columns: minmax(0, 1fr) 190px;
 }
 .items-page .own-listings {
-  gap: 0;
-  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 14px;
 }
 .items-page .own-listing {
+  position: relative;
   display: grid;
-  grid-template-columns: 80px minmax(0, 1fr) auto;
+  grid-template-columns: 88px minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-group);
-  padding: var(--space-group) 0;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
-  background: transparent;
+  padding: 12px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--lip);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+.items-page .own-listing:hover {
+  border-color: var(--lip);
+}
+.items-page .own-listing.is-published {
+  border-color: var(--blue);
+  box-shadow: 0 4px 0 var(--blue-dark);
 }
 .items-page .own-listing-image {
-  width: 80px;
-  height: 80px;
+  width: 88px;
+  height: 88px;
   min-height: 0;
   display: grid;
   place-items: center;
-  border-radius: 6px;
-  background: var(--mist);
-  color: var(--muted);
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--sand);
+  color: var(--kraft-deep);
 }
 .items-page .own-listing-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
+/* An archived listing keeps its photo, faded like the listing itself. */
+.items-page .listing-archived-image img {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
 .items-page .own-listing-heading {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 8px 12px;
-  margin-bottom: 6px;
+  gap: 6px 10px;
+  margin-bottom: 4px;
 }
 .items-page .own-listing h2 {
   min-width: 0;
   margin: 0;
   font-size: var(--type-item);
-  font-weight: 550;
-  line-height: 1.4;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
 }
 .items-page .own-listing-title {
   padding: 0;
@@ -636,16 +714,42 @@
   color: var(--blue);
 }
 .items-page .own-listing strong {
+  color: var(--blue);
   font-size: var(--type-body);
-  font-weight: 550;
+  font-weight: 700;
 }
 .items-page .own-listing p {
-  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
   margin: 4px 0 0;
   color: var(--muted);
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: var(--type-support);
+}
+.items-page .own-listing p > svg {
+  margin-top: 2px;
+  color: var(--blue);
+}
+.items-page .own-listing p > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.items-page .own-listing-status {
+  padding: 2px 9px;
+  font-size: var(--type-caption);
+}
+/* Status colours: open is blue, reserved is sunny, sold is cardboard. */
+.items-page .chip[data-status="reserved"] {
+  background: var(--butter);
+  color: #745511;
+}
+.items-page .chip[data-status="sold"] {
+  background: var(--sand);
+  color: var(--kraft-deep);
+}
+.items-page .chip[data-status="withdrawn"] {
+  background: var(--canvas);
+  color: var(--muted);
 }
 .items-page .listing-actions {
   display: flex;
@@ -654,14 +758,106 @@
   gap: 8px;
   margin: 0;
 }
-.items-page .listing-actions .button {
-  min-height: 40px;
-  font-size: 13px;
-}
 .items-page .listing-actions .icon-button {
   width: 44px;
   height: 44px;
   color: var(--muted);
+}
+/* Actions inside a card stay light: a soft fill instead of an outline. */
+.items-page .listing-actions .button.secondary {
+  --button-face: var(--canvas);
+  border-color: transparent;
+}
+.items-page .empty-state-pako {
+  display: block;
+  margin-bottom: 12px;
+}
+
+/* Progress: how many listings already found a new home. */
+.items-page .selling-progress {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 var(--space-group);
+  padding: 12px 16px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.items-page .selling-progress-body {
+  display: grid;
+  flex: 1;
+  gap: 8px;
+  min-width: 0;
+}
+.items-page .selling-progress h2 {
+  margin: 0;
+  font-size: var(--type-item);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.items-page .selling-progress-bar {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e9e9e3;
+}
+.items-page .selling-progress-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--blue);
+  box-shadow: inset 0 3px 0 rgb(255 255 255 / 0.22);
+}
+.items-page .selling-progress-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.items-page .selling-progress-counts .chip {
+  padding: 2px 10px;
+  font-size: var(--type-caption);
+}
+
+/* Publishing: Pako flies into the progress card and cheers as confetti leaves his box; a stamp lands on the new card. */
+.items-page .selling-progress-pako {
+  position: relative;
+  flex: none;
+}
+.items-page .selling-progress-burst {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.items-page .selling-progress-news {
+  margin: -4px 0 0;
+  color: var(--muted);
+  font-size: var(--type-support);
+}
+.items-page .published-stamp {
+  position: absolute;
+  top: -14px;
+  right: 22px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px;
+  border: 3px solid var(--blue);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 0.92);
+  color: var(--blue);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  pointer-events: none;
 }
 @media (max-width: 760px) {
   .focused-layout .main-content.view-account:has(> .items-page) {
@@ -676,12 +872,31 @@
     grid-template-columns: minmax(0, 1fr);
   }
   .items-page .own-listing {
-    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-columns: 72px minmax(0, 1fr);
     gap: 8px 12px;
+    padding: 10px;
   }
   .items-page .own-listing-image {
-    width: 64px;
-    height: 80px;
+    width: 72px;
+    height: 88px;
+  }
+  .items-page .account-tabs {
+    display: flex;
+  }
+  /* On phones the stamp sits on the photo, clear of the title and actions. */
+  .items-page .published-stamp {
+    top: -10px;
+    right: auto;
+    left: 2px;
+    gap: 4px;
+    padding: 1px 7px;
+    border-width: 2px;
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+  }
+  .items-page .account-tabs button {
+    flex: 1;
+    justify-content: center;
   }
   .items-page .listing-actions {
     grid-column: 2;
@@ -692,4 +907,143 @@
   .items-page .listing-actions .button {
     min-height: 44px;
   }
+  /* An empty result stays right below the search, clear of the tab bar. */
+  .items-page .empty-state {
+    min-height: 0;
+    margin: var(--space-label) 0;
+    padding: var(--space-group) 16px;
+  }
+}
+
+/* Sign-up and sign-in: hints under fields, a rule that ticks itself, and calm errors. */
+.account-auth h1:focus {
+  outline: none;
+}
+.account-auth h1:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+.account-auth > .quiet-caption {
+  text-align: center;
+}
+.account-auth-hint,
+.account-auth-field-error,
+.account-auth-rule {
+  font-size: var(--type-caption);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.account-auth-hint {
+  color: var(--muted);
+}
+.account-auth-field-error {
+  color: var(--danger);
+}
+.account-auth input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+.account-auth-rule {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+.account-auth-rule-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--lip);
+  border-radius: 50%;
+  color: var(--on-primary);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+.account-auth-rule[data-met] {
+  color: var(--blue-dark);
+}
+.account-auth-rule[data-met] .account-auth-rule-mark {
+  border-color: var(--blue);
+  background: var(--blue);
+}
+.account-auth-error,
+.account-auth-notice {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: var(--type-label);
+  font-weight: 600;
+  line-height: 1.45;
+}
+.account-auth-error {
+  background: #fbeaec;
+  color: var(--danger-dark);
+}
+.account-auth-notice {
+  background: var(--selected);
+  color: var(--blue-dark);
+}
+/* Check your inbox: an envelope badge on Pako's box, then the resend. */
+.account-auth-mail {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin: 0 auto -18px;
+  position: relative;
+  z-index: 1;
+  translate: 30px 0;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--blue);
+  color: var(--on-primary);
+}
+.account-auth .quiet-caption strong {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.account-auth-tip {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--butter);
+  font-size: var(--type-support);
+  line-height: 1.45;
+  text-align: center;
+}
+/* Sign in: the way to a new account on its own quiet card. */
+.account-auth-new {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 16px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--canvas);
+}
+.account-auth-new > p {
+  display: grid;
+  gap: 2px;
+  font-size: var(--type-support);
+  line-height: 1.45;
+}
+.account-auth-new > p > strong {
+  font-size: var(--type-label);
+}
+.account-auth-new > .button {
+  width: 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .account-auth-rule-mark {
+    transition: none;
+  }
+}
+.account-auth-rule[data-missed] {
+  color: var(--danger);
+}
+.account-auth-rule[data-missed] .account-auth-rule-mark {
+  border-color: var(--danger);
 }

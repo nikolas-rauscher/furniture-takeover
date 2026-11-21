@@ -22,7 +22,7 @@ const now = new Date("2026-10-20T10:00:00Z");
 const desk = products.find((item) => item.id === "desk")!;
 const job = {
   id: "job",
-  criteria: { ...defaults, query: "desk" },
+  criteria: { ...defaults, query: "desk", maxPrice: 500 },
   paused: false,
 };
 const listing = (id: string, changes: Partial<Product> = {}): Product => ({
@@ -253,19 +253,20 @@ test("demand ladder ignores paused, non-matching and invalid drafts", () => {
   );
 });
 
-test("seller demand respects the pickup deadline used by actual alerts", () => {
+test("seller demand respects the pickup window used by actual alerts", () => {
   const deadline = {
     ...budget(100),
     criteria: { ...budget(100).criteria, pickup: "2026-11-20" },
   };
+  // A seller's date is the last day to collect, so a later one still overlaps.
   for (const [pickupBy, expected] of [
-    ["2026-11-25", 0],
+    ["2026-11-25", 1],
     ["2026-11-20", 1],
-    ["2026-11-15", 1],
+    ["2026-10-18", 0],
   ] as const) {
     const hypothetical = { ...draft, pickupBy };
     assert.equal(
-      demandLadder([deadline], hypothetical).rungs[0].count,
+      demandLadder([deadline], hypothetical, "2026-10-20").rungs[0].count,
       expected,
     );
     const baseline = run(emptyAlerts(), [], [deadline]);
@@ -315,8 +316,8 @@ test("an alert reason mentions a price limit only when one was stated", () => {
     const first = run(emptyAlerts(), [], [j]);
     return run(first, listings, [j]).alerts[0].reason;
   };
-  assert.match(baseline(80), /limit CHF 80/);
-  assert.doesNotMatch(baseline(NO_BUDGET), /limit/);
+  assert.match(baseline(80), /within your CHF 80 budget/);
+  assert.doesNotMatch(baseline(NO_BUDGET), /budget/);
 });
 
 test("similar listings summarise active items of the same kind", () => {

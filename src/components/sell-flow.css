@@ -1,0 +1,367 @@
+/* Selling from photos: Pako guides the photo step, then fills in the listing card. */
+.sell-guide {
+  grid-area: guide;
+  min-width: 0;
+}
+
+/* The camera, its photo limit and the way to sell several things form one card; the
+   strip shows covers, not letterboxes. */
+.selling-photo-layout .photo-upload-panel {
+  display: flex;
+  gap: 8px;
+  min-height: 0;
+  max-height: 100%;
+  padding: 8px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-stage);
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--lip);
+}
+.selling-photo-layout .photo-upload-panel > .snap-target {
+  border-radius: calc(var(--radius-stage) - 8px);
+}
+.selling-photo-layout .photo-gallery-thumbnails img {
+  object-fit: cover;
+}
+.photo-upload-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 12px;
+  padding-inline: 6px;
+}
+.photo-upload-foot > .sell-several {
+  margin-left: -13px;
+}
+/* On wider screens the viewfinder and the shown photo keep a 4:3 frame instead of
+   stretching to the height of the page. */
+@media (min-width: 761px) {
+  .selling-photo-layout .photo-upload-panel > .snap-target,
+  .selling-photo-layout .photo-upload-panel .photo-gallery-stage {
+    flex: none;
+    aspect-ratio: 4 / 3;
+    min-height: 0;
+  }
+  .selling-photo-layout .photo-upload-panel > .snap-target {
+    --snap-floor: 88%;
+  }
+}
+
+/* The empty photo step is a viewfinder onto a room, with one big shutter. */
+.snap-target {
+  --snap-floor: 72%;
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  flex: 1 1 0;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  min-height: 260px;
+  padding: 32px 20px;
+  overflow: hidden;
+  border-radius: var(--radius-stage);
+  background: linear-gradient(
+    to bottom,
+    var(--sand) 0 var(--snap-floor),
+    #ecd6b7 var(--snap-floor) 100%
+  );
+  transition: box-shadow 160ms ease;
+}
+.snap-target[data-dragging] {
+  box-shadow: inset 0 0 0 3px var(--blue);
+}
+.snap-target-corners {
+  position: absolute;
+  inset: 16px;
+  z-index: -1;
+  width: calc(100% - 32px);
+  height: calc(100% - 32px);
+  fill: none;
+  stroke: var(--surface);
+  stroke-width: 3px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.snap-target-corners path {
+  vector-effect: non-scaling-stroke;
+}
+.snap-target-shutter {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 0;
+  color: var(--ink);
+  font-size: var(--type-body);
+  font-weight: 700;
+}
+.snap-target-lens {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 92px;
+  border: 8px solid var(--surface);
+  border-radius: 50%;
+  background: var(--blue);
+  color: var(--on-primary);
+  box-shadow:
+    0 5px 0 var(--lip),
+    0 14px 28px rgb(41 41 41 / 0.14);
+  transition:
+    transform 90ms var(--ease-out),
+    box-shadow 90ms var(--ease-out),
+    background-color 160ms ease;
+}
+.snap-target-lens::after {
+  content: "";
+  position: absolute;
+  inset: -14px;
+  border: 3px solid var(--blue);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  animation: snap-target-pulse 1.8s var(--ease-out) infinite;
+}
+@keyframes snap-target-pulse {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.9);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+}
+.snap-target-shutter:not(:disabled):hover .snap-target-lens {
+  background: #3c58c7;
+}
+.snap-target-shutter:not(:disabled):active .snap-target-lens {
+  transform: translateY(5px);
+  box-shadow:
+    0 0 0 var(--lip),
+    0 8px 18px rgb(41 41 41 / 0.12);
+}
+.snap-target-shutter:disabled .snap-target-lens {
+  background: var(--lip);
+}
+.snap-target-shutter:disabled .snap-target-lens::after {
+  animation: none;
+}
+.snap-target-hint {
+  max-width: 30ch;
+  text-wrap: balance;
+  color: color-mix(in srgb, var(--kraft-deep), var(--ink) 35%);
+  font-size: var(--type-support);
+  line-height: 1.45;
+  text-align: center;
+}
+
+/* Photos pop into the strip as they arrive. */
+.view-sell .photo-attachment {
+  animation: sell-photo-pop 420ms var(--ease-out) both;
+}
+@keyframes sell-photo-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Listing several items one after another: a tray of covers above the listing. The
+   status, two covers and Skip share one row down to 360 px wide phones. */
+.batch-tray {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  margin: 0 0 var(--space-group);
+  padding: 10px 14px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--lip);
+}
+/* The count and Pako's short cheer lie on top of each other and cross-fade, so the
+   status keeps the width and height of the larger one. */
+.batch-tray-status {
+  display: grid;
+  color: var(--muted);
+  font-size: var(--type-support);
+  line-height: 1.35;
+}
+.batch-tray-status > :is(.batch-tray-count, .batch-tray-cheer) {
+  grid-area: 1 / 1;
+  align-self: center;
+  margin: 0;
+  transition:
+    opacity 200ms ease-out,
+    visibility 200ms;
+}
+.batch-tray-count {
+  display: grid;
+}
+.batch-tray-cheer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.batch-tray-status[data-cheering] > .batch-tray-count,
+.batch-tray-status:not([data-cheering]) > .batch-tray-cheer {
+  opacity: 0;
+  visibility: hidden;
+}
+.batch-tray-status strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+.batch-tray-status small {
+  font-size: inherit;
+}
+.batch-tray-cheer .ob-pako {
+  flex: none;
+}
+.batch-tray ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.batch-tray li {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+.batch-tray li > img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+  background: var(--canvas);
+}
+.batch-tray li[data-state="current"] {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+.batch-tray li[data-state="upcoming"] > img {
+  opacity: 0.55;
+}
+.batch-tray li[data-state="skipped"] {
+  outline: 2px dashed var(--lip);
+  outline-offset: 2px;
+}
+.batch-tray li[data-state="skipped"] > img {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+/* A saved listing's stamp pops onto its cover. */
+.batch-tray-check {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--blue);
+  color: var(--on-primary);
+  animation: batch-tray-stamp 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes batch-tray-stamp {
+  from {
+    opacity: 0;
+    scale: 0.4;
+  }
+}
+.batch-tray > .button.batch-tray-skip {
+  margin-left: auto;
+  padding-inline: 8px;
+}
+
+@media (max-width: 760px) {
+  /* A slimmer tray of covers leaves Pako's question its room on small phones. */
+  .batch-tray {
+    margin-bottom: 8px;
+    padding-block: 6px;
+  }
+  /* A compact viewfinder leaves the first field readable above the pinned button. */
+  .snap-target {
+    --snap-floor: 88%;
+    flex: 0 0 auto;
+    gap: 10px;
+    min-height: 180px;
+    padding: 12px 16px;
+  }
+  .snap-target-shutter {
+    gap: 8px;
+  }
+  .snap-target-lens {
+    width: 76px;
+    height: 76px;
+    border-width: 6px;
+  }
+  /* A smaller Pako keeps the photos and the button on one screen. */
+  .sell-guide .ob-guide[data-layout="guide"] .ob-pako {
+    width: 60px;
+    height: 60px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-sell .photo-attachment,
+  .snap-target-lens::after,
+  .batch-tray-check {
+    animation: none;
+  }
+}
+
+/* Once Pako has recognised the item, the main button lifts once and glows, inviting the tap. */
+.sell-photo-footer .button[data-invite] {
+  animation: sell-invite 900ms var(--ease-out) 900ms both;
+}
+@keyframes sell-invite {
+  40% {
+    translate: 0 -3px;
+    box-shadow:
+      0 calc(var(--button-depth) + 3px) 0 var(--button-lip),
+      0 0 0 6px color-mix(in srgb, var(--blue) 18%, transparent);
+  }
+}
+/* What the student can do about Pako's line sits under his bubble. */
+.sell-guide > .sell-guide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin: 8px 0 0 calc(84px + 10px);
+}
+@media (max-width: 760px) {
+  .sell-guide > .sell-guide-actions {
+    margin-left: calc(60px + 10px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sell-photo-footer .button[data-invite] {
+    animation: none;
+  }
+}
+
+.sell-guide > .split-question {
+  margin-top: 12px;
+}
+/* On phones Ask Pako is his sparkles; the menu names what he can do. */
+@media (max-width: 760px) {
+  .ask-pako > .ask-pako-label {
+    display: none;
+  }
+}

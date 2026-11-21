@@ -1,0 +1,454 @@
+/* Pako in the listing column, once: beside his speech bubble, which holds his live
+   step line, one question with tap answers, or his closing line. Under it, his notes
+   on the turn; earlier turns stay above as a quiet record. */
+.listing-conversation {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.listing-turn {
+  display: grid;
+  gap: 8px;
+}
+.listing-pako {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  scroll-margin: 12px;
+}
+.listing-pako-avatar {
+  display: block;
+  padding-top: 4px;
+}
+.listing-pako-bubble {
+  position: relative;
+  border: 2px solid var(--card-line);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--lip);
+}
+/* The tail points at Pako, like his bubbles in the intro. */
+.listing-pako-bubble::before {
+  content: "";
+  position: absolute;
+  top: 20px;
+  left: -9px;
+  width: 14px;
+  height: 14px;
+  border-bottom: 2px solid var(--card-line);
+  border-left: 2px solid var(--card-line);
+  border-bottom-left-radius: 3px;
+  background: var(--surface);
+  transform: rotate(45deg);
+}
+.listing-pako-content {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px 14px;
+}
+.listing-pako-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.listing-pako-heading > h3 {
+  margin: 0;
+  font-size: var(--type-body);
+  font-weight: 700;
+  line-height: 1.4;
+}
+.listing-pako-heading > h3:focus {
+  outline: none;
+}
+.listing-pako-heading > h3:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+/* How far the questions are, as a count that reads at a glance. */
+.listing-pako-progress {
+  flex-shrink: 0;
+  margin-top: 1px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--canvas);
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 700;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.listing-pako-aside {
+  display: -webkit-box;
+  margin: -4px 0 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--type-support);
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.listing-pako-line {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  font-size: var(--type-body);
+  font-weight: 650;
+  line-height: 1.4;
+}
+.listing-pako-line-text {
+  animation: listing-pako-fade 160ms ease-out both;
+}
+.listing-pako-line > small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--type-support);
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.listing-pako-title {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.listing-pako-title > span {
+  font-size: var(--type-body);
+  font-weight: 500;
+  line-height: 1.45;
+}
+.listing-pako-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--type-support);
+}
+.listing-pako-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Tap answers: flat pills inside the bubble, rising in one after another; two short
+   ones share a row, a long one takes its own. */
+.listing-pako-answers {
+  display: grid;
+  gap: 6px;
+}
+.listing-pako-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.listing-pako-choices > .listing-pako-choice {
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: calc(50% - 4px);
+  max-width: 100%;
+  min-height: 44px;
+  padding: 8px 15px;
+  border: 2px solid var(--card-line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--blue-dark);
+  font-size: var(--type-label);
+  font-weight: 650;
+  line-height: 1.3;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  animation: listing-pako-rise 420ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  animation-delay: calc(80ms + var(--stagger, 0) * 40ms);
+  transition:
+    scale 90ms var(--ease-out),
+    border-color 160ms ease,
+    background-color 120ms ease,
+    color 120ms ease;
+}
+.listing-pako-choices > .listing-pako-choice:hover:not(:disabled) {
+  border-color: var(--blue);
+  background: var(--selected);
+}
+.listing-pako-choices > .listing-pako-choice:active:not(:disabled) {
+  scale: 0.97;
+}
+.listing-pako-choices > .listing-pako-choice[data-chosen] {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: var(--on-primary);
+}
+.listing-pako-choices > .listing-pako-choice:disabled:not([data-chosen]) {
+  opacity: 0.55;
+  cursor: default;
+}
+.listing-pako-date {
+  display: flex;
+  flex: 1 1 100%;
+  align-items: center;
+  gap: 8px;
+}
+.listing-pako-date > input {
+  flex: 1 1 auto;
+  width: auto;
+  min-height: 44px;
+}
+/* What Pako's run is doing while he asks his own question. */
+.listing-pako-meanwhile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding-top: 8px;
+  border-top: 2px solid var(--canvas);
+  color: var(--muted);
+  font-size: var(--type-support);
+  font-weight: 600;
+}
+.listing-pako-meanwhile > .button {
+  margin-left: auto;
+}
+.listing-pako-skip {
+  justify-self: start;
+  margin-left: -13px;
+}
+
+/* The price card: what Pako's suggestion rests on, the slider, an exact amount beside
+   the button that takes it, and quieter ways to give it away, see why or decide later. */
+.price-card {
+  display: grid;
+  gap: 8px;
+}
+.price-card-note,
+.price-card-facts {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--type-support);
+  line-height: 1.45;
+}
+.price-card-facts {
+  margin-top: -2px;
+  font-weight: 600;
+}
+.price-card-amount {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.price-card-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 7.5rem;
+  min-height: 44px;
+  padding: 4px 12px;
+  border: 2px solid var(--card-line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: var(--type-label);
+  font-weight: 700;
+}
+.price-card-field:focus-within {
+  border-color: var(--blue);
+}
+/* The field's blue border shows the focus, so the input inside keeps no ring of its own. */
+.price-card-field > input:focus-visible {
+  outline: none;
+}
+.price-card-field > input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--ink);
+  font-size: var(--type-item);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+.price-card-amount > .price-card-use {
+  flex: 1 1 136px;
+  max-width: 260px;
+}
+/* The quiet actions share one row under the amount, flush with the bubble's edges. */
+.price-card-more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 4px;
+  margin-inline: -10px;
+}
+.price-card-more > .button.small {
+  padding-inline: 10px;
+}
+.price-card-later {
+  margin-left: auto;
+}
+/* Pako's reasons in their sheet: his summary, then the offers he quotes. */
+.price-reasons {
+  display: grid;
+  gap: 12px;
+  font-size: var(--type-label);
+  line-height: 1.5;
+}
+.price-reasons > p {
+  margin: 0;
+}
+.price-reasons-summary {
+  font-weight: 650;
+}
+.price-reasons > ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.price-reasons li {
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--canvas);
+  font-size: var(--type-support);
+}
+.price-reasons q {
+  color: var(--muted);
+}
+.price-reasons > .button {
+  margin-top: 4px;
+}
+
+@keyframes listing-pako-rise {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+@keyframes listing-pako-fade {
+  from {
+    opacity: 0;
+  }
+}
+/* What the student wrote to Pako, on the right like a sent message. */
+.listing-student-words {
+  justify-self: end;
+  max-width: min(85%, 32rem);
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 18px 18px 5px 18px;
+  background: var(--mist);
+  font-size: var(--type-label);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* His notes line up with his bubble: the activity line, what he changed, the answers. */
+.listing-notes {
+  display: grid;
+  gap: 6px;
+  margin-left: calc(52px + 12px);
+}
+.listing-notes:empty {
+  display: none;
+}
+.listing-turn > .listing-notes {
+  margin-left: 0;
+}
+.listing-notes > .agent-run-details {
+  margin: 0;
+}
+/* One line: the activity on the left, the turn's menu on the right. */
+.listing-notes .agent-run-details-header {
+  display: flex;
+  justify-content: space-between;
+}
+.listing-notes-menu {
+  display: flex;
+  justify-content: flex-end;
+}
+.listing-notes .listing-notes-more {
+  min-width: 44px;
+  min-height: 44px;
+}
+.listing-notes-reply,
+.listing-pako-reply {
+  margin: 0;
+  font-size: var(--type-body);
+  line-height: 1.45;
+}
+.listing-notes-reply {
+  color: var(--muted);
+}
+
+/* On phones Pako sits above the bubble, whose tail points up at him, so the answers
+   get the column's full width. */
+@media (max-width: 760px) {
+  .listing-pako {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+  .listing-pako-avatar {
+    padding: 0 0 0 4px;
+  }
+  .listing-pako-avatar .ob-pako {
+    width: 40px;
+    height: 40px;
+  }
+  .listing-pako-bubble::before {
+    top: -9px;
+    left: 18px;
+    border-bottom: 0;
+    border-top: 2px solid var(--card-line);
+    border-bottom-left-radius: 0;
+    border-top-left-radius: 3px;
+  }
+  .listing-pako-content {
+    gap: 8px;
+    padding: 10px 12px 12px;
+  }
+  .listing-pako-heading > h3 {
+    font-size: var(--type-label);
+  }
+  /* What Pako wrote around the question keeps to two lines, so the answers stay in view. */
+  .listing-pako-aside {
+    -webkit-line-clamp: 2;
+  }
+  .listing-notes {
+    margin-left: 0;
+  }
+  .price-card-amount > .price-card-use {
+    max-width: none;
+  }
+  /* On a phone the field already shows the price, so the slider's large readout steps
+     aside (its label still names the slider) and the range's ends tuck under the track. */
+  .price-card .price-slider-readout {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .price-card .price-slider {
+    gap: 0;
+  }
+  .price-card .price-slider-bounds {
+    margin-top: -8px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .listing-pako-line-text,
+  .listing-pako-choices > .listing-pako-choice {
+    animation: none;
+  }
+}

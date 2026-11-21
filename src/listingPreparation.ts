@@ -1,7 +1,8 @@
 import type { AgentMetadata } from "../shared/agent";
 import { listingPhotos } from "../shared/listingPhotos.ts";
 import { shortDate, type Product } from "../shared/marketplace.ts";
-import type { ListingDraft } from "./components/SellFlow";
+import type { ListingDraft } from "./listingDraft";
+import { undatedPickup } from "./listingQuestions.ts";
 import { validListingPickup } from "./listingValidation.ts";
 
 /** Keep grounded model facts intact when moving from photo analysis to review. */
@@ -99,12 +100,10 @@ export function listingFromDraft(
       draft.location.trim() === original?.location
         ? original?.pickupPoint
         : undefined,
-    photoSourceUrl:
-      draft.image === original?.image ? original?.photoSourceUrl : undefined,
     pickupBy: draft.pickup,
     available: draft.pickup
       ? "Pickup by " + shortDate(draft.pickup)
-      : "Flexible pickup",
+      : undatedPickup(draft.description),
     status: original?.status || "active",
   };
 }

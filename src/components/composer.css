@@ -1,0 +1,85 @@
+/* One composer for every chat, as in the intro: a soft frame that lights up blue while you
+   write, with a round send button inside that stays quiet until there is something to send. */
+.agent-prompt-form {
+  width: 100%;
+  margin: 0;
+}
+.composer-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+  width: 100%;
+  height: auto;
+  padding: 5px 5px 5px 14px;
+  border: 2px solid var(--card-line);
+  border-radius: 22px;
+  background: var(--surface);
+  transition:
+    border-color 180ms ease,
+    box-shadow 240ms var(--ease-out);
+}
+.composer-field:focus-within {
+  border-color: var(--blue);
+  box-shadow: 0 12px 26px -20px rgb(52 78 181 / 0.6);
+}
+.composer-field textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 0;
+  border: 0;
+  outline: none;
+  background: none;
+  box-shadow: none;
+  font-size: var(--type-body);
+  line-height: 1.5;
+  resize: none;
+}
+/* The frame shows focus, so the field inside needs no ring of its own. */
+.composer-field textarea:focus-visible {
+  outline: none;
+}
+.composer-field [data-slot="input-group-addon"] {
+  align-self: end;
+  margin: 0;
+  padding: 0;
+}
+.composer-field .composer-send {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  transition:
+    background-color 200ms ease,
+    color 200ms ease,
+    transform 90ms var(--ease-out),
+    box-shadow 90ms var(--ease-out);
+}
+/* Flat and pale while empty; brand blue on the primary lip once there is text. */
+.composer-field .composer-send:disabled {
+  background: var(--selected);
+  color: color-mix(in srgb, var(--blue) 45%, var(--surface));
+  opacity: 1;
+}
+.composer-field .composer-send:not(:disabled) {
+  background: var(--blue);
+  color: var(--on-primary);
+  box-shadow: 0 4px 0 var(--blue-dark);
+}
+.composer-field .composer-send:not(:disabled):hover {
+  background: #3c58c7;
+}
+.composer-field .composer-send:not(:disabled):active {
+  scale: 1;
+  transform: translateY(4px);
+  box-shadow: 0 0 0 var(--blue-dark);
+}
+@media (prefers-reduced-motion: reduce) {
+  .composer-field,
+  .composer-field .composer-send {
+    transition: none;
+  }
+}

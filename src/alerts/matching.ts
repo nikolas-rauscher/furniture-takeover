@@ -1,6 +1,7 @@
 import {
   defaults,
   filterProducts,
+  marketplaceToday,
   money,
   type Criteria,
   type Product,
@@ -32,7 +33,7 @@ export type AlertItem = {
   read: boolean;
 };
 
-export type AlertBaseline = {
+type AlertBaseline = {
   /** Criteria the baseline was taken for; an edited search starts over silently. */
   signature: string;
   listingIds: string[];
@@ -52,28 +53,33 @@ export const emptyAlerts = (): AlertsState => ({
 
 const signature = (criteria: Criteria) => JSON.stringify(criteria);
 
-/** Only listings a buyer could act on right now can raise an alert. */
-export function currentMatches(listings: Product[], criteria: Criteria) {
-  return filterProducts(listings, criteria).filter(
+/** Only listings a buyer could act on today can raise an alert. */
+function currentMatches(
+  listings: Product[],
+  criteria: Criteria,
+  today = marketplaceToday(),
+) {
+  return filterProducts(listings, criteria, today).filter(
     (item) => item.status === "active",
   );
 }
 
 /** Facts from the listing only; never claims more than the seller stated. */
-export function matchReason(item: Product, criteria: Criteria): string {
+export function matchFacts(item: Product, criteria: Criteria): string[] {
   const wanted =
     criteria.query || (criteria.category !== "All" ? criteria.category : "");
   return [
-    wanted ? `Matches "${wanted}"` : "Matches your search",
+    wanted ? `Matches ‘${wanted}’` : "Matches your search",
     hasBudget(criteria)
-      ? `${money(item.price)} (limit ${money(criteria.maxPrice)})`
+      ? `${money(item.price)}, within your ${money(criteria.maxPrice)} budget`
       : money(item.price),
     item.condition,
     item.pickupPoint?.name ?? item.location,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  ].filter(Boolean);
 }
+
+const matchReason = (item: Product, criteria: Criteria) =>
+  matchFacts(item, criteria).join(" · ");
 
 /**
  * Compares each saved search with the listings visible now. A search's first
@@ -90,8 +96,9 @@ export function updateAlerts(
 ): AlertsState {
   const baselines: Record<string, AlertBaseline> = {};
   const created: AlertItem[] = [];
+  const today = marketplaceToday(now);
   const matchesByJob = new Map(
-    jobs.map((job) => [job.id, currentMatches(listings, job.criteria)]),
+    jobs.map((job) => [job.id, currentMatches(listings, job.criteria, today)]),
   );
   const matchingIdsByJob = new Map(
     [...matchesByJob].map(([id, matches]) => [
@@ -209,6 +216,7 @@ type DraftForDemand = {
 function matchingJobs<T extends Pick<SearchJob, "criteria" | "paused">>(
   jobs: T[],
   draft: DraftForDemand,
+  today: string,
 ): T[] {
   if (!draft.title.trim() || !Number.isFinite(draft.price) || draft.price < 0)
     return [];
@@ -223,7 +231,8 @@ function matchingJobs<T extends Pick<SearchJob, "criteria" | "paused">>(
     status: "active",
   } as Product;
   return jobs.filter(
-    (job) => !job.paused && currentMatches([preview], job.criteria).length > 0,
+    (job) =>
+      !job.paused && currentMatches([preview], job.criteria, today).length > 0,
   );
 }
 
@@ -241,15 +250,16 @@ export type DemandLadder = {
 export function demandLadder(
   jobs: Pick<SearchJob, "criteria" | "paused">[],
   draft: DraftForDemand,
+  today = marketplaceToday(),
 ): DemandLadder {
   const prices = [draft.price, draft.price * 0.9, draft.price * 0.8]
     .map((price) => Math.round(price * 100) / 100)
     .filter((price, index, all) => price >= 0 && all.indexOf(price) === index);
   const rungs = prices.map((price) => ({
     price,
-    count: matchingJobs(jobs, { ...draft, price }).length,
+    count: matchingJobs(jobs, { ...draft, price }, today).length,
   }));
-  const asking = matchingJobs(jobs, draft);
+  const asking = matchingJobs(jobs, draft, today);
   return {
     rungs: Number.isFinite(draft.price) ? rungs : [],
     noLimit: asking.filter((job) => !hasBudget(job.criteria)).length,

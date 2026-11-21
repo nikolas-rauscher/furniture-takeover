@@ -433,6 +433,59 @@ test("listing-assist context sends only typed current draft facts and the previo
   );
 });
 
+test("listing runs send the conversation so far and search runs their matches and own listings", async (context) => {
+  const history = {
+    listingStart: true,
+    photoAnalysis: { missingDetails: ["Model year"], keywords: ["MacBook"] },
+    skippedQuestions: [
+      {
+        question: "Which chip is it?",
+        listingField: "other" as const,
+        choices: ["M1", "M2"],
+      },
+    ],
+    answeredQuestions: [
+      { question: "How much storage does it have?", answer: "512 GB" },
+    ],
+  };
+  const sent: unknown[] = [];
+  context.mock.method(
+    globalThis,
+    "fetch",
+    async (_url: string, options: RequestInit) => {
+      sent.push(JSON.parse(String(options.body)).context);
+      return new Response(body([complete]));
+    },
+  );
+  await streamAgentRun(
+    { text: "Polish the description", context: history },
+    { onEvent() {} },
+  );
+  const search = { previousMatchIds: ["desk-1"], ownListingIds: ["mine-1"] };
+  await streamAgentRun({ text: "A desk", context: search }, { onEvent() {} });
+  assert.deepEqual(sent, [history, search]);
+  for (const invalid of [
+    { listingStart: "yes" },
+    { photoAnalysis: { missingDetails: [""] } },
+    { photoAnalysis: { notes: ["private"] } },
+    { skippedQuestions: [{ question: "Which chip?", listingField: "colour" }] },
+    { skippedQuestions: [{ question: "Which chip?", choices: ["M1", ""] }] },
+    { answeredQuestions: [{ question: "Storage?" }] },
+    { ownListingIds: Array.from({ length: 201 }, (_, index) => `id-${index}`) },
+    { previousMatchIds: [42] },
+  ])
+    await assert.rejects(
+      streamAgentRun(
+        {
+          text: "A desk",
+          context: invalid as unknown as AgentRunRequest["context"],
+        },
+        { onEvent() {} },
+      ),
+      { code: "INVALID_CONTEXT" },
+    );
+});
+
 test("real HTTPS thumbnails survive source and completion events", async () => {
   const imageUrl = "https://images.example.com/chair.jpg";
   const result = { ...source, imageUrl };
@@ -948,6 +1001,82 @@ test("watch suggestions accept a bounded query and budget and reject malformed p
         body([{ type: "watch_suggestion", ...bad } as AgentRunEvent, complete]),
         () => {},
       ),
+      { code: "INVALID_STREAM" },
+    );
+});
+
+test("a listing question keeps its draft field, tap answers and queued follow-ups", async () => {
+  const question: AgentRunEvent = {
+    type: "question",
+    id: "ask-1",
+    listingField: "price",
+    question: "What asking price would you like?",
+    input: { type: "price", min: 0, max: 60, step: 1, value: 40 },
+    choices: ["Use CHF 40", "Give it away for free"],
+    choiceActions: [
+      { label: "Use CHF 40", patch: { price: 40 }, acceptsProposal: true },
+      { label: "Give it away for free", patch: { price: 0 } },
+    ],
+    followUps: [
+      {
+        question: "Can the desk be taken apart?",
+        listingField: "other",
+        choices: ["Can be disassembled", "Not sure"],
+        choiceActions: [
+          {
+            label: "Can be disassembled",
+            appendDescription: "Can be disassembled.",
+          },
+          { label: "Not sure" },
+        ],
+      },
+    ],
+  };
+  const seen: AgentRunEvent[] = [];
+  await readAgentRunStream(body([question, complete]), (event) =>
+    seen.push(event),
+  );
+  assert.deepEqual(seen[0], question);
+  const emptyPatch = {
+    ...question,
+    choiceActions: [{ label: "Not sure", patch: {} }],
+  };
+  const parsed: AgentRunEvent[] = [];
+  await readAgentRunStream(
+    body([emptyPatch as AgentRunEvent, complete]),
+    (event) => parsed.push(event),
+  );
+  assert.deepEqual(parsed[0].type === "question" && parsed[0].choiceActions, [
+    { label: "Not sure" },
+  ]);
+});
+
+test("malformed tap answers and follow-ups are rejected", async () => {
+  const question = {
+    type: "question",
+    id: "ask-1",
+    question: "Can the desk be taken apart?",
+  };
+  const fact = { question: "Is the charger included?" };
+  for (const event of [
+    { ...question, listingField: "published" },
+    { ...question, choiceActions: [{ label: "x".repeat(121) }] },
+    {
+      ...question,
+      choiceActions: [{ label: "Yes", appendDescription: "x".repeat(161) }],
+    },
+    { ...question, choiceActions: [{ label: "Yes", acceptsProposal: false }] },
+    { ...question, choiceActions: [{ label: "Yes", patch: { image: "x" } }] },
+    { ...question, followUps: [fact, fact, fact] },
+    {
+      ...question,
+      followUps: [
+        { ...fact, input: { type: "price", min: 0, max: 10, step: 1 } },
+      ],
+    },
+  ])
+    await assert.rejects(
+      readAgentRunStream(body([event as AgentRunEvent, complete]), () => {}),
       { code: "INVALID_STREAM" },
     );
 });

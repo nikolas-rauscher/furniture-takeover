@@ -67,10 +67,10 @@ export function PickupLocationInput({
       )
         throw new Error(
           result.error?.message ||
-            "Could not find your area. Enter a pickup location instead.",
+            "Couldn't find your area. Enter your pickup area instead.",
         );
       onChange(result.location);
-      setMessage("Area added. Adjust it to your preferred pickup spot.");
+      setMessage("Area added. You can change it.");
     } catch (error) {
       if (controller.signal.aborted) return;
       const code =
@@ -79,7 +79,7 @@ export function PickupLocationInput({
           : null;
       setMessage(
         code === 1
-          ? "Location permission was denied. Enter your pickup area."
+          ? "Location access is off. Enter your pickup area."
           : code === 2
             ? "Your location is unavailable. Enter your pickup area."
             : code === 3
@@ -121,8 +121,8 @@ export function PickupLocationInput({
         aria-describedby={`${id}-help ${id}-status`}
       />
       <FieldDescription id={`${id}-help`} className="pickup-location-help">
-        Use my location shares your area with OpenStreetMap. No house number is
-        added.
+        Use my location sends your position to takeover and, rounded to about
+        100 m, to OpenStreetMap. Only the street is added.
       </FieldDescription>
       <p id={`${id}-status`} className="pickup-location-status" role="status">
         {message}

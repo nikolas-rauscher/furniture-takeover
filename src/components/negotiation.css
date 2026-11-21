@@ -1,0 +1,68 @@
+/* Offers Pako prepares in the search chat: on home their card, in the chat a slim bar,
+   and his drafts. The card, its terms and the bar are styled in deal-card.css. */
+
+/* On home the offer card lines up with the search column above it. */
+.deal-card.offer-proposal {
+  max-width: 760px;
+  margin: 0 auto var(--space-section);
+}
+/* Pako's message, set like his bubbles in the intro's chat. */
+.deal-card-message {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+.deal-card-message > strong {
+  padding: 0 6px;
+  color: var(--blue);
+  font-size: var(--type-caption);
+  font-weight: 700;
+}
+.deal-card-bubble,
+.pako-draft-bubble {
+  max-width: 92%;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 18px 18px 6px 18px;
+  background: var(--blue);
+  color: var(--on-primary);
+  font-size: var(--type-label);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.deal-bar-dismiss {
+  color: var(--muted);
+}
+
+/* A message Pako drafted inside the agent's reply. */
+.pako-draft[data-slot="item"] {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-stage);
+  background: var(--surface);
+}
+.pako-draft-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pako-draft-content {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+.pako-draft-content > strong {
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 700;
+}
+.pako-draft-note {
+  color: var(--muted);
+  font-size: var(--type-caption);
+}

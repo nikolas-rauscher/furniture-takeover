@@ -1,10 +1,19 @@
+/* Results from other sites get their own small heading with a globe tile. */
 .agent-run-panel .agent-web-results > h3 {
   display: flex;
   align-items: center;
-  gap: var(--space-label);
+  gap: 8px;
   margin: 0 0 var(--space-label);
+  color: var(--ink);
   font-size: var(--type-label);
-  color: var(--muted);
+  font-weight: 700;
+}
+.agent-run-panel .agent-web-results > h3 > svg {
+  box-sizing: content-box;
+  padding: 5px;
+  border-radius: 50%;
+  background: var(--sky);
+  color: var(--blue);
 }
 .agent-web-progress,
 .agent-web-recovery {
@@ -21,14 +30,17 @@
   line-height: 1.5;
   color: var(--muted);
 }
+.agent-run-panel .agent-web-progress {
+  gap: 8px;
+  color: var(--blue-dark);
+  font-size: var(--type-support);
+  font-weight: 600;
+}
 .agent-web-recovery > p {
   flex: 1 1 16rem;
 }
 .agent-run-panel .agent-web-recovery > .button {
   min-height: var(--control-size);
-}
-.agent-sources.has-previews {
-  margin: var(--space-field) 0 var(--space-label);
 }
 .agent-source-previews {
   display: grid;
@@ -40,21 +52,27 @@
 .agent-source-previews > li {
   min-width: 0;
 }
+/* Each source is a small card on a lip, like the offers above. */
 .agent-sources .agent-source-preview {
   display: flex;
   flex-wrap: nowrap;
   align-items: flex-start;
   gap: var(--space-label);
   min-height: var(--control-size);
-  padding: var(--space-label) var(--space-field);
-  border-color: var(--line);
-  border-radius: 8px;
+  padding: 10px 12px;
+  border: 2px solid var(--card-line);
+  border-radius: 14px;
   color: var(--ink);
   text-decoration: none;
   background: var(--surface);
+  box-shadow: 0 3px 0 var(--lip);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
 }
 .agent-source-preview:hover {
-  background: var(--mist);
+  border-color: #c9d2f3;
+  background: var(--selected);
 }
 .agent-source-preview:focus-visible {
   outline: 2px solid var(--focus-ring);
@@ -72,8 +90,9 @@
   overflow: hidden;
   overflow-wrap: anywhere;
   font-size: var(--type-label);
+  font-weight: 650;
   line-height: 1.4;
-  color: var(--blue);
+  color: var(--blue-dark);
 }
 .agent-run-panel .agent-source-preview [data-slot="item-description"] {
   margin: 0;
@@ -91,14 +110,22 @@
   flex-shrink: 0;
   margin-top: 2px;
 }
+/* Until the preview image arrives, the tile shows a globe instead of an empty space. */
 .agent-source-thumbnail {
+  position: relative;
+  display: grid;
+  place-items: center;
   width: 48px;
   height: 48px;
   flex-shrink: 0;
   overflow: hidden;
-  border-radius: 4px;
+  border-radius: 10px;
+  background: var(--sky);
+  color: var(--blue);
 }
 .agent-source-thumbnail img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;

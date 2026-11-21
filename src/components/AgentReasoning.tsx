@@ -1,14 +1,12 @@
 import { useState } from "react";
 import type { AgentReasoningPart } from "../../shared/runs";
 import { useStreamingText } from "../hooks/useStreamingText";
-import { Check, LoaderCircle } from "./icons";
+import { StepMark } from "./AgentActivity";
 import {
   Trace,
   TraceCollapsible,
   TraceCollapsibleContent,
   TraceCollapsibleTrigger,
-  TraceDescription,
-  TraceIcon,
   TraceLine,
   TraceTitle,
 } from "./ui/trace";
@@ -32,32 +30,19 @@ export default function AgentReasoning({
     (part) =>
       part.status === "stopped" || (!running && part.status === "streaming"),
   );
-  const durationMs = parts.reduce(
-    (total, part) => total + (part.durationMs ?? 0),
-    0,
-  );
   const visibleText = useStreamingText(text, "reasoning", streaming);
   if (!streaming && !text) return null;
 
   const line = (
     <TraceLine status={streaming ? "running" : undefined}>
-      <TraceIcon>
-        {streaming ? (
-          <LoaderCircle animate />
-        ) : stopped ? (
-          <span className="agent-trace-dot" />
-        ) : (
-          <Check />
-        )}
-      </TraceIcon>
+      <StepMark state={streaming ? "running" : stopped ? "paused" : "done"} />
       <TraceTitle>
-        {streaming ? "Thinking…" : stopped ? "Reasoning stopped" : "Reasoning"}
+        {streaming
+          ? "Thinking…"
+          : stopped
+            ? "Stopped thinking"
+            : "Pako's thoughts"}
       </TraceTitle>
-      {!streaming && !stopped && durationMs > 0 && (
-        <TraceDescription>
-          {durationMs < 1000 ? "<1s" : `${Math.round(durationMs / 1000)}s`}
-        </TraceDescription>
-      )}
     </TraceLine>
   );
 

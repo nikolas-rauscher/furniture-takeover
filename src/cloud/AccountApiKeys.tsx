@@ -13,13 +13,13 @@ const providers = [
   {
     id: "deepseek",
     name: "DeepSeek",
-    description: "Powers your buying and selling assistant.",
+    description: "Lets Pako draft and answer questions.",
     url: "https://platform.deepseek.com/api_keys",
   },
   {
     id: "brave",
     name: "Brave Search",
-    description: "Finds web sources for product and price research.",
+    description: "Lets Pako check other sites for prices.",
     url: "https://api-dashboard.search.brave.com/app/keys",
   },
 ] as const;
@@ -44,7 +44,9 @@ export default function AccountApiKeys() {
       .catch((err: unknown) => {
         if (!controller.signal.aborted)
           setError(
-            err instanceof Error ? err.message : "Could not load API keys.",
+            err instanceof Error
+              ? err.message
+              : "Couldn't load your API keys. Try again.",
           );
       })
       .finally(() => {
@@ -68,7 +70,9 @@ export default function AccountApiKeys() {
       window.dispatchEvent(new Event("takeover-api-keys-changed"));
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Could not update API keys.",
+        err instanceof Error
+          ? err.message
+          : "Couldn't update your API keys. Try again.",
       );
     } finally {
       setBusy(null);
@@ -79,12 +83,12 @@ export default function AccountApiKeys() {
     <section className="account-api-keys" aria-busy={loading || busy !== null}>
       <h2>API keys</h2>
       <p className="quiet-caption">
-        Connect your own providers. Saved keys override Takeover’s defaults;
-        usage is billed by each provider to your account with them.
+        Use your own API keys for Pako and web search. Saved keys replace
+        takeover’s defaults, and each provider bills your account with them.
       </p>
       <p className="account-key-security">
-        Keys are encrypted before being stored in Supabase. Saved keys are never
-        shown again or included in your account export.
+        We encrypt your saved keys. You can replace or remove them, but we never
+        show them again or include them in your data download.
       </p>
       {loading && <p role="status">Loading key settings…</p>}
       {error && (
@@ -93,6 +97,7 @@ export default function AccountApiKeys() {
           {!status && !loading && (
             <Button
               type="button"
+              className="button secondary small"
               onClick={() => setAttempt((value) => value + 1)}
             >
               Retry loading keys
@@ -135,7 +140,7 @@ export default function AccountApiKeys() {
                     : "Saved"
                   : status
                     ? "No key saved"
-                    : "Status unavailable"}
+                    : "Couldn't check this key"}
               </span>
             </div>
             <p className="quiet-caption">{provider.description}</p>
@@ -177,6 +182,7 @@ export default function AccountApiKeys() {
               {saved?.saved && (
                 <Button
                   type="button"
+                  className="button secondary"
                   disabled={unavailable}
                   onClick={() => void updateKey(provider.id, true)}
                 >

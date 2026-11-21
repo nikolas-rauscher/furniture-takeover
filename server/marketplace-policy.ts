@@ -17,46 +17,43 @@ export function isMarketplaceOffer(
   title = "",
   snippet = "",
 ): boolean {
-  try {
-    // A marketplace may also index office/property rentals. Those are not resale items.
-    const text = `${title} ${snippet}`
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-    const normalizedTitle = title
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .trim();
-    // Individual ad URLs can also be requests from buyers. Keep explicit wanted
-    // ads out of offer cards, without guessing an item's category or availability.
-    if (
-      /^(?:wanted\b|looking to buy\b|(?:je )?(?:cherche|recherche)\s+(?:un|une|des)\b|(?:ich )?suche\s+(?:ein|eine|einen|nach)\b|cerco\b|cercasi\b)/i.test(
-        normalizedTitle,
-      ) ||
-      /\b(?:wanted|gesucht)\s*[.!]?$/i.test(normalizedTitle) ||
-      /\b(?:(?:je|nous) (?:cherche|recherche|cherchons|recherchons) (?:un|une|des|du)|ich suche (?:ein|eine|einen|nach)|i(?: am|'m) looking to buy)\b/i.test(
-        text,
-      )
+  // A marketplace may also index office/property rentals. Those are not resale items.
+  const text = `${title} ${snippet}`
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  const normalizedTitle = title
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+  // Individual ad URLs can also be requests from buyers. Keep explicit wanted
+  // ads out of offer cards, without guessing an item's category or availability.
+  if (
+    /^(?:wanted\b|looking to buy\b|(?:je )?(?:cherche|recherche)\s+(?:un|une|des)\b|(?:ich )?suche\s+(?:ein|eine|einen|nach)\b|cerco\b|cercasi\b)/i.test(
+      normalizedTitle,
+    ) ||
+    /\b(?:wanted|gesucht)\s*[.!]?$/i.test(normalizedTitle) ||
+    /\b(?:(?:je|nous) (?:cherche|recherche|cherchons|recherchons) (?:un|une|des|du)|ich suche (?:ein|eine|einen|nach)|i(?: am|'m) looking to buy)\b/i.test(
+      text,
     )
-      return false;
-    if (
-      /\b(?:for rent|office space|zu vermieten|à louer|a louer|surface commerciale|local commercial|par mois|per month|pro monat)\b/i.test(
-        text,
-      )
-    )
-      return false;
-    const url = new URL(value);
-    const host = url.hostname.replace(/^www\./, "");
-    return (
-      url.protocol === "https:" &&
-      !url.username &&
-      !url.password &&
-      !/%(?:2f|5c|2e)/i.test(url.pathname) &&
-      !/\/(?:immobilier|immobilien|immobili)\//i.test(url.pathname) &&
-      Boolean(rules[host]?.test(url.pathname))
-    );
-  } catch {
+  )
     return false;
-  }
+  if (
+    /\b(?:for rent|office space|zu vermieten|à louer|a louer|surface commerciale|local commercial|par mois|per month|pro monat)\b/i.test(
+      text,
+    )
+  )
+    return false;
+  const url = URL.parse(value);
+  if (!url) return false;
+  const host = url.hostname.replace(/^www\./, "");
+  return (
+    url.protocol === "https:" &&
+    !url.username &&
+    !url.password &&
+    !/%(?:2f|5c|2e)/i.test(url.pathname) &&
+    !/\/(?:immobilier|immobilien|immobili)\//i.test(url.pathname) &&
+    Boolean(rules[host]?.test(url.pathname))
+  );
 }
 
 export function marketplaceDomains(source = "All"): string[] | null {
@@ -75,13 +72,8 @@ export function marketplaceDomains(source = "All"): string[] | null {
 
 export function matchesMarketplaceSource(url: string, source = "All"): boolean {
   const domains = marketplaceDomains(source);
-  try {
-    return Boolean(
-      domains?.includes(new URL(url).hostname.replace(/^www\./, "")),
-    );
-  } catch {
-    return false;
-  }
+  const hostname = URL.parse(url)?.hostname.replace(/^www\./, "");
+  return Boolean(hostname && domains?.includes(hostname));
 }
 
 export function marketplaceQuery(query: string, source = "All"): string {

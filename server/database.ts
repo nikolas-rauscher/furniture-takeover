@@ -3,19 +3,27 @@ import { isLegacyCampusPickupPoint } from "../shared/campusPickupPoints.ts";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { adminIllustrations } from "../shared/admin.ts";
 import { demoListings } from "../shared/demoListings.ts";
 import type { Product } from "../shared/marketplace.ts";
+import {
+  adminFailure,
+  checkDemoStudent,
+  createDemoAdmin,
+  hasAgreedDemoDeal,
+  initializeDemoModeration,
+} from "./demo-admin.ts";
 import { AgentError } from "./errors.ts";
 import { validateRequest } from "./validation.ts";
 
 export type ListingsStore = {
   listDemo: () => Product[];
   seedDemo: () => Product[];
-  updateDemo: (listings: unknown) => Product[];
+  updateDemo: (listings: unknown, workspace?: string) => Product[];
+  admin: ReturnType<typeof createDemoAdmin>;
   close: () => void;
 };
 
-const demoIds = new Set(demoListings.map((listing) => listing.id));
 const invalidListing = () =>
   new AgentError(
     400,
@@ -48,11 +56,40 @@ function number(value: unknown, max: number): number {
   return value;
 }
 
-function validateDemoListing(value: unknown): Product {
+function photoList(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length > MAX_LISTING_PHOTOS)
+    throw invalidListing();
+  return value.map((photo) => text(photo, 2_796_240, true));
+}
+
+/** Uploaded photos use the same bounded raster validation as the upload endpoint. */
+function validUpload(photo: string): string {
+  try {
+    validateRequest({ intent: "listing", text: "", image: photo });
+  } catch {
+    throw invalidListing();
+  }
+  return photo;
+}
+
+function validPhoto(photo: string): string {
+  return adminIllustrations.includes(photo) ||
+    /^\/images\/[a-zA-Z0-9_-]+\.(?:jpe?g|png|webp)$/.test(photo)
+    ? photo
+    : validUpload(photo);
+}
+
+/** Card copies exist only for uploaded photos; drawings and bundled photos have none. */
+function validCardPhoto(photo: string): string {
+  if (!photo.startsWith("data:image/")) throw invalidListing();
+  return validUpload(photo);
+}
+
+function validateDemoListing(value: unknown, existing: Product): Product {
   if (
     !record(value) ||
     typeof value.id !== "string" ||
-    !demoIds.has(value.id) ||
+    value.id !== existing.id ||
     value.demo !== true ||
     value.own !== true ||
     value.source !== "takeover"
@@ -70,79 +107,77 @@ function validateDemoListing(value: unknown): Product {
     !["active", "reserved", "sold", "withdrawn"].includes(String(value.status))
   )
     throw invalidListing();
-  const image = text(value.image, 2_796_240, true);
-  const seed = demoListings.find((listing) => listing.id === value.id);
-  if (
-    image !== seed?.image &&
-    !/^\/images\/[a-zA-Z0-9_-]+\.(?:jpe?g|png|webp)$/.test(image)
-  ) {
-    // Reuse the same bounded raster-photo validation as the upload endpoint.
-    try {
-      validateRequest({ intent: "listing", text: "", image });
-    } catch {
-      throw invalidListing();
-    }
-  }
+  const image = validPhoto(text(value.image, 2_796_240, true));
   let images: string[] | undefined;
   if (value.images !== undefined) {
-    if (
-      !Array.isArray(value.images) ||
-      value.images.length > MAX_LISTING_PHOTOS
-    )
-      throw invalidListing();
     images = listingPhotos({
       image,
-      images: value.images.map((photo) => {
-        const candidate = text(photo, 2_796_240, true);
-        if (
-          candidate !== seed?.image &&
-          !/^\/images\/[a-zA-Z0-9_-]+\.(?:jpe?g|png|webp)$/.test(candidate)
-        ) {
-          try {
-            validateRequest({ intent: "listing", text: "", image: candidate });
-          } catch {
-            throw invalidListing();
-          }
-        }
-        return candidate;
-      }),
+      images: photoList(value.images).map(validPhoto),
     });
-    if (
-      images.length > MAX_LISTING_PHOTOS ||
-      JSON.stringify({ image, images }).length > 2_900_000
-    )
-      throw invalidListing();
+    if (images.length > MAX_LISTING_PHOTOS) throw invalidListing();
   }
+  const cardImages = photoList(value.cardImages ?? []).map(validCardPhoto);
+  if (
+    (cardImages.length &&
+      cardImages.length !== listingPhotos({ image, images }).length) ||
+    JSON.stringify({ image, images, cardImages }).length > 2_900_000
+  )
+    throw invalidListing();
   return {
     id: value.id,
     title: text(value.title, 180, true),
     ...(Array.isArray(value.tags)
       ? { tags: value.tags.slice(0, 3).map((tag) => text(tag, 40, true)) }
       : {}),
-    price: number(value.price, 10_000),
+    price: number(value.price, Math.max(10_000, existing.price)),
     category: text(value.category, 120),
     image,
     ...(images ? { images } : {}),
-    ...(image === seed?.image && seed?.photoSourceUrl
-      ? { photoSourceUrl: seed.photoSourceUrl }
-      : {}),
-    location: text(value.location, 120, true),
-    ...(value.location === seed?.location && seed?.pickupPoint
-      ? { pickupPoint: seed.pickupPoint }
+    ...(cardImages.length ? { cardImages } : {}),
+    location: text(value.location, 180, true),
+    ...(value.location === existing.location && existing.pickupPoint
+      ? { pickupPoint: existing.pickupPoint }
       : {}),
     distance: number(value.distance, 500),
-    condition: text(value.condition, 120),
+    condition: text(value.condition, 180),
     dimensions: text(value.dimensions, 160),
     source: "takeover",
     seller: text(value.seller, 120, true),
     initials: text(value.initials, 8, true),
-    description: text(value.description, 4000, true),
-    available: text(value.available, 160),
+    description: text(value.description, 4000),
+    available: text(value.available, 300),
     pickupBy,
     status: value.status as Product["status"],
     own: true,
     demo: true,
   };
+}
+
+const legacyStockPhoto =
+  /^(?:\/images\/(?:catalog-)?[a-zA-Z0-9_-]+\.jpg|https:\/\/img\.ricardostatic\.ch\/.+)$/;
+const legacyDescriptionStart = "Fictional demo listing for testing.";
+
+/** Rows saved before the illustrations still hold a stock photo and the first test wording; edits stay. */
+function refreshLegacyStock(
+  existing: Product,
+  listing: Product,
+): Product | undefined {
+  const legacyPhoto = legacyStockPhoto.test(existing.image);
+  const legacyText = existing.description.startsWith(legacyDescriptionStart);
+  if (!legacyPhoto && !legacyText) return undefined;
+  const refreshed: Product & { photoSourceUrl?: string } = {
+    ...existing,
+    ...(legacyPhoto ? { image: listing.image } : {}),
+    ...(legacyText
+      ? {
+          description: listing.description,
+          seller: listing.seller,
+          initials: listing.initials,
+        }
+      : {}),
+  };
+  delete refreshed.photoSourceUrl;
+  return refreshed;
 }
 
 export function createListingsStore(filename: string): ListingsStore {
@@ -158,14 +193,20 @@ export function createListingsStore(filename: string): ListingsStore {
       payload TEXT NOT NULL CHECK (json_valid(payload))
     );
   `);
+  initializeDemoModeration(database);
   const read = database.prepare(
-    "SELECT payload FROM listings WHERE demo = 1 ORDER BY rowid",
+    `SELECT l.payload FROM listings l LEFT JOIN demo_listing_admin a ON a.id=l.id
+      WHERE l.demo=1 AND coalesce(a.hidden,0)=0 ORDER BY l.rowid`,
   );
   const insert = database.prepare(
     "INSERT INTO listings (id, demo, payload) VALUES (?, 1, ?) ON CONFLICT(id) DO NOTHING",
   );
-  const exists = database.prepare(
-    "SELECT id FROM listings WHERE id = ? AND demo = 1",
+  const stored = database.prepare(
+    `SELECT l.payload,a.edited FROM listings l LEFT JOIN demo_listing_admin a ON a.id=l.id
+      WHERE l.id=? AND l.demo=1`,
+  );
+  const retiredOrHidden = database.prepare(
+    "SELECT 1 FROM demo_listing_admin WHERE id=? AND hidden=1",
   );
   const update = database.prepare(
     "UPDATE listings SET payload = ? WHERE id = ? AND demo = 1",
@@ -182,27 +223,28 @@ export function createListingsStore(filename: string): ListingsStore {
           (seedOrder.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
           (seedOrder.get(right.id) ?? Number.MAX_SAFE_INTEGER),
       );
-  const transaction = (write: () => void) => {
+  const transaction = <T>(write: () => T): T => {
     database.exec("BEGIN IMMEDIATE");
     try {
-      write();
+      const result = write();
       database.exec("COMMIT");
+      return result;
     } catch (error) {
       database.exec("ROLLBACK");
       throw error;
     }
   };
+  const admin = createDemoAdmin(database, transaction);
   return {
     listDemo,
+    admin,
     seedDemo() {
       transaction(() => {
         for (const listing of demoListings) {
           insert.run(listing.id, JSON.stringify(listing));
           // Only migrate bundled stock photos; preserve uploads and all user edits.
-          const row = database
-            .prepare("SELECT payload FROM listings WHERE id = ?")
-            .get(listing.id);
-          if (row) {
+          const row = stored.get(listing.id);
+          if (row && !row.edited) {
             const existing = JSON.parse(String(row.payload)) as Product;
             if (
               ((!existing.pickupPoint &&
@@ -215,38 +257,47 @@ export function createListingsStore(filename: string): ListingsStore {
               existing.pickupPoint = listing.pickupPoint;
               update.run(JSON.stringify(existing), listing.id);
             }
-            if (
-              /^\/images\/(?:catalog-)?[a-zA-Z0-9_-]+\.jpg$/.test(
-                existing.image,
-              ) &&
-              listing.photoSourceUrl
-            ) {
-              update.run(
-                JSON.stringify({
-                  ...existing,
-                  image: listing.image,
-                  photoSourceUrl: listing.photoSourceUrl,
-                }),
-                listing.id,
-              );
-            }
+            const refreshed = refreshLegacyStock(existing, listing);
+            if (refreshed) update.run(JSON.stringify(refreshed), listing.id);
           }
         }
       });
       return listDemo();
     },
-    updateDemo(value) {
+    updateDemo(value, workspace) {
       if (!Array.isArray(value) || value.length > demoListings.length)
         throw invalidListing();
-      const listings = value.map(validateDemoListing);
-      if (
-        new Set(listings.map((listing) => listing.id)).size !== listings.length
-      )
-        throw invalidListing();
       transaction(() => {
+        if (workspace) checkDemoStudent(database, workspace);
+        const seen = new Set<string>();
         // Validate the complete batch before updating any row.
-        for (const listing of listings)
-          if (!exists.get(listing.id)) throw invalidListing();
+        const listings = value.map((item) => {
+          if (!record(item) || typeof item.id !== "string" || seen.has(item.id))
+            throw invalidListing();
+          seen.add(item.id);
+          const row = stored.get(item.id);
+          if (retiredOrHidden.get(item.id))
+            throw adminFailure("admin_listing_hidden", 409);
+          if (!row) throw invalidListing();
+          const existing = JSON.parse(String(row.payload)) as Product;
+          const listing = validateDemoListing(item, existing);
+          if (
+            listing.status !== "reserved" &&
+            hasAgreedDemoDeal(database, listing.id)
+          )
+            throw new AgentError(
+              409,
+              "listing_deal_agreed",
+              "Finish or cancel the agreed deal before changing this listing.",
+            );
+          return row.edited
+            ? {
+                ...listing,
+                seller: existing.seller,
+                initials: existing.initials,
+              }
+            : listing;
+        });
         for (const listing of listings)
           update.run(JSON.stringify(listing), listing.id);
       });

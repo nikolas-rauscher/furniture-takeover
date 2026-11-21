@@ -1,0 +1,177 @@
+/* Writing a listing: one scrolling column (card, Pako, what is still needed) above a
+   dock that never covers it. On wide screens the column keeps a readable width. */
+.listing-chat {
+  display: grid;
+  flex: 1 1 0;
+  grid-template-rows: minmax(0, 1fr) auto;
+  width: 100%;
+  max-width: 44rem;
+  min-height: 0;
+  margin: 0 auto;
+}
+.listing-chat-frame {
+  position: relative;
+  min-height: 0;
+}
+.listing-chat-scroll {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.listing-chat-scroll:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: -3px;
+  border-radius: var(--radius-card);
+}
+.listing-chat-column {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  padding: 4px 2px 16px;
+}
+/* The pill sits over the column's lower fade, centred, so it covers only what the
+   student scrolled past. */
+.listing-chat-latest {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  translate: -50% 0;
+}
+.listing-chat-latest > button {
+  min-height: 44px;
+  border-radius: 999px;
+  box-shadow: 0 4px 0 var(--lip);
+}
+.listing-chat-dock {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 2px solid var(--card-line);
+}
+.listing-chat-dock textarea {
+  max-height: min(100px, 20dvh);
+  overflow-y: auto;
+  resize: none;
+}
+/* Edit details on the left, the save button on the right, in one row; on wide screens
+   who will see the listing sits between them. */
+.listing-chat-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px 12px;
+  container-type: inline-size;
+}
+.listing-chat-actions > .button {
+  width: auto;
+  margin: 0;
+}
+.listing-chat-actions > .button[type="submit"] {
+  margin-left: auto;
+}
+.listing-chat-actions > .quiet-caption {
+  display: none;
+}
+/* On phones both buttons share one row: the save button takes the room that is left. */
+@container (max-width: 30rem) {
+  .listing-chat .listing-chat-actions > .button {
+    min-height: 48px;
+    padding: 10px 12px;
+    font-size: var(--type-label);
+    white-space: nowrap;
+  }
+  .listing-chat-actions > .button[type="submit"] {
+    flex: 1 1 auto;
+  }
+}
+/* On the narrowest phones the save button's words keep the room its check had. */
+@container (max-width: 21rem) {
+  .listing-chat-actions > .button[type="submit"] > svg {
+    display: none;
+  }
+}
+@container (min-width: 36rem) {
+  .listing-chat-actions > .quiet-caption {
+    display: block;
+    flex: 1 1 0;
+    margin: 0;
+    text-align: right;
+  }
+}
+
+/* What the listing still needs: one row per detail, each opening it. */
+.listing-needs {
+  display: grid;
+  gap: 6px;
+}
+.listing-needs > h2 {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--type-support);
+  font-weight: 700;
+}
+.listing-needs > ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.listing-needs-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 2px dashed var(--card-line);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--type-label);
+  font-weight: 650;
+  text-align: left;
+}
+.listing-needs-item:hover {
+  border-color: var(--blue);
+  background: var(--selected);
+}
+.listing-needs-item > small {
+  margin-left: auto;
+  color: var(--blue-dark);
+  font-size: var(--type-support);
+  font-weight: 700;
+}
+.listing-needs-item > svg {
+  flex: none;
+  color: var(--muted);
+}
+.listing-needs > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--type-support);
+}
+
+/* Without Pako the details sit where his conversation would, under a short note from him. */
+.listing-manual {
+  display: grid;
+  gap: var(--space-group);
+}
+.listing-manual-note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.listing-manual-note > p {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  line-height: 1.45;
+}
+
+@media (max-width: 760px) {
+  .listing-chat-column {
+    gap: 12px;
+    padding-bottom: 12px;
+  }
+}

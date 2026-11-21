@@ -16,8 +16,11 @@ import type {
 import type {
   AgentListingDraft,
   AgentListingPatch,
+  AgentListingQuestion,
   AgentPreferencesPatch,
   AgentActionEvidence,
+  AgentQuestionEvent,
+  AgentTapAnswer,
   SellerEvidence,
 } from "../../shared/actions";
 
@@ -27,7 +30,7 @@ const MAX_TEXT_CHARS = 100_000;
 const MAX_EVENTS = 10_000;
 const MAX_SOURCES = 40;
 
-export class AgentRunError extends Error {
+class AgentRunError extends Error {
   readonly code: string;
   constructor(message: string, code = "RUN_FAILED") {
     super(message);
@@ -37,10 +40,7 @@ export class AgentRunError extends Error {
 }
 
 function invalidStream(): AgentRunError {
-  return new AgentRunError(
-    "The response could not be read. Please try again.",
-    "INVALID_STREAM",
-  );
+  return new AgentRunError("I couldn't finish. Try again.", "INVALID_STREAM");
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -57,6 +57,23 @@ function boundedString(
     value.length <= max &&
     (allowEmpty || value.trim().length > 0)
   );
+}
+
+/** An optional bounded list of short texts, such as listing IDs or photo keywords. */
+function optionalList(
+  value: unknown,
+  maxItems: number,
+  maxLength: number,
+  invalid: () => AgentRunError,
+): string[] | undefined {
+  if (value === undefined) return undefined;
+  if (
+    !Array.isArray(value) ||
+    value.length > maxItems ||
+    !value.every((item) => boundedString(item, maxLength))
+  )
+    throw invalid();
+  return [...value];
 }
 
 function validDate(value: unknown): value is string {
@@ -295,7 +312,100 @@ function requestContext(
       text: item.text,
     }));
   }
+  for (const [field, maxItems] of [
+    ["previousMatchIds", 100],
+    ["ownListingIds", 200],
+  ] as const) {
+    const ids = optionalList(value[field], maxItems, 120, invalid);
+    if (ids) context[field] = ids;
+  }
+  Object.assign(context, listingHistory(value, invalid));
   return context;
+}
+
+type ListingHistory = Pick<
+  NonNullable<AgentRunRequest["context"]>,
+  "listingStart" | "photoAnalysis" | "skippedQuestions" | "answeredQuestions"
+>;
+
+/** What a listing run builds on: its start, the photos' hints and the questions so far. */
+function listingHistory(
+  value: Record<string, unknown>,
+  invalid: () => AgentRunError,
+): ListingHistory {
+  const history: ListingHistory = {};
+  if (value.listingStart !== undefined) {
+    if (typeof value.listingStart !== "boolean") throw invalid();
+    history.listingStart = value.listingStart;
+  }
+  if (value.photoAnalysis !== undefined) {
+    const analysis = value.photoAnalysis;
+    if (
+      !record(analysis) ||
+      Object.keys(analysis).some(
+        (key) => key !== "missingDetails" && key !== "keywords",
+      )
+    )
+      throw invalid();
+    const missingDetails = optionalList(
+      analysis.missingDetails,
+      12,
+      240,
+      invalid,
+    );
+    const keywords = optionalList(analysis.keywords, 12, 120, invalid);
+    history.photoAnalysis = {
+      ...(missingDetails ? { missingDetails } : {}),
+      ...(keywords ? { keywords } : {}),
+    };
+  }
+  if (value.skippedQuestions !== undefined) {
+    const skipped = value.skippedQuestions;
+    if (
+      !Array.isArray(skipped) ||
+      skipped.length > 30 ||
+      !skipped.every(
+        (item) =>
+          record(item) &&
+          boundedString(item.question, 500) &&
+          (item.listingField === undefined ||
+            QUESTION_FIELDS.includes(item.listingField as string)),
+      )
+    )
+      throw invalid();
+    history.skippedQuestions = skipped.map((item) => {
+      const choices = optionalList(item.choices, 5, 120, invalid);
+      return {
+        question: item.question as string,
+        ...(item.listingField === undefined
+          ? {}
+          : {
+              listingField:
+                item.listingField as AgentListingQuestion["listingField"],
+            }),
+        ...(choices ? { choices } : {}),
+      };
+    });
+  }
+  if (value.answeredQuestions !== undefined) {
+    const answered = value.answeredQuestions;
+    if (
+      !Array.isArray(answered) ||
+      answered.length > 30 ||
+      !answered.every(
+        (item) =>
+          record(item) &&
+          boundedString(item.question, 500, true) &&
+          boundedString(item.answer, 4000, true),
+      )
+    )
+      throw invalid();
+    history.answeredQuestions = answered.map((item) => ({
+      question: item.question,
+      answer: item.answer,
+    }));
+  }
+  return history;
 }
 
 export function safeSourceUrl(value: string): string | null {
@@ -339,6 +449,107 @@ function sources(value: unknown): AgentRunSource[] {
     });
   }
   return [...unique.values()];
+}
+
+const QUESTION_FIELDS: readonly string[] = [
+  "price",
+  "condition",
+  "dimensions",
+  "location",
+  "pickup",
+  "description",
+  "title",
+  "other",
+];
+
+function priceInput(value: unknown): AgentQuestionEvent["input"] {
+  if (
+    !record(value) ||
+    value.type !== "price" ||
+    typeof value.min !== "number" ||
+    !Number.isFinite(value.min) ||
+    value.min < 0 ||
+    typeof value.max !== "number" ||
+    !Number.isFinite(value.max) ||
+    value.max > 10_000 ||
+    value.max <= value.min ||
+    typeof value.step !== "number" ||
+    !Number.isFinite(value.step) ||
+    value.step <= 0 ||
+    value.step > 1000 ||
+    value.step > value.max - value.min ||
+    (value.value !== undefined &&
+      (typeof value.value !== "number" ||
+        !Number.isFinite(value.value) ||
+        value.value < value.min ||
+        value.value > value.max))
+  )
+    throw invalidStream();
+  return value as AgentQuestionEvent["input"];
+}
+
+/** A tapped answer's change; an empty one changes nothing and is left out. */
+function tapPatch(value: unknown): { patch?: AgentListingPatch } {
+  if (value === undefined || (record(value) && !Object.keys(value).length))
+    return {};
+  return { patch: listingPatch(value) };
+}
+
+function tapAnswer(value: unknown): AgentTapAnswer {
+  if (
+    !record(value) ||
+    !boundedString(value.label, 120) ||
+    (value.appendDescription !== undefined &&
+      !boundedString(value.appendDescription, 160)) ||
+    (value.acceptsProposal !== undefined && value.acceptsProposal !== true)
+  )
+    throw invalidStream();
+  return {
+    label: value.label,
+    ...tapPatch(value.patch),
+    ...(typeof value.appendDescription === "string"
+      ? { appendDescription: value.appendDescription }
+      : {}),
+    ...(value.acceptsProposal ? { acceptsProposal: true as const } : {}),
+  };
+}
+
+/** A question's text, the draft field it asks for and its answers, without its follow-ups. */
+function listingQuestion(value: Record<string, unknown>): AgentListingQuestion {
+  if (
+    !boundedString(value.question, 500) ||
+    (value.listingField !== undefined &&
+      !QUESTION_FIELDS.includes(value.listingField as string)) ||
+    (value.choices !== undefined &&
+      (!Array.isArray(value.choices) ||
+        value.choices.length > 5 ||
+        !value.choices.every((choice) => boundedString(choice, 120)))) ||
+    (value.choiceActions !== undefined &&
+      (!Array.isArray(value.choiceActions) || value.choiceActions.length > 5))
+  )
+    throw invalidStream();
+  return {
+    question: value.question,
+    ...(value.listingField !== undefined
+      ? {
+          listingField:
+            value.listingField as AgentListingQuestion["listingField"],
+        }
+      : {}),
+    ...(value.input !== undefined ? { input: priceInput(value.input) } : {}),
+    ...(Array.isArray(value.choices)
+      ? { choices: [...new Set(value.choices as string[])] }
+      : {}),
+    ...(Array.isArray(value.choiceActions)
+      ? { choiceActions: value.choiceActions.map(tapAnswer) }
+      : {}),
+  };
+}
+
+/** A question queued behind another asks for a fact, never for the price with a slider. */
+function followUpQuestion(value: unknown): AgentListingQuestion {
+  if (!record(value) || value.input !== undefined) throw invalidStream();
+  return listingQuestion(value);
 }
 
 function parseEvent(line: string): AgentRunEvent {
@@ -387,51 +598,18 @@ function parseEvent(line: string): AgentRunEvent {
       };
     }
     case "question": {
-      const priceInput = value.input;
-      if (
-        priceInput !== undefined &&
-        (!record(priceInput) ||
-          priceInput.type !== "price" ||
-          typeof priceInput.min !== "number" ||
-          !Number.isFinite(priceInput.min) ||
-          priceInput.min < 0 ||
-          typeof priceInput.max !== "number" ||
-          !Number.isFinite(priceInput.max) ||
-          priceInput.max > 10_000 ||
-          priceInput.max <= priceInput.min ||
-          typeof priceInput.step !== "number" ||
-          !Number.isFinite(priceInput.step) ||
-          priceInput.step <= 0 ||
-          priceInput.step > 1000 ||
-          priceInput.step > priceInput.max - priceInput.min ||
-          (priceInput.value !== undefined &&
-            (typeof priceInput.value !== "number" ||
-              !Number.isFinite(priceInput.value) ||
-              priceInput.value < priceInput.min ||
-              priceInput.value > priceInput.max)))
-      )
-        throw invalidStream();
       if (
         !boundedString(value.id, 160) ||
-        !boundedString(value.question, 500) ||
-        (value.choices !== undefined &&
-          (!Array.isArray(value.choices) ||
-            value.choices.length > 5 ||
-            !value.choices.every((choice) => boundedString(choice, 120))))
+        (value.followUps !== undefined &&
+          (!Array.isArray(value.followUps) || value.followUps.length > 2))
       )
         throw invalidStream();
       return {
         type: "question",
         id: value.id,
-        question: value.question,
-        ...(priceInput
-          ? {
-              input:
-                priceInput as import("../../shared/actions").AgentQuestionEvent["input"],
-            }
-          : {}),
-        ...(Array.isArray(value.choices)
-          ? { choices: [...new Set(value.choices as string[])] }
+        ...listingQuestion(value),
+        ...(Array.isArray(value.followUps)
+          ? { followUps: value.followUps.map(followUpQuestion) }
           : {}),
       };
     }
@@ -691,13 +869,13 @@ export async function readAgentRunStream(
     }
     if (!completed)
       throw new AgentRunError(
-        "The connection ended before the response was finished. Please try again.",
+        "I lost the connection before I finished. Try again.",
         "INCOMPLETE_STREAM",
       );
   } catch (error) {
     if (signal?.aborted || error instanceof AgentRunError) throw error;
     throw new AgentRunError(
-      "The connection was interrupted. Your partial response is still here; try again.",
+      "I lost the connection. What I found so far is still here. Try again.",
       "NETWORK_ERROR",
     );
   } finally {
@@ -709,7 +887,7 @@ export async function readAgentRunStream(
 
 async function failureMessage(response: Response): Promise<AgentRunError> {
   const fallback = new AgentRunError(
-    "The agent could not start. Please try again.",
+    "I couldn't start. Try again.",
     `HTTP_${response.status}`,
   );
   if (!response.body) return fallback;
@@ -808,7 +986,7 @@ export async function streamAgentRun(
   } catch (error) {
     if (signal?.aborted) throw error;
     throw new AgentRunError(
-      "The agent could not connect. Your request is still here; try again.",
+      "I couldn't connect. Your request is still here, so try again.",
       "NETWORK_ERROR",
     );
   }

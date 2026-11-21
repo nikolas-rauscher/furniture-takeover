@@ -24,7 +24,8 @@
 .workspace-toolbar h1 {
   margin: 0;
   font-size: 1.25rem;
-  font-weight: 550;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 .workspace-toolbar h1:focus {
   outline: none;
@@ -32,8 +33,8 @@
 .workspace-toolbar .workspace-back {
   flex: 0 0 auto;
   min-height: 44px;
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 8px 14px 8px 10px;
+  border-radius: 999px;
   font-size: var(--type-support);
   color: var(--muted);
   transition:
@@ -64,18 +65,12 @@
   justify-content: space-between;
   gap: 6px 12px;
 }
+/* Preferences and save keep the tactile secondary look of the app's buttons. */
 .workspace-header .workspace-preferences > button {
-  min-height: 44px;
-  padding: 8px 12px;
+  min-height: 40px;
+  padding: 7px 14px;
   gap: 8px;
-  font-size: var(--type-support);
-  font-weight: 500;
   color: var(--ink);
-  border-color: var(--line);
-  background: var(--surface);
-}
-.workspace-header .workspace-preferences > button:hover:not(:disabled) {
-  background: var(--mist);
 }
 .workspace-preferences .quiet-caption {
   flex-basis: 100%;
@@ -93,13 +88,23 @@
   padding: 8px 12px;
   font-size: var(--type-label);
 }
+/* Pako carries the day's allowance on a chip. */
 .workspace-desktop-quota [data-slot="popover-trigger"] {
   min-height: 44px;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: 8px;
+  gap: 4px;
+  padding: 4px 12px 4px 6px;
+  border-radius: 999px;
   font-size: var(--type-support);
   white-space: nowrap;
+}
+/* The allowance is one chip wherever it shows, here, by the composer and on home: muted
+   while plenty is left, red once it runs low. */
+:is(.workspace-desktop-quota, .agent-footnote) [data-slot="badge"] {
+  height: auto;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: var(--type-caption);
+  font-weight: 700;
 }
 .workspace-desktop-quota [data-slot="popover-trigger"]:hover {
   background: var(--mist);
@@ -108,6 +113,8 @@
   width: 280px;
   max-width: calc(100vw - 24px);
   padding: 16px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
   background: var(--surface);
   color: var(--ink);
 }
@@ -138,15 +145,30 @@
   font-size: var(--type-caption);
   color: var(--muted);
 }
-.chat-layout .agent-footnote.quota-available,
-.selling-chat-layout .agent-footnote.quota-available,
-.selling-photo-layout .agent-footnote.quota-available {
+/* A workspace's header carries the allowance. The composer repeats it only on phones,
+   whose header has no room for it, and only once it runs low. */
+:is(.chat-layout, .selling-chat-layout, .selling-photo-layout)
+  .agent-footnote.quota-available {
   display: none;
 }
+@media (min-width: 761px) {
+  :is(.chat-layout, .selling-chat-layout, .selling-photo-layout)
+    .agent-footnote:has(> [data-slot="badge"]) {
+    display: none;
+  }
+}
 @media (max-width: 760px) {
-  #root:has(.chat-layout, .selling-chat-layout, .selling-photo-layout)
+  #root:has(
+      .chat-layout,
+      .selling-chat-layout,
+      .selling-photo-layout,
+      .selling-batch-layout
+    )
     > .app-header {
     display: none;
+  }
+  .app-layout.selling-batch-layout .main-content.view-sell {
+    padding-top: env(safe-area-inset-top, 0px);
   }
   .app-layout.chat-layout .main-content.view-discover {
     padding: env(safe-area-inset-top, 0px) 12px 4px;
@@ -179,6 +201,7 @@
     width: 44px;
     height: 44px;
     padding: 0;
+    border-radius: 50%;
   }
   .workspace-back > span {
     display: none;
@@ -195,8 +218,39 @@
     width: 44px;
     height: 44px;
     padding: 0;
+    border-radius: 50%;
   }
   .workspace-preferences {
     display: none;
+  }
+}
+
+/* Desktop: the title, search preferences and save share one row, with the active
+   preferences right below, so the conversation keeps most of the height. */
+@media (min-width: 761px) {
+  .workspace-header:has(.workspace-preferences) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "toolbar open save"
+      "caption caption caption";
+    align-items: center;
+    column-gap: 8px;
+  }
+  .workspace-header:has(.workspace-preferences) .workspace-toolbar {
+    grid-area: toolbar;
+  }
+  .workspace-header .workspace-preferences {
+    display: contents;
+  }
+  .workspace-header .workspace-preferences-open {
+    grid-area: open;
+  }
+  .workspace-header .workspace-save {
+    grid-area: save;
+  }
+  .workspace-header .workspace-preferences .quiet-caption {
+    grid-area: caption;
+    margin: 0 0 4px;
   }
 }

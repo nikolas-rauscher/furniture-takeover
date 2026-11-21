@@ -4,17 +4,16 @@ import { transportGuidance } from "./transportGuidance.ts";
 
 test("furniture with measurements that fit in a typical estate-car load area gets a cautious estimate", () => {
   assert.deepEqual(transportGuidance("White desk", "120 × 60 × 75 cm"), {
-    label: "Transport estimate",
+    vehicle: "car",
     message: "An estate car may be enough.",
     note: "Check your vehicle's usable cargo space and loading opening; this is only an estimate.",
   });
 });
 
 test("furniture that exceeds the estimated cargo envelope recommends a van", () => {
-  assert.equal(
-    transportGuidance("Wardrobe", "220 × 100 × 80 cm")?.message,
-    "A van is likely needed.",
-  );
+  const guidance = transportGuidance("Wardrobe", "220 × 100 × 80 cm");
+  assert.equal(guidance?.message, "A van is likely needed.");
+  assert.equal(guidance?.vehicle, "van");
 });
 
 test("dimensions with mixed orientation and metric units are handled", () => {
@@ -33,6 +32,7 @@ test("missing or ambiguous measurements request confirmation instead of guessing
     transportGuidance("Desk", "120 × 60 × 75")?.message,
     "Confirm the width × depth × height in cm with the seller.",
   );
+  assert.equal(transportGuidance("Desk", "Ask the seller")?.vehicle, "unknown");
 });
 
 test("non-furniture items do not receive a furniture transport estimate", () => {

@@ -1,0 +1,283 @@
+import type { AgentMetadata } from "../shared/agent";
+import { money } from "../shared/marketplace.ts";
+import { itemsCovered } from "./batchListings.ts";
+import type { GuideBubble } from "./components/onboarding/Guide";
+import type { PakoMood } from "./components/onboarding/storyTypes";
+import type { PhotoInsight } from "./hooks/useListingAnalysis";
+
+/** The words on the photo step's main button, which Pako's lines invite the student to tap. */
+export const WRITE_ACTION = "Write my listing";
+/** The main button's words while Pako cannot help: the student writes the listing. */
+export const FILL_IN_ACTION = "Fill in details";
+
+/** Why Pako cannot help right now: the day's allowance is used, or his tools are out of reach. */
+export type PakoAbsence = "allowance" | "offline";
+
+export type SellGuide = { mood: PakoMood; bubble: GuideBubble };
+
+/** Lines while Pako is busy share one bubble, so their text changes in place. */
+const WORKING = "working";
+const MAX_HINT_WORDS = 4;
+const OWN_TOPICS =
+  /\b(?:price|prices|pricing|cost|pickup|pick up|collect\w*|location|where)\b/i;
+
+/** A phrase as it reads inside a sentence: "Screen size" becomes "screen size", "RAM" stays. */
+const inSentence = (phrase: string) =>
+  /^[A-Z][a-z]/.test(phrase)
+    ? phrase[0].toLowerCase() + phrase.slice(1)
+    : phrase;
+
+const both = (words: readonly string[]) =>
+  words.length === 2 ? `${words[0]} and ${words[1]}` : words.join("");
+
+/**
+ * Up to two details buyers ask about, from what the photo analysis found missing:
+ * short phrases only, without the price or pickup Pako asks about himself.
+ */
+export function buyerQuestions(missingDetails: readonly string[]): string[] {
+  return missingDetails
+    .map((detail) => detail.trim())
+    .filter(
+      (detail) =>
+        detail &&
+        !detail.includes("?") &&
+        detail.split(/\s+/).length <= MAX_HINT_WORDS &&
+        !OWN_TOPICS.test(detail),
+    )
+    .slice(0, 2)
+    .map(inSentence);
+}
+
+/** Conditions that read "in good condition"; others, such as "used", stand on their own. */
+const QUALITY_CONDITION = /^(?:excellent|very good|good|fair)$/i;
+
+const conditionPhrase = (condition: string) =>
+  QUALITY_CONDITION.test(condition)
+    ? `in ${condition.toLowerCase()} condition`
+    : inSentence(condition);
+
+/** What Pako recognised, in one sentence: the item, then facts from the note it does not name yet. */
+export function recognisedLine(
+  metadata: Pick<AgentMetadata, "title" | "dimensions" | "condition" | "price">,
+): string {
+  const title = metadata.title?.trim() ?? "";
+  const named = title.toLowerCase();
+  const unnamed = (fact: string | null | undefined) => {
+    const text = fact?.trim() ?? "";
+    return named.includes(text.toLowerCase()) ? "" : text;
+  };
+  const dimensions = unnamed(metadata.dimensions);
+  const condition = unnamed(metadata.condition);
+  const facts = [
+    dimensions && inSentence(dimensions),
+    condition && conditionPhrase(condition),
+  ].filter(Boolean);
+  const item = [title, ...facts].join(", ");
+  if (metadata.price == null) return item;
+  return metadata.price === 0
+    ? `${item} for free`
+    : `${item} for ${money(metadata.price)}`;
+}
+
+function recognised(
+  response: Extract<PhotoInsight, { status: "ready" }>["response"],
+  note: string,
+): SellGuide {
+  const { metadata } = response;
+  if (!metadata.title?.trim())
+    return {
+      mood: "think",
+      bubble: {
+        id: "unrecognised",
+        title: "I can't tell what it is",
+        text: "Add its name under Details and I'll draft the listing.",
+      },
+    };
+  const next =
+    metadata.price == null
+      ? `Tap ${WRITE_ACTION} and I'll check what others ask for similar items.`
+      : `Tap ${WRITE_ACTION} and I'll ask you a couple of quick things.`;
+  const hints = buyerQuestions(response.missingDetails);
+  const hint = hints.length ? ` Buyers often ask about ${both(hints)}.` : "";
+  const text = `${recognisedLine(metadata)}. ${next}${hint}`;
+  return {
+    mood: "happy",
+    bubble: {
+      id: `recognised:${text}`,
+      title: note.trim() ? "Okay, got it!" : "Oh, nice!",
+      text,
+    },
+  };
+}
+
+function insightGuide(
+  insight: PhotoInsight,
+  { sortFailed, remaining }: { sortFailed: boolean; remaining?: number },
+): SellGuide {
+  switch (insight.status) {
+    case "sorting":
+      return {
+        mood: "work",
+        bubble: {
+          id: WORKING,
+          text: `Looking through your ${insight.photoCount} photos…`,
+        },
+      };
+    case "several": {
+      const count = insight.groups.length;
+      const covered = itemsCovered(remaining, count);
+      return {
+        mood: "happy",
+        bubble: {
+          id: `several:${count}`,
+          title: `These look like ${count} items`,
+          text:
+            `Shall I make ${count} listings, one for each?` +
+            (covered === undefined
+              ? ""
+              : ` I can write about ${covered} of them today. You can fill in the rest yourself.`),
+        },
+      };
+    }
+    case "reading":
+      return {
+        mood: "think",
+        bubble: {
+          id: WORKING,
+          text: insight.noteOnly
+            ? "Reading your note…"
+            : sortFailed
+              ? "I couldn't group these photos, so I'll read them as one item."
+              : "Let me have a look…",
+        },
+      };
+    case "ready":
+      return recognised(insight.response, insight.note);
+    case "failed":
+      return {
+        mood: "dizzy",
+        bubble: {
+          id: "failed",
+          title: "I couldn't read your photos",
+          text: `${insight.error} Try again, or fill in the details yourself.`,
+        },
+      };
+    case "unavailable":
+    case "empty":
+      return {
+        mood: "happy",
+        bubble: {
+          id: "photos",
+          title: "Looking good!",
+          text: `Add a note if you like, then tap ${WRITE_ACTION}.`,
+        },
+      };
+  }
+}
+
+/**
+ * What Pako says while he cannot help: he rests until his allowance comes back,
+ * or says his tools are out of reach. Either way the student can still sell.
+ */
+export function absenceGuide(
+  absence: PakoAbsence,
+  {
+    saveVerb,
+    back,
+  }: {
+    /** "publish" with an account, "save" in the local demo. */
+    saveVerb: string;
+    /** When the allowance comes back. */
+    back?: string;
+  },
+): SellGuide {
+  if (absence === "allowance")
+    return {
+      mood: "sleep",
+      bubble: {
+        id: "allowance",
+        title: "I've used today's requests",
+        text: `You can still ${saveVerb}: fill in the details yourself.${back ? ` I'm back after ${back}.` : ""}`,
+      },
+    };
+  return {
+    mood: "idle",
+    bubble: {
+      id: "offline",
+      title: "I'm unavailable right now",
+      text: `You can still ${saveVerb} by filling in the details yourself.`,
+    },
+  };
+}
+
+/**
+ * What Pako says beside the photos: what to do next, what he is busy with, or
+ * what he recognised. He rests while he cannot help and listens while details
+ * are written.
+ */
+export function sellGuide({
+  photoCount,
+  photoReading,
+  preparing,
+  absence,
+  saveVerb,
+  back,
+  hasPlace,
+  typing,
+  insight,
+  sortFailed,
+  remaining,
+}: {
+  photoCount: number;
+  photoReading: boolean;
+  /** The draft is being prepared from step 1. */
+  preparing: boolean;
+  absence?: PakoAbsence;
+  saveVerb: string;
+  back?: string;
+  /** A pickup place is set. */
+  hasPlace: boolean;
+  /** The Details field has focus. */
+  typing: boolean;
+  insight: PhotoInsight;
+  /** Sorting the photos did not work, so they count as one item. */
+  sortFailed: boolean;
+  /** Requests left in today's allowance; none in the local demo. */
+  remaining?: number;
+}): SellGuide {
+  if (preparing)
+    return {
+      mood: "work",
+      bubble: {
+        id: "writing",
+        title: "Writing your listing…",
+        text: "I'm drafting it from your photos and notes.",
+      },
+    };
+  if (photoReading)
+    return {
+      mood: "work",
+      bubble: { id: WORKING, text: "Loading your photo…" },
+    };
+  if (absence) return absenceGuide(absence, { saveVerb, back });
+  if (photoCount === 0)
+    return {
+      mood: typing ? "listen" : "wave",
+      bubble: {
+        id: "empty",
+        title: "Add photos of your item",
+        text: "I'll draft the listing from them and suggest an asking price.",
+      },
+    };
+  if (!hasPlace)
+    return {
+      mood: "listen",
+      bubble: {
+        id: "place",
+        title: "Where can buyers pick it up?",
+        text: `Add a place below, then tap ${WRITE_ACTION}.`,
+      },
+    };
+  const guide = insightGuide(insight, { sortFailed, remaining });
+  return typing ? { ...guide, mood: "listen" } : guide;
+}

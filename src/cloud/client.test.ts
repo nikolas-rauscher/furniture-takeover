@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readAuthRedirect } from "./client.ts";
+import { missingFromSchema, readAuthRedirect } from "./client.ts";
 import {
   configureCloud,
   getCloudClient,
@@ -8,6 +8,7 @@ import {
   requiresPasswordSetup,
   completePasswordSetup,
 } from "./session.ts";
+import { cloudClient } from "./cloudClient.ts";
 
 test("invitations remove token fragments while ordinary PKCE callbacks and app routes remain intact", () => {
   const invite = new URL(
@@ -118,7 +119,7 @@ test("invitation sessions are verified with Supabase once and invalid sessions d
     supabaseUrl: "https://example.supabase.co",
     supabaseKey: "sb_publishable_test",
   };
-  configureCloud(config);
+  configureCloud(config, cloudClient);
   const first = restoreAccountSession();
   assert.equal(first, restoreAccountSession());
   const accepted = await first;
@@ -130,12 +131,12 @@ test("invitation sessions are verified with Supabase once and invalid sessions d
   getCloudClient()!.auth.stopAutoRefresh();
   valid = false;
   url.hash = `access_token=${jwt}&refresh_token=test-refresh&type=invite`;
-  configureCloud(config);
+  configureCloud(config, cloudClient);
   const rejected = await restoreAccountSession();
   assert.equal(rejected.session, null);
   assert.equal(rejected.invited, false);
   assert.equal(requiresPasswordSetup(rejected.session), false);
-  assert.match(rejected.error, /Could not open/);
+  assert.match(rejected.error, /Couldn't open/);
 });
 
 test("password recovery survives a late UI listener and only completes after saving", async (t) => {
@@ -192,7 +193,7 @@ test("password recovery survives a late UI listener and only completes after sav
     }
     throw new Error(`Unexpected auth request: ${url.pathname}`);
   };
-  configureCloud(config);
+  configureCloud(config, cloudClient);
   const client = getCloudClient()!;
   assert.equal(
     (await client.auth.resetPasswordForEmail(user.email)).error,
@@ -269,10 +270,13 @@ test("ordinary sign-ins and failed recovery links never request password setup",
       user: { id: "ordinary-user", aud: "authenticated" },
     });
   };
-  configureCloud({
-    supabaseUrl: "https://example.supabase.co",
-    supabaseKey: "sb_publishable_test",
-  });
+  configureCloud(
+    {
+      supabaseUrl: "https://example.supabase.co",
+      supabaseKey: "sb_publishable_test",
+    },
+    cloudClient,
+  );
   const client = getCloudClient()!;
   assert.ok(
     (await client.auth.exchangeCodeForSession("invalid-code-without-verifier"))
@@ -295,4 +299,11 @@ test("ordinary sign-ins and failed recovery links never request password setup",
     requiresPasswordSetup((await client.auth.getSession()).data.session),
     false,
   );
+});
+
+test("only a missing table, column or function counts as an update the server still needs", () => {
+  for (const code of ["PGRST202", "PGRST204", "PGRST205", "42P01", "42703"])
+    assert.equal(missingFromSchema({ code }), true, code);
+  assert.equal(missingFromSchema({ code: "42501" }), false);
+  assert.equal(missingFromSchema(null), false);
 });

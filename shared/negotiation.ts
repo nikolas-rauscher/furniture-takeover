@@ -1,15 +1,14 @@
+import { resolvePickupAt, formatPickup } from "./pickupTime.ts";
+import type { DealTerms } from "./deal.ts";
 import { z } from "zod";
+import { draftMessage } from "./dealMessages.ts";
+import {
+  negotiationTermsSchema,
+  type NegotiationTerms,
+} from "./negotiationTerms.ts";
 
-export const negotiationTermsSchema = z
-  .object({
-    amount: z.number().finite().min(0).max(1_000_000).nullable(),
-    fulfillment: z.enum(["pickup", "shipping"]).nullable(),
-    pickupTime: z.string().trim().min(1).max(240).nullable(),
-    pickupPoint: z.string().trim().min(1).max(240).nullable(),
-    note: z.string().trim().min(1).max(1000).nullable(),
-  })
-  .strict();
-export type NegotiationTerms = z.infer<typeof negotiationTermsSchema>;
+export type { NegotiationTerms } from "./negotiationTerms.ts";
+
 export const negotiationFields = [
   "amount",
   "fulfillment",
@@ -115,33 +114,6 @@ export function reviseNegotiation(
     if (next.terms[field] === null) delete next.evidence[field];
   return negotiationSchema.parse(next);
 }
-export function draftMessage(title: string, terms: NegotiationTerms): string {
-  const parts = [`Hi, I'm interested in your ${title}. Is it still available?`];
-  if (terms.amount !== null)
-    parts.push(`Would you accept CHF ${terms.amount}?`);
-  if (terms.fulfillment === "shipping")
-    parts.push(
-      "Would shipping be possible, and what would the total including shipping be?",
-    );
-  else if (
-    terms.fulfillment === "pickup" ||
-    terms.pickupTime ||
-    terms.pickupPoint
-  ) {
-    parts.push(
-      terms.pickupTime
-        ? `Would pickup ${terms.pickupTime} work for you?`
-        : "When would pickup work for you?",
-    );
-    parts.push(
-      terms.pickupPoint
-        ? `Could we meet at ${terms.pickupPoint}?`
-        : "Where would you like to meet for pickup?",
-    );
-  } else parts.push("How would you prefer to arrange handover?");
-  if (terms.note) parts.push(terms.note);
-  return parts.join(" ");
-}
 export function prepareNegotiation(
   current: Negotiation,
   title: string,
@@ -191,4 +163,19 @@ export function markNegotiationSent(
     version,
     draft: { ...current.draft, version },
   });
+}
+
+export function dealTermsFromNegotiation(
+  terms: NegotiationTerms,
+  now: Date,
+): DealTerms {
+  const { amount, fulfillment, pickupTime, pickupPoint } = terms;
+  const pickupAt = pickupTime ? resolvePickupAt(pickupTime, now) : null;
+  return {
+    amount,
+    fulfillment,
+    pickupPoint,
+    pickupAt,
+    pickupTime: pickupAt ? formatPickup(pickupAt) : pickupTime,
+  };
 }

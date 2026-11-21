@@ -1,0 +1,671 @@
+/* The admin area: calm tactile cards on a single column on phones, two where a wide
+   screen has room. */
+.admin-page {
+  display: grid;
+  gap: var(--space-group);
+  width: 100%;
+  min-width: 0;
+  max-width: 1120px;
+  margin-inline: auto;
+}
+/* The sections and their rows shrink with the screen instead of widening the page. */
+.admin-page > *,
+.admin-page [data-slot="tabs-content"] {
+  min-width: 0;
+}
+.admin-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+}
+.admin-title h1 {
+  min-height: 0;
+  margin: 0;
+}
+.admin-title p {
+  margin: 2px 0 0;
+}
+.admin-title > .icon-button {
+  width: var(--control-size);
+  height: var(--control-size);
+  padding: 0;
+  border-radius: 50%;
+}
+
+/* Sections as chips in one row that scrolls sideways on the narrowest phones. */
+.admin-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 0 calc(-1 * var(--space-page)) var(--space-group);
+  padding: 2px var(--space-page) 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.admin-tab {
+  flex: none;
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 2px solid var(--card-line);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: 0 2px 0 var(--lip);
+  color: var(--ink);
+  font-size: var(--type-label);
+  font-weight: 700;
+  transition:
+    transform 90ms var(--ease-out),
+    box-shadow 90ms var(--ease-out),
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+.admin-tab:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 var(--lip);
+}
+.admin-tab[data-active] {
+  border-color: var(--blue);
+  background: var(--selected);
+  box-shadow: 0 2px 0 var(--blue);
+  color: var(--blue-dark);
+}
+
+.admin-section {
+  display: grid;
+  gap: 16px;
+}
+.admin-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.admin-count,
+.admin-footnote,
+.admin-listing-meta,
+.admin-muted {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--type-support);
+}
+.admin-count {
+  font-weight: 700;
+}
+.admin-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+.admin-load-failed,
+.admin-empty {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  margin: 0;
+  padding: 18px;
+  border: 2px dashed var(--card-line);
+  border-radius: var(--radius-card);
+  color: var(--muted);
+  font-size: var(--type-label);
+}
+.admin-load-failed > p {
+  margin: 0;
+}
+.admin-refusal {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fbe9ea;
+  color: var(--danger-dark);
+  font-size: var(--type-support);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* Overview: Pako's one line, then a calm row of stat tiles. */
+.admin-overview {
+  display: grid;
+  gap: 16px;
+}
+.admin-pako {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.admin-pako > svg {
+  flex: none;
+}
+.admin-pako-bubble {
+  position: relative;
+  margin: 0;
+  padding: 10px 14px;
+  border: 2px solid var(--card-line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 2px 0 var(--lip);
+  font-size: var(--type-label);
+  font-weight: 600;
+}
+.admin-pako-bubble::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: -8px;
+  width: 12px;
+  height: 12px;
+  border-bottom: 2px solid var(--card-line);
+  border-left: 2px solid var(--card-line);
+  background: var(--surface);
+  transform: translateY(-50%) rotate(45deg);
+}
+.admin-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.admin-tile {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: 14px 16px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--lip);
+}
+.admin-tile:first-child {
+  grid-column: 1 / -1;
+}
+.admin-tile-value {
+  color: var(--blue-dark);
+  font-size: var(--type-price);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.admin-tile-label {
+  font-size: var(--type-label);
+  font-weight: 700;
+}
+.admin-tile-details {
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 600;
+}
+
+/* Listings: a search, a seller menu and status chips over a dense list of rows. */
+.admin-filters {
+  display: grid;
+  gap: 10px;
+}
+.admin-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.admin-search > svg {
+  position: absolute;
+  left: 14px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.admin-search > input {
+  width: 100%;
+  min-height: var(--control-size);
+  padding-left: 40px;
+}
+.admin-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.admin-chip {
+  min-height: 36px;
+  padding: 6px 13px;
+  border: 2px solid var(--card-line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--type-support);
+  font-weight: 700;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+.admin-chip[aria-pressed="true"] {
+  border-color: var(--blue);
+  background: var(--selected);
+  color: var(--blue-dark);
+}
+.admin-listings,
+.admin-sellers,
+.admin-reports,
+.admin-blocks,
+.admin-log,
+.admin-seller-listings {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.admin-listing,
+.admin-seller,
+.admin-report,
+.admin-block {
+  padding: 10px 12px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 3px 0 var(--lip);
+}
+.admin-listing {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 12px;
+}
+.admin-listing[data-hidden] {
+  background: var(--canvas);
+}
+.admin-listing[data-hidden] .admin-thumb {
+  opacity: 0.55;
+}
+.admin-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background: var(--sand);
+  object-fit: contain;
+}
+.admin-listing-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.admin-listing-text > strong {
+  overflow: hidden;
+  font-size: var(--type-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--canvas);
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 700;
+}
+.admin-badge[data-status="active"] {
+  background: var(--selected);
+  color: var(--blue-dark);
+}
+.admin-badge[data-status="reserved"] {
+  background: var(--butter);
+  color: var(--kraft-deep);
+}
+.admin-badge[data-status="hidden"],
+.admin-badge[data-status="blocked"] {
+  background: #fbe9ea;
+  color: var(--danger-dark);
+}
+.admin-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  grid-column: 1 / -1;
+}
+.admin-reset {
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 16px;
+  border: 2px dashed var(--card-line);
+  border-radius: var(--radius-card);
+}
+.admin-reset strong {
+  font-size: var(--type-label);
+}
+.admin-reset p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: var(--type-support);
+}
+.admin-reset > .button {
+  justify-self: start;
+}
+
+/* Dialogs: a reason or a seller's fields, and the steps at the bottom. */
+.admin-reason {
+  display: grid;
+  gap: 8px;
+}
+.admin-reason > label,
+.admin-field > label,
+.admin-field-label,
+.admin-pictures > legend {
+  color: var(--ink);
+  font-size: var(--type-support);
+  font-weight: 700;
+}
+.admin-reason-explanation {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: var(--type-label);
+  line-height: 1.5;
+}
+.admin-reason-explanation > p {
+  margin: 0;
+}
+.admin-reason-actions,
+.admin-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+.admin-editor-actions > .admin-refusal {
+  flex: 1 1 100%;
+}
+
+/* The listing editor: fields first, two per row where they fit, then the pictures. */
+.admin-editor {
+  display: grid;
+  gap: 18px;
+}
+.admin-editor-fields {
+  display: grid;
+  gap: 14px;
+}
+.admin-editor-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 14px;
+}
+.admin-field {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+}
+.admin-field > input,
+.admin-field > textarea {
+  width: 100%;
+}
+.admin-field-fixed {
+  margin: 0;
+  padding: 10px 0;
+  font-weight: 600;
+}
+.admin-pictures {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.admin-pictures-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 8px;
+}
+.admin-picture {
+  position: relative;
+  display: block;
+  aspect-ratio: 1;
+  border: 2px solid var(--card-line);
+  border-radius: 12px;
+  background: var(--sand);
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+.admin-picture > input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.admin-picture > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 6px;
+  object-fit: contain;
+}
+.admin-picture:has(:checked) {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--selected);
+}
+.admin-picture:has(:focus-visible) {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Sellers: a card each with the style note and their listings as small thumbnails. */
+.admin-seller {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+}
+.admin-seller-head {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+.admin-seller-head > div {
+  display: grid;
+}
+.admin-avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--sand);
+  color: var(--kraft-deep);
+  font-weight: 800;
+}
+.admin-style-note {
+  margin: 0;
+  font-size: var(--type-label);
+  line-height: 1.5;
+}
+.admin-seller-listings {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 6px;
+}
+.admin-seller-listings > li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 8px 4px 4px;
+  border-radius: 10px;
+  background: var(--canvas);
+  font-size: var(--type-support);
+}
+.admin-seller-listings img {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--sand);
+}
+.admin-seller-listings span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Moderation: open reports in context, then who is blocked and the log. */
+.admin-moderation,
+.admin-moderation-side {
+  display: grid;
+  align-content: start;
+  gap: var(--space-group);
+}
+.admin-panel {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+.admin-panel > h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--type-section);
+}
+.admin-heading-count {
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--selected);
+  color: var(--blue-dark);
+  font-size: var(--type-support);
+}
+.admin-report {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+}
+.admin-report-head {
+  display: grid;
+  gap: 2px;
+}
+.admin-report-target {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--canvas);
+  font-size: var(--type-label);
+}
+.admin-target-kind {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.admin-report-message,
+.admin-report-description {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.admin-report-description {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.admin-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.admin-block > div {
+  display: grid;
+  min-width: 0;
+}
+.admin-log {
+  gap: 0;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.admin-log > li {
+  display: grid;
+  gap: 2px;
+  padding: 10px 14px;
+  font-size: var(--type-label);
+}
+.admin-log > li + li {
+  border-top: 2px solid var(--canvas);
+}
+.admin-log-reason {
+  overflow-wrap: anywhere;
+}
+.admin-log .admin-listing-meta {
+  overflow-wrap: anywhere;
+}
+
+/* The entry row in settings, under the account's section menu or among the demo rows. */
+.admin-entry {
+  width: 100%;
+}
+.settings-admin {
+  margin-top: var(--space-group);
+}
+
+@media (min-width: 640px) {
+  .admin-tiles {
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  }
+  .admin-tile:first-child {
+    grid-column: auto;
+  }
+  .admin-filters {
+    grid-template-columns: minmax(0, 1fr) 200px;
+  }
+  .admin-chips {
+    grid-column: 1 / -1;
+  }
+  .admin-listing {
+    grid-template-columns: 56px minmax(0, 1fr) auto;
+  }
+  .admin-row-actions {
+    grid-column: auto;
+  }
+  .admin-reset {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+}
+@media (min-width: 1024px) {
+  .admin-tabs {
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+  .admin-listings,
+  .admin-sellers {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-moderation {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: start;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-tab,
+  .admin-chip,
+  .admin-picture {
+    transition: none;
+  }
+}

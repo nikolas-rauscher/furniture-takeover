@@ -1,4 +1,6 @@
-import { X } from "lucide-react";
+import { X } from "@/components/icons";
+import PakoReaction from "../components/PakoReaction";
+import { Button } from "../components/ui/button";
 import type { AvailabilityNotice } from "./reservations";
 
 type NoticesProps = {
@@ -10,7 +12,7 @@ type NoticesProps = {
   onDismiss(notice: AvailabilityNotice): void;
 };
 
-/** Outcomes the buyer should see even after a listing disappears. */
+/** Outcomes the buyer should see even after a listing disappears; Pako brings the news. */
 export default function Notices({
   notices,
   text,
@@ -32,37 +34,39 @@ export default function Notices({
         return (
           <div
             key={notice.id}
-            className={`availability-notice ${reopened ? "reopened" : ""}`}
+            className="availability-notice"
+            data-good={reopened || undefined}
           >
+            <PakoReaction mood={reopened ? "happy" : "sad"} size={40} />
             <p>
               <strong>{notice.title}</strong>
-              {text(notice)}
+              <span>{text(notice)}</span>
             </p>
             <div className="availability-notice-actions">
               {reopened ? (
                 canRequest(notice) && (
-                  <button
+                  <Button
                     className="button primary small"
                     onClick={() => onRequest(notice)}
                   >
                     Request reservation
-                  </button>
+                  </Button>
                 )
               ) : (
-                <button
-                  className="button primary small"
+                <Button
+                  className="button secondary small"
                   onClick={() => onFindSimilar(notice)}
                 >
-                  Find similar
-                </button>
+                  Find something similar
+                </Button>
               )}
-              <button
+              <Button
                 className="icon-button"
                 aria-label={`Dismiss update about ${notice.title}`}
                 onClick={() => onDismiss(notice)}
               >
-                <X size={16} />
-              </button>
+                <X size={16} aria-hidden="true" />
+              </Button>
             </div>
           </div>
         );

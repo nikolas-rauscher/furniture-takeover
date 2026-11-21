@@ -1,94 +1,168 @@
-# Takeover
+# takeover
 
-A second-hand marketplace MVP for Lausanne. Buyers describe what they need and compare listings. Sellers turn photos and details into an editable listing draft. The assistant researches items and prepares messages; users decide what to publish or send.
+takeover is a second-hand marketplace web app made by students for students. It serves the EPFL and UNIL campuses and the FMEL residences around Lausanne. Students buy and sell furniture, books, bikes and other things they no longer need, and hand them over in person at a campus meeting point. A small assistant called Pako, a moving box, does the tedious parts: searching, writing listings, researching prices and reading replies. The student always decides what to publish, send or agree to.
 
-React · TypeScript · Vite · Node.js · Supabase · DeepSeek · Brave Search
+## What it does
 
-## Run locally
+- **Search with Pako.** A student describes what they need. Pako shows matching listings from other students first, then results from the web. Web results are search snippets, so their prices and availability may be wrong.
+- **Sell from a photo.** The student adds photos. Pako drafts the listing, asks short questions one at a time, and researches a price. The student edits the draft and the suggested price before saving.
+- **Messages.** Pako reads the other student's replies and suggests answers. The student taps one into the composer and sends it. Pako can also prepare an offer from a listing page.
+- **Deal card.** A tap-based offer card holds the price, the pickup time and the meeting point. Both students confirm. After both confirm, the listing is reserved for the buyer.
+- **Pickup day.** Once a pickup is booked, the card guides both students: a reminder two hours before, "on my way", "running late" (10, 20 or 30 minutes), change the time, report a no-show, and "picked up".
+- **Admin area.** Admins see an overview, edit the demo listings and sellers, and moderate: hide listings, handle reports, block and unblock students. Moderation actions need a reason and are logged.
+- **Demo listings.** The app ships with 40 illustrated listings from six fictional student sellers, so it is useful without any data. Names and details are fictional.
 
-Use **Node.js 22.18+** and npm. With nvm, run `nvm install && nvm use` to use the version in `.nvmrc`. Run all commands from this repository's root.
+Also included: saved listings, saved searches, side-by-side comparison, selling several items from one photo set, and a short intro with Pako for first-time visitors.
+
+## Two modes
+
+| | Local demo | Account mode |
+| --- | --- | --- |
+| Sign-in | None | Supabase accounts, self sign-up with @epfl.ch or @unil.ch |
+| Data | SQLite file `data/marketplace.sqlite`, browser storage | Supabase Postgres and Storage |
+| Other students | Fictional demo sellers only | Real students, real messages |
+| Admin area | Settings, then Developer mode | Accounts listed in `public.admins` |
+| Turned on by | Leaving the Supabase variables empty | Setting `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` |
+
+The local demo is for development and presentations. Do not expose it to a network: it has no sign-in. Account mode is the one to deploy.
+
+## Quick start (local demo)
+
+You need Node.js 22.18 or newer and npm. `.nvmrc` pins the version used in CI: run `nvm install && nvm use`.
 
 ```sh
 npm ci
 npm run setup
-```
-
-Add your [DeepSeek API key](https://platform.deepseek.com/api_keys) and [Brave Search API key](https://api-dashboard.search.brave.com/app/keys) to `.env`, then start the app:
-
-```sh
 npm run dev
 ```
 
-Open **http://localhost:5173**. The API runs on port **8787**. Ctrl+C stops both servers. `setup` preserves an existing `.env`; restart the server after changing it. Keep credentials local and server-side. Available settings are in [`.env.example`](.env.example).
+`npm run setup` copies `.env.example` to `.env` and never overwrites an existing `.env`. Open http://localhost:5173. The API runs on port 8787. Ctrl+C stops both.
 
-Without Supabase configuration, the app uses local demo mode. SQLite creates `data/marketplace.sqlite` automatically; no database installation is needed. Demo listings and messages stay local, and browser storage is specific to each browser. Demo sellers cannot receive external messages.
+Browsing the demo listings needs no keys. To let Pako search, draft and read replies, add a DeepSeek key to `.env`. To add web results, add a Brave Search key. Restart `npm run dev` after editing `.env`. Without a key, an AI request shows a setup error.
 
-## Supabase accounts
+## Account mode
 
-1. Create a [Supabase project](https://supabase.com/dashboard) and apply the files in [`supabase/migrations/`](supabase/migrations/) in filename order.
-2. Set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` in `.env`. Use the public publishable/anon key, never a service-role key.
-3. In Supabase Auth, disable public signups, configure the app's URL and allowed redirect URLs, and invite testers through **Users → Add user → Send invitation**. Configure [custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp) for invitations and password resets outside your Supabase team.
+1. Create a Supabase project, hosted or self-hosted.
+2. Apply every file in `supabase/migrations/` once, in filename order. The list is in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+3. Set `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` and `ACCOUNT_KEYS_ENCRYPTION_KEY` in `.env`.
+4. In Supabase Auth, keep signups on with email confirmation and configure SMTP. Students register in the app; the database accepts only `@epfl.ch` and `@unil.ch` addresses.
+5. Optional: run `supabase/seed-demo.sql` for the 40 demo listings.
+6. To make yourself an admin, add your user to `public.admins`. The SQL is in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-Restart the app. Supabase mode enables accounts, shared listings, photo uploads, private messages, favourites and profile settings. AI access requires sign-in. Local demo data is not imported automatically.
+AI use is limited per UTC day: 50 requests per student and 500 across the app. Reading replies has its own allowance of 150 per student and 1,500 across the app.
 
-Users can store personal provider keys under **Account settings → API keys**. Set `ACCOUNT_KEYS_ENCRYPTION_KEY` as described in `.env.example`; back it up and keep it unchanged across deployments. Personal keys override server defaults for that user.
+## Environment variables
 
-AI usage is limited to **50 requests per user and 500 across the app per UTC day**, including typing suggestions. One request can make several model/tool calls, so this is a request limit rather than a spending cap. Minute, concurrency and timeout limits also apply.
+Names and purpose only. Never commit values. The full list with comments is in [.env.example](.env.example).
 
-## Development
+| Variable | Purpose |
+| --- | --- |
+| `DEEPSEEK_API_KEY` | Key for Pako's language model |
+| `DEEPSEEK_BASE_URL` | Address of the DeepSeek API |
+| `DEEPSEEK_MODEL` | Model name Pako uses |
+| `BRAVE_SEARCH_API_KEY` | Key for web search |
+| `API_PORT` | Port of the API |
+| `APP_PORT` | Port of the dev frontend |
+| `PREVIEW_PORT` | Port of the preview of the built frontend |
+| `DATABASE_PATH` | SQLite file of the local demo |
+| `API_HOST` | Address the API listens on. Beyond this machine only with Supabase accounts |
+| `APP_HOST` | Address the dev frontend listens on, for phone testing |
+| `APP_ALLOWED_HOSTS` | Extra host names the dev frontend accepts |
+| `API_ALLOWED_ORIGINS` | Exact browser origins the API accepts |
+| `SUPABASE_URL` | Supabase address that browsers use |
+| `SUPABASE_INTERNAL_URL` | Supabase address that only the server uses. Optional |
+| `SUPABASE_PUBLISHABLE_KEY` | Public anon key. Never the service key |
+| `SUPABASE_SECRET_KEY` | Server-only `sb_secret_` key, required in account mode. Never in the browser or a `VITE_` variable |
+| `ACCOUNT_KEYS_ENCRYPTION_KEY` | Encrypts the personal API keys students save. Back it up and keep it unchanged |
+| `LOCAL_AI_TEST_EMAIL`, `LOCAL_AI_TEST_UNTIL` | Optional temporary test allowance for one account, local development only |
 
-| Command          | Purpose                                      |
-| ---------------- | -------------------------------------------- |
-| `npm run dev`    | Start frontend and API                       |
-| `npm run check`  | TypeScript and all tests; no API keys needed |
-| `npm run build`  | Type-check and build into `dist/`            |
-| `npm start`      | Serve the built app and API on port 8787     |
-| `npm run format` | Format application source                    |
+## Commands
 
-Additional scripts are in [`package.json`](package.json). GitHub Actions runs checks and builds on Node 22 and 24.
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Frontend and API with reload |
+| `npm run typecheck` | TypeScript check |
+| `npm test` | All tests. No API keys needed |
+| `npm run check` | Typecheck, lint, format check, import cycles, unused code and tests |
+| `npm run build` | Typecheck and build into `dist/` |
+| `npm start` | Serve the built app and the API on port 8787 |
+| `npm run format` | Format the source |
 
-### Code layout
+CI runs `check` and `build` on Node 22 and 24.
 
-| Location                 | Responsibility                                                |
-| ------------------------ | ------------------------------------------------------------- |
-| `src/components/`        | Screens and shared UI controls                                |
-| `src/components/ui/`     | Reusable shadcn/Base UI components                            |
-| `src/cloud/`             | Supabase accounts and data access                             |
-| `src/hooks/`, `src/api/` | Client state, API calls and streaming                         |
-| `src/App.tsx`            | Navigation and workflow coordination                          |
-| `server/`                | API, agent runtime, tools, providers and local SQLite storage |
-| `shared/`                | Domain types, validation and shared contracts                 |
-| `supabase/migrations/`   | Database schema and access rules                              |
+## Architecture
 
-### UI components
+- **Client** (`src/`). A React and Vite app. Screens are in `src/shell/`, their building blocks in `src/components/`, client state in `src/hooks/`, the data seam in `src/api/` (demo) and `src/cloud/` (account mode, Supabase).
+- **Server** (`server/`). A Node.js API that checks every request. It runs Pako: the agent loop, its tools and prompts (`runtime.ts`, `agent-tools.ts`), the DeepSeek and Brave Search calls, and the local SQLite store. In account mode it also checks logins and daily AI limits through Supabase. It runs TypeScript directly, so Node 22.18 or newer is required.
+- **Shared contracts** (`shared/`). Types and validation used by both sides: listings, deals, pickup rules, messages, admin actions and the demo catalog. The server and the client both validate against them.
+- **Migrations** (`supabase/migrations/`). The database schema, row-level security and the deal, pickup and admin functions for account mode.
 
-AI interfaces follow [shadcn AI Elements](https://ui.shadcn.com/docs/ai-elements): Message Scroller and Bubble for chat, Input Group for prompts, Trace for activity, sources and the listing checklist, Hover Card for citations, Item for confirmations, and Attachment for photos. Compositions live in `src/components/`; shared primitives live in `src/components/ui/`. Activity steps and expandable provider reasoning are shown separately from the answer.
+Keep provider keys on the server. The browser never receives them.
 
-Use the shared **shadcn/ui components with Base UI**, styled for Takeover. Tailwind Preflight is omitted to preserve existing page styles. Design values live in `src/styles.css`, Tailwind mappings in `src/tailwind.css`, and shared control styles in `src/components/ui/ui.css`.
+## Project structure
 
-```sh
-npm run ui:add -- tooltip
-npm run ui:animate -- tabs
-npm run ui:check
+Tests sit next to the module they test (`name.test.ts`).
+
+```text
+src/
+  main.tsx, bootstrap.tsx     entry: app-wide styles, then the demo or the account app
+  App.tsx, screens.ts         the shell and its lazily loaded screens
+  shell/                      one file per screen or app region (header, footer, sell, messages, settings)
+  components/                 building blocks and their CSS; admin/ and onboarding/ have their own folders
+  components/ui, animate-ui/  generated shadcn and Animate UI parts (not linted)
+  hooks/                      client state, one hook per concern
+  api/                        demo transport: local API calls and the demo providers
+  cloud/                      account mode: Supabase session, providers and screens (loaded only there)
+  alerts/, availability/      feature folders: logic, UI, CSS and tests together
+  *.ts                        pure rules and wording (deals, listings, search, Pako)
+  styles.css, experience.css, responsive.css   app-wide sheets, loaded once and last (globalStyles.ts)
+
+server/
+  index.ts, config.ts         composition root and environment
+  http.ts, http-*.ts          server, headers, auth throttling, body reading, error responses
+  routes/                     one handler per API area: agent, listings, messages, admin, account keys, location, quota
+  runtime.ts, run-*.ts        search and sell agent loop: tool policy per step, stream events, result and errors
+  agent-tools.ts              the agent's tools; agent-instructions.ts and agent-skills.ts are its prompts
+  action-schemas.ts           what a proposed listing or search change may contain
+  action-evidence.ts          whether a change quotes the student or a source
+  listing-action.ts           checks a proposed listing change field by field
+  preferences-action.ts       checks a proposed search filter change
+  price-research.ts           asking prices from marketplace offers, and the median proposal
+  thread-agent.ts             Pako reading a conversation (model call, repair step)
+  thread-proposal.ts          what that reading may propose
+  thread-grounding.ts         checks the reading's facts and agreement against the conversation
+  thread-options.ts           checks each suggested reply; thread-draft-wording.ts its wording
+  thread-conversation.ts      which amounts, times and places the conversation allows
+  thread-safe-text.ts         no contact details, payment methods or stray placeholders
+  service.ts, deepseek.ts     listing assist and photo grouping
+  web-search.ts               Brave Search with a shared queue and offer filtering
+  database.ts, messages.ts    local demo store: listings, conversations, deals (SQLite)
+  demo-admin.ts               admin actions for the local demo
+  cloud.ts, account-keys.ts   account mode: Supabase sessions, daily limits, personal API keys
+  testing/, runtime-tests/    fake model provider and scripted agent runs
+
+shared/                       zod contracts and rules, no Node or browser APIs
+  deal*.ts, pickupTime.ts     deal and pickup state machine, its wording and errors
+  dealScenarios.ts            scenario table run against TypeScript, SQLite and SQL
+  runs.ts, threadTurn.ts      agent request, stream and reading contracts
+  actions.ts, negotiation*.ts proposed changes and negotiation terms
+  marketplace.ts              search parsing and listing types
+  admin.ts                    admin action contract
+  demoListings.ts, demoSellers.ts   the demo catalogue
+
+scripts/                      dev, setup and test runners, demo seed rendering
+supabase/                     migrations and the rendered demo seed
 ```
 
-Add `--dry-run` to `ui:add` or `ui:animate` to preview changes before replacing customized components. `ui:check` inventories animations; validate changes with `npm run check`, `npm run build`, and desktop/mobile interaction checks.
+Each component imports its own sheet, and those sheets load in whatever order screens open. Component sheets must not override each other on equal specificity; only the app-wide sheets, loaded last, may override a component sheet.
 
-Import icons through `src/components/icons.ts`. Add individual animated Lucide icons with `npm run ui:add -- @animate-ui/icons-lucide-bell`, then export them from that file. The existing Lucide symbols remain as fallbacks where Animate UI has no equivalent. Set `animateIcon` on a shared `Button` to animate its icons on hover and tap; keep passive icons still. Animate UI respects reduced-motion preferences.
+## Documentation
 
-[`components.json`](components.json) configures shadcn and the Animate UI registry. Both are available through the shadcn MCP server. In VS Code, start it from [`.vscode/mcp.json`](.vscode/mcp.json). For Codex, run once from the repository root, then restart Codex:
+- [docs/FEATURES.md](docs/FEATURES.md): what each feature does, with screenshots.
+- [docs/WORKFLOWS.md](docs/WORKFLOWS.md): the main paths through the app as step sequences, and the deal states.
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): run account mode on your own server with Supabase and nginx, including the migration list.
+- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md): request paths, adding features, tests, phone testing and UI components.
 
-```sh
-codex mcp add takeover-ui -- npx --yes shadcn@4.23.0 mcp --cwd "$PWD"
-```
+## Limits
 
-## Hosting
-
-```sh
-npm run build
-npm start
-```
-
-Forward your HTTPS tunnel to `http://127.0.0.1:8787`. To host on a private network behind your own nginx with a self-hosted Supabase, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): `SUPABASE_URL` is the address browsers use, `SUPABASE_INTERNAL_URL` is the LAN address the server uses, and `API_HOST` lets a proxy on another machine reach the API. Set its exact public origin in `API_ALLOWED_ORIGINS` and configure the same URL in Supabase Auth. Keep `.env` and `ACCOUNT_KEYS_ENCRYPTION_KEY` on the server. For LAN development, see `APP_HOST`, `APP_ALLOWED_HOSTS` and port settings in `.env.example`.
-
-Payments and background alerts are not implemented. Web results are search snippets; prices, availability and pickup distances may be unverified. Demo catalogue details are fictional.
+Payments are not implemented. Pako reads replies and prepares messages, but he does not send anything himself.

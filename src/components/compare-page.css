@@ -3,18 +3,36 @@
   max-width: 100%;
   overflow-wrap: anywhere;
 }
+/*
+ * Compared listings sit side by side wherever each card keeps a readable width, up to
+ * card size on wide screens; on tablets three share the row, or two once they no
+ * longer fit. Each card spans five shared rows (heading, three facts, actions), so a
+ * fact reads straight across the cards.
+ */
 .compare-page .comparison-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  gap: 20px 16px;
+  max-width: calc(
+    var(--compare-count) * 360px + (var(--compare-count) - 1) * 16px
+  );
   margin: 0;
   padding: 0;
   overflow: visible;
 }
+/* Each compared listing is a lip card. */
 .compare-page .comparison-card {
+  display: grid;
+  grid-row: span 5;
+  grid-template-rows: subgrid;
+  row-gap: 0;
   min-width: 0;
   max-width: 100%;
-  padding: 16px;
+  padding: 12px 12px 14px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--lip);
 }
 .comparison-card-heading,
 .comparison-card-title {
@@ -23,14 +41,14 @@
 .compare-page .comparison-image {
   aspect-ratio: 4 / 3;
   overflow: hidden;
-  background: var(--mist);
-  border-radius: 6px;
+  background: var(--canvas);
+  border-radius: 11px;
 }
 .compare-page .comparison-image > img {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
 }
 .compare-page .comparison-image .listing-no-photo {
   min-height: 0;
@@ -38,29 +56,44 @@
 }
 .compare-page .comparison-card h2 {
   min-height: 0;
-  margin: 14px 0 7px;
-  font-size: 16px;
-  line-height: 1.4;
+  margin: 12px 0 4px;
+  font-size: var(--type-item);
+  font-weight: 700;
+  line-height: 1.35;
 }
 .compare-page .compare-price {
   margin: 0;
-  font-size: 23px;
+  font-size: 1.375rem;
+  font-weight: 750;
+  letter-spacing: -0.01em;
 }
 .comparison-status {
-  margin: 6px 0 0;
-  font-size: 11px;
-  color: var(--muted);
+  display: inline-flex;
+  margin: 8px 0 0;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: var(--sand);
+  color: var(--kraft-deep);
+  font-size: var(--type-caption);
+  font-weight: 650;
 }
+/* The three facts take the card's middle rows. */
 .comparison-facts {
+  display: grid;
+  grid-row: span 3;
+  grid-template-rows: subgrid;
+  row-gap: 0;
   margin: 16px 0 0;
 }
 .compare-page .compare-fact {
   min-height: 0;
-  gap: 5px;
-  padding: 12px 0;
+  gap: 2px;
+  padding: 10px 0;
+  border-top: 2px solid var(--canvas);
 }
 .compare-fact dt {
-  font-size: 11px;
+  font-size: var(--type-caption);
+  font-weight: 650;
   color: var(--muted);
 }
 .compare-fact dd {
@@ -74,17 +107,18 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 14px;
+  align-self: end;
+  gap: 4px 14px;
   margin-top: 10px;
 }
+/* A small secondary button at its usual size, with Remove beside it even in narrow cards. */
 .compare-page .comparison-card-actions > .button {
-  flex: 1 1 140px;
+  flex: 1 1 110px;
   min-width: 0;
   width: auto;
-  min-height: 44px;
   margin: 0;
-  padding: 10px 12px;
-  font-size: 13px;
+  padding: 6px 13px;
+  font-size: var(--type-support);
   white-space: normal;
 }
 .comparison-card-actions > .text-button {
@@ -92,6 +126,12 @@
   padding: 8px 2px;
   font-size: 12px;
 }
+
+/* The facts side by side, shown on phones above the cards. */
+.comparison-table {
+  display: none;
+}
+
 @media (max-width: 600px) {
   .compare-page .page-title {
     margin-bottom: 24px;
@@ -99,8 +139,81 @@
   .compare-page .page-title h1 {
     font-size: 26px;
   }
+  /*
+   * A lip card with one column per listing. The names stay pinned under the header while
+   * the facts scroll past them; the cards below keep the photos and the way to each one.
+   */
+  .comparison-table {
+    display: table;
+    width: 100%;
+    margin-bottom: var(--space-group);
+    border: 2px solid var(--card-line);
+    border-radius: var(--radius-card);
+    border-spacing: 0;
+    background: var(--surface);
+    box-shadow: 0 4px 0 var(--lip);
+    table-layout: fixed;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .comparison-table thead :is(th, td) {
+    position: sticky;
+    top: var(--app-header-height);
+    z-index: 1;
+    padding: 12px 6px 10px;
+    background: var(--surface);
+    box-shadow: inset 0 -2px 0 var(--canvas);
+    vertical-align: top;
+  }
+  .comparison-table thead td {
+    width: 86px;
+    border-top-left-radius: var(--radius-card);
+  }
+  .comparison-table thead th:last-child {
+    border-top-right-radius: var(--radius-card);
+  }
+  .comparison-table thead th {
+    font-size: var(--type-caption);
+    font-weight: 700;
+    line-height: 1.3;
+    text-align: left;
+  }
+  .comparison-table-thumb {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    margin-bottom: 6px;
+    overflow: hidden;
+    border-radius: 10px;
+    background: var(--canvas);
+    color: var(--muted);
+  }
+  .comparison-table-thumb > img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .comparison-table tbody :is(th, td) {
+    padding: 10px 6px;
+    vertical-align: top;
+  }
+  .comparison-table tbody tr + tr :is(th, td) {
+    border-top: 2px solid var(--canvas);
+  }
+  .comparison-table tbody th {
+    padding-left: 12px;
+    color: var(--muted);
+    font-size: var(--type-caption);
+    font-weight: 650;
+    text-align: left;
+    overflow-wrap: normal;
+  }
+  .comparison-table tbody tr:first-child td {
+    font-size: var(--type-label);
+    font-weight: 750;
+  }
   .compare-page .comparison-grid {
-    grid-template-columns: minmax(0, 1fr);
     gap: 16px;
   }
   .compare-page .comparison-card {
@@ -129,4 +242,23 @@
     padding: 10px 0;
     align-items: baseline;
   }
+}
+
+/* Nothing selected yet: Pako explains how comparing starts. */
+.compare-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: var(--space-section) 0;
+  text-align: center;
+}
+.compare-empty h2 {
+  font-size: var(--type-section);
+  font-weight: 700;
+}
+.compare-empty p {
+  margin-bottom: 8px;
+  color: var(--muted);
 }

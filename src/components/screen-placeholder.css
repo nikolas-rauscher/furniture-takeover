@@ -1,0 +1,25 @@
+.screen-placeholder {
+  display: grid;
+  align-content: start;
+  gap: var(--space-group);
+  min-height: calc(
+    100svh - var(--app-header-height) - var(--mobile-nav-height)
+  );
+  padding-block: var(--space-panel);
+}
+.screen-placeholder [data-slot="skeleton"] {
+  border-radius: var(--radius-card);
+  background: var(--mist);
+}
+.screen-placeholder-title {
+  width: min(60%, 320px);
+  height: 32px;
+}
+.screen-placeholder-block {
+  height: 140px;
+}
+.screen-load-error {
+  justify-items: start;
+  color: var(--ink);
+  font-size: var(--type-body);
+}

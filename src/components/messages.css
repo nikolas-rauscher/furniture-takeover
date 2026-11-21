@@ -1,764 +1,631 @@
-.seller-chat-layout {
+/* Messages: an inbox of threads beside a chat that looks like the intro's chat scene. */
+
+/* Inbox and thread share one framed surface on wide screens. */
+.messages-page .seller-chat-layout {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: 20px;
+  grid-template-columns: 300px minmax(0, 1fr);
+  min-height: 560px;
   margin-top: 16px;
+  overflow: hidden;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-stage);
+  background: var(--surface);
 }
-.chat-thread {
-  width: 100%;
-  display: grid;
-  gap: 5px;
-  padding: 12px;
-  margin-bottom: 8px;
-  text-align: left;
-  background: white;
-  border: 1px solid #e1e3ed;
-  border-radius: 10px;
-  cursor: pointer;
+/* An empty inbox has nothing to frame: Pako takes the whole page. */
+.messages-page .seller-chat-layout:has(.inbox-start) {
+  grid-template-columns: minmax(0, 1fr);
+  border-color: transparent;
+  background: none;
 }
-.chat-thread.active {
-  border-color: #344eb5;
-  background: #f3f5ff;
+.messages-page .seller-chat-layout:has(.inbox-start) > nav {
+  border: 0;
+  background: none;
 }
-.chat-thread span,
-.seller-chat header > span {
-  font-size: 13px;
-  color: #73798b;
+.messages-page .seller-chat-layout:has(.inbox-start) > .seller-chat {
+  display: none;
 }
-.seller-chat {
-  min-width: 0;
-}
-.seller-chat header {
-  display: grid;
-  gap: 5px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e1e3ed;
-}
-.seller-chat header label {
-  font-size: 12px;
-  margin-top: 8px;
-}
-.seller-chat-messages {
+.messages-page .seller-chat-layout > nav {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: 45vh;
+  min-width: 0;
+  min-height: 0;
+  padding: 14px 14px 18px;
+  overflow-x: hidden;
   overflow-y: auto;
-  padding: 16px 4px;
-}
-.chat-bubble {
-  max-width: 85%;
-  align-self: flex-start;
-  padding: 12px 16px;
-  background: #f5f5f6;
-  border-radius: 14px 14px 14px 3px;
-  overflow-wrap: anywhere;
-}
-.chat-bubble.mine {
-  align-self: flex-end;
-  background: #edf0fc;
-  border-radius: 14px 14px 3px 14px;
-}
-.chat-bubble p {
-  white-space: pre-wrap;
-  margin: 6px 0;
-  font-size: var(--type-body);
-  line-height: 1.5;
-}
-.chat-bubble small,
-.chat-bubble time {
-  font-size: var(--type-caption);
-  color: #70768a;
-}
-.seller-chat > .conversation-composer {
-  display: grid;
-  gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid #e1e3ed;
-}
-.seller-chat > .conversation-composer > textarea {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 12px;
-  border: 1px solid #dce0ed;
-  border-radius: 10px;
-  font: inherit;
-}
-.proposal-message-preview {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  padding: 16px;
-  border: 1px solid #dce0ed;
-  border-radius: 12px;
-  background: white;
-  line-height: 1.5;
-}
-@media (max-width: 640px) {
-  .seller-chat-layout {
-    grid-template-columns: 1fr;
-  }
-  .seller-chat-layout nav {
-    max-height: 130px;
-    overflow: auto;
-  }
-  .seller-chat-messages {
-    max-height: 38vh;
-  }
-}
-.messages-page .seller-chat-layout {
-  grid-template-columns: 280px minmax(0, 1fr);
-  gap: 0;
-  border: 1px solid #e1e3ed;
-  border-radius: 14px;
-  overflow: hidden;
-  background: #fff;
-  min-height: 560px;
-}
-.messages-page .seller-chat-layout nav {
-  padding: 16px;
-  border-right: 1px solid #e1e3ed;
-  background: #fafafc;
-}
-.messages-page .seller-chat {
-  display: flex;
-  flex-direction: column;
-  padding: 22px;
-}
-.messages-page .seller-chat header {
-  flex-shrink: 0;
-}
-.messages-page .seller-chat-messages {
-  flex: 1;
-  min-height: 260px;
-  max-height: 48vh;
-}
-.messages-page .seller-chat > .conversation-composer {
-  margin-top: auto;
-}
-.chat-listing-link {
-  padding: 0;
-  border: 0;
-  background: none;
-  text-align: left;
-  color: #344eb5;
-  font: inherit;
-  font-size: 14px;
-  cursor: pointer;
-}
-.chat-start-note {
-  color: #73798b;
-  font-size: 14px;
-  line-height: 1.5;
-  max-width: 380px;
-  margin: auto;
-  text-align: center;
-}
-.messages-page .chat-thread span {
-  overflow-wrap: anywhere;
-}
-@media (max-width: 760px) {
-  .messages-page .seller-chat-layout {
-    grid-template-columns: 1fr;
-    min-height: unset;
-  }
-  .messages-page .seller-chat-layout nav {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    max-height: unset;
-    padding: 12px;
-    border-right: 0;
-    border-bottom: 1px solid #e1e3ed;
-  }
-  .messages-page .chat-thread {
-    flex: 0 0 190px;
-    margin: 0;
-  }
-  .messages-page .seller-chat {
-    padding: 16px;
-  }
-  .messages-page .seller-chat-messages {
-    min-height: 240px;
-    max-height: 40vh;
-  }
-  .messages-page .page-title {
-    margin-bottom: 16px;
-  }
+  overscroll-behavior-y: contain;
+  border-right: 2px solid var(--card-line);
+  background: var(--background);
+  scrollbar-width: thin;
+  scrollbar-color: var(--lip) transparent;
 }
 
-.messages-page .chat-thread {
-  grid-template-columns: 44px minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-}
-.chat-item-thumbnail {
-  width: 44px;
-  height: 44px;
-  object-fit: cover;
-  border-radius: 8px;
-  flex-shrink: 0;
-}
-.chat-item-placeholder {
+/* Thread cards stand on a lip like the intro's answer cards. */
+.chat-thread {
   display: grid;
-  place-items: center;
-  color: #73798b;
-  background: #eef0f5;
+  flex: none;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  text-align: left;
+  box-shadow: 0 4px 0 var(--lip);
+  transition:
+    translate 90ms var(--ease-out),
+    box-shadow 90ms var(--ease-out),
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+.chat-thread.arriving {
+  animation: chat-thread-in 420ms var(--ease-out) both;
+  animation-delay: calc(var(--thread-order, 0) * 45ms);
+}
+.chat-thread:not(:disabled):hover {
+  border-color: var(--lip);
+}
+.chat-thread:not(:disabled):active {
+  translate: 0 4px;
+  box-shadow: 0 0 0 var(--lip);
+}
+.chat-thread:disabled {
+  opacity: 0.7;
+}
+/* News from the other student: a blue dot and a darker preview, like an unread chat. */
+.chat-thread.unread {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+.chat-thread.unread .thread-preview {
+  color: var(--ink);
+  font-weight: 650;
+}
+.chat-thread-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--blue);
+  box-shadow: 0 0 0 3px var(--selected);
+}
+@keyframes chat-thread-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+/* The open thread stands out in the inbox beside it. Phones show the inbox or a thread,
+   never both, so there no row looks selected. */
+@media (min-width: 761px) {
+  .chat-thread.active,
+  .chat-thread.active:not(:disabled):hover {
+    border-color: var(--blue);
+    background: var(--selected);
+    box-shadow: 0 4px 0 var(--blue-dark);
+  }
+  .chat-thread.active .chat-thread-copy strong {
+    color: var(--blue-dark);
+  }
+  .chat-thread.active .chat-avatar {
+    box-shadow: 0 0 0 2px var(--selected);
+  }
 }
 .chat-thread-copy,
 .chat-header-copy {
   display: grid;
-  gap: 4px;
+  gap: 1px;
   min-width: 0;
+  line-height: 1.35;
 }
-.messages-page .chat-thread-copy strong {
-  color: #292929;
-  font-size: 14px;
+.chat-thread-copy strong {
+  color: var(--ink);
+  font-size: var(--type-label);
+  font-weight: 700;
 }
-.chat-header-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.chat-header-copy {
-  flex: 1;
-}
-.chat-delete-button {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border: 0;
-  border-radius: 8px;
-  color: #73798b;
-  background: transparent;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-.chat-delete-button:hover {
-  background: #fff0f0;
-  color: #a52d3a;
-}
-.chat-delete-notice {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 8px;
-  font-size: 13px;
-  flex-shrink: 0;
-}
-
-/* Inbox controls stay in place while each conversation scrolls independently. */
-.messages-layout :is(.account-messages, .demo-messages) .seller-chat-layout {
-  min-height: 0;
-  grid-template-columns: 280px minmax(0, 1fr);
-}
-.messages-layout
-  :is(.account-messages, .demo-messages)
-  .seller-chat-layout
-  nav {
-  display: block;
-  max-height: none;
-  padding: 12px;
-}
-.inbox-controls {
-  position: sticky;
-  top: -12px;
-  z-index: 1;
-  background: #fafafc;
-  padding: 0 0 12px;
-}
-.inbox-controls input {
-  width: 100%;
-  font-size: 13px;
-}
-.inbox-filters {
-  display: flex;
-  gap: 4px;
-  margin-top: 8px;
-}
-.inbox-filters button {
-  flex: 1;
-  padding: 7px 4px;
-  font-size: 12px;
-  border-radius: 5px;
-}
-.inbox-filters button[aria-pressed="true"] {
-  background: #e9edfb;
-  color: var(--blue);
-  font-weight: 600;
-}
-:is(.account-messages, .demo-messages) .chat-thread {
-  margin-bottom: 8px;
-}
-:is(.account-messages, .demo-messages) .thread-preview {
+.chat-thread-copy > span,
+.thread-preview,
+.thread-note {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.chat-thread-copy > span {
   color: var(--muted);
-  font-size: 12px;
-  font-weight: 400;
+  font-size: var(--type-support);
 }
-:is(.account-messages, .demo-messages) .chat-header-copy small {
-  font-size: 12px;
-  color: var(--muted);
-}
-.inbox-back {
-  display: none;
-}
-.inbox-empty {
-  margin: auto;
-  max-width: 320px;
-  text-align: center;
-  color: var(--muted);
-  padding: 20px;
-}
-.inbox-empty h2 {
-  font-size: 18px;
-  color: var(--ink);
-}
-.inbox-empty p {
-  font-size: 14px;
-  line-height: 1.6;
-}
-.inbox-blocked-note {
-  color: #a42c36;
-  background: #fff5f5;
-  padding: 10px;
-  font-size: 12px;
-  margin: 8px 0 0;
-}
-:is(.account-messages, .demo-messages) .message-entry {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.chat-date {
+.thread-preview,
+.thread-note {
   font-size: var(--type-caption);
+}
+.thread-preview {
   color: var(--muted);
-  text-align: center;
-  margin: 12px 0;
 }
-.reply-assistance {
-  display: grid;
-  gap: 8px;
-}
-.reply-assistance-action {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 12px;
-}
-.reply-assistance-action small,
-.reply-assistance-note {
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.5;
-}
-.reply-suggest-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: 0;
-  border-radius: 6px;
-  padding: 7px 9px;
+.thread-note {
   color: var(--blue);
-  background: #f0f3ff;
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-.reply-suggest-button:hover:not(:disabled) {
-  background: #e5eafa;
-}
-.reply-assistance-note {
-  margin: 0;
-}
-.reply-assistance-error {
-  color: #a42c36;
-}
-.reply-assistance > [role="status"]:empty {
-  display: none;
-}
-.reply-suggestions > .ai-suggestion {
-  animation: reply-suggestions-in 220ms ease-out both;
-}
-@keyframes reply-suggestions-in {
-  from {
-    opacity: 0;
-    transform: translateY(5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .reply-suggestions > .ai-suggestion {
-    animation: none;
-  }
-}
-.reply-assistance button:focus-visible {
-  outline: 2px solid var(--blue);
-  outline-offset: 2px;
-}
-.reply-assistance button:disabled {
-  opacity: 0.55;
-  cursor: default;
-}
-.composer-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-.composer-actions small {
-  font-size: var(--type-caption);
-  color: var(--muted);
-}
-.composer-actions .button {
-  min-height: 38px;
-  padding: 8px 16px;
-}
-.account-inbox-notice {
-  flex-shrink: 0;
-  justify-content: space-between;
-}
-.account-inbox-notice p {
-  font-size: 12px;
-  margin: 0;
-}
-.account-inbox-notice button {
-  font-size: 12px;
-}
-@media (max-width: 760px) {
-  .messages-layout :is(.account-messages, .demo-messages) .seller-chat-layout {
-    display: flex;
-    flex-direction: column;
-  }
-  .messages-layout
-    :is(.account-messages, .demo-messages)
-    .seller-chat-layout
-    > nav {
-    flex: 1;
-    width: 100%;
-    border: 0;
-    overflow-y: auto;
-  }
-  .messages-layout
-    :is(.account-messages, .demo-messages)
-    .seller-chat-layout
-    > .seller-chat {
-    display: none;
-  }
-  .messages-layout
-    :is(.account-messages, .demo-messages).has-conversation
-    .seller-chat-layout
-    > nav {
-    display: none;
-  }
-  .messages-layout
-    :is(.account-messages, .demo-messages).has-conversation
-    .seller-chat-layout
-    > .seller-chat {
-    display: flex;
-    flex: 1;
-    min-height: 0;
-  }
-  :is(.account-messages, .demo-messages) .inbox-back {
-    display: grid;
-    flex-shrink: 0;
-  }
-  .messages-layout :is(.account-messages, .demo-messages) .chat-thread {
-    width: 100%;
-    padding: 12px;
-  }
-  .messages-layout :is(.account-messages, .demo-messages) .chat-thread small {
-    display: block;
-  }
-  .messages-layout :is(.account-messages, .demo-messages) .chat-thread span {
-    white-space: normal;
-  }
-  .messages-layout
-    :is(.account-messages, .demo-messages)
-    .chat-thread
-    .thread-preview {
-    white-space: nowrap;
-  }
-  :is(.account-messages, .demo-messages) .chat-header-item {
-    gap: 8px;
-  }
-  :is(.account-messages, .demo-messages) .chat-header-copy strong {
-    font-size: 14px;
-  }
-  :is(.account-messages, .demo-messages) .chat-listing-link {
-    font-size: 12px;
-  }
-  :is(.account-messages, .demo-messages) .chat-item-thumbnail {
-    width: 38px;
-    height: 38px;
-  }
-  :is(.account-messages, .demo-messages) .account-message-tools {
-    padding-left: 4px;
-  }
-  :is(.account-messages, .demo-messages) .account-message-tools button {
-    font-size: 11px;
-  }
-}
-:is(.account-messages, .demo-messages) .inbox-back {
-  display: none;
-}
-:is(.account-messages, .demo-messages) .account-message-tools {
-  display: block;
-  font-size: 12px;
-  color: var(--muted);
-}
-.account-message-tools summary {
-  cursor: pointer;
-  padding: 4px 0;
-}
-.account-message-tools[open] button {
-  margin-top: 6px;
-}
-@media (max-width: 760px) {
-  :is(.account-messages, .demo-messages) .inbox-back {
-    display: grid;
-  }
+  font-weight: 700;
 }
 
-/* The inbox and history own scrolling; their rows must keep their full height. */
-.messages-page,
-.messages-page .seller-chat-layout,
-.messages-page .seller-chat-layout > nav,
-.messages-page .seller-chat,
-.messages-page .conversation-composer,
-.messages-page .reply-assistance,
-.messages-page .inbox-controls {
-  min-width: 0;
-}
-.messages-page .seller-chat-messages {
-  overflow-x: hidden;
-  overscroll-behavior-y: contain;
-}
-.messages-page .message-entry,
-.messages-page .chat-bubble,
-.messages-page .chat-start-note {
-  flex-shrink: 0;
-  min-width: 0;
-}
-.messages-page .chat-header-copy,
-.messages-page .chat-thread-copy,
-.messages-page .account-chat-error,
-.messages-page .chat-delete-notice {
-  overflow-wrap: anywhere;
-}
-.messages-page .conversation-composer {
+/* The listing photo carries the other student's initial. */
+.chat-identity {
   position: relative;
-  flex-shrink: 0;
+  flex: none;
+  width: 48px;
+  height: 48px;
 }
-.messages-page .conversation-composer > textarea {
-  resize: none;
-  min-height: 60px;
-  max-height: 120px;
+.chat-item-thumbnail {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  object-fit: cover;
+}
+.chat-item-placeholder {
+  display: grid;
+  place-items: center;
+  background: var(--sand);
+  color: var(--kraft-deep);
+}
+.chat-avatar {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--sand);
+  color: var(--kraft-deep);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+/* Search and the buying / selling views stay put while the inbox scrolls. */
+.inbox-controls {
+  position: sticky;
+  top: -14px;
+  z-index: 1;
+  display: grid;
+  flex: none;
+  gap: 10px;
+  margin: -14px -14px 0;
+  padding: 14px 14px 10px;
+  background: var(--background);
+}
+.inbox-controls input {
+  width: 100%;
+}
+/* Developer mode only: jumps around the open thread's booked pickup. */
+.pickup-clock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+.pickup-clock-now {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-right: 2px;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.pickup-clock > .tap-chip {
+  min-height: 32px;
+  padding: 3px 10px;
+  border-width: 1.5px;
+  font-size: var(--type-caption);
+}
+.chat-segment {
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--canvas);
+}
+.chat-segment > button {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: var(--type-support);
+  font-weight: 700;
+  transition: color 160ms ease;
+}
+.chat-segment > button[aria-pressed="true"] {
+  color: var(--blue-dark);
+}
+.chat-segment-highlight {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--surface);
+  box-shadow:
+    0 2px 0 var(--lip),
+    0 1px 2px rgb(41 41 41 / 0.06);
+}
+.chat-segment-label {
+  position: relative;
+}
+
+/* The thread */
+.messages-page .seller-chat {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 18px 22px 16px;
+}
+/* Focus lands on the thread itself when it replaces the list; its controls show their own ring. */
+.messages-page .seller-chat:focus {
+  outline: none;
+}
+.messages-page .seller-chat > header {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid var(--card-line);
+}
+.chat-header-item {
+  display: flex;
+  flex: 1 1 260px;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+/* Who the thread is with: the photo and both names are one target that opens the listing. */
+.chat-partner {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  min-height: 52px;
+  margin: -2px 0;
+  padding: 2px 10px 2px 2px;
+  border-radius: 18px;
+  text-align: left;
+  transition: background-color 160ms ease;
+}
+.chat-partner:hover {
+  background: var(--canvas);
+}
+.chat-header-copy {
+  flex: 1;
+}
+.chat-partner-listing {
+  overflow: hidden;
+  color: var(--blue);
+  font-size: var(--type-support);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-partner:hover .chat-partner-listing {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.chat-header-copy strong {
+  overflow: hidden;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-header-copy small {
+  color: var(--muted);
+  font-size: var(--type-caption);
+}
+.chat-listing-link {
+  justify-self: start;
+  max-width: 100%;
+  padding: 0;
+  overflow: hidden;
+  color: var(--blue);
+  font-size: var(--type-support);
+  font-weight: 600;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-listing-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.chat-delete-button {
+  color: var(--muted);
+}
+.chat-delete-button:hover {
+  background: #fff0f0;
+  color: var(--danger);
+}
+/* An agreed deal keeps its conversation: the button stays reachable to say why. */
+.chat-delete-button[aria-disabled="true"],
+.chat-delete-button[aria-disabled="true"]:hover {
+  background: transparent;
+  color: var(--muted);
+  opacity: 0.45;
+}
+.messages-page .inbox-back {
+  display: none;
+}
+.seller-chat > header .chat-segment {
+  flex: none;
+}
+
+/* Only the conversation scrolls: the messages, then whatever follows them, such as Pako's
+   tray. The header above and the composer below stay where they are. */
+.thread-scroll-frame {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 140px;
+}
+.thread-scroll {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--lip) transparent;
 }
-.messages-page .inbox-filters button {
-  min-width: 0;
+.thread-scroll-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
 }
-.messages-page .account-inbox-notice {
-  flex-wrap: wrap;
-  gap: 4px 12px;
+/* What follows the messages keeps one rhythm, whatever shows: the deal on phones, a
+   celebration, Pako's tray. */
+.thread-after {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 10px;
 }
-.messages-page .account-inbox-notice > button {
-  flex-shrink: 0;
-  margin-left: auto;
+.thread-after > * {
+  margin-block: 0;
 }
-.messages-page .seller-chat .account-report form {
-  margin-top: 8px;
-  padding-top: 0;
-  border: 0;
+.messages-page .seller-chat-messages {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 4px 12px;
 }
-.messages-page .seller-chat .account-report textarea {
-  min-height: 70px;
-  max-height: 120px;
-  resize: none;
+.messages-page .seller-chat-messages:focus-visible {
+  border-radius: var(--radius-card);
+  outline-offset: -3px;
 }
-.reply-tray-toggle {
+/* Back to the newest message: a thumb-sized pill over the conversation's lower edge. */
+.thread-latest {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  z-index: 2;
+  translate: -50% 0;
+}
+.thread-latest-button {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 7px 4px;
+  height: 44px;
+  padding: 0 16px 0 12px;
+  border: 2px solid var(--card-line);
+  border-radius: 999px;
+  background: var(--surface);
   color: var(--blue);
-  font-size: 12px;
+  font-size: var(--type-support);
+  font-weight: 700;
+  box-shadow: 0 8px 18px -10px rgb(41 41 41 / 0.35);
 }
-.reply-tray-toggle[aria-expanded="true"] svg {
-  transform: rotate(180deg);
+.thread-latest-button:hover {
+  background: var(--selected);
 }
-@media (max-width: 760px) {
-  .messages-layout .messages-page .seller-chat-layout > nav {
-    overflow-x: hidden;
-    overscroll-behavior-y: contain;
-  }
-  .messages-layout .messages-page .seller-chat {
-    padding: 10px;
-    overflow: visible;
-  }
-  .messages-layout .messages-page .seller-chat > header {
-    padding-bottom: 6px;
-    gap: 2px;
-  }
-  .messages-page .chat-header-copy strong {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .messages-page .chat-header-copy .chat-listing-link {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    overflow: hidden;
-    overflow-wrap: anywhere;
-    line-height: 1.4;
-  }
-  .messages-page .chat-header-item > .inbox-back,
-  .messages-page .chat-header-item > .chat-delete-button {
-    width: 44px;
-    height: 44px;
-    padding: 8px;
-  }
-  .messages-page .seller-chat-messages {
-    padding: 10px 2px;
-    gap: 8px;
-  }
-  .messages-page .chat-bubble {
-    max-width: 92%;
-    padding: 9px 12px;
-  }
-  .messages-page .chat-bubble p {
-    font-size: 14px;
-  }
-  .messages-page .conversation-composer {
-    padding-top: 8px;
-    gap: 6px;
-  }
-  .messages-page .conversation-composer > textarea {
-    padding: 8px 10px;
-    min-height: 58px;
-    max-height: 90px;
-    font-size: 16px;
-    line-height: 1.3;
-  }
-  .messages-page .composer-actions {
-    gap: 8px;
-  }
-  .messages-page .composer-actions .button {
-    flex-shrink: 0;
-    min-height: 44px;
-    padding: 9px 14px;
-  }
-  .messages-page .composer-keyboard-hint {
-    display: none;
-  }
-  .messages-page .reply-assistance {
-    position: relative;
-    gap: 4px;
-  }
-  .messages-page .reply-assistance-action {
-    gap: 2px 8px;
-  }
-  .messages-page .reply-assistance-action > small {
-    flex-basis: 100%;
-    font-size: 10px;
-  }
-  .messages-page .chat-delete-notice {
-    flex-wrap: wrap;
-    gap: 6px 12px;
-    font-size: 12px;
-  }
-}
-@media (max-width: 760px) and (max-height: 650px) {
-  .messages-page.has-conversation .account-inbox-notice > p {
-    display: none;
-  }
-  .messages-layout .messages-page .page-title h1 {
-    font-size: var(--type-title);
-  }
-  .messages-layout .messages-page .seller-chat-layout {
-    margin-top: 4px;
-  }
-  .messages-page .chat-header-copy {
-    gap: 2px;
-  }
-  .messages-page .chat-date {
-    margin: 6px 0;
-  }
-  .messages-page .inbox-blocked-note {
-    padding: 6px;
-    margin-top: 4px;
-  }
-}
-.messages-layout .messages-page .seller-chat-messages {
-  min-height: 0;
-  max-height: none;
-  flex: 1 1 0;
-}
-.messages-page .account-inbox-notice > p {
-  flex: 1 1 160px;
+.messages-page .message-entry {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 10px;
   min-width: 0;
 }
-@media (max-width: 760px) {
-  .messages-page .inbox-controls input {
-    font-size: 16px;
-  }
+.chat-message {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  max-width: min(78%, 560px);
+  min-width: 0;
 }
-
-@media (max-width: 760px) {
-  .messages-page.has-conversation > :is(.page-title, .account-inbox-notice) {
-    display: none;
-  }
-}
-
-/* A shared input group keeps sending within reach without a second action row. */
-.messages-page .seller-message-input {
-  height: auto;
-  align-items: flex-end;
-  padding: 4px;
-  border-radius: 12px;
-  background: var(--surface);
-}
-.messages-page .seller-chat .seller-message-input textarea {
-  resize: none;
-  min-height: max(44px, calc(1.5em + 20px));
-  max-height: min(160px, 24dvh);
-  padding: 10px 8px;
-  font-size: var(--type-body);
-  line-height: 1.5;
-  overflow-y: auto;
-  border: 0;
-  outline: none;
-  box-shadow: none;
-}
-.messages-page .seller-message-input [data-slot="input-group-addon"] {
+.chat-message[data-mine] {
   align-self: flex-end;
-  padding: 0;
-  margin: 0;
+  align-items: flex-end;
 }
-.messages-page .seller-message-send {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-width: 44px;
-  min-height: 44px;
+.chat-message-meta {
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 600;
+}
+.chat-message[data-mine] .chat-message-meta {
+  color: var(--blue);
+}
+.chat-message-meta[data-drafted] {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.chat-bubble {
   margin: 0;
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: 18px 18px 18px 6px;
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: var(--type-body);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.chat-message[data-mine] .chat-bubble {
+  border-radius: 18px 18px 6px 18px;
+  background: var(--blue);
+  color: var(--on-primary);
+}
+.chat-message ::selection {
+  background: var(--sky);
+  color: var(--ink);
+}
+.chat-date {
+  display: flex;
+  justify-content: center;
+  margin: 6px 0;
+}
+.chat-date > span {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--canvas);
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 600;
+}
+/* An empty thread: Pako suggests the first message. */
+.chat-start {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 360px;
+  margin: auto;
+  text-align: center;
+}
+.chat-start-note,
+.chat-select-note {
+  color: var(--muted);
+  font-size: var(--type-label);
+  line-height: 1.5;
+}
+.chat-select-note {
+  margin: auto;
+}
+
+/* Pako flies an offer he drafted over when it goes out. */
+.chat-celebration {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 10px;
+  padding: 8px 16px 8px 10px;
+  border-radius: var(--radius-card);
+  background: var(--selected);
+  color: var(--blue-dark);
+  font-size: var(--type-label);
+  line-height: 1.4;
+}
+.chat-celebration strong {
+  font-weight: 700;
+}
+.chat-celebration-pako {
+  position: relative;
+  flex: none;
+}
+.chat-celebration-burst {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+}
+/* The news stays readable while the confetti flies behind it. */
+.chat-celebration-text {
+  position: relative;
+  z-index: 1;
+}
+
+/* Composer */
+.messages-page .conversation-composer {
+  position: relative;
+  display: grid;
+  flex-shrink: 0;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 12px;
+  border-top: 2px solid var(--card-line);
+}
+.pako-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--blue);
+  font-size: var(--type-caption);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+}
+.conversation-composer > .pako-label {
+  padding: 0 4px;
+}
+.messages-page .composer-field textarea {
+  max-height: min(160px, 24dvh);
+}
+/* Ask Pako stands at the start of the field's row, level with Send. */
+.composer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+.composer-row > .composer-field {
+  flex: 1;
+  min-width: 0;
+}
+.composer-row > .ask-pako {
+  flex: none;
+  min-height: 40px;
+  margin-bottom: 7px;
+}
+/* A failed Send says why right above the field that keeps the text. */
+.composer-error,
+.composer-offline {
+  margin: 0;
+  padding: 0 4px;
+  font-size: var(--type-support);
+  line-height: 1.4;
+}
+.composer-offline {
+  color: var(--muted);
+}
+/* Terms that travel with a message: blue while its text states them, a quiet note once it doesn't. */
+.composer-terms {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: var(--canvas);
+  color: var(--muted);
+  font-size: var(--type-caption);
+  line-height: 1.4;
+}
+.composer-terms[data-states] {
+  background: var(--selected);
+  color: var(--blue-dark);
+  font-weight: 650;
 }
 .seller-message-meta {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
   color: var(--muted);
   font-size: var(--type-caption);
@@ -766,53 +633,230 @@
 .seller-message-meta small {
   font-size: inherit;
 }
-@media (max-width: 760px) {
-  .messages-page .seller-message-send {
-    width: 44px;
-    padding: 10px;
-  }
-  .messages-page .seller-message-send span {
-    display: none;
-  }
-  .seller-message-meta:not(:has(small:not(.composer-keyboard-hint))) {
-    display: none;
-  }
-  :root[data-compact-viewport] .messages-page .conversation-composer {
-    grid-template-columns: minmax(0, 1fr);
+.inbox-blocked-note {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff3f2;
+  color: var(--danger);
+  font-size: var(--type-support);
+}
+/* A quiet note under a thread, such as why the deal card could not change. */
+.chat-note {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--canvas);
+  color: var(--muted);
+  font-size: var(--type-support);
+}
+.chat-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--type-support);
+}
+/* The inbox could not refresh: said in the list, where the conversations would be. */
+.inbox-error {
+  flex: none;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff3f2;
+  color: var(--danger);
+  font-size: var(--type-support);
+  line-height: 1.45;
+}
+
+.inbox-loading > div {
+  display: grid;
+  gap: 12px;
+}
+.inbox-loading [data-slot="skeleton"] {
+  height: 92px;
+  border-radius: var(--radius-card);
+  background: var(--mist);
+}
+
+/* Empty states with Pako */
+.empty-state.inbox-start {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  border: 0;
+  background: none;
+  text-align: center;
+}
+.empty-state.inbox-start h2 {
+  margin-top: 8px;
+}
+.empty-state.inbox-start p {
+  color: var(--muted);
+}
+.empty-state.inbox-start .button {
+  margin-top: 10px;
+}
+.inbox-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: 340px;
+  margin: auto;
+  padding: 20px;
+  color: var(--muted);
+  text-align: center;
+}
+.inbox-empty h2 {
+  color: var(--ink);
+  font-size: var(--type-section);
+}
+.inbox-empty p {
+  font-size: var(--type-label);
+  line-height: 1.6;
+}
+
+.chat-delete-notice {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: fit-content;
+  margin: 12px auto 0;
+  padding: 4px 6px 4px 16px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--surface);
+  font-size: var(--type-support);
+}
+.chat-delete-notice .chat-listing-link {
+  color: #c3cdff;
+}
+.chat-delete-notice .icon-button {
+  color: inherit;
+}
+.chat-delete-notice .icon-button:hover {
+  background: rgb(255 255 255 / 0.12);
+}
+
+/* On wide screens the cheer stays inside the thread it belongs to. */
+@media (min-width: 761px) {
+  .messages-page .seller-chat {
+    overflow: hidden;
   }
 }
 
-.reply-loading-placeholders {
-  display: flex;
-  gap: 8px;
-  overflow: hidden;
-  padding-block: 2px;
+/* Phones show the inbox or one thread, never both. */
+@media (max-width: 760px) {
+  .messages-page .seller-chat-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    margin-top: 8px;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+  .messages-page .seller-chat-layout > nav {
+    flex: 1;
+    padding: 4px 2px 16px;
+    border: 0;
+    background: none;
+  }
+  .messages-page .seller-chat-layout > .seller-chat {
+    display: none;
+  }
+  .messages-page.has-conversation .seller-chat-layout > nav {
+    display: none;
+  }
+  .messages-page.has-conversation .seller-chat-layout > .seller-chat {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    padding: 0;
+  }
+  .messages-page.has-conversation > .quiet-caption,
+  .messages-page.has-conversation > .page-title > p {
+    display: none;
+  }
+  /* The open thread fills the screen; its page heading stays for screen readers. */
+  .messages-page.has-conversation > .page-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .inbox-controls {
+    top: -4px;
+    margin: -4px -2px 0;
+    padding: 4px 2px 10px;
+  }
+  .messages-page .inbox-back {
+    display: grid;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    margin-left: -8px;
+  }
+  .messages-page .seller-chat > header {
+    gap: 8px;
+    padding-bottom: 10px;
+  }
+  .chat-header-item {
+    gap: 6px;
+  }
+  .chat-partner {
+    gap: 10px;
+  }
+  .chat-segment > button {
+    min-height: 44px;
+  }
+  .messages-page .chat-delete-button {
+    width: 44px;
+    height: 44px;
+  }
+  .thread-scroll-frame {
+    min-height: 0;
+  }
+  .messages-page .seller-chat-messages {
+    gap: 8px;
+    padding: 12px 2px 8px;
+  }
+  .chat-message {
+    max-width: 86%;
+  }
+  .chat-bubble {
+    padding: 9px 13px;
+    font-size: 0.9375rem;
+  }
+  .messages-page .conversation-composer {
+    gap: 6px;
+    padding-top: 8px;
+  }
+  /* About three lines of a draft show before it scrolls inside the field. */
+  .messages-page .composer-field textarea {
+    max-height: calc(4.5em + 16px);
+  }
+  .composer-row > .ask-pako {
+    min-height: 44px;
+  }
+  .composer-keyboard-hint {
+    display: none;
+  }
+  .seller-message-meta:not(:has(> :not(.composer-keyboard-hint))) {
+    display: none;
+  }
 }
-.reply-loading-placeholders [data-slot="skeleton"] {
-  flex: 0 0 38%;
-  height: 36px;
-  border: 1px solid var(--line);
-  background: var(--mist);
-}
-.reply-loading-placeholders [data-slot="skeleton"]:nth-child(2) {
-  flex-basis: 30%;
-  animation-delay: 100ms;
-}
-.reply-loading-placeholders [data-slot="skeleton"]:nth-child(3) {
-  flex-basis: 25%;
-  animation-delay: 200ms;
-}
-.inbox-loading > div {
-  display: grid;
-  gap: 8px;
-}
-.inbox-loading [data-slot="skeleton"] {
-  height: 72px;
-  background: var(--mist);
-}
+
 @media (prefers-reduced-motion: reduce) {
-  .reply-assistance [data-slot="spinner"],
-  .reply-loading-placeholders [data-slot="skeleton"],
+  .chat-thread,
   .inbox-loading [data-slot="skeleton"] {
     animation: none;
   }

@@ -7,7 +7,6 @@ import { parseAnswerBlocks, parseAnswerInline } from "./agentAnswer";
 export function answerParts(
   text: string,
   sources: AgentRunSource[],
-  streaming = false,
 ): ReactNode[] {
   const byId = new Map(sources.map((source) => [source.id, source]));
   return parseAnswerInline(text, sources).map((part, index) => {
@@ -22,48 +21,30 @@ export function answerParts(
         />
       );
     if (part.kind === "bold")
-      return (
-        <strong key={index}>
-          {answerParts(part.text, sources, streaming)}
-        </strong>
-      );
+      return <strong key={index}>{answerParts(part.text, sources)}</strong>;
     if (part.kind === "emphasis")
-      return <em key={index}>{answerParts(part.text, sources, streaming)}</em>;
+      return <em key={index}>{answerParts(part.text, sources)}</em>;
     // A citation may precede its source event during streaming. Never expose
     // internal IDs or create an unverified link while waiting for the source.
     if (part.kind === "citation") return null;
-    return part.text.split(/(\s+)/).map((word, wordIndex) =>
-      /^\s*$/.test(word) ? (
-        word
-      ) : (
-        <span
-          key={`${index}-${wordIndex}`}
-          className={streaming ? "stream-word" : undefined}
-        >
-          {word}
-        </span>
-      ),
-    );
+    return part.text;
   });
 }
 
 export function answerBlocks(
   text: string,
   sources: AgentRunSource[],
-  streaming = false,
 ): ReactNode[] {
   return parseAnswerBlocks(text).map((block) => {
     if (block.kind === "heading") {
       const Heading = block.level <= 2 ? "h3" : "h4";
       return (
-        <Heading key={block.key}>
-          {answerParts(block.text, sources, streaming)}
-        </Heading>
+        <Heading key={block.key}>{answerParts(block.text, sources)}</Heading>
       );
     }
     if (block.kind === "list") {
       const items = block.items.map((item) => (
-        <li key={item.key}>{answerParts(item.text, sources, streaming)}</li>
+        <li key={item.key}>{answerParts(item.text, sources)}</li>
       ));
       return block.ordered ? (
         <ol key={block.key} start={block.start}>
@@ -73,6 +54,6 @@ export function answerBlocks(
         <ul key={block.key}>{items}</ul>
       );
     }
-    return <p key={block.key}>{answerParts(block.text, sources, streaming)}</p>;
+    return <p key={block.key}>{answerParts(block.text, sources)}</p>;
   });
 }

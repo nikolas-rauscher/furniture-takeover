@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { Product } from "../../shared/marketplace";
 import type { SellerConversation } from "../../shared/messages";
 import {
@@ -57,6 +57,11 @@ type Options = {
   onFindSimilar(title: string): void;
 };
 type Dialog = { kind: "request" | "cancel"; listingId: string } | null;
+/** What a listing card shows about a reservation: a sticker and a short note. */
+export type CardAvailability = {
+  sticker?: "Reserved" | "Reserved for you";
+  note?: string;
+};
 
 const unavailableStorage = {
   getItem: () => null,
@@ -89,7 +94,7 @@ const thread = (listing: Product) => ({
 const noticeText: Record<AvailabilityNotice["kind"], string> = {
   declined: "The seller says it's no longer available.",
   expired: `The seller didn't confirm within ${SELLER_REPLY_HOURS}h, so the listing was removed.`,
-  hold_ended: `Your ${HOLD_HOURS}h hold ended without pickup, so the item is available again.`,
+  hold_ended: "Your reservation expired. The item is available again.",
   available_again: `It's available again. You're first in line for ${WAITLIST_PRIORITY_HOURS} hours.`,
 };
 
@@ -179,7 +184,9 @@ export function useAvailability(options: Options) {
       const conversation = await sendMessage(thread(item), text(t), sender);
       onConversation?.(conversation);
       if (stateRef.current !== before)
-        throw new Error("This reservation changed meanwhile. Try again.");
+        throw new Error(
+          "This reservation changed. Check the details and try again.",
+        );
       const next =
         sender === "buyer" && conversation.messages.length === 1
           ? rememberThread(t.state, listingId)
@@ -194,7 +201,7 @@ export function useAvailability(options: Options) {
     optionsRef.current.setToast(
       error instanceof Error
         ? error.message
-        : "Could not send the message. Nothing was changed.",
+        : "Couldn't send the message. Nothing was changed. Try again.",
     );
 
   async function reset(source: AvailabilityState, forget: boolean) {
@@ -205,7 +212,7 @@ export function useAvailability(options: Options) {
       try {
         repository.clear();
       } catch {
-        /* nothing stored to clear */
+        window.dispatchEvent(new CustomEvent("storage-failure"));
       }
     if (!forget)
       optionsRef.current.setToast(
@@ -223,27 +230,30 @@ export function useAvailability(options: Options) {
           await setConversationDeleted(conversation.id, true);
     } catch {
       optionsRef.current.setToast(
-        "Demo listings were restored, but some demo messages could not be deleted.",
+        "Demo listings were restored, but some demo messages couldn't be deleted. Reset again to retry.",
       );
     }
   }
 
   const { ready, listings } = options;
+  const sweepDeadlines = useEffectEvent(sweep);
   useEffect(() => {
-    if (enabled && ready) sweep();
     // Deadlines depend only on the clock and listing statuses.
+    if (enabled && ready) sweepDeadlines();
   }, [enabled, ready, listings]);
-  useEffect(() => {
-    // `?availability=off` undoes this prototype's listing changes once.
-    if (!flag.cleanup || !options.localDemo || !ready || cleaned.current)
-      return;
+  /** `?availability=off` undoes this prototype's listing changes once. */
+  const undoStoredChanges = useEffectEvent(() => {
+    if (!options.localDemo || cleaned.current) return;
     cleaned.current = true;
     try {
       const restored = repository.load();
       if (restored.source === "stored") void reset(restored.state, true);
     } catch {
-      /* storage unavailable: nothing to restore */
+      window.dispatchEvent(new CustomEvent("storage-failure"));
     }
+  });
+  useEffect(() => {
+    if (flag.cleanup && ready) undoStoredChanges();
   }, [flag.cleanup, ready]);
 
   if (!enabled) return null;
@@ -286,10 +296,10 @@ export function useAvailability(options: Options) {
           const holdUntil = t.state.reservations.find(
             (reservation) => reservation.listingId === listingId,
           )?.holdUntil;
-          return `Confirmed! It's held for you until ${holdUntil ? formatDeadline(holdUntil) : "pickup"}.`;
+          return `Confirmed! It's reserved for you until ${holdUntil ? formatDeadline(holdUntil) : "pickup"}.`;
         },
         (at) => confirmReservation(stateRef.current, item, at),
-        `Confirmed. The item is held for this buyer for ${HOLD_HOURS}h.`,
+        `Confirmed. The item is reserved for this buyer for ${HOLD_HOURS} h.`,
         onConversation,
       ).catch(failed);
     },
@@ -304,7 +314,7 @@ export function useAvailability(options: Options) {
         "seller",
         () => "Sorry, it's no longer available.",
         (at) => declineReservation(stateRef.current, item, at),
-        "Marked as no longer available. The buyer has been told.",
+        "Marked as sold. The buyer was notified.",
         onConversation,
       ).catch(failed);
     },
@@ -330,45 +340,25 @@ export function useAvailability(options: Options) {
   return {
     clockOffsetMs: state.clockOffsetMs,
     resetDemo,
-    cardProps(item: Product): {
-      statusLabel?: ReactNode;
-      availabilityNote?: ReactNode;
-    } {
+    cardAvailability(item: Product): CardAvailability {
       const view = viewOf(item);
-      const note = (text: string) => (
-        <p className="availability-note">{text}</p>
-      );
       if (view.kind === "pending")
         return {
-          availabilityNote: note(
-            `Waiting for seller · confirms by ${formatDeadline(view.reservation.replyBy)}`,
-          ),
+          note: `Waiting for seller · confirms by ${formatDeadline(view.reservation.replyBy)}`,
         };
       if (view.kind === "held")
         return {
-          statusLabel: (
-            <span className="sold-label availability-label mine">
-              Reserved for you
-            </span>
-          ),
-          availabilityNote: note(
-            `Reserved for you until ${formatDeadline(view.reservation.holdUntil!)}`,
-          ),
+          sticker: "Reserved for you",
+          note: `Reserved for you until ${formatDeadline(view.reservation.holdUntil!)}`,
         };
       if (view.kind === "reserved")
         return {
-          statusLabel: (
-            <span className="sold-label availability-label">Reserved</span>
-          ),
-          availabilityNote: view.position
-            ? note(`You're #${view.position} in line`)
-            : undefined,
+          sticker: "Reserved",
+          note: view.position ? `You're #${view.position} in line` : undefined,
         };
       if (view.kind === "open" && view.priorityUntil)
         return {
-          availabilityNote: note(
-            `Available again · you're first in line for ${formatTimeLeft(view.priorityUntil, now)}`,
-          ),
+          note: `Available again · you're first in line for ${formatTimeLeft(view.priorityUntil, now)}`,
         };
       return {};
     },
@@ -384,7 +374,7 @@ export function useAvailability(options: Options) {
           onJoin={() => {
             void commit(joinWaitlist(stateRef.current, item, clock()).state);
             optionsRef.current.setToast(
-              "You're on the waitlist. We'll tell you if it becomes available.",
+              "You're on the waitlist. Check reservation updates here.",
             );
           }}
           onLeave={() =>

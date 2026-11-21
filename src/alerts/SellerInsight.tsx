@@ -1,60 +1,49 @@
 import { money } from "../../shared/marketplace";
 import type { DemandLadder, SimilarListings } from "./matching";
-import "./alerts.css";
+import "./seller-insight.css";
 
 type SellerInsightProps = {
-  /** Asking price being typed; NaN while it is empty or invalid. */
-  price: number;
-  ladder: DemandLadder;
   similar: SimilarListings | null;
+  /** Developer mode only: saved searches in this browser that would get an alert. */
+  ladder?: DemandLadder;
 };
 
-const plural = (count: number, one: string, many: string) =>
-  `${count} ${count === 1 ? one : many}`;
+/** "CHF 40–110 · most around CHF 65": the range, and the median once there are enough. */
+function priceRange({ min, max, median }: SimilarListings) {
+  const range = min === max ? money(min) : `${money(min)}–${money(max)}`;
+  return median === null ? range : `${range} · most around ${money(median)}`;
+}
 
-/** Facts for the seller while listing; counts only, never who is watching. */
-export default function SellerInsight({
-  price,
-  ladder,
-  similar,
-}: SellerInsightProps) {
-  const asking = ladder.rungs[0];
-  const anyDemand = ladder.rungs.some((rung) => rung.count > 0);
-  if (!anyDemand && !similar) return null;
+/** Prices of similar listings while the seller decides; counts only, never who is watching. */
+export default function SellerInsight({ similar, ladder }: SellerInsightProps) {
+  const demand =
+    ladder && ladder.rungs.some((rung) => rung.count > 0) ? ladder : undefined;
+  if (!similar && !demand) return null;
   return (
-    <div className="seller-insight" aria-label="Demand and price context">
-      {anyDemand && asking && (
-        <div>
-          <p className="listing-demand">
-            {asking.count > 0
-              ? `${plural(asking.count, "saved search", "saved searches")} would be alerted at ${money(price)}.`
-              : `No saved search would be alerted at ${money(price)}.`}
-            {ladder.noLimit > 0 &&
-              ` ${ladder.noLimit} of them ${ladder.noLimit === 1 ? "has" : "have"} no price limit.`}
-          </p>
-          {ladder.rungs.length > 1 && (
-            <ul className="demand-ladder" aria-label="Alerts by asking price">
-              {ladder.rungs.map((rung) => (
-                <li key={rung.price}>
-                  <span>{money(rung.price)}</span>
-                  <strong>{rung.count}</strong>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
+    <div className="seller-insight" aria-label="Asking prices on takeover">
       {similar && (
-        <p className="listing-supply">
-          {plural(similar.count, "similar listing", "similar listings")} on
-          Takeover:{" "}
-          {similar.min === similar.max
-            ? money(similar.min)
-            : `${money(similar.min)}–${money(similar.max)}`}
-          {similar.median !== null && `, median ${money(similar.median)}`}.
+        <p className="seller-insight-range">
+          {similar.count === 1
+            ? "1 similar listing on takeover: "
+            : `${similar.count} similar on takeover: `}
+          <strong>{priceRange(similar)}</strong>
         </p>
       )}
-      <small>Based on saved searches and listings in this browser.</small>
+      {demand && (
+        <div className="seller-insight-demand">
+          <p>
+            Developer mode · alerts this browser&apos;s saved searches would get
+          </p>
+          <ul aria-label="Alerts by asking price">
+            {demand.rungs.map((rung) => (
+              <li key={rung.price}>
+                <span>{money(rung.price)}</span>
+                <strong>{rung.count}</strong>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

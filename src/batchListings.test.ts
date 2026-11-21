@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   batchItem,
+  itemsCovered,
   itemsFromGroups,
   missingDetails,
   movePhoto,
@@ -92,4 +93,15 @@ test("only drafted items with every required detail are ready to save", () => {
   assert.deepEqual(readyItems([complete, noPrice, notDrafted]), [complete]);
   assert.deepEqual(missingDetails(noPrice.draft), ["price"]);
   assert.deepEqual(missingDetails(complete.draft), []);
+});
+
+test("the allowance covers two requests per item, and only a shortfall is named", () => {
+  assert.equal(
+    itemsCovered(undefined, 3),
+    undefined,
+    "the local demo has no allowance",
+  );
+  assert.equal(itemsCovered(6, 3), undefined);
+  assert.equal(itemsCovered(5, 3), 2);
+  assert.equal(itemsCovered(1, 2), 0);
 });

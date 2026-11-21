@@ -2,7 +2,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { AgentError } from "./errors.ts";
 
-export const keyProviders = ["deepseek", "brave"] as const;
+const keyProviders = ["deepseek", "brave"] as const;
 export type KeyProvider = (typeof keyProviders)[number];
 type KeyStatus = { saved: boolean; lastFour?: string; updatedAt?: string };
 export type AccountKeyStatus = {
@@ -53,10 +53,12 @@ export function openKey(
 ) {
   try {
     const [version, nonce, tag, encrypted, extra] = sealed.split(":");
-    if (version !== "v1" || extra || !encrypted) throw new Error();
+    if (version !== "v1" || extra || !encrypted)
+      throw new Error("Unknown sealed key format.");
     const iv = Buffer.from(nonce, "base64"),
       authTag = Buffer.from(tag, "base64");
-    if (iv.length !== 12 || authTag.length !== 16) throw new Error();
+    if (iv.length !== 12 || authTag.length !== 16)
+      throw new Error("Invalid sealed key nonce or tag.");
     const cipher = createDecipheriv("aes-256-gcm", key, iv);
     cipher.setAAD(Buffer.from(`takeover:account-key:v1:${owner}:${provider}`));
     cipher.setAuthTag(authTag);
@@ -64,11 +66,12 @@ export function openKey(
       cipher.update(Buffer.from(encrypted, "base64")),
       cipher.final(),
     ]).toString("utf8");
-  } catch {
+  } catch (cause) {
     throw new AgentError(
       503,
       "KEY_DECRYPTION_FAILED",
       "Your saved API key could not be opened. Replace it in Account settings → API keys.",
+      { cause },
     );
   }
 }

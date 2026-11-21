@@ -1,5 +1,6 @@
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
-import { cloudClient, readAuthRedirect, type CloudConfig } from "./client.ts";
+import { readAuthRedirect, type CloudConfig } from "./client.ts";
+import type { CreateCloudClient } from "./cloudClient.ts";
 let client: SupabaseClient | null = null;
 let scope = "";
 let redirect: ReturnType<typeof readAuthRedirect> | null = null;
@@ -10,7 +11,18 @@ let initialSession: Promise<{
   error: string;
   invited: boolean;
 }> | null = null;
-export function configureCloud(config: CloudConfig | null) {
+/** Accounts take the SDK's client factory, which the local demo never downloads. */
+export function configureCloud(config: null): void;
+export function configureCloud(
+  config: CloudConfig,
+  createClient: CreateCloudClient,
+): void;
+export function configureCloud(
+  config: CloudConfig | null,
+  createClient?: CreateCloudClient,
+) {
+  if (config && !createClient)
+    throw new Error("Accounts need the SDK's client factory.");
   unsubscribeAuth?.();
   unsubscribeAuth = undefined;
   passwordSetupUserId = null;
@@ -22,7 +34,7 @@ export function configureCloud(config: CloudConfig | null) {
       history.replaceState(history.state, "", url);
   } else redirect = null;
   initialSession = null;
-  client = config ? cloudClient(config) : null;
+  client = config && createClient ? createClient(config) : null;
   scope = client ? "guest" : "";
   const connection = client;
   if (connection) {
@@ -78,7 +90,7 @@ export function restoreAccountSession() {
     return {
       session: result.data.session,
       error: result.error
-        ? "Could not open this sign-in link or restore your session. Sign in below, or request a new link."
+        ? "Couldn't open this sign-in link or restore your session. Sign in below, or ask for a new link."
         : "",
       invited: Boolean(
         redirect?.invitation && result.data.session && !result.error,
@@ -92,9 +104,13 @@ export function setAccountScope(userId?: string) {
 export function accountStorageKey(key: string) {
   return scope ? `${key}:account:${scope}` : key;
 }
-export async function accountAccessToken() {
+export async function accountAccessToken(allowGuest = false) {
   if (!client) return undefined;
   const { data, error } = await client.auth.getSession();
-  if (error || !data.session) throw new Error("Sign in to use the assistant.");
-  return data.session.access_token;
+  if (error)
+    throw new Error("Couldn't check your session. Try signing in again.", {
+      cause: error,
+    });
+  if (!data.session && !allowGuest) throw new Error("Sign in to ask Pako.");
+  return data.session?.access_token;
 }

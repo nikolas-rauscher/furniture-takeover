@@ -100,7 +100,7 @@ export function useAgentAssist(
           error:
             error instanceof Error
               ? error.message
-              : "The assistant is unavailable. Try again.",
+              : "Pako is unavailable right now. Try again.",
         });
       }
     }, 700);

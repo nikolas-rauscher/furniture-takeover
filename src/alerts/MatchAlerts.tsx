@@ -1,65 +1,114 @@
-import { Bell, X } from "lucide-react";
-import type { AlertItem } from "./matching";
-import "./alerts.css";
+import { cardImageFor } from "../../shared/listingPhotos";
+import { useId } from "react";
+import { Image as ImageIcon, X } from "@/components/icons";
+import { Button } from "../components/ui/button";
+import PakoReaction from "../components/PakoReaction";
+import { matchFacts } from "./matching";
+import type { WatchMatch } from "./useWatches";
+import "./match-alerts.css";
 
 type MatchAlertsProps = {
-  alerts: AlertItem[];
-  searchTitle(jobId: string): string | undefined;
-  onOpen(alert: AlertItem): void;
-  onDismiss(alert: AlertItem): void;
-  onMarkAllRead?(): void;
+  matches: WatchMatch[];
+  onOpen(match: WatchMatch): void;
+  onDismiss(match: WatchMatch): void;
+  onMarkAllSeen(): void;
 };
 
 /** New listings that started matching a saved search; opening one never contacts a seller. */
 export default function MatchAlerts({
-  alerts,
-  searchTitle,
+  matches,
   onOpen,
   onDismiss,
-  onMarkAllRead,
+  onMarkAllSeen,
 }: MatchAlertsProps) {
-  if (!alerts.length) return null;
-  const unread = alerts.filter((alert) => !alert.read).length;
+  const headingId = useId();
+  const unread = matches.filter(({ alert }) => !alert.read).length;
   return (
-    <section className="match-alerts" aria-label="New matches">
+    <section className="match-alerts" aria-labelledby={headingId}>
       <div className="match-alerts-heading">
-        <h2>
-          <Bell size={16} aria-hidden="true" />
+        <PakoReaction mood={unread ? "happy" : "idle"} size={40} />
+        <h2 id={headingId}>
           New matches
-          {unread > 0 && <span className="match-alerts-count">{unread}</span>}
+          {unread > 0 && (
+            <span className="match-alerts-count">
+              {unread}
+              <span className="sr-only"> new</span>
+            </span>
+          )}
         </h2>
-        {onMarkAllRead && unread > 0 && (
-          <button type="button" className="text-button" onClick={onMarkAllRead}>
+        {unread > 0 && (
+          <Button
+            className="button quiet small match-alerts-seen"
+            onClick={onMarkAllSeen}
+          >
             Mark all as seen
-          </button>
+          </Button>
         )}
       </div>
-      <ul>
-        {alerts.map((alert) => (
-          <li key={alert.id} className={alert.read ? "read" : undefined}>
-            <button
-              type="button"
-              className="match-alert-main"
-              onClick={() => onOpen(alert)}
-            >
-              <strong>{alert.title}</strong>
-              <span>{alert.reason}</span>
-              <small>
-                From your saved search “
-                {searchTitle(alert.jobId) ?? "removed search"}”
-              </small>
-            </button>
-            <button
-              type="button"
-              className="icon-button"
-              aria-label={`Dismiss match ${alert.title}`}
-              onClick={() => onDismiss(alert)}
-            >
-              <X size={16} />
-            </button>
-          </li>
+      <ul className="match-alert-list">
+        {matches.map((match) => (
+          <MatchCard
+            key={match.alert.id}
+            match={match}
+            onOpen={() => onOpen(match)}
+            onDismiss={() => onDismiss(match)}
+          />
         ))}
       </ul>
     </section>
+  );
+}
+
+function MatchCard({
+  match: { alert, listing, search },
+  onOpen,
+  onDismiss,
+}: {
+  match: WatchMatch;
+  onOpen(): void;
+  onDismiss(): void;
+}) {
+  return (
+    <li
+      className="match-alert linked-card"
+      data-unseen={!alert.read || undefined}
+    >
+      <span className="match-alert-photo">
+        {listing.image ? (
+          <img
+            src={cardImageFor(listing)}
+            alt=""
+            loading="lazy"
+            decoding="async"
+          />
+        ) : (
+          <ImageIcon size={20} aria-hidden="true" />
+        )}
+      </span>
+      <div className="match-alert-text">
+        <Button
+          className="text-button card-link match-alert-title"
+          onClick={onOpen}
+        >
+          {listing.title}
+          {!alert.read && <span className="sr-only"> new</span>}
+        </Button>
+        <ul className="match-alert-facts" aria-label="Why it matches">
+          {matchFacts(listing, search.criteria).map((fact) => (
+            <li key={fact} className="chip">
+              {fact}
+            </li>
+          ))}
+        </ul>
+        <small>From “{search.title}”</small>
+      </div>
+      <Button
+        className="icon-button match-alert-dismiss"
+        aria-label={`Dismiss match ${listing.title}`}
+        onClick={onDismiss}
+      >
+        <X size={16} aria-hidden="true" />
+      </Button>
+    </li>
   );
 }

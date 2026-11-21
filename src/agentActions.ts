@@ -3,8 +3,12 @@ import type {
   AgentListingPatchEvent,
   AgentPreferencesPatchEvent,
 } from "../shared/actions.ts";
-import { TODAY, type Criteria } from "../shared/marketplace.ts";
-import type { ListingDraft } from "./components/SellFlow.tsx";
+import {
+  listingConditions,
+  TODAY,
+  type Criteria,
+} from "../shared/marketplace.ts";
+import type { ListingDraft } from "./listingDraft.ts";
 import type { SearchSnapshot } from "./searchRequest.ts";
 
 export const listingFieldNames = [
@@ -18,7 +22,7 @@ export const listingFieldNames = [
 ] as const;
 export type ListingField = (typeof listingFieldNames)[number];
 export type FieldRevisions = Partial<Record<ListingField, number>>;
-export type ListingChanges = Partial<
+type ListingChanges = Partial<
   Record<ListingField, { before: string; after: string; revision: number }>
 >;
 export type PreferenceChanges = Partial<
@@ -82,7 +86,7 @@ function fieldValue(
   if (field === "condition")
     return text === ""
       ? ""
-      : (["Very good", "Good", "Used"].find(
+      : (listingConditions.find(
           (condition) => condition.toLowerCase() === text.toLowerCase(),
         ) ?? text);
   if (
@@ -185,28 +189,6 @@ export function applyListingAction(
     }
   }
   return { next, changes, skipped, pending: false };
-}
-
-export function undoListingAction(
-  draft: ListingDraft,
-  changes: ListingChanges,
-  revisions: FieldRevisions,
-) {
-  const next = { ...draft };
-  const restored: ListingField[] = [];
-  const preserved: ListingField[] = [];
-  for (const field of listingFieldNames) {
-    const change = changes[field];
-    if (!change) continue;
-    if (
-      draft[field] === change.after &&
-      (revisions[field] ?? 0) === change.revision
-    ) {
-      next[field] = change.before;
-      restored.push(field);
-    } else preserved.push(field);
-  }
-  return { next, restored, preserved };
 }
 
 export function applyPreferenceAction(

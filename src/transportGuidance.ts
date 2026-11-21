@@ -3,27 +3,24 @@ const furnitureTitle =
 const cargoEnvelopeCm = [180, 105, 80];
 
 type TransportGuidance = {
-  label: string;
+  /** What the item fits in, or unknown until the seller confirms its measurements. */
+  vehicle: "car" | "van" | "unknown";
   message: string;
   note: string;
 };
 
 function dimensionsInCentimetres(value: string) {
-  const measurements = [
-    ...value.matchAll(/(\d+(?:[.,]\d+)?)\s*(mm|cm|m)?/gi),
-  ];
+  const measurements = [...value.matchAll(/(\d+(?:[.,]\d+)?)\s*(mm|cm|m)?/gi)];
   if (measurements.length !== 3) return null;
 
-  const trailingUnit = value.match(/(?:mm|cm|m)\s*$/i)?.[0]
+  const trailingUnit = value
+    .match(/(?:mm|cm|m)\s*$/i)?.[0]
     .trim()
     .toLowerCase();
   const values = measurements.map((match) => {
     const number = Number(match[1].replace(",", "."));
     const unit = (match[2]?.toLowerCase() || trailingUnit) as
-      | "mm"
-      | "cm"
-      | "m"
-      | undefined;
+      "mm" | "cm" | "m" | undefined;
     if (!unit || !Number.isFinite(number) || number <= 0) return null;
     return number * (unit === "m" ? 100 : unit === "mm" ? 0.1 : 1);
   });
@@ -55,19 +52,19 @@ export function transportGuidance(
   const measured = dimensionsInCentimetres(dimensions);
   if (!measured)
     return {
-      label: "Transport estimate",
+      vehicle: "unknown",
       message: "Confirm the width × depth × height in cm with the seller.",
       note: "Vehicle choice depends on the item's largest transport dimensions.",
     };
 
   return fitsCargoEnvelope(measured)
     ? {
-        label: "Transport estimate",
+        vehicle: "car",
         message: "An estate car may be enough.",
         note: "Check your vehicle's usable cargo space and loading opening; this is only an estimate.",
       }
     : {
-        label: "Transport estimate",
+        vehicle: "van",
         message: "A van is likely needed.",
         note: "Check the item's largest transport dimensions against the vehicle's usable cargo space and loading opening.",
       };

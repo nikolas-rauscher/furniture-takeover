@@ -2,6 +2,8 @@ import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import { isIP } from "node:net";
 
+export const DEFAULT_AGENT_CONCURRENCY = 16;
+
 type Environment = Record<string, string | undefined>;
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 
@@ -17,7 +19,7 @@ export function readPort(
 }
 
 /** Address the API listens on. Loopback unless a proxy on another machine needs it. */
-export function readHost(value: string | undefined, name = "API_HOST") {
+function readHost(value: string | undefined, name = "API_HOST") {
   const host = value?.trim() || "127.0.0.1";
   if (!isIP(host) && !/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/i.test(host))
     throw new Error(`${name} must be an IP address or hostname.`);
@@ -81,6 +83,11 @@ export function readServerConfig(env: Environment = process.env) {
   return {
     port,
     host,
+    maxConcurrent: readPort(
+      env.API_AGENT_CONCURRENCY,
+      DEFAULT_AGENT_CONCURRENCY,
+      "API_AGENT_CONCURRENCY",
+    ),
     baseUrl,
     apiKey: env.DEEPSEEK_API_KEY?.trim() ?? "",
     model: env.DEEPSEEK_MODEL?.trim() || "deepseek-flash",

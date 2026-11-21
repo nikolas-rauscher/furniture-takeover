@@ -3,6 +3,7 @@ import { Textarea } from "../components/ui/textarea";
 import { useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fail } from "./client";
+import "./report.css";
 export default function Report({
   client,
   listingId,
@@ -16,13 +17,15 @@ export default function Report({
     [text, setText] = useState(""),
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState("");
+  const target = messageId ? "message" : "listing";
   return (
-    <div className="account-report">
-      <Button onClick={() => setOpen((v) => !v)}>
-        {open ? "Cancel report" : "Report"}
+    <div className="report">
+      <Button className="report-toggle" onClick={() => setOpen((v) => !v)}>
+        {open ? "Cancel report" : `Report ${target}`}
       </Button>
       {open && (
         <form
+          className="report-form"
           onSubmit={async (e) => {
             e.preventDefault();
             setBusy(true);
@@ -37,22 +40,19 @@ export default function Report({
                   })
                 ).error,
               );
-              setNotice(
-                "Report saved for the Takeover team. Reports do not automatically remove content.",
-              );
+              setNotice("Report received. The takeover team can review it.");
               setOpen(false);
               setText("");
             } catch (err) {
-              setNotice(
-                err instanceof Error ? err.message : "Could not send report.",
-              );
+              console.error(err);
+              setNotice("Couldn't send your report. Try again.");
             } finally {
               setBusy(false);
             }
           }}
         >
           <label>
-            What is wrong?
+            Why are you reporting this {target}?
             <Textarea
               required
               maxLength={1000}
@@ -60,12 +60,20 @@ export default function Report({
               onChange={(e) => setText(e.target.value)}
             />
           </label>
-          <Button type="submit" disabled={busy || !text.trim()}>
-            Submit report
+          <Button
+            type="submit"
+            className="button danger small"
+            disabled={busy || !text.trim()}
+          >
+            Send report
           </Button>
         </form>
       )}
-      {notice && <p role="status">{notice}</p>}
+      {notice && (
+        <p className="report-notice" role="status">
+          {notice}
+        </p>
+      )}
     </div>
   );
 }

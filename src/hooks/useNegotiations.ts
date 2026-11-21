@@ -1,5 +1,5 @@
 import { accountStorageKey, getCloudClient } from "../cloud/session.ts";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   newNegotiation,
   type Negotiation,
@@ -11,6 +11,7 @@ import {
   reconcileDeliveredDrafts,
 } from "../negotiationRepository";
 import { listMessages } from "../api/messages";
+import { randomUuid } from "../randomUuid";
 
 export function useNegotiations() {
   const key = accountStorageKey("takeover-negotiations");
@@ -23,13 +24,7 @@ export function useNegotiations() {
       key,
     ),
   );
-  const [items, setItems] = useState<Negotiation[]>(() => {
-    try {
-      return repository.list();
-    } catch {
-      return [];
-    }
-  });
+  const [items, setItems] = useState<Negotiation[]>([]);
   const [error, setError] = useState("");
   const activeId = useRef<string | null>(null);
   const [active, setActive] = useState<string | null>(null);
@@ -37,16 +32,14 @@ export function useNegotiations() {
     activeId.current = id;
     setActive(id);
   }
-  function refresh() {
+  const refresh = useCallback(() => {
     try {
       setItems(repository.list());
       setError("");
     } catch {
-      setError(
-        "Saved proposals could not be read. They have been kept unchanged.",
-      );
+      setError("I couldn't open your saved offer drafts. Reload to try again.");
     }
-  }
+  }, [repository]);
   useEffect(() => {
     refresh();
     const changed = (event: StorageEvent) => {
@@ -54,7 +47,7 @@ export function useNegotiations() {
     };
     window.addEventListener("storage", changed);
     return () => window.removeEventListener("storage", changed);
-  }, [repository, key]);
+  }, [repository, key, refresh]);
   useEffect(() => {
     const migrationKey = `${key}-sent-migration-v1`;
     let cancelled = false;
@@ -70,14 +63,17 @@ export function useNegotiations() {
         }
         localStorage.setItem(migrationKey, "complete");
       } catch {
-        // Keep every draft if delivery or storage cannot be verified; retry next mount.
+        if (!cancelled)
+          setError(
+            "I couldn't verify which saved drafts were already sent. Reload to try again.",
+          );
       }
     }
     void reconcileLegacyDrafts();
     return () => {
       cancelled = true;
     };
-  }, [repository, key]);
+  }, [repository, key, refresh]);
   function current() {
     return repository
       .list()
@@ -92,9 +88,11 @@ export function useNegotiations() {
       );
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Could not save the proposal.";
+        error instanceof Error
+          ? error.message
+          : "I couldn't save your offer draft. Try again.";
       setError(message);
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   }
   function open(listingId: string) {
@@ -105,7 +103,7 @@ export function useNegotiations() {
         .find(
           (item) => item.listingId === listingId && item.status === "draft",
         );
-      const value = previous ?? newNegotiation(crypto.randomUUID(), listingId);
+      const value = previous ?? newNegotiation(randomUuid(), listingId);
       if (!previous)
         commit({
           type: "negotiation_update",
@@ -116,7 +114,9 @@ export function useNegotiations() {
       return value;
     } catch (error) {
       setError(
-        error instanceof Error ? error.message : "Could not open the proposal.",
+        error instanceof Error
+          ? error.message
+          : "I couldn't open your offer draft. Try again.",
       );
       return undefined;
     }

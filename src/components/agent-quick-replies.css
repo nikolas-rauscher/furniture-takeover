@@ -1,0 +1,107 @@
+/* Quick replies: the student's likely next messages as soft pills on a small lip, rising in
+   one after another once Pako's answer has fully appeared. */
+.agent-quick-replies {
+  margin-top: var(--space-field);
+}
+.agent-quick-replies-line {
+  max-width: var(--measure-prose);
+  margin: 0 0 var(--space-label);
+  color: var(--ink);
+  font-size: var(--type-body);
+  font-weight: 650;
+  line-height: 1.45;
+  animation: quick-reply-rise 360ms var(--ease-out) both;
+}
+/* A handful of replies wraps instead of scrolling, so every one stays in view.
+   Next steps and changes to the search each keep their own row. */
+.agent-quick-reply-list + .agent-quick-reply-list {
+  margin-top: var(--space-label);
+}
+.agent-quick-reply-list.ai-suggestions {
+  flex-wrap: wrap;
+  gap: var(--space-label);
+  overflow: visible;
+  mask-image: none;
+}
+/* Shaped like the suggested answers to Pako's questions, raised on a lip that sinks under
+   the finger. The entrance moves `translate` and `scale`, the press `transform`. */
+.agent-quick-reply-list > .agent-quick-reply[data-slot="button"] {
+  min-height: 40px;
+  padding: 7px 15px;
+  border: 2px solid var(--card-line);
+  border-radius: 999px;
+  background: var(--surface);
+  font-weight: 650;
+  overflow-wrap: anywhere;
+  animation: quick-reply-rise 440ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  animation-delay: calc(140ms + var(--stagger, 0) * 70ms);
+  transition:
+    transform 90ms var(--ease-out),
+    box-shadow 90ms var(--ease-out),
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+/* What differs from the suggestion pill each reply is built on (ui/suggestion.css). */
+.agent-quick-reply-list > .agent-quick-reply.ai-suggestion[data-slot="button"] {
+  flex: 0 1 auto;
+  max-width: 100%;
+  color: var(--blue-dark);
+  white-space: normal;
+  box-shadow: 0 2px 0 var(--lip);
+}
+.agent-quick-reply-list
+  > .agent-quick-reply[data-slot="button"]:hover:not([data-disabled]) {
+  border-color: var(--blue);
+  background: var(--selected);
+}
+.agent-quick-reply-list
+  > .agent-quick-reply[data-slot="button"]:active:not([data-disabled]) {
+  transform: translateY(2px);
+  scale: 1;
+  box-shadow: 0 0 0 var(--lip);
+}
+/* Paused while the daily allowance is used up: flat and quiet, still focusable for its reason. */
+.agent-quick-reply-list
+  > .agent-quick-reply[data-slot="button"][data-disabled] {
+  border-color: transparent;
+  background: var(--canvas);
+  color: var(--muted);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+.agent-quick-reply-list
+  > .agent-quick-reply[data-slot="button"][data-disabled]:active {
+  transform: none;
+  scale: 1;
+}
+/* Keeping watch leads with a bell; once the watch runs it confirms itself in the same
+   place as a flat chip with a check. */
+.agent-quick-reply-list > .agent-quick-reply[data-kind="watch"] {
+  gap: 6px;
+}
+.agent-quick-reply-list > .agent-quick-reply-done {
+  min-height: 40px;
+  padding: 7px 15px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.agent-quick-replies-note {
+  margin: var(--space-label) 0 0;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  line-height: 1.5;
+}
+@keyframes quick-reply-rise {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+    scale: 0.96;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent-quick-replies-line,
+  .agent-quick-reply-list > .agent-quick-reply[data-slot="button"] {
+    animation: none;
+    transition: none;
+  }
+}

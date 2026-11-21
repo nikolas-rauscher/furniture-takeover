@@ -1,190 +1,262 @@
-/* Reserve & confirm prototype. Loaded only through useAvailability. */
+/* Reserve & confirm prototype, behind ?availability=reserve. Loaded only through useAvailability. */
 
-.availability-label.mine {
-  background: var(--blue);
-}
-.availability-note {
-  margin: 8px 0 0;
-  font-size: 11px;
-  line-height: 1.45;
-  color: var(--blue-dark);
-}
-
+/* The detail page's reservation panel: tinted status tiles above the buttons. */
 .availability-panel {
   display: grid;
   gap: 10px;
 }
-.availability-panel > .quiet-caption {
-  margin: 0;
+.availability-panel > .button.quiet {
+  justify-self: center;
 }
 .availability-status {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 14px 16px;
-  border: 1px solid #dce2f0;
-  border-radius: 10px;
-  background: var(--mist);
-  font-size: 13px;
-  line-height: 1.5;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--canvas);
+  font-size: var(--type-support);
+  line-height: 1.45;
+}
+.availability-status[data-tone="butter"] {
+  background: var(--butter);
+}
+.availability-status[data-tone="sky"] {
+  background: var(--sky);
 }
 .availability-status > svg {
-  flex-shrink: 0;
-  margin-top: 2px;
-  color: var(--blue);
+  flex: none;
+  margin-top: 1px;
+  color: var(--blue-dark);
+}
+.availability-status p,
+.availability-gone p {
+  display: grid;
+  gap: 2px;
+  margin: 0;
 }
 .availability-status strong,
-.availability-status span {
-  display: block;
+.availability-gone strong {
+  font-weight: 700;
 }
-.availability-status strong {
-  font-weight: 600;
-}
-.availability-status span {
-  margin-top: 2px;
+.availability-status span,
+.availability-gone span {
   color: var(--muted);
-  font-size: 12px;
 }
-.availability-status.confirmed {
-  border-color: var(--blue);
-  background: #f3f5ff;
-}
-.availability-status.muted {
-  background: var(--canvas);
-  border-color: var(--line);
-}
-.availability-cancel {
-  justify-self: center;
-  min-height: 36px;
-  color: var(--muted);
-  text-decoration: underline;
-}
-
-.availability-notices {
-  display: grid;
-  gap: 10px;
-  margin: 0 0 24px;
-}
-.availability-notice {
+.availability-gone {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px 16px;
-  padding: 14px 16px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: white;
+  gap: 12px;
+  font-size: var(--type-support);
 }
-.availability-notice.reopened {
-  border-color: var(--blue);
-  background: #f3f5ff;
+.availability-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.availability-rules .chip {
+  padding: 4px 10px;
+  font-size: var(--type-caption);
+}
+/* The rules still under discussion are named where they apply. */
+.availability-open-questions {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  line-height: 1.45;
+}
+
+/* Updates on home: lip cards where Pako brings the news, sad or happy. */
+.availability-notices {
+  display: grid;
+  gap: 12px;
+  margin: var(--space-group) 0;
+}
+.availability-notice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px 14px;
+  padding: 12px 14px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--lip);
+}
+.availability-notice[data-good] {
+  background: var(--sky);
 }
 .availability-notice > p {
-  flex: 1 1 260px;
+  display: grid;
+  gap: 2px;
   margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: var(--type-support);
+  line-height: 1.45;
 }
-.availability-notice > p > strong {
-  display: block;
-  font-weight: 600;
+.availability-notice > p strong {
+  font-weight: 700;
 }
 .availability-notice-actions {
+  grid-column: 2;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
 }
 
+/* Asking to reserve: Pako listens, three steps, pickup days as chips, the message to be sent. */
+.reservation-intro {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.reservation-intro > p {
+  margin: 0;
+  line-height: 1.45;
+}
 .reservation-steps {
   display: grid;
-  gap: 10px;
-  margin: 0 0 22px;
-  padding-left: 20px;
-  font-size: 13px;
-  line-height: 1.55;
+  gap: 8px;
+  margin: 0 0 18px;
+  padding: 0;
+  list-style: none;
+  font-size: var(--type-support);
+  line-height: 1.45;
+}
+.reservation-steps > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 2px solid var(--card-line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 3px 0 var(--lip);
 }
 .reservation-steps strong {
-  font-weight: 600;
+  font-weight: 700;
+}
+.reservation-step-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--sky);
+  color: var(--blue);
 }
 .pickup-days {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 0 0 14px;
+  margin: 0 0 16px;
   padding: 0;
   border: 0;
 }
 .pickup-days legend {
   width: 100%;
   margin-bottom: 8px;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--type-label);
+  font-weight: 650;
 }
 .pickup-days label {
   position: relative;
+  margin: 0;
 }
 .pickup-days input {
   position: absolute;
-  opacity: 0;
   inset: 0;
   margin: 0;
+  opacity: 0;
 }
 .pickup-days span {
   display: inline-flex;
   align-items: center;
   min-height: 40px;
-  padding: 8px 14px;
-  border: 1px solid #dfe3ed;
+  padding: 7px 15px;
+  border: 2px solid var(--card-line);
   border-radius: 999px;
-  background: white;
-  font-size: 13px;
+  background: var(--surface);
+  box-shadow: 0 2px 0 var(--lip);
+  color: var(--blue-dark);
+  font-size: var(--type-label);
+  font-weight: 650;
   cursor: pointer;
 }
 .pickup-days input:checked + span {
   border-color: var(--blue);
-  background: var(--blue);
-  color: white;
+  background: var(--selected);
 }
 .pickup-days input:focus-visible + span {
-  outline: 3px solid #8297f5;
+  outline: 3px solid var(--focus-ring);
   outline-offset: 3px;
 }
-
-.thread-reservation {
-  flex-shrink: 0;
-  margin: 12px 0 0;
-  padding: 14px 16px;
-  border: 1px solid var(--blue);
-  border-radius: 12px;
-  background: #f3f5ff;
-  font-size: 13px;
+.reservation-message {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+  margin-bottom: 12px;
 }
-.thread-reservation.compact {
+.reservation-message > span {
+  justify-self: start;
+  color: var(--muted);
+  font-size: var(--type-caption);
+}
+.reservation-message > p {
+  max-width: 92%;
+  margin: 0;
   padding: 10px 14px;
-  line-height: 1.45;
+  border-radius: 18px 18px 6px 18px;
+  background: var(--blue);
+  color: var(--on-primary);
+  font-size: var(--type-label);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* Pinned above a thread: the seller's request card, or one chip for the buyer. */
+.thread-reservation-chip {
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin: 10px 0 0;
+}
+.thread-reservation {
+  display: grid;
+  flex-shrink: 0;
+  gap: 10px;
+  margin: 10px 0 0;
+  padding: 12px 14px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--lip);
+  font-size: var(--type-support);
 }
 .thread-reservation-summary {
+  display: grid;
+  gap: 2px;
   margin: 0;
   line-height: 1.45;
 }
 .thread-reservation-summary strong {
-  display: block;
-  font-weight: 600;
+  font-weight: 700;
 }
 .thread-reservation-summary span {
   color: var(--muted);
-  font-size: 12px;
 }
 .thread-reservation-warning {
   display: flex;
   align-items: center;
   gap: 7px;
-  margin: 8px 0 10px;
+  margin: 0;
   padding: 7px 10px;
-  border-radius: 8px;
-  background: var(--yellow);
-  font-size: 12px;
+  border-radius: 10px;
+  background: var(--butter);
 }
 .thread-reservation-actions {
   display: flex;
@@ -192,11 +264,12 @@
   gap: 8px;
 }
 
+/* Demo time skips: a small flat pill, below dialogs, the toast and the compare tray. */
 .demo-controls {
   position: fixed;
   left: 24px;
   bottom: 24px;
-  z-index: 30;
+  z-index: 24;
   display: flex;
   flex-direction: column-reverse;
   align-items: flex-start;
@@ -207,103 +280,96 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: 36px;
-  padding: 7px 12px;
-  border: 1px dashed #9aa6cf;
+  min-height: 40px;
+  padding: 7px 14px;
+  border: 2px solid var(--card-line);
   border-radius: 999px;
-  background: white;
+  background: var(--surface);
+  box-shadow: 0 3px 0 var(--lip);
   color: var(--blue-dark);
-  font-size: 12px;
-  box-shadow: 0 4px 18px #2f3e641a;
+  font-size: var(--type-support);
+  font-weight: 650;
 }
 .demo-clock {
-  padding: 1px 6px;
+  padding: 1px 7px;
   border-radius: 999px;
-  background: var(--mist);
-  font-weight: 600;
+  background: var(--butter);
+  color: var(--ink);
+  font-weight: 700;
 }
 .demo-controls-panel {
   display: grid;
   gap: 6px;
-  width: 250px;
+  width: 260px;
   max-width: 100%;
   padding: 12px;
-  border: 1px solid #dce2f0;
-  border-radius: 12px;
-  background: white;
-  box-shadow: 0 8px 36px #2f3e6426;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--lip);
 }
 .demo-controls-panel > p {
   margin: 0 0 4px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--type-caption);
 }
 .demo-controls-panel > p strong {
   display: block;
   color: var(--ink);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--type-support);
+  font-weight: 700;
 }
 .demo-controls-panel button {
   display: grid;
   gap: 1px;
   padding: 8px 10px;
-  border: 1px solid #dfe3ed;
-  border-radius: 8px;
+  border-radius: 10px;
+  background: var(--canvas);
   text-align: left;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--type-support);
+  font-weight: 650;
 }
 .demo-controls-panel button:not(:disabled):hover {
-  background: var(--mist);
+  background: var(--selected);
 }
 .demo-controls-panel small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--type-caption);
   font-weight: 400;
 }
 .demo-controls-panel .demo-reset {
   margin-top: 4px;
-  border-style: dashed;
-  color: var(--blue-dark);
+  background: var(--butter);
 }
 
 @media (max-width: 760px) {
+  /* Above the floating tab bar, and above the compare tray when it shows. */
   .demo-controls {
     left: 12px;
-    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
-  }
-  .demo-controls-toggle {
-    min-height: 32px;
-    padding: 5px 10px;
-    font-size: 11px;
+    bottom: calc(var(--mobile-nav-height) + 16px);
   }
   body:has(.compare-tray) .demo-controls {
-    bottom: calc(148px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--mobile-nav-height) + 84px);
   }
-  /* Keep the end of scrolling pages clear of the floating pill. */
-  body:has(.demo-controls) .home-layout .main-content,
+  /* On a listing the pill rests above its docked action instead. */
+  body:has(.listing-detail-dock) .demo-controls {
+    bottom: calc(var(--listing-dock-height) + 16px);
+  }
+  body:has(.listing-detail-dock):has(.compare-tray) .demo-controls {
+    bottom: calc(var(--listing-dock-height) + 84px);
+  }
+  /* Scrolling pages end clear of the pill. */
   body:has(.demo-controls)
-    .main-content:is(
-      .view-detail,
-      .view-account,
-      .view-searches,
-      .view-compare
-    ) {
-    padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px));
+    .app-layout:not(
+      .chat-layout,
+      .messages-layout,
+      .selling-chat-layout,
+      .selling-photo-layout
+    )
+    > .main-content {
+    padding-bottom: calc(var(--mobile-nav-height) + 84px);
   }
-  body:has(.demo-controls):has(.compare-tray) .home-layout .main-content,
-  body:has(.demo-controls):has(.compare-tray)
-    .main-content:is(
-      .view-detail,
-      .view-account,
-      .view-searches,
-      .view-compare
-    ) {
-    padding-bottom: calc(224px + env(safe-area-inset-bottom, 0px));
-  }
-  /* Chat and inbox screens keep a composer above the nav, so the pill sits in
-     the empty middle of the header instead. */
+  /* Chat and inbox screens dock a composer at the bottom, so the pill waits at the top. */
   #root:has(
       .chat-layout,
       .messages-layout,
@@ -314,15 +380,12 @@
     top: calc(env(safe-area-inset-top, 0px) + 12px);
     bottom: auto;
     left: 50%;
-    transform: translateX(-50%);
+    translate: -50% 0;
     flex-direction: column;
     align-items: center;
   }
-  .thread-reservation {
-    margin-top: 8px;
-    padding: 10px 12px;
-  }
-  .thread-reservation-warning {
-    font-size: 11px;
+  .reservation-intro .ob-pako {
+    width: 52px;
+    height: 52px;
   }
 }

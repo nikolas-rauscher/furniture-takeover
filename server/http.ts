@@ -1,208 +1,69 @@
-import type { MessagesStore } from "./messages.ts";
-import {
-  createServer,
-  type IncomingMessage,
-  type ServerResponse,
-} from "node:http";
-import type { AgentErrorResponse, AgentQuota } from "../shared/agent.ts";
-import { AgentError } from "./errors.ts";
-import type { AgentService } from "./service.ts";
-import type { AgentRunEvent, AgentRuntimeHealth } from "../shared/runs.ts";
-import type { ListingsStore } from "./database.ts";
-import { reversePickupLocation } from "./location.ts";
+import { createServer } from "node:http";
 import { localOrigins } from "./config.ts";
-import { unavailableKeyStatus, type AccountKeyStore } from "./account-keys.ts";
-import type { AgentRuntime } from "./runtime.ts";
+import { AgentError } from "./errors.ts";
 import { serveFrontend } from "./frontend.ts";
+import { createAuthThrottle, resolveActor } from "./http-auth.ts";
+import {
+  checkOrigin,
+  sendPreflight,
+  setSecurityHeaders,
+} from "./http-headers.ts";
+import { sendRequestError } from "./http-io.ts";
+import { createAccountKeysRoute } from "./routes/account-keys.ts";
+import { createAdminRoute } from "./routes/admin.ts";
+import { createAgentRoutes } from "./routes/agent.ts";
+import { createHealthRoutes } from "./routes/health.ts";
+import { createListingRoutes } from "./routes/listings.ts";
+import { createLocationRoute } from "./routes/location.ts";
+import { createMessageRoutes } from "./routes/messages.ts";
+import type {
+  RouteContext,
+  RouteTable,
+  ServerOptions,
+} from "./routes/types.ts";
+import type { AgentService } from "./service.ts";
 
-export const MAX_BODY_BYTES = 3 * 1024 * 1024;
-
-function send(response: ServerResponse, status: number, body: unknown) {
-  if (response.destroyed || response.writableEnded) return;
-  response.writeHead(status, {
-    "Content-Type": "application/json; charset=utf-8",
-    "Cache-Control": "no-store",
-    "X-Content-Type-Options": "nosniff",
-  });
-  response.end(JSON.stringify(body));
-}
-
-function readBody(
-  request: IncomingMessage,
-  limit = MAX_BODY_BYTES,
-): Promise<unknown> {
-  return new Promise((resolve, reject) => {
-    let size = 0;
-    let done = false;
-    const chunks: Buffer[] = [];
-    request.on("data", (chunk: Buffer) => {
-      if (done) return;
-      size += chunk.length;
-      if (size > limit) {
-        done = true;
-        reject(
-          new AgentError(
-            413,
-            "BODY_TOO_LARGE",
-            "This request is too large. Use a photo smaller than 2 MB.",
-          ),
-        );
-        return;
-      }
-      chunks.push(chunk);
-    });
-    request.on("end", () => {
-      if (done) return;
-      done = true;
-      try {
-        resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")));
-      } catch {
-        reject(
-          new AgentError(
-            400,
-            "INVALID_JSON",
-            "The request body must be valid JSON.",
-          ),
-        );
-      }
-    });
-    request.on("error", () => {
-      if (!done) {
-        done = true;
-        reject(
-          new AgentError(
-            400,
-            "REQUEST_INTERRUPTED",
-            "The request was interrupted.",
-          ),
-        );
-      }
-    });
-    request.on("aborted", () => {
-      if (!done) {
-        done = true;
-        reject(
-          new AgentError(
-            499,
-            "REQUEST_CANCELLED",
-            "The request was cancelled.",
-          ),
-        );
-      }
-    });
-  });
-}
+export { MAX_BODY_BYTES } from "./http-io.ts";
 
 export function createAgentServer(
   service: AgentService,
-  options: {
-    cloud?: {
-      config: { supabaseUrl: string; supabaseKey: string };
-      authorize(header: string | undefined, charge?: boolean): Promise<string>;
-      quota(
-        authorization: string,
-        spend?: boolean,
-      ): Promise<AgentQuota & { allowed: boolean }>;
-    };
-    accountKeys?: AccountKeyStore;
-    forAccount?: (
-      owner: string,
-      authorization: string,
-    ) => Promise<{ service: AgentService; runtime: AgentRuntime }>;
-    maxConcurrent?: number;
-    staticDirectory?: string;
-    allowedOrigins?: readonly string[];
-    listings?: ListingsStore;
-    messages?: MessagesStore;
-    runtime?: {
-      health: () => AgentRuntimeHealth;
-      run: (
-        input: unknown,
-        emit: (event: AgentRunEvent) => void,
-        signal: AbortSignal,
-      ) => Promise<void>;
-    };
-  } = {},
+  options: ServerOptions = {},
 ) {
-  let active = 0;
-  let lastLocationLookup = 0;
-  const maxConcurrent = options.maxConcurrent ?? 4;
   const allowedOrigins = new Set(options.allowedOrigins ?? localOrigins());
-  let authenticationChecks = 0,
-    authenticationReset = 0,
-    pendingAuthentication = 0;
-  async function authorize(header: string | undefined, charge = true) {
-    if (!header) return options.cloud!.authorize(header, charge);
-    if (header.length > 4096)
-      throw new AgentError(
-        401,
-        "AUTH_REQUIRED",
-        "Sign in with a valid session.",
-      );
-    if (Date.now() >= authenticationReset) {
-      authenticationChecks = 0;
-      authenticationReset = Date.now() + 60_000;
-    }
-    // Funnel proxies all callers to loopback; spoofable forwarded IPs are not a security boundary.
-    if (pendingAuthentication >= 8 || authenticationChecks >= 120)
-      throw new AgentError(
-        429,
-        "AUTH_BUSY",
-        "Sign-in checks are busy. Please retry in a minute.",
-      );
-    authenticationChecks++;
-    pendingAuthentication++;
-    try {
-      return await options.cloud!.authorize(header, charge);
-    } finally {
-      pendingAuthentication--;
-    }
-  }
+  const authorize = options.cloud && createAuthThrottle(options.cloud);
+  const admin = createAdminRoute(options);
+  const demoAdminRoutes = new Map([
+    ["/api/reports", admin],
+    ["/api/listings/permission", admin],
+  ]);
+  const routes: RouteTable = {
+    ...createHealthRoutes(service, options, authorize),
+    ...createListingRoutes(options.listings),
+    ...createMessageRoutes(options.messages),
+    ...createAgentRoutes(service, options),
+    "/api/account/keys": createAccountKeysRoute(options),
+    "/api/location/reverse": createLocationRoute(),
+  };
+  const routeTable = new Map(Object.entries(routes));
+
   const server = createServer(async (request, response) => {
-    response.setHeader("X-Frame-Options", "DENY");
-    response.setHeader("Referrer-Policy", "no-referrer");
-    if (options.staticDirectory) {
-      const cloudOrigin = options.cloud
-        ? new URL(options.cloud.config.supabaseUrl).origin
-        : "";
-      response.setHeader(
-        "Content-Security-Policy",
-        [
-          "default-src 'self'",
-          "script-src 'self'",
-          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-          "font-src 'self' https://fonts.gstatic.com",
-          "img-src 'self' data: blob: https:",
-          `connect-src 'self' ${cloudOrigin} ${cloudOrigin.replace(/^http/, "ws")}`,
-          "object-src 'none'",
-          "base-uri 'none'",
-          "frame-ancestors 'none'",
-          "form-action 'self'",
-        ].join("; "),
-      );
-    }
+    setSecurityHeaders(
+      response,
+      options.staticDirectory,
+      options.cloud?.config.supabaseUrl,
+    );
     const controller = new AbortController();
     request.once("aborted", () => controller.abort());
     response.once("close", () => {
       if (!response.writableEnded) controller.abort();
     });
+
     try {
-      const origin = request.headers.origin;
-      if (origin && !allowedOrigins.has(origin))
-        throw new AgentError(
-          403,
-          "ORIGIN_NOT_ALLOWED",
-          "This origin is not allowed.",
-        );
-      if (origin) response.setHeader("Access-Control-Allow-Origin", origin);
-      response.setHeader("Vary", "Origin");
+      checkOrigin(request, response, allowedOrigins);
       const url = new URL(request.url ?? "/", "http://127.0.0.1");
-      const pathname = url.pathname;
-      if (
-        options.staticDirectory &&
-        pathname !== "/api" &&
-        !pathname.startsWith("/api/")
-      ) {
+      const { pathname } = url;
+      const apiPath = pathname.startsWith("/api/");
+      if (options.staticDirectory && pathname !== "/api" && !apiPath) {
         await serveFrontend(
           request,
           response,
@@ -211,399 +72,38 @@ export function createAgentServer(
         );
         return;
       }
-      if (request.method === "OPTIONS" && pathname.startsWith("/api/")) {
-        response.writeHead(204, {
-          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-          "Access-Control-Allow-Headers":
-            "Content-Type, X-Message-Workspace, Authorization",
-          "Access-Control-Max-Age": "600",
-        });
-        response.end();
+      if (request.method === "OPTIONS" && apiPath) {
+        sendPreflight(response);
         return;
       }
-      if (pathname === "/api/config" && request.method === "GET") {
-        send(response, 200, options.cloud?.config ?? {});
-        return;
-      }
-      let actor: string | void = undefined;
-      if (options.cloud) {
-        if (
-          pathname.startsWith("/api/messages") ||
-          pathname.startsWith("/api/listings")
-        )
-          throw new AgentError(
-            410,
-            "CLOUD_MODE",
-            "Use the signed-in marketplace.",
-          );
-        if (
-          pathname.startsWith("/api/agent/") ||
-          pathname === "/api/account/keys"
-        )
-          actor = await authorize(
-            request.headers.authorization,
-            pathname.startsWith("/api/agent/"),
-          );
-      }
-      if (pathname === "/api/account/keys") {
-        if (!options.cloud || !actor || !request.headers.authorization)
-          throw new AgentError(
-            401,
-            "AUTH_REQUIRED",
-            "Sign in to manage your API keys.",
-          );
-        if (!["GET", "PUT", "DELETE"].includes(request.method ?? ""))
-          throw new AgentError(
-            405,
-            "METHOD_NOT_ALLOWED",
-            "Use GET, PUT or DELETE.",
-          );
-        if (!options.accountKeys) {
-          if (request.method !== "GET")
-            throw new AgentError(
-              503,
-              "KEY_STORAGE_UNAVAILABLE",
-              "API key storage has not been configured on the server.",
-            );
-          send(response, 200, unavailableKeyStatus());
-          return;
-        }
-        if (request.method === "GET") {
-          send(
-            response,
-            200,
-            await options.accountKeys.status(
-              actor,
-              request.headers.authorization,
-            ),
-          );
-          return;
-        }
-        if (
-          !/^application\/json(?:\s*;|$)/i.test(
-            request.headers["content-type"] ?? "",
-          )
-        )
-          throw new AgentError(415, "UNSUPPORTED_MEDIA_TYPE", "Send JSON.");
-        if (Number(request.headers["content-length"] ?? 0) > 2048)
-          throw new AgentError(
-            413,
-            "BODY_TOO_LARGE",
-            "This API key request is too large.",
-          );
-        send(
-          response,
-          200,
-          await options.accountKeys.change(
-            actor,
-            request.headers.authorization,
-            await readBody(request, 2048),
-            request.method === "PUT",
-          ),
-        );
-        return;
-      }
-      if (pathname === "/api/messages") {
-        if (!options.messages)
-          throw new AgentError(
-            503,
-            "MESSAGES_UNAVAILABLE",
-            "Messages are not configured.",
-          );
-        const workspace = request.headers["x-message-workspace"];
-        if (
-          typeof workspace !== "string" ||
-          !/^[a-f0-9-]{36}$/i.test(workspace)
-        )
-          throw new AgentError(
-            400,
-            "INVALID_WORKSPACE",
-            "Open messages from your local workspace.",
-          );
-        if (request.method === "GET")
-          send(response, 200, {
-            conversations: options.messages.list(workspace),
-          });
-        else if (request.method === "DELETE" || request.method === "PATCH") {
-          const body = await readBody(request);
-          send(response, 200, {
-            conversation: options.messages.setDeleted(
-              workspace,
-              body,
-              request.method === "DELETE",
-            ),
-          });
-        } else if (request.method === "POST") {
-          if (
-            !/^application\/json(?:\s*;|$)/i.test(
-              request.headers["content-type"] ?? "",
-            )
-          )
-            throw new AgentError(415, "UNSUPPORTED_MEDIA_TYPE", "Send JSON.");
-          const body = await readBody(request);
-          send(response, 200, {
-            conversation: options.messages.send(workspace, body),
-          });
-        } else
-          throw new AgentError(405, "METHOD_NOT_ALLOWED", "Use GET or POST.");
-        return;
-      }
-      if (pathname === "/api/health" && request.method === "GET") {
-        const owner =
-          options.cloud && request.headers.authorization
-            ? await authorize(request.headers.authorization, false)
-            : undefined;
-        const agents =
-          owner && request.headers.authorization && options.forAccount
-            ? await options.forAccount!(owner, request.headers.authorization)
-            : { service, runtime: options.runtime };
-        send(response, 200, {
-          ...agents.service.health(),
-          ...(agents.runtime?.health() ?? {}),
-          ...(owner && request.headers.authorization && options.cloud
-            ? {
-                quota: await options.cloud.quota(request.headers.authorization),
-              }
-            : {}),
-        });
-        return;
-      }
-      if (pathname === "/api/location/reverse") {
-        if (request.method !== "POST")
-          throw new AgentError(
-            405,
-            "METHOD_NOT_ALLOWED",
-            "Use POST for location lookups.",
-          );
-        if (
-          !/^application\/json(?:\s*;|$)/i.test(
-            request.headers["content-type"] ?? "",
-          )
-        )
-          throw new AgentError(
-            415,
-            "UNSUPPORTED_MEDIA_TYPE",
-            "Send the request as application/json.",
-          );
-        const body = await readBody(request);
-        if (typeof body !== "object" || body === null || Array.isArray(body))
-          throw new AgentError(
-            400,
-            "INVALID_LOCATION",
-            "Provide valid location coordinates.",
-          );
-        if (Date.now() - lastLocationLookup < 1100) {
-          response.setHeader("Retry-After", "2");
-          throw new AgentError(
-            429,
-            "LOCATION_LOOKUP_BUSY",
-            "Please wait a moment before locating again.",
-          );
-        }
-        lastLocationLookup = Date.now();
-        const coordinates = body as { latitude?: unknown; longitude?: unknown };
-        send(
-          response,
-          200,
-          await reversePickupLocation(
-            coordinates.latitude,
-            coordinates.longitude,
-            controller.signal,
-          ),
-        );
-        return;
-      }
-      if (
-        [
-          "/api/listings",
-          "/api/listings/demo/seed",
-          "/api/listings/demo/update",
-        ].includes(pathname)
-      ) {
-        const expectedMethod = pathname === "/api/listings" ? "GET" : "POST";
-        if (request.method !== expectedMethod)
-          throw new AgentError(
-            405,
-            "METHOD_NOT_ALLOWED",
-            `Use ${expectedMethod} for this endpoint.`,
-          );
-        if (!options.listings)
-          throw new AgentError(
-            503,
-            "LISTINGS_NOT_CONFIGURED",
-            "The listing database is not configured.",
-          );
-        if (pathname === "/api/listings") {
-          if (
-            url.searchParams.has("demo") &&
-            url.searchParams.get("demo") !== "true"
-          )
-            throw new AgentError(
-              400,
-              "INVALID_REQUEST",
-              "Only the demo catalog is available from this endpoint.",
-            );
-          send(response, 200, { listings: options.listings.listDemo() });
-          return;
-        }
-        if (Number(request.headers["content-length"] ?? 0) > MAX_BODY_BYTES)
-          throw new AgentError(
-            413,
-            "BODY_TOO_LARGE",
-            "This request is too large.",
-          );
-        if (pathname === "/api/listings/demo/seed") {
-          request.resume();
-          send(response, 200, { listings: options.listings.seedDemo() });
-          return;
-        }
-        if (
-          !/^application\/json(?:\s*;|$)/i.test(
-            request.headers["content-type"] ?? "",
-          )
-        )
-          throw new AgentError(
-            415,
-            "UNSUPPORTED_MEDIA_TYPE",
-            "Send the request as application/json.",
-          );
-        const body = await readBody(request);
-        if (typeof body !== "object" || body === null || Array.isArray(body))
-          throw new AgentError(
-            400,
-            "INVALID_REQUEST",
-            "Provide the demo listings to update.",
-          );
-        send(response, 200, {
-          listings: options.listings.updateDemo(
-            (body as { listings?: unknown }).listings,
-          ),
-        });
-        return;
-      }
-      if (
-        pathname !== "/api/agent/assist" &&
-        pathname !== "/api/agent/run" &&
-        pathname !== "/api/agent/group-photos"
-      )
-        throw new AgentError(404, "NOT_FOUND", "This endpoint does not exist.");
-      if (request.method !== "POST")
-        throw new AgentError(
-          405,
-          "METHOD_NOT_ALLOWED",
-          "Use POST for agent requests.",
-        );
-      if (
-        !/^application\/json(?:\s*;|$)/i.test(
-          request.headers["content-type"] ?? "",
-        )
-      )
-        throw new AgentError(
-          415,
-          "UNSUPPORTED_MEDIA_TYPE",
-          "Send the request as application/json.",
-        );
-      if (Number(request.headers["content-length"] ?? 0) > MAX_BODY_BYTES)
-        throw new AgentError(
-          413,
-          "BODY_TOO_LARGE",
-          "This request is too large. Use a photo smaller than 2 MB.",
-        );
-      if (active >= maxConcurrent) {
-        response.setHeader("Retry-After", "1");
-        throw new AgentError(
-          429,
-          "TOO_MANY_REQUESTS",
-          "The agent is handling other requests. Please try again shortly.",
-        );
-      }
-      active++;
-      try {
-        const body = await readBody(request);
-        const agents =
-          actor && request.headers.authorization && options.forAccount
-            ? await options.forAccount(actor, request.headers.authorization)
-            : { service, runtime: options.runtime };
-        if (actor && request.headers.authorization && options.cloud) {
-          const quota = await options.cloud.quota(
-            request.headers.authorization,
-            true,
-          );
-          response.setHeader("X-AI-Quota-Limit", quota.limit);
-          response.setHeader("X-AI-Quota-Remaining", quota.remaining);
-          response.setHeader("X-AI-Quota-Reset", quota.resetAt);
-          if (!quota.allowed) {
-            response.setHeader(
-              "Retry-After",
-              Math.max(
-                1,
-                Math.ceil((Date.parse(quota.resetAt) - Date.now()) / 1000),
-              ),
-            );
-            throw new AgentError(
-              429,
-              "AI_QUOTA_EXCEEDED",
-              `The daily AI allowance is used up. It resets at ${quota.resetAt}. Listings and messages are still available.`,
-            );
-          }
-        }
-        if (pathname === "/api/agent/run") {
-          if (!agents.runtime)
-            throw new AgentError(
-              503,
-              "AGENT_NOT_CONFIGURED",
-              "The agent runtime is not configured.",
-            );
-          response.writeHead(200, {
-            "Content-Type": "application/x-ndjson; charset=utf-8",
-            "Cache-Control": "no-store, no-transform",
-            "X-Content-Type-Options": "nosniff",
-            "X-Accel-Buffering": "no",
-          });
-          response.flushHeaders();
-          await agents.runtime.run(
-            body,
-            (event) => {
-              if (!response.destroyed && !response.writableEnded)
-                response.write(JSON.stringify(event) + "\n");
-            },
-            controller.signal,
-          );
-          if (!response.destroyed && !response.writableEnded) response.end();
-          return;
-        }
-        const result =
-          pathname === "/api/agent/group-photos"
-            ? await agents.service.groupPhotos(body, controller.signal)
-            : await agents.service.assist(body, controller.signal);
-        send(response, 200, result);
-      } finally {
-        active--;
-      }
-    } catch (error) {
-      const safe =
-        error instanceof AgentError
-          ? error
-          : new AgentError(
-              500,
-              "INTERNAL_ERROR",
-              "The request could not be completed. Please try again.",
-            );
-      const body: AgentErrorResponse = {
-        error: { code: safe.code, message: safe.message },
+
+      const context: RouteContext = {
+        request,
+        response,
+        url,
+        signal: controller.signal,
       };
-      if (response.headersSent) {
-        if (!response.destroyed && !response.writableEnded)
-          response.end(
-            JSON.stringify({
-              type: "error",
-              code: safe.code,
-              message: safe.message,
-            }) + "\n",
-          );
+      // The shared demo admin endpoints have their own availability and authorization checks.
+      const adminRoute =
+        demoAdminRoutes.get(pathname) ??
+        (pathname.startsWith("/api/admin/") ? admin : undefined);
+      if (adminRoute) {
+        await adminRoute(context);
         return;
       }
-      send(response, safe.status, body);
+      context.actor = await resolveActor(request, pathname, authorize);
+      const route =
+        routeTable.get(`${request.method} ${pathname}`) ??
+        routeTable.get(pathname);
+      if (!route)
+        throw new AgentError(404, "NOT_FOUND", "This endpoint does not exist.");
+      await route(context);
+    } catch (error) {
+      sendRequestError(
+        response,
+        error,
+        new URL(request.url ?? "/", "http://127.0.0.1").pathname,
+      );
     }
   });
   server.requestTimeout = 25_000;

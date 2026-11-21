@@ -46,6 +46,8 @@ export type AgentRunRequest = {
     currentQuery?: string;
     previousAnswer?: string;
     previousMatchIds?: string[];
+    /** The asking student's own listings; Pako never offers them to buy. */
+    ownListingIds?: string[];
     originalRequest?: string;
     /** Stored preferences; explicit updates in text take precedence. */
     maxPrice?: number;
@@ -55,9 +57,15 @@ export type AgentRunRequest = {
     condition?: string;
     source?: string;
     intent?: "search" | "listing_review" | "listing_assist" | "negotiation";
+    listingStart?: boolean;
+    photoAnalysis?: { missingDetails?: string[]; keywords?: string[] };
     currentDraft?: AgentListingDraft;
     previousQuestion?: string;
     negotiation?: Negotiation;
+    skippedQuestions?: Pick<
+      AgentListingQuestion,
+      "question" | "listingField" | "choices"
+    >[];
     answeredQuestions?: { question: string; answer: string }[];
     recentMessages?: { role: "user" | "assistant"; text: string }[];
   };
@@ -90,6 +98,7 @@ export type AgentRunEvent =
       state: "running" | "complete" | "error" | "needs_input";
       /** The work this observed step belongs to; never a pre-generated plan. */
       task?: AgentTaskKind;
+      detail?: string;
       failure?: AgentToolFailure;
     }
   | { type: "text_delta"; text: string }
@@ -116,4 +125,8 @@ export type AgentRuntimeHealth = {
   model: string;
   webSearchConfigured: boolean;
 };
-import type { AgentActionEvent, AgentListingDraft } from "./actions.ts";
+import type {
+  AgentActionEvent,
+  AgentListingDraft,
+  AgentListingQuestion,
+} from "./actions.ts";

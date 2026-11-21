@@ -2,22 +2,31 @@ import { Button } from "./ui/button";
 import type { ReactNode } from "react";
 import {
   ArrowLeft,
+  CalendarCheck,
+  Car,
   GitCompareArrows,
+  Handshake,
   MapPin,
   MessageCircle,
   Pencil,
+  Truck,
 } from "@/components/icons";
+import type { StripView } from "../dealWords";
 import { listingPhotos } from "../../shared/listingPhotos";
-import { money, type Product } from "../../shared/marketplace";
+import { isMine, money, type Product } from "../../shared/marketplace";
 import { transportGuidance } from "../transportGuidance";
 import { relatedListings } from "../../shared/relatedListings";
 import PhotoGallery from "./PhotoGallery";
 import SaveToggle from "./SaveToggle";
+import PakoReaction from "./PakoReaction";
+import { canOffer, offerLabel } from "./AgentListings";
 import "./listing-detail.css";
 
 type ListingDetailPageProps = {
   cloud?: boolean;
   selected?: Product;
+  /** Whether the listings are known; until then a missing listing may still come. */
+  loaded: boolean;
   catalog?: Product[];
   renderProduct?: (product: Product) => ReactNode;
   reportAction?: ReactNode;
@@ -25,17 +34,83 @@ type ListingDetailPageProps = {
   compared?: boolean;
   onToggleFavorite?: () => void;
   onToggleCompare?: () => void;
+  /** Names where Back leads: the chat, the catalogue, your listings… */
+  backLabel: string;
   onBack(): void;
   onMessage(): void;
+  /** Pako drafts an offer, or plans the pickup of a free item. */
+  onOffer(): void;
+  /** The buyer's deal on this listing, read from their conversation. */
+  deal?: StripView;
+  /** Opens the conversation the deal is in. */
+  onOpenChat(): void;
   onEdit(): void;
   onAskAgent(): void;
   /** Feature-flagged availability prototype; replaces "Message seller". */
   availabilityPanel?: ReactNode;
 };
 
+/** Where the buyer's deal on this listing stands, in the words of its thread. */
+function ListingDeal({
+  view,
+  reservedForYou,
+}: {
+  view: StripView;
+  reservedForYou: boolean;
+}) {
+  const booked = view.tone === "booked";
+  return (
+    <p className="listing-detail-deal" data-tone={view.tone}>
+      <span className="listing-detail-deal-icon" aria-hidden="true">
+        {booked ? <CalendarCheck size={17} /> : <Handshake size={17} />}
+      </span>
+      <span>
+        <strong>{reservedForYou ? "Reserved for you" : view.lead}</strong>
+        {[view.detail, view.status].filter(Boolean).map((part) => (
+          <span key={part}> · {part}</span>
+        ))}
+      </span>
+    </p>
+  );
+}
+
+/** One tap opens the offer card with Pako's proposal in Messages. */
+function OfferButton({
+  label,
+  primary,
+  onOffer,
+}: {
+  label: string;
+  primary: boolean;
+  onOffer: () => void;
+}) {
+  return (
+    <Button
+      className={`button ${primary ? "primary full" : "secondary"} listing-detail-offer`}
+      type="button"
+      data-prefetch="messages"
+      onClick={onOffer}
+    >
+      <PakoReaction mood="idle" size={26} still />
+      <span>
+        {label}
+        <span className="listing-detail-offer-agent"> with Pako</span>
+      </span>
+    </Button>
+  );
+}
+
+/** The transport estimate in a facts tile: short, so it stays one line in any font. */
+const TRANSPORT_TILES = {
+  car: "Estate car may do",
+  van: "Van likely needed",
+  unknown: "Ask for measurements",
+} as const;
+
 export default function ListingDetailPage({
   cloud = false,
   selected,
+  loaded,
   catalog = [],
   renderProduct,
   reportAction,
@@ -43,37 +118,43 @@ export default function ListingDetailPage({
   compared = false,
   onToggleFavorite,
   onToggleCompare,
+  backLabel,
   onBack,
   onMessage,
+  onOffer,
+  deal,
+  onOpenChat,
   onEdit,
   onAskAgent,
   availabilityPanel,
 }: ListingDetailPageProps) {
+  if (!selected && !loaded) return null;
   if (!selected)
     return (
-      <div className="empty-state">
-        <h1>Listing not found</h1>
+      <div className="listing-detail-missing">
+        <PakoReaction mood="sad" size={88} />
+        <h1>Listing unavailable</h1>
+        <p>Go back to browse other listings.</p>
         <Button className="button secondary" onClick={onBack}>
-          Back to listings
+          {backLabel}
         </Button>
       </div>
     );
   const similar = renderProduct ? relatedListings(selected, catalog) : [];
-  const description = selected.demo
-    ? selected.description
-        .split(/\n\n(?:Sample listing for testing|SYNTHETIC DEMO)/i)[0]
-        .trim()
-    : selected.description;
-  const samplePhotoNote =
-    selected.description.match(/Photo (?:illustrates|shows) [^\n]+/)?.[0] ?? "";
   const transport = transportGuidance(selected.title, selected.dimensions);
-  const mobileContact = !selected.own && selected.status === "active";
+  const mine = isMine(selected);
+  const reservedForYou =
+    deal?.tone === "booked" && selected.status === "reserved";
+  /** Leads the main action's label where it docks at the bottom of a phone screen. */
+  const dockPrice = (
+    <span className="listing-detail-dock-price">
+      {money(selected.price)} ·{" "}
+    </span>
+  );
   return (
-    <article
-      className={`listing-detail${mobileContact ? " has-mobile-contact" : ""}`}
-    >
+    <article className="listing-detail">
       <Button className="back-link" type="button" onClick={onBack}>
-        <ArrowLeft size={16} /> Back to listings
+        <ArrowLeft size={16} /> {backLabel}
       </Button>
       <div className="listing-detail-main">
         <div className="listing-detail-media">
@@ -82,161 +163,210 @@ export default function ListingDetailPage({
             images={listingPhotos(selected)}
             title={selected.title}
           />
-          {(selected.demo || selected.photoSourceUrl || !cloud) && (
+          {!cloud && !selected.demo && (
             <div className="listing-detail-provenance">
-              {selected.demo ? (
-                <p>
-                  <strong>Sample listing.</strong> Price and pickup details are
-                  fictional; this seller cannot reply. {samplePhotoNote}
-                </p>
-              ) : !cloud ? (
-                <p>
-                  Saved in this browser. Not published to an external
-                  marketplace.
-                </p>
-              ) : null}
-              {selected.photoSourceUrl && (
-                <a
-                  href={selected.photoSourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Original photo listing
-                </a>
-              )}
+              <p>
+                Saved in this browser. Not published to an external marketplace.
+              </p>
             </div>
           )}
         </div>
         <div className="listing-detail-summary">
-          <div className="listing-detail-heading">
-            {selected.own && (
-              <span className="listing-detail-owner">Your listing</span>
+          <div className="listing-detail-card">
+            <div className="listing-detail-heading">
+              {mine && (
+                <span className="listing-detail-owner">Your listing</span>
+              )}
+              <h1>{selected.title}</h1>
+              <div className="listing-detail-price-row">
+                <strong className="listing-detail-price">
+                  {money(selected.price)}
+                </strong>
+                {selected.status !== "active" && (
+                  <span
+                    className="listing-detail-status"
+                    data-mine={reservedForYou || undefined}
+                  >
+                    {selected.status === "sold"
+                      ? "Sold"
+                      : selected.status === "reserved"
+                        ? reservedForYou
+                          ? "Reserved for you"
+                          : "Reserved"
+                        : "Archived"}
+                  </span>
+                )}
+              </div>
+              <p className="listing-detail-location">
+                <MapPin size={15} aria-hidden="true" />
+                {selected.location}
+              </p>
+            </div>
+            <dl className="listing-detail-facts">
+              <div>
+                <dt>Condition</dt>
+                <dd>{selected.condition || "Not specified"}</dd>
+              </div>
+              <div>
+                <dt>Dimensions</dt>
+                <dd>{selected.dimensions || "Not specified"}</dd>
+              </div>
+              <div>
+                <dt>Pickup</dt>
+                <dd>{selected.available || "Ask the seller"}</dd>
+              </div>
+              {transport && (
+                <div data-vehicle={transport.vehicle}>
+                  <dt>
+                    {transport.vehicle === "van" ? (
+                      <Truck size={14} aria-hidden="true" />
+                    ) : (
+                      <Car size={14} aria-hidden="true" />
+                    )}
+                    Transport
+                  </dt>
+                  <dd>{TRANSPORT_TILES[transport.vehicle]}</dd>
+                </div>
+              )}
+            </dl>
+            {transport && (
+              <p className="quiet-caption listing-detail-transport-note">
+                {transport.message} {transport.note}
+              </p>
             )}
-            <h1>{selected.title}</h1>
-            <div className="listing-detail-price-row">
-              <strong className="listing-detail-price">
-                {money(selected.price)}
-              </strong>
-              {selected.status !== "active" && (
-                <span className="listing-detail-status">
-                  {selected.status === "sold"
-                    ? "Sold"
-                    : selected.status === "reserved"
-                      ? "Reserved"
-                      : "Withdrawn"}
+            {!mine && (
+              <div className="listing-detail-seller">
+                <span className="listing-detail-avatar" aria-hidden="true">
+                  {selected.seller
+                    .trim()
+                    .split(/\s+/)
+                    .slice(0, 2)
+                    .map((part) => part[0])
+                    .join("")
+                    .toUpperCase() || selected.initials}
                 </span>
+                <div>
+                  <strong>{selected.seller || "Seller"}</strong>
+                  {selected.seller && <span>Seller</span>}
+                </div>
+              </div>
+            )}
+            <div className="listing-detail-actions">
+              {mine ? (
+                <div className="listing-detail-owner-actions">
+                  <div className="listing-detail-dock">
+                    <Button
+                      className="button secondary small"
+                      type="button"
+                      onClick={onEdit}
+                    >
+                      <Pencil size={16} />
+                      <span>{dockPrice}Edit listing</span>
+                    </Button>
+                  </div>
+                  <Button
+                    className="button secondary small"
+                    type="button"
+                    onClick={onAskAgent}
+                  >
+                    Ask Pako to improve this listing
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {deal && (
+                    <ListingDeal view={deal} reservedForYou={reservedForYou} />
+                  )}
+                  {availabilityPanel ? (
+                    <>
+                      {availabilityPanel}
+                      {canOffer(selected) && (
+                        <OfferButton
+                          label={offerLabel(selected)}
+                          primary={false}
+                          onOffer={onOffer}
+                        />
+                      )}
+                    </>
+                  ) : deal ? (
+                    <div className="listing-detail-dock">
+                      <Button
+                        animateIcon
+                        className="button primary full"
+                        type="button"
+                        onClick={onOpenChat}
+                      >
+                        <MessageCircle size={17} />
+                        <span>Open conversation</span>
+                      </Button>
+                    </div>
+                  ) : canOffer(selected) ? (
+                    // Pako's offer leads, as on search results; the seller stays one tap away.
+                    <div className="listing-detail-dock listing-detail-buy">
+                      <OfferButton
+                        label={offerLabel(selected)}
+                        primary
+                        onOffer={onOffer}
+                      />
+                      <Button
+                        className="button secondary listing-detail-message"
+                        type="button"
+                        data-prefetch="messages"
+                        aria-label="Message seller"
+                        onClick={onMessage}
+                      >
+                        <MessageCircle size={17} aria-hidden="true" />
+                        <span>
+                          Message
+                          <span className="listing-detail-message-object">
+                            {" "}
+                            seller
+                          </span>
+                        </span>
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      className="button primary full"
+                      type="button"
+                      disabled
+                    >
+                      <MessageCircle size={17} />
+                      Message seller
+                    </Button>
+                  )}
+                </>
+              )}
+              {(onToggleFavorite || onToggleCompare) && (
+                <div className="listing-detail-tools">
+                  {onToggleFavorite && (
+                    <SaveToggle
+                      title={selected.title}
+                      saved={favorite}
+                      onToggle={onToggleFavorite}
+                    />
+                  )}
+                  {onToggleCompare && (
+                    <Button
+                      type="button"
+                      onClick={onToggleCompare}
+                      aria-pressed={compared}
+                    >
+                      <GitCompareArrows size={16} />
+                      Compare
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
-            <p className="listing-detail-location">
-              <MapPin size={15} aria-hidden="true" />
-              {selected.location}
-            </p>
-          </div>
-          <dl className="listing-detail-facts">
-            <div>
-              <dt>Condition</dt>
-              <dd>{selected.condition || "Not specified"}</dd>
-            </div>
-            <div>
-              <dt>Dimensions</dt>
-              <dd>{selected.dimensions || "Not specified"}</dd>
-            </div>
-            <div>
-              <dt>Collection</dt>
-              <dd>{selected.available || "Arrange with seller"}</dd>
-            </div>
-          </dl>
-          <div className="listing-detail-seller">
-            <span className="listing-detail-avatar" aria-hidden="true">
-              {selected.seller
-                .trim()
-                .split(/\s+/)
-                .slice(0, 2)
-                .map((part) => part[0])
-                .join("")
-                .toUpperCase() || selected.initials}
-            </span>
-            <div>
-              <strong>{selected.seller || "Seller"}</strong>
-              <span>{selected.own ? "Your listing" : "Listed by seller"}</span>
-            </div>
-          </div>
-          <div className="listing-detail-actions">
-            {(!cloud || !selected.own) && (
-              <div
-                className={
-                  mobileContact && !availabilityPanel
-                    ? "listing-detail-mobile-contact"
-                    : undefined
-                }
-              >
-                {availabilityPanel ?? (
-                  <Button
-                    animateIcon
-                    className="button primary full"
-                    type="button"
-                    disabled={selected.status !== "active"}
-                    onClick={onMessage}
-                  >
-                    <MessageCircle size={17} /> Message seller
-                  </Button>
-                )}
-              </div>
-            )}
-            {(!cloud || selected.own) && (
-              <div className="listing-detail-owner-actions">
-                <Button
-                  className="button secondary"
-                  type="button"
-                  onClick={onEdit}
-                >
-                  <Pencil size={16} /> Edit listing
-                </Button>
-                <Button
-                  className="button secondary"
-                  type="button"
-                  onClick={onAskAgent}
-                >
-                  Ask the agent
-                </Button>
-              </div>
-            )}
-            {(onToggleFavorite || onToggleCompare) && (
-              <div className="listing-detail-tools">
-                {onToggleFavorite && (
-                  <SaveToggle
-                    title={selected.title}
-                    saved={favorite}
-                    onToggle={onToggleFavorite}
-                  />
-                )}
-                {onToggleCompare && (
-                  <Button
-                    type="button"
-                    onClick={onToggleCompare}
-                    aria-pressed={compared}
-                  >
-                    <GitCompareArrows size={16} />
-                    {compared ? "Added to compare" : "Compare"}
-                  </Button>
-                )}
-              </div>
+            {reportAction && (
+              <div className="listing-detail-report">{reportAction}</div>
             )}
           </div>
-          {reportAction && (
-            <div className="listing-detail-report">{reportAction}</div>
-          )}
-          {description && (
+          {selected.description && (
             <section className="listing-detail-description">
               <h2>About this item</h2>
-              <p>{description}</p>
-            </section>
-          )}
-          {transport && (
-            <section className="listing-detail-description transport-guidance">
-              <h2>{transport.label}</h2>
-              <p>{transport.message}</p>
-              <p className="quiet-caption">{transport.note}</p>
+              <p>{selected.description}</p>
             </section>
           )}
           {selected.pickupPoint && (
@@ -262,13 +392,11 @@ export default function ListingDetailPage({
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    Address source
+                    Check address source
                   </a>
                 </div>
                 <p className="listing-detail-pickup-note">
-                  {selected.demo
-                    ? "Real meeting point; this sample item is not stored here."
-                    : "Confirm the meeting point with the seller before travelling."}
+                  Confirm the meeting point with the seller before travelling.
                 </p>
               </div>
             </section>
@@ -282,7 +410,6 @@ export default function ListingDetailPage({
         >
           <div className="listing-detail-related-heading">
             <h2 id="similar-items-heading">Similar items</h2>
-            <p>More available listings with details in common.</p>
           </div>
           <div className="listing-detail-related-grid">
             {similar.map((item) => (

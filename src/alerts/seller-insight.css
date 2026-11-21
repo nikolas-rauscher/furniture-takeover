@@ -1,0 +1,56 @@
+/* Price context under the asking price: a butter note, and in developer mode a row of tiles. */
+.seller-insight {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--butter);
+  font-size: var(--type-support);
+  line-height: 1.45;
+}
+.seller-insight .seller-insight-range,
+.seller-insight .seller-insight-demand > p {
+  display: block;
+  margin: 0;
+}
+/* Inside the listing preview, the range keeps the note's size instead of the price's. */
+.seller-insight .seller-insight-range strong {
+  display: inline;
+  margin: 0;
+  color: var(--ink);
+  font-size: inherit;
+  font-weight: 700;
+}
+.seller-insight-demand {
+  display: grid;
+  gap: 6px;
+}
+.seller-insight-demand > p {
+  color: var(--muted);
+  font-size: var(--type-caption);
+}
+.seller-insight-demand ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.seller-insight-demand li {
+  display: grid;
+  justify-items: center;
+  min-width: 64px;
+  padding: 4px 10px;
+  border: 2px solid var(--card-line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 2px 0 var(--lip);
+  font-size: var(--type-caption);
+}
+.seller-insight .seller-insight-demand li strong {
+  margin: 0;
+  color: var(--blue-dark);
+  font-size: var(--type-label);
+}

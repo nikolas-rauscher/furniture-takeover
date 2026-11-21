@@ -10,7 +10,7 @@ export interface NegotiationRepository {
   list(): Negotiation[];
   save(value: Negotiation, expectedVersion: number): void;
 }
-export function mergeNegotiationSnapshot(
+function mergeNegotiationSnapshot(
   items: Negotiation[],
   value: Negotiation,
   expectedVersion: number,

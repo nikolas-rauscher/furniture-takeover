@@ -12,6 +12,7 @@ import {
   type NegotiationUpdate,
 } from "../shared/negotiation.ts";
 import type { AgentRunInventoryItem } from "../shared/runs.ts";
+import { quoteNumbers, quoteSupportsHandover } from "./quotes.ts";
 
 /** Transport/storage independent. The runtime supplies active inventory and commits snapshots. */
 export interface NegotiationToolContext {
@@ -151,25 +152,16 @@ export function createNegotiationTools(context: NegotiationToolContext) {
               );
             if (entry.value !== null) {
               if (field === "amount") {
-                const values =
-                  entry.quote
-                    .match(/\d+(?:[.,]\d+)?/g)
-                    ?.map((value) => Number(value.replace(",", "."))) ?? [];
-                if (!values.includes(entry.value as number))
+                if (!quoteNumbers(entry.quote).includes(entry.value as number))
                   throw new Error(
                     "The offered amount must appear in the buyer quote.",
                   );
               } else if (field === "fulfillment") {
-                const pattern =
-                  entry.value === "pickup"
-                    ? /pickup|pick.up|collect|in.person|abhol|treffen/i
-                    : /ship|post|versand|liefer/i;
                 if (
-                  !pattern.test(entry.quote) ||
-                  (entry.value === "shipping" &&
-                    /no shipping|not.*ship|pickup only|kein.*versand/i.test(
-                      entry.quote,
-                    ))
+                  !quoteSupportsHandover(
+                    entry.quote,
+                    entry.value as "pickup" | "shipping",
+                  )
                 )
                   throw new Error(
                     "The quote must support the handover choice.",

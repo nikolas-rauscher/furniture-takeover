@@ -38,7 +38,8 @@ test("missing keys and invalid input never call a provider or return demo succes
   assert.equal(invalid[0].type, "error");
   assert.equal(model.doStreamCalls.length, 0);
 });
-test("eight-step tool limit stops real loop execution instead of reporting completion", async () => {
+test("eight-step tool limit stops real loop execution instead of reporting completion", async (t) => {
+  const log = t.mock.method(console, "error", () => {});
   let count = 0;
   const model = new MockLanguageModelV4({
     doStream: async () => {
@@ -55,6 +56,19 @@ test("eight-step tool limit stops real loop execution instead of reporting compl
     { text: "desk", inventory: [ownDesk] },
   );
   assert.equal(count, 8);
+  const [prefix, diagnostic] = log.mock.calls[0].arguments;
+  assert.equal(prefix, "[agent-run]");
+  assert.deepEqual(
+    JSON.parse(diagnostic).stepSequence,
+    Array.from({ length: 8 }, (_, i) => ({
+      step: i + 1,
+      outcomes: [
+        i % 2
+          ? "show_takeover_listings: 0 displayedIds"
+          : "inventory_search: 1 items",
+      ],
+    })),
+  );
   assert.ok(
     events.some(
       (event) => event.type === "error" && event.code === "STEP_LIMIT",
@@ -65,6 +79,42 @@ test("eight-step tool limit stops real loop execution instead of reporting compl
     false,
   );
 });
+test("an offer draft prepared on the last step still finishes with its reply", async () => {
+  const { newNegotiation } = await import("../../shared/negotiation.ts");
+  const model = new MockLanguageModelV4({
+    doStream: [
+      ...Array.from({ length: 7 }, (_, step) =>
+        toolCall("get_listing", { listingId: ownDesk.id }, `read-${step}`),
+      ),
+      toolCall("prepare_offer_draft", { expectedVersion: 1 }, "prepare"),
+      answer("Your draft is ready for review."),
+    ],
+  });
+  const events = await eventsFor(
+    createAgentRuntime({ apiKey: "key", modelImpl: model }),
+    {
+      text: "Prepare the draft now.",
+      context: {
+        intent: "negotiation",
+        negotiation: newNegotiation("proposal", ownDesk.id),
+      },
+      inventory: [ownDesk],
+    },
+  );
+  assert.equal(model.doStreamCalls.length, 9);
+  assert.deepEqual(model.doStreamCalls[8].toolChoice, { type: "none" });
+  assert.ok(
+    events.some(
+      (event) => event.type === "negotiation_update" && event.negotiation.draft,
+    ),
+  );
+  assert.ok(events.some((event) => event.type === "complete"));
+  assert.equal(
+    events.some((event) => event.type === "error"),
+    false,
+  );
+});
+
 test("timeout aborts the SDK provider and never reports a completed run", async () => {
   let upstreamAborted = false;
   const guard = setTimeout(() => {}, 1000);

@@ -1,0 +1,93 @@
+/* Primitives of the first-run intro; tokens and controls come from the app. */
+.ob,
+.ob-invite {
+  color: var(--ink);
+  font-family: var(--font-family);
+}
+
+.ob ::selection,
+.ob-invite ::selection {
+  background: var(--sky);
+  color: var(--ink);
+}
+
+.ob-title {
+  font-size: clamp(1.5rem, 1.2rem + 1vw, 1.875rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.ob-lead {
+  color: var(--muted);
+  font-size: 1.0625rem;
+  line-height: 1.55;
+}
+
+/* The framed area where a story scene plays. */
+.ob-stage {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 16px;
+  border: 2px solid var(--card-line);
+  border-radius: var(--radius-stage);
+  background: var(--surface);
+}
+
+/* Story scenes use illustrative values, so they say so. */
+.ob-demo-tag {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--canvas);
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* Says what to tap when a scene waits for the visitor. */
+.ob-tap-caption {
+  color: var(--muted);
+  font-size: var(--type-support);
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* A ring that keeps inviting the visitor to tap the scene's one control. */
+.ob-tap-hint {
+  position: relative;
+}
+.ob-tap-hint::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border: 3px solid var(--blue);
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  animation: ob-tap-pulse 1.6s var(--ease-out) infinite;
+}
+@keyframes ob-tap-pulse {
+  0% {
+    opacity: 0.55;
+    transform: scale(0.94);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ob-tap-hint::after {
+    animation: none;
+    opacity: 0.45;
+    transform: none;
+  }
+}

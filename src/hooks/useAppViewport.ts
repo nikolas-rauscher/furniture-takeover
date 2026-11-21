@@ -6,7 +6,8 @@ export function useAppViewport() {
     const root = document.documentElement;
     const visual = window.visualViewport;
     const mobile = window.matchMedia("(max-width: 760px)");
-    const navigation = document.querySelector<HTMLElement>(".mobile-nav");
+    // The tab bar is only mounted on phones, so it is looked up again on every update.
+    let navigation: HTMLElement | null = null;
     let baseline = window.innerHeight;
     let width = window.innerWidth;
     let frame = 0;
@@ -37,19 +38,29 @@ export function useAppViewport() {
           "data-compact-viewport",
           mobile.matches && unzoomed && height < 460,
         );
-        // Enlarged text can wrap the navigation onto additional rows.
-        if (mobile.matches && navigation)
+        watchNavigation();
+        // Enlarged text can grow the navigation. The bar is measured even while
+        // it steps aside: the stylesheet takes its room away then, so it is back
+        // as soon as the bar returns.
+        if (!mobile.matches || !navigation)
+          root.style.removeProperty("--mobile-nav-height");
+        else
           root.style.setProperty(
             "--mobile-nav-height",
             `${navigation.getBoundingClientRect().height}px`,
           );
-        else root.style.removeProperty("--mobile-nav-height");
         if (keyboard && active instanceof HTMLElement)
           active.scrollIntoView({ block: "nearest", inline: "nearest" });
       });
     };
     const navigationResize = new ResizeObserver(update);
-    if (navigation) navigationResize.observe(navigation);
+    const watchNavigation = () => {
+      const current = document.querySelector<HTMLElement>(".mobile-nav");
+      if (current === navigation) return;
+      if (navigation) navigationResize.unobserve(navigation);
+      if (current) navigationResize.observe(current);
+      navigation = current;
+    };
     update();
     visual?.addEventListener("resize", update);
     window.addEventListener("resize", update);

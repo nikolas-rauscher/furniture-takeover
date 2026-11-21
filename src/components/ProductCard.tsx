@@ -1,33 +1,65 @@
 import type { ReactNode } from "react";
 import { Button } from "./ui/button";
-import { listingPhotos } from "../../shared/listingPhotos";
-import { GitCompareArrows, Image as ImageIcon } from "@/components/icons";
+import { cardImageFor, listingPhotos } from "../../shared/listingPhotos";
+import {
+  Clock,
+  GitCompareArrows,
+  Image as ImageIcon,
+  MapPin,
+} from "@/components/icons";
 import SaveToggle from "./SaveToggle";
-import { TODAY, money, type Product } from "../../shared/marketplace";
+import { useEntrance } from "../hooks/useEntrance";
+import { cn } from "@/lib/utils";
+import {
+  TODAY,
+  money,
+  placeLine,
+  type Product,
+} from "../../shared/marketplace";
+import type { CardAvailability } from "../availability/useAvailability";
+import "./product-card.css";
 
 type ProductCardProps = {
   product: Product;
+  /** A listing that joins a grid already on screen rises into place; others are simply there. */
+  arriving?: boolean;
   favorite: boolean;
   showFavorite?: boolean;
   compared: boolean;
   onOpen: () => void;
   onToggleFavorite: () => void;
   onToggleCompare: () => void;
-  /** Feature-flagged availability prototypes; absent on main. */
-  statusLabel?: ReactNode;
-  availabilityNote?: ReactNode;
+  /** Reservation state from the availability prototype, when it runs. */
+  availability?: CardAvailability;
+  /** The student's own deal reserved it for them. */
+  reservedForYou?: boolean;
+  /** A note under the details, such as a saved item's price drop. */
+  footer?: ReactNode;
 };
+
+/** A sticker on the photo tells what matters before the details: sold, reserved or free. */
+function productSticker(product: Product, reservedForYou: boolean) {
+  if (product.status === "sold") return "Sold";
+  if (product.status === "reserved")
+    return reservedForYou ? "Reserved for you" : "Reserved";
+  return product.price === 0 ? "Free" : "";
+}
+
+const stickerTone = (sticker: string) =>
+  sticker === "Reserved for you" ? "mine" : sticker.toLowerCase();
 
 export default function ProductCard({
   product,
+  arriving = false,
   favorite,
   showFavorite = true,
   compared,
   onOpen,
   onToggleFavorite,
   onToggleCompare,
-  statusLabel,
-  availabilityNote,
+  availability,
+  reservedForYou = false,
+  footer,
 }: ProductCardProps) {
   const itemTags = product.tags?.filter((tag) => tag !== "Demo") ?? [];
   const tags = [
@@ -36,31 +68,40 @@ export default function ProductCard({
         ? itemTags
         : [
             product.condition,
-            product.price === 0 ? "Free" : "",
             product.dimensions.length <= 32 ? product.dimensions : "",
           ],
     ),
   ]
     .filter((tag) => Boolean(tag) && tag !== "Not specified")
     .slice(0, 3);
+  const sticker =
+    availability?.sticker ?? productSticker(product, reservedForYou);
+  const entrance = useEntrance(arriving);
   return (
-    <article className="product-card">
+    <article
+      className={cn(
+        "product-card linked-card",
+        entrance.entering && "arriving",
+      )}
+      data-status={product.status}
+      onAnimationEnd={entrance.onAnimationEnd}
+    >
       <div className="product-photo">
-        <Button
-          className="photo-link"
-          type="button"
-          onClick={onOpen}
-          aria-label={`${product.title} view`}
-        >
-          {product.image ? (
-            <img src={product.image} alt={product.title} loading="lazy" />
-          ) : (
-            <span className="listing-no-photo">
-              <ImageIcon size={32} />
-              <span>No photo</span>
-            </span>
-          )}
-        </Button>
+        {product.image ? (
+          <img
+            src={cardImageFor(product)}
+            alt=""
+            width={640}
+            height={480}
+            loading="lazy"
+            decoding="async"
+          />
+        ) : (
+          <span className="listing-no-photo">
+            <ImageIcon size={32} aria-hidden="true" />
+            <span>No photo</span>
+          </span>
+        )}
         {showFavorite && (
           <SaveToggle
             title={product.title}
@@ -74,8 +115,11 @@ export default function ProductCard({
             {listingPhotos(product).length} photos
           </span>
         )}
-        {product.status === "sold" && <span className="sold-label">Sold</span>}
-        {statusLabel}
+        {sticker && (
+          <span className="product-sticker" data-tone={stickerTone(sticker)}>
+            {sticker}
+          </span>
+        )}
       </div>
       <div className="product-info">
         <div className="product-tags" aria-label="Listing details">
@@ -83,42 +127,45 @@ export default function ProductCard({
             <span key={tag}>{tag}</span>
           ))}
         </div>
-        <div className="product-title-row">
-          <Button
-            className="text-button product-title"
-            type="button"
-            onClick={onOpen}
-          >
-            {product.title}
-          </Button>
+        <Button
+          className="text-button product-title card-link"
+          type="button"
+          onClick={onOpen}
+        >
+          {product.title}
+        </Button>
+        <div className="product-price-row">
           <strong>{money(product.price)}</strong>
+          <Button
+            className={`compare-button ${compared ? "selected" : ""}`}
+            type="button"
+            aria-label={`${product.title} ${compared ? "remove from comparison" : "compare"}`}
+            title={compared ? "Remove from comparison" : "Compare"}
+            aria-pressed={compared}
+            onClick={onToggleCompare}
+          >
+            <GitCompareArrows size={16} aria-hidden="true" />
+          </Button>
         </div>
         <p className="product-location">
-          {product.location}
-          <span>Distance unverified</span>
+          <MapPin size={14} aria-hidden="true" />
+          <span>{placeLine(product)}</span>
         </p>
+        {availability?.note && (
+          <p className="product-availability">
+            <Clock size={14} aria-hidden="true" />
+            <span>{availability.note}</span>
+          </p>
+        )}
         {product.pickupPoint && (
           <p className="product-pickup-address">
             {product.pickupPoint.address}
           </p>
         )}
-        {availabilityNote}
-        <div className="product-bottom">
-          <span
-            className={`pickup ${product.pickupBy === TODAY ? "today" : ""}`}
-          >
-            {product.available}
-          </span>
-          <Button
-            className={`compare-button ${compared ? "selected" : ""}`}
-            type="button"
-            aria-label={`${product.title} ${compared ? "remove from comparison" : "compare"}`}
-            aria-pressed={compared}
-            onClick={onToggleCompare}
-          >
-            <GitCompareArrows size={16} />
-          </Button>
-        </div>
+        <p className={`pickup ${product.pickupBy === TODAY ? "today" : ""}`}>
+          {product.available}
+        </p>
+        {footer}
       </div>
     </article>
   );

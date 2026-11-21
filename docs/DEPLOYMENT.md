@@ -24,7 +24,7 @@ app server ───────────────> Supabase :8000        
 - The **app server** uses a separate LAN address (`SUPABASE_INTERNAL_URL`). It is never sent to browsers, and the server does not need to go out through the internet to reach Supabase.
 - nginx forwards only four Supabase paths (`/auth/v1/`, `/rest/v1/`, `/storage/v1/`, `/realtime/v1/`). Studio, the database admin and every other Supabase path return a 404 from the internet.
 
-> **What is exposed.** `supabase.deyan.ch` is reachable from the internet, but only those four API paths, which the app needs. Access control is then Supabase's own: every request needs the public key, signups are disabled (invitation-only), and the database security rules decide who can see what. Studio, the database and Kong's own port stay on your LAN.
+> **What is exposed.** `supabase.deyan.ch` is reachable from the internet, but only those four API paths, which the app needs. Access control is then Supabase's own: every request needs the public key, signups accept only confirmed `@epfl.ch` and `@unil.ch` addresses, and the database security rules decide who can see what. Studio, the database and Kong's own port stay on your LAN.
 
 ## Ports
 
@@ -57,10 +57,10 @@ Do not forward 8000, 8787, 5432, 6543, 3000 or 4000. Limit port 8787 to the ngin
    ADDITIONAL_REDIRECT_URLS=https://aipm.deyan.ch
    API_EXTERNAL_URL=https://supabase.deyan.ch
    SUPABASE_PUBLIC_URL=https://supabase.deyan.ch
-   DISABLE_SIGNUP=true
+   DISABLE_SIGNUP=false
    ```
 
-   These names are from the official compose file; check yours uses the same ones. Keep `ENABLE_EMAIL_AUTOCONFIRM=false`.
+   These names are from the official compose file; check yours uses the same ones. Keep `ENABLE_EMAIL_AUTOCONFIRM=false` and set the `SMTP_*` values, so students can confirm the address they register with in the app. `202611200004_bugs_and_features.sql` rejects any signup outside `@epfl.ch` and `@unil.ch`.
 
 2. Apply the change and make sure everything is healthy:
 
@@ -69,15 +69,16 @@ Do not forward 8000, 8787, 5432, 6543, 3000 or 4000. Limit port 8787 to the ngin
    docker compose ps
    ```
 
-3. Note two values from the same `.env`, needed in step 3:
-   - `ANON_KEY` (the public key; never use `SERVICE_ROLE_KEY` in this app).
+3. Note these values from the same `.env`, needed in step 3:
+   - `ANON_KEY` (the public key).
+   - `SUPABASE_SECRET_KEY` (the server-only `sb_secret_…` key). For hosted Supabase, copy it from **Settings → API Keys → Publishable and secret API keys → Secret keys**. For self-hosted Supabase, enable the [new API keys in Kong](https://supabase.com/docs/guides/self-hosting/self-hosted-auth-keys) and copy the configured secret key.
    - Kong's port, `KONG_HTTP_PORT` (default `8000`).
 
 4. Make sure the nginx machine and the app machine can open `http://192.168.1.46:8000`, and that nothing else can.
 
 ## Step 2. Create the database tables (once)
 
-Run the five migrations **once, in filename order**. They run through Docker, so do it on the Supabase machine. Copy the folder there first, from the machine that has the repository:
+Run the migrations **once, in filename order**. They run through Docker, so do it on the Supabase machine. Copy the folder there first, from the machine that has the repository:
 
 ```sh
 scp -r supabase <your user>@192.168.1.46:~/
@@ -94,7 +95,45 @@ done
 
 `supabase-db` is the default container name (`docker ps` shows yours). If you prefer, paste each file into Studio's SQL Editor, in order.
 
-Optional demo listings: review `supabase/seed-demo.sql`, then run it the same way. It adds three fictional sellers who cannot log in.
+### The migrations
+
+Apply every file in `supabase/migrations/`, in this order:
+
+| File | Adds |
+| --- | --- |
+| `202610300001_supabase.sql` | Listings, conversations, messages and conversation archives with row-level security, `start_conversation`, the photo path check, the `listing-photos` storage bucket and realtime for messages |
+| `202610300002_accounts.sql` | Profiles, account preferences, saved listings, blocked users, reports, block checks on contact, and `delete_account` |
+| `202610300003_listing_details.sql` | The `pickup_by` date and `tags` on listings |
+| `202610300004_profile_and_api_keys.sql` | Profile bio, postal code, country and handover preference, and the table of encrypted personal API keys |
+| `202611060001_ai_quota.sql` | Daily AI request counters (50 per student, 500 in total) and `ai_quota` |
+| `202611190001_thread_reading.sql` | Read markers for unread counts, Pako's saved readings, the auto-read preference, and the separate reading allowance (150 per student, 1,500 in total) |
+| `202611190002_deals.sql` | Deals and deal events, participant-only access, the `deal_action` function for offers, confirmation and reservation, and release of reservations when a buyer deletes their account |
+| `202611190003_pickup.sql` | Pickup-day fields on deals (on my way, late, picked up, no-show, cancel reason), more deal event kinds, and `pickup_action` |
+| `202611190004_admin.sql` | The private `takeover_admin` schema, the `admins` table and `is_admin`, hidden listings, report resolution, student blocks, the moderation log, moderation checks on posting and contact, the shipped catalog (6 sellers, 40 listings), the demo seed and the `admin_*` functions |
+| `202611200001_review_fixes.sql` | Moves `deal_action` and `pickup_action` behind checked wrappers, guards listings with an agreed deal, tightens `delete_account`, and adds `ai_quota_spend`, which only the server's secret key may call. The older quota functions are revoked |
+| `202611200002_deal_rules.sql` | Stricter check that a deal message states its price, time and meeting point, with updated deal and pickup functions |
+| `202611200003_card_photos.sql` | `card_images` on listings, a card-size copy of each uploaded photo, with the photo checks updated |
+| `202611200004_bugs_and_features.sql` | Shipping completion, the pickup follow-up a day after the pickup and its release after two (`refresh_pickup_checks`), the price at save on saved listings, and the `@epfl.ch`/`@unil.ch` signup rule |
+| `202611200005_pickup_collected.sql` | After the buyer's "Picked up", `pickup_action` allows only Mark sold, the follow-up and a time proposal's answer |
+| `202611200006_review_fixes.sql` | A pickup the buyer reported collected never expires, is cancelled or released by the follow-up, and stays reserved when the buyer deletes their account, `check_account_deletion` before photos are removed, and `inbox_latest_messages`, each conversation's newest message for the inbox |
+
+`202611200001_review_fixes.sql` makes the app server depend on `SUPABASE_SECRET_KEY`: without it, AI quota checks fail. Apply it only when the new build, started with that key, is ready to restart right after.
+
+Optional demo listings: after all migrations are applied, review and run `supabase/seed-demo.sql`. It adds the six inert demo sellers and the 40 shipped listings without overwriting existing edits. The seed and the admin reset use the catalog stored by `202611190004_admin.sql`.
+
+To grant yourself admin access, create your account normally. In Studio's SQL Editor, replace the email below with the email for your account and run:
+
+```sql
+insert into public.admins (user_id)
+select id
+from auth.users
+where lower(email) = lower('your-email@example.com')
+  and raw_app_meta_data->>'demo_seed' is null
+on conflict (user_id) do nothing
+returning user_id;
+```
+
+A returned UUID confirms a new grant. Reload takeover to pick up the change. If no row is returned, confirm the email in Authentication → Users or check whether the UUID is already listed in `public.admins`.
 
 ## Step 3. App machine
 
@@ -128,6 +167,7 @@ Optional demo listings: review `supabase/seed-demo.sql`, then run it the same wa
    # This server: the LAN address of Supabase's Kong port
    SUPABASE_INTERNAL_URL=http://192.168.1.46:8000
    SUPABASE_PUBLISHABLE_KEY=<ANON_KEY from step 1>
+   SUPABASE_SECRET_KEY=<sb_secret_ key from step 1>
    ACCOUNT_KEYS_ENCRYPTION_KEY=<see below>
 
    DEEPSEEK_API_KEY=<your key>
@@ -137,6 +177,8 @@ Optional demo listings: review `supabase/seed-demo.sql`, then run it the same wa
    API_HOST=192.168.1.48
    API_ALLOWED_ORIGINS=https://aipm.deyan.ch
    ```
+
+   Account mode requires `SUPABASE_SECRET_KEY` at startup. Keep it in the app server environment and out of all `VITE_` variables.
 
    **(same machine as Supabase)** use `SUPABASE_INTERNAL_URL=http://127.0.0.1:8000` and keep `API_HOST` as this machine's LAN IP, so nginx can still reach the app.
 
@@ -156,7 +198,7 @@ Optional demo listings: review `supabase/seed-demo.sql`, then run it the same wa
 
    You should see `Agent API listening at http://192.168.1.48:8787`. Stop it with Ctrl+C.
 
-   If it stops with `API_HOST can only be set beyond this machine when Supabase accounts are configured`, the two Supabase variables are missing or empty. That check is deliberate: without accounts, the app has no sign-in and must not listen on the network.
+   If it stops with `API_HOST can only be set beyond this machine when Supabase accounts are configured`, the Supabase URL and publishable key are both missing or empty. That check is deliberate: without accounts, the app has no sign-in and must not listen on the network.
 
 6. Run it as a service under its own user. The `.env` holds your keys, so only that user may read it:
 
@@ -193,7 +235,7 @@ The app needs a user with a confirmed email. Without an email server, create use
 
 1. Open Studio on your LAN: `http://192.168.1.46:8000`. Log in with `DASHBOARD_USERNAME` and `DASHBOARD_PASSWORD` from the Supabase `.env`.
 2. Authentication → Users → **Add user** → **Create new user**.
-3. Enter an email and a password and tick **Auto Confirm User**.
+3. Enter an `@epfl.ch` or `@unil.ch` email and a password and tick **Auto Confirm User**. Other addresses are rejected by the signup rule.
 
 Invitation and password-reset emails only work once you configure SMTP for Supabase (`SMTP_*` in the Supabase `.env`).
 
@@ -242,4 +284,5 @@ Then in a browser:
 ## Backups and updates
 
 - **Back up** the Supabase database volume, the Supabase `.env` (its keys and secrets), and `ACCOUNT_KEYS_ENCRYPTION_KEY`.
+- **Roll out the review fixes:** set `SUPABASE_SECRET_KEY` on the app server and prepare the new build. On a database already migrated through `202611190004_admin.sql`, apply `202611200001_review_fixes.sql` and restart the app with the new build immediately after. The migration revokes the previous quota endpoints. Then apply the remaining files in filename order, through `202611200006_review_fixes.sql`.
 - **Update the app:** `git pull && npm ci && npm run build && sudo systemctl restart takeover`. Check the release for new files in `supabase/migrations/` and apply any new ones once, in order, as in step 2.

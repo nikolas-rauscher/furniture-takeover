@@ -1,4 +1,3 @@
-import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { Suggestion, Suggestions } from "./ui/suggestion";
@@ -10,18 +9,18 @@ import {
   CollapsibleContent,
 } from "./ui/collapsible";
 import { ChevronDown } from "./icons";
-import {
-  useId,
-  useState,
-  useRef,
-  useLayoutEffect,
-  type ReactNode,
-} from "react";
+import { useId, useState, useRef, useLayoutEffect } from "react";
 import type { AgentRunSource } from "../../shared/runs";
-import type { AgentQuestionEvent } from "../../shared/actions";
+import { money } from "../../shared/marketplace";
+import type {
+  AgentActionEvidence,
+  AgentQuestionEvent,
+} from "../../shared/actions";
 import type { AgentRunAction } from "../hooks/useAgentRun";
+import { searchChangeSummary } from "../searchChanges";
 import { motionBehavior } from "../uiMotion";
 import { answerParts } from "./AgentAnswerContent";
+import PriceSlider from "./PriceSlider";
 
 export type AgentActionHandlers = {
   onAnswer?: (questionId: string, answer: string) => void | boolean;
@@ -31,13 +30,22 @@ export type AgentActionHandlers = {
   onEditFields?: () => void;
 };
 
+/** The slider starts at Pako's suggestion, or halfway when he has none. */
+function initialPrice({
+  min,
+  max,
+  step,
+  value,
+}: NonNullable<AgentQuestionEvent["input"]>) {
+  return value ?? Math.round((min + max) / 2 / step) * step;
+}
+
 export function AgentQuestion({
   question,
   answer,
   onAnswer,
   onSkip,
   compact = false,
-  suggestion,
   externalComposer = false,
   disabled = false,
   readOnly = false,
@@ -47,7 +55,6 @@ export function AgentQuestion({
   onAnswer?: AgentActionHandlers["onAnswer"];
   onSkip?: AgentActionHandlers["onSkipQuestion"];
   compact?: boolean;
-  suggestion?: ReactNode;
   externalComposer?: boolean;
   disabled?: boolean;
   readOnly?: boolean;
@@ -55,7 +62,7 @@ export function AgentQuestion({
   const [text, setText] = useState("");
   const [sent, setSent] = useState("");
   const [price, setPrice] = useState(
-    question.input?.value ?? question.input?.min ?? 0,
+    question.input ? initialPrice(question.input) : 0,
   );
   const inputId = useId();
   const response = answer || sent;
@@ -99,7 +106,11 @@ export function AgentQuestion({
           measuredHeight.current = element.getBoundingClientRect().height;
         }
       })
-      .catch(() => {});
+      .catch((error: unknown) => {
+        // Resizing again or unmounting cancels the animation's finished promise.
+        if (!(error instanceof DOMException) || error.name !== "AbortError")
+          console.error("The question resize animation failed.", error);
+      });
   }, [response, externalComposer]);
   const skip = () => {
     if (disabled || readOnly || response || !onSkip) return;
@@ -109,6 +120,7 @@ export function AgentQuestion({
     if (disabled || readOnly || !value.trim() || response || !onAnswer) return;
     if (onAnswer(question.id, value.trim()) !== false) setSent(value.trim());
   };
+
   return (
     <Item
       render={<section ref={questionElement} />}
@@ -118,16 +130,6 @@ export function AgentQuestion({
     >
       <div className="agent-question-heading">
         <h3>{question.question}</h3>
-        {!response && !readOnly && externalComposer && onSkip && (
-          <Button
-            type="button"
-            className="text-button question-skip"
-            disabled={disabled}
-            onClick={skip}
-          >
-            Skip for now
-          </Button>
-        )}
       </div>
       {response ? (
         !externalComposer && (
@@ -136,29 +138,18 @@ export function AgentQuestion({
             {response}
           </p>
         )
-      ) : readOnly ? (
-        suggestion
-      ) : (
+      ) : readOnly ? null : (
         <>
           {question.input?.type === "price" && onAnswer && (
             <div className="agent-run-price-input">
-              <label htmlFor={`${inputId}-price`}>
-                Your price <strong>CHF {price}</strong>
-              </label>
-              <Input
-                id={`${inputId}-price`}
-                type="range"
+              <PriceSlider
                 min={question.input.min}
                 max={question.input.max}
                 step={question.input.step}
                 value={price}
                 disabled={disabled}
-                onChange={(event) => setPrice(Number(event.target.value))}
+                onChange={setPrice}
               />
-              <div>
-                <span>CHF {question.input.min}</span>
-                <span>CHF {question.input.max}</span>
-              </div>
               <Button
                 animateIcon
                 type="button"
@@ -166,15 +157,14 @@ export function AgentQuestion({
                 disabled={disabled}
                 onClick={() => submit(`CHF ${price}`)}
               >
-                {price === 0 ? "Give it away for free" : `Use CHF ${price}`}
+                {price === 0 ? "List for free" : `Use ${money(price)}`}
               </Button>
             </div>
           )}
-          {suggestion}
-          {question.input?.type !== "price" && !!question.choices?.length && (
+          {!!question.choices?.length && (
             <Suggestions
               className="agent-run-choices"
-              aria-label="Suggested answers"
+              aria-label="Choose an answer"
             >
               {question.choices.map((choice) => (
                 <Suggestion
@@ -187,6 +177,16 @@ export function AgentQuestion({
                 </Suggestion>
               ))}
             </Suggestions>
+          )}
+          {externalComposer && onSkip && (
+            <Button
+              type="button"
+              className="button quiet small question-skip"
+              disabled={disabled}
+              onClick={skip}
+            >
+              Skip for now
+            </Button>
           )}
           {onAnswer && !externalComposer && (
             <div className="agent-run-question-input">
@@ -218,11 +218,11 @@ export function AgentQuestion({
                   disabled={disabled || !text.trim()}
                   onClick={() => submit(text)}
                 >
-                  {compact ? "Send" : "Send answer"}
+                  Send to Pako
                 </Button>
                 {onSkip && (
                   <Button
-                    className="text-button"
+                    className="button quiet small"
                     type="button"
                     disabled={disabled}
                     onClick={skip}
@@ -245,14 +245,126 @@ const fieldLabels: Record<string, string> = {
   price: "Asking price",
   condition: "Condition",
   dimensions: "Dimensions",
-  location: "Location",
-  pickup: "Pickup by",
-  query: "Looking for",
-  maxPrice: "Maximum price",
-  radius: "Distance",
+  location: "Pickup location",
+  pickup: "Pickup deadline",
+  query: "Item",
+  maxPrice: "Budget",
+  radius: "Distance limit",
   pickupBy: "Pickup by",
-  source: "Platform",
+  source: "Source",
 };
+
+/** A changed field's new value in words. */
+function changedValue(field: string, value: unknown) {
+  if (value === null) return "Not set";
+  if (value === "") return "Clear this field";
+  if (field === "price" || field === "maxPrice") return money(Number(value));
+  if (field === "radius") return `${value} km`;
+  return String(value);
+}
+
+const LONG_FIELDS = new Set(["title", "description"]);
+
+/** What Pako changed, in his words: one short value is named, long texts are not repeated. */
+function changeSummary(action: AgentRunAction): string {
+  if (action.type === "preferences_patch")
+    return searchChangeSummary(action.patch);
+  const fields = Object.entries(action.patch);
+  const name = (field: string) => (fieldLabels[field] ?? field).toLowerCase();
+  if (fields.length === 1) {
+    const [[field, value]] = fields;
+    return LONG_FIELDS.has(field)
+      ? `I updated the ${name(field)}.`
+      : `I filled in the ${name(field)}: ${changedValue(field, value)}.`;
+  }
+  const names = fields.map(([field]) => name(field));
+  return `I updated the ${names.slice(0, -1).join(", ")} and ${names.at(-1)}.`;
+}
+
+/** Pako's own reason for a change, from where its evidence comes. */
+function changeReason(evidence: readonly AgentActionEvidence[]) {
+  const fromListings = evidence.some((item) => item.kind === "source");
+  const fromStudent = evidence.some((item) => item.kind === "seller");
+  if (fromListings && fromStudent)
+    return "I went by what you wrote and what these listings say:";
+  return fromListings
+    ? "I went by what these listings say:"
+    : "I went by what you wrote:";
+}
+
+/** A change Pako made to the listing as one line, with its Undo and the reason on demand. */
+export function AgentChangeLine({
+  action,
+  sources,
+  applied,
+  undone,
+  notice,
+  onApply,
+  onUndo,
+}: {
+  action: AgentRunAction;
+  sources: AgentRunSource[];
+  applied: boolean;
+  undone: boolean;
+  notice?: string;
+  onApply?: AgentActionHandlers["onApplyAction"];
+  onUndo?: AgentActionHandlers["onUndoAction"];
+}) {
+  const [open, setOpen] = useState(false);
+  const reasonId = useId();
+  return (
+    <div className="agent-change-line" data-undone={undone || undefined}>
+      <p>
+        {undone ? `Undone: ${changeSummary(action)}` : changeSummary(action)}
+      </p>
+      <div className="agent-change-line-actions">
+        {!applied && !undone && onApply && (
+          <Button
+            className="button secondary small"
+            onClick={() => onApply(action.id)}
+          >
+            Apply
+          </Button>
+        )}
+        {applied && !undone && onUndo && (
+          <Button
+            className="button quiet small"
+            onClick={() => onUndo(action.id)}
+          >
+            Undo
+          </Button>
+        )}
+        {action.evidence.length > 0 && (
+          <Button
+            className="button quiet small"
+            aria-expanded={open}
+            aria-controls={reasonId}
+            onClick={() => setOpen((value) => !value)}
+          >
+            Why?
+          </Button>
+        )}
+      </div>
+      {notice && (
+        <p className="agent-change-line-notice" role="status">
+          {notice}
+        </p>
+      )}
+      {open && (
+        <div id={reasonId} className="agent-change-line-reason">
+          <p>{changeReason(action.evidence)}</p>
+          {action.evidence.map((item, index) => (
+            <p key={index}>
+              <q>{item.quote}</q>
+              {item.kind === "source" &&
+                answerParts(` [${item.sourceId}]`, sources)}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function AgentChanges({
   action,
@@ -293,7 +405,7 @@ export function AgentChanges({
         </ItemContent>
         <ItemActions>
           <Badge variant={applied ? "secondary" : "outline"}>
-            {undone ? "Undone" : applied ? "Applied" : "Proposed"}
+            {undone ? "Undone" : applied ? "Applied" : "Suggested"}
           </Badge>
           <CollapsibleTrigger
             className="agent-change-toggle"
@@ -310,17 +422,7 @@ export function AgentChanges({
             {Object.entries(action.patch).map(([field, value]) => (
               <div key={field}>
                 <dt>{fieldLabels[field] || field}</dt>
-                <dd>
-                  {value === null
-                    ? "Not set"
-                    : value === ""
-                      ? "Clear this field"
-                      : field === "price" || field === "maxPrice"
-                        ? `CHF ${Number(value).toLocaleString("en-GB")}`
-                        : field === "radius"
-                          ? `${value} km`
-                          : value}
-                </dd>
+                <dd>{changedValue(field, value)}</dd>
               </div>
             ))}
           </dl>
@@ -330,7 +432,7 @@ export function AgentChanges({
               <p key={index}>
                 <span>
                   {item.kind === "seller"
-                    ? "From your details"
+                    ? "From your listing details"
                     : "From a search result"}
                 </span>
                 <q>{item.quote}</q>

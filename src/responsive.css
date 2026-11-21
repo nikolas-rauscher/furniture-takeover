@@ -3,8 +3,7 @@
 .app-layout,
 .main-content,
 .title-with-action > div,
-.own-listing > div,
-.job-main {
+.own-listing > div {
   min-width: 0;
 }
 
@@ -42,27 +41,72 @@
     --app-header-height: calc(56px + env(safe-area-inset-top, 0px));
     --space-page: 1rem;
   }
+  /* The global stable gutter stays: in narrow desktop windows a scrollbar that comes and
+     goes with page length would shift the centred tab bar sideways on every tab switch. */
   html {
-    scrollbar-gutter: auto;
     scrollbar-width: thin;
-    scrollbar-color: #c7cbd3 transparent;
+    scrollbar-color: var(--lip) transparent;
   }
   html::-webkit-scrollbar {
     width: 5px;
   }
   html::-webkit-scrollbar-thumb {
     border-radius: 4px;
-    background: #c7cbd3;
+    background: var(--lip);
   }
   .app-header .icon-button {
     width: 44px;
     height: 44px;
   }
-  :root[data-keyboard-open] {
-    --mobile-nav-height: 0px;
+  /* A thumb needs room: on phones every control is at least 44 pixels tall… */
+  .app-header .brand,
+  .button.small,
+  .back-link,
+  .search-area,
+  .home-sell-card > .button,
+  .section-heading > .button.quiet,
+  .listing-detail-tools > button,
+  .items-page .account-tabs button,
+  .agent-quick-reply-list > .agent-quick-reply[data-slot="button"],
+  .agent-run-question .agent-run-choices > .ai-suggestion[data-slot="button"],
+  .agent-sources [data-slot="trace-collapsible-trigger"],
+  .agent-change-toggle,
+  .agent-suggestions-error > button {
+    min-height: 44px;
   }
-  :root[data-keyboard-open] .mobile-nav {
-    display: none;
+  /* …and round controls are as wide as they are tall. */
+  .agent-carousel-controls [data-slot^="carousel-"],
+  .composer-field .composer-send,
+  .toast > .icon-button,
+  .compare-tray > .icon-button {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
+  /* Links beside a listing's meeting point get the same reach. */
+  .listing-detail-pickup-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  /* The keyboard, an open thread, a listing and the admin area (each has its own way
+     back) make the tab bar step aside, so no docked action or report step sits under it.
+     It is hidden rather than removed: its animations need a rendered element. Taken out
+     of the flow, it leaves no empty strip below a docked composer. */
+  :root[data-keyboard-open] #root > .mobile-nav,
+  #root:has(.messages-layout .messages-page.has-conversation) > .mobile-nav,
+  #root:has(.listing-detail) > .mobile-nav,
+  #root:has(.admin-page) > .mobile-nav {
+    position: fixed;
+    visibility: hidden;
+  }
+  /* Meanwhile the page keeps no room for it. The bar's measured height stays on the
+     root, so the compare tray and notes clear the bar again the moment it is back. */
+  :root[data-keyboard-open] body,
+  body:has(.messages-layout .messages-page.has-conversation),
+  body:has(.listing-detail),
+  body:has(.admin-page) {
+    --mobile-nav-height: 0px;
   }
   .mobile-nav-item {
     min-width: 0;
@@ -79,7 +123,7 @@
     > .main-content {
     padding-bottom: calc(var(--mobile-nav-height) + 24px);
   }
-  .main-content :is(h1, h2, h3, p, .product-tags, .status) {
+  .main-content :is(h1, h2, h3, p, .product-tags) {
     overflow-wrap: anywhere;
   }
   .main-content .button,
@@ -91,8 +135,6 @@
     font-size: var(--type-body);
     scroll-margin-block: 80px;
   }
-  .search-hero textarea,
-  .assistant-composer.conversation-composer textarea,
   .main-content input,
   .main-content textarea,
   .main-content select,
@@ -104,9 +146,6 @@
     font-size: var(--type-body);
   }
   .title-with-action,
-  .section-heading,
-  .results-controls,
-  .job-actions,
   .modal-actions {
     flex-wrap: wrap;
   }
@@ -135,19 +174,6 @@
   .own-listing h2 {
     font-size: var(--type-item);
   }
-  .product-grid {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
-  }
-  .listing-actions :is(.text-button, .button),
-  .job-actions > button {
-    min-height: 44px;
-  }
-  .compare-tray {
-    bottom: calc(var(--mobile-nav-height) + 12px);
-    max-width: calc(100% - 24px);
-    gap: 8px;
-    flex-wrap: wrap;
-  }
   body:has(.compare-tray)
     .app-layout:not(
       .chat-layout,
@@ -157,11 +183,6 @@
     )
     > .main-content {
     padding-bottom: calc(var(--mobile-nav-height) + 104px);
-  }
-  .toast {
-    bottom: calc(var(--mobile-nav-height) + 16px);
-    max-width: calc(100% - 24px);
-    overflow-wrap: anywhere;
   }
   .modal-backdrop {
     padding: 12px;
@@ -204,8 +225,7 @@
     max-height: none;
     resize: none;
   }
-  .chat-layout .chat-composer-dock textarea,
-  .selling-chat-layout .chat-composer-dock textarea {
+  .chat-layout .chat-composer-dock textarea {
     resize: none;
     max-height: min(100px, 20dvh);
   }
@@ -218,9 +238,11 @@
     > .main-content {
     padding-bottom: 8px;
   }
-  .selling-chat-layout .listing-save-form {
-    flex-wrap: wrap;
-    gap: 4px 12px;
+  /* The docked composer stays clear of the home indicator unless the keyboard covers it. */
+  :root:not([data-keyboard-open])
+    .messages-layout:has(.messages-page.has-conversation)
+    > .main-content {
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
   }
 
   /* Preserve room for history in landscape and above the phone keyboard. */
@@ -235,34 +257,15 @@
   }
   :root[data-compact-viewport]
     .messages-page.has-conversation
-    > :is(.page-title, .account-inbox-notice),
-  :root[data-compact-viewport] .chat-layout .search-title,
-  :root[data-compact-viewport] .chat-layout .results-controls,
-  :root[data-compact-viewport] .selling-chat-layout .listing-preview,
+    > :is(.page-title, .quiet-caption),
   :root[data-compact-viewport] .selling-chat-layout .page-title {
-    display: none;
-  }
-  :root[data-compact-viewport] .messages-page .conversation-composer {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
-  }
-  :root[data-compact-viewport] .messages-page .reply-assistance {
-    grid-column: 1 / -1;
-  }
-  :root[data-compact-viewport] .messages-page .reply-assistance-action > small,
-  :root[data-compact-viewport] .messages-page .composer-actions > small {
     display: none;
   }
   :root[data-compact-viewport]
     .messages-page
     .conversation-composer
-    > textarea {
-    height: 44px;
-    min-height: 44px;
-    max-height: 72px;
-  }
-  :root[data-compact-viewport] .messages-page .composer-actions .button {
-    min-height: 44px;
+    > .pako-label {
+    display: none;
   }
 }
 

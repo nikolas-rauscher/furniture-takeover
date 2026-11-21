@@ -3,6 +3,19 @@ import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath } from "node:url";
 import { readPort } from "./server/config";
 
+/** Libraries that change rarely get their own chunks, so an app release keeps them cached. */
+const VENDOR_CHUNKS: Record<string, RegExp> = {
+  react: /\/node_modules(\.nosync)?\/(react|react-dom|scheduler)\//,
+  motion:
+    /\/node_modules(\.nosync)?\/(motion|framer-motion|motion-dom|motion-utils)\//,
+};
+
+function vendorChunk(id: string) {
+  return Object.keys(VENDOR_CHUNKS).find((name) =>
+    VENDOR_CHUNKS[name].test(id),
+  );
+}
+
 export default defineConfig(({ mode }) => {
   const env = {
     ...loadEnv(mode, process.cwd(), ["API_", "APP_", "PREVIEW_"]),
@@ -19,6 +32,15 @@ export default defineConfig(({ mode }) => {
     plugins: [tailwindcss()],
     resolve: {
       alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: vendorChunk,
+          // Folds the many tiny shared chunks into their neighbours: fewer requests per screen.
+          experimentalMinChunkSize: 20_000,
+        },
+      },
     },
     server: {
       host: env.APP_HOST || "127.0.0.1",

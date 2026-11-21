@@ -4,7 +4,7 @@ import {
   prepareListingDraft,
   listingMeasurementField,
 } from "./listingPreparation.ts";
-import type { ListingDraft } from "./components/SellFlow";
+import type { ListingDraft } from "./listingDraft";
 
 const book: ListingDraft = {
   image: "photo",

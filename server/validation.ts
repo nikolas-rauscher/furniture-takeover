@@ -1,7 +1,8 @@
 import {
   MAX_BATCH_PHOTOS,
   MAX_LISTING_PHOTOS,
-  MAX_UPLOAD_PHOTO_BYTES,
+  MAX_PHOTO_SORT_BYTES,
+  MAX_STORED_PHOTO_BYTES,
 } from "../shared/listingPhotos.ts";
 import type {
   AgentMetadata,
@@ -53,13 +54,17 @@ function validateImage(value: unknown): string {
     new AgentError(
       400,
       "INVALID_IMAGE",
-      "Use a JPG, PNG or WebP photo up to 2 MB.",
+      "Use a JPG, PNG or WebP photo up to 256 KB after resizing.",
     );
   if (typeof value !== "string") throw fail();
   const match = value.match(
     /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/,
   );
-  if (!match || match[2].length % 4 !== 0 || match[2].length > 2_796_204)
+  if (
+    !match ||
+    match[2].length % 4 !== 0 ||
+    match[2].length > 4 * Math.ceil(MAX_STORED_PHOTO_BYTES / 3)
+  )
     throw fail();
   const bytes = Buffer.from(match[2], "base64");
   const signatureMatches =
@@ -71,7 +76,7 @@ function validateImage(value: unknown): string {
             .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
         : bytes.subarray(0, 4).toString() === "RIFF" &&
           bytes.subarray(8, 12).toString() === "WEBP";
-  if (!signatureMatches || bytes.length > 2 * 1024 * 1024) throw fail();
+  if (!signatureMatches || bytes.length > MAX_STORED_PHOTO_BYTES) throw fail();
   return value;
 }
 
@@ -82,56 +87,12 @@ export function validateRequest(value: unknown): AssistRequest {
       "INVALID_REQUEST",
       "Provide an intent, text of up to 4,000 characters, and valid optional details.",
     );
-  if (
-    !record(value) ||
-    !["search", "listing", "reply"].includes(String(value.intent))
-  )
+  if (!record(value) || !["search", "listing"].includes(String(value.intent)))
     throw fail();
   const result: AssistRequest = {
     intent: value.intent as AssistRequest["intent"],
     text: text(value.text, 4000, fail),
   };
-  if (result.intent === "reply") {
-    const conversation = value.conversation;
-    if (
-      !record(conversation) ||
-      !["buyer", "seller"].includes(String(conversation.role)) ||
-      !record(conversation.listing) ||
-      !Array.isArray(conversation.messages) ||
-      conversation.messages.length > 12
-    )
-      throw fail();
-    const listing: NonNullable<AssistRequest["conversation"]>["listing"] = {
-      title: text(conversation.listing.title, 180, fail),
-    };
-    if (!listing.title) throw fail();
-    for (const [field, max] of [
-      ["description", 2400],
-      ["location", 180],
-      ["condition", 160],
-      ["dimensions", 160],
-      ["pickup", 500],
-      ["status", 20],
-    ] as const)
-      if (conversation.listing[field] !== undefined)
-        listing[field] = text(conversation.listing[field], max, fail);
-    if (conversation.listing.price !== undefined)
-      listing.price = number(conversation.listing.price, 1_000_000, fail);
-    result.conversation = {
-      role: conversation.role as "buyer" | "seller",
-      listing,
-      messages: conversation.messages.map((message) => {
-        if (
-          !record(message) ||
-          !["self", "other"].includes(String(message.role))
-        )
-          throw fail();
-        const body = text(message.text, 4000, fail);
-        if (!body) throw fail();
-        return { role: message.role as "self" | "other", text: body };
-      }),
-    };
-  }
   if (value.context !== undefined) {
     if (!record(value.context)) throw fail();
     const source = value.context;
@@ -169,7 +130,6 @@ export function validateRequest(value: unknown): AssistRequest {
       ...new Set([...(result.image ? [result.image] : []), ...result.images]),
     ];
     if (allImages.length > maxPhotos) throw tooMany();
-    if (photoBytes(allImages) > MAX_UPLOAD_PHOTO_BYTES) throw tooLarge();
   }
   if (!result.text && !result.image && !result.images?.length)
     throw new AgentError(
@@ -251,7 +211,7 @@ export function validatePhotoGroupRequest(value: unknown): PhotoGroupRequest {
       `Add between 1 and ${MAX_BATCH_PHOTOS} photos to sort.`,
     );
   const images = value.images.map(validateImage);
-  if (photoBytes(images) > MAX_UPLOAD_PHOTO_BYTES) throw tooLarge();
+  if (photoBytes(images) > MAX_PHOTO_SORT_BYTES) throw tooLarge();
   if (value.itemCount === undefined) return { images };
   if (
     typeof value.itemCount !== "number" ||

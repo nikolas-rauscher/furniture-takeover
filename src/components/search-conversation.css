@@ -1,5 +1,4 @@
 .search-conversation {
-  max-width: 920px;
   min-width: 0;
   margin: 22px 0 14px;
   color: var(--ink, #292929);
@@ -19,7 +18,7 @@
   width: fit-content;
   max-width: min(78%, 64ch);
   padding: 12px 16px;
-  border-radius: 12px;
+  border-radius: 18px;
 }
 .search-message > span {
   display: block;
@@ -34,44 +33,35 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+/* Your request pops out of its corner, like the request bubble in the intro. */
 .user-message {
   margin-left: auto;
-  background: #edf0fa;
-  border-bottom-right-radius: 3px;
-  animation: search-message-reveal 650ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  background: var(--mist);
+  border-bottom-right-radius: 5px;
+  transform-origin: 100% 100%;
+  animation: search-message-pop 360ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
 }
-.previous-agent-message {
-  background: #fff;
-  border: 1px solid var(--line, #deded8);
-  border-bottom-left-radius: 3px;
+/* A search that started from a photo shows it above the words Pako read from it. */
+.user-message-photo {
+  margin: 0 0 8px;
 }
-.previous-agent-answer > * + * {
-  margin-top: 8px;
+.user-message-photo > img {
+  display: block;
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  object-fit: cover;
 }
-.previous-agent-answer h3,
-.previous-agent-answer h4 {
-  margin: 8px 0 4px;
-  font-size: 14px;
-  line-height: 1.4;
+.user-message-photo > figcaption {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  font-weight: 650;
 }
-.previous-agent-answer > :first-child {
-  margin-top: 0;
-}
-.previous-agent-answer ul,
-.previous-agent-answer ol {
-  margin-bottom: 0;
-  padding-left: 20px;
-  font-size: 15px;
-  line-height: 1.5;
-}
-@keyframes search-message-reveal {
+@keyframes search-message-pop {
   from {
     opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+    transform: scale(0.9);
   }
 }
 @media (max-width: 600px) {
@@ -90,9 +80,6 @@
 }
 
 /* Previous turns retain the same response tree and dimensions. */
-.search-conversation {
-  max-width: none;
-}
 .search-conversation-turn {
   min-width: 0;
 }
@@ -109,7 +96,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  height: min(680px, 72dvh);
+  height: min(680px, 72svh);
   min-height: 340px;
   min-width: 0;
   overflow: hidden;
@@ -123,20 +110,28 @@
   scrollbar-gutter: stable;
   padding: 8px 8px 20px;
   overflow-anchor: none;
+  /* The scroller keeps the question in view with instant jumps; let them glide instead. */
+  scroll-behavior: smooth;
 }
+/* The first position is set before the conversation shows, so it must not glide. */
+.chat-scroll-viewport[data-pending-scroll] {
+  scroll-behavior: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-scroll-viewport {
+    scroll-behavior: auto;
+  }
+}
+/* No divider: the conversation fades out above the composer instead. */
 .chat-composer-dock {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: end;
+  position: relative;
   flex: 0 0 auto;
   min-height: 0;
   padding-top: 6px;
   background: var(--paper, #fafaf8);
-  border-top: 1px solid var(--line, #e1e3eb);
-}
-.chat-composer-dock:has(.chat-jump-latest[data-active="true"]) {
-  grid-template-columns: minmax(0, 1fr) 44px;
-  column-gap: 8px;
 }
 .chat-composer-content {
   min-width: 0;
@@ -149,32 +144,48 @@
 .app-layout:is(.chat-layout, .selling-chat-layout) .chat-composer-dock {
   padding-top: 6px;
 }
-.chat-composer-dock .assistant-composer.conversation-composer {
-  position: static;
-  width: 100%;
-  margin: 0;
-}
+/* A labelled pill in the right corner of the conversation's faded bottom edge, right above
+   the composer, so the chips, prices and sliders Pako leaves on the left stay readable. */
 .chat-composer-dock .chat-jump-latest {
-  position: static;
-  inset: auto;
-  translate: none;
+  position: absolute;
+  inset-inline: auto 4px;
+  bottom: calc(100% + 6px);
+  translate: 0 0;
   transform: none;
-  width: 44px;
-  height: 44px;
-  min-height: 44px;
-  margin-bottom: 7px;
-  padding: 0;
-  border-radius: 8px;
-  border: 1px solid var(--line, #e1e3eb);
-  background: #fff;
-  box-shadow: none;
+  width: auto;
+  height: 36px;
+  min-height: 36px;
+  margin: 0;
+  padding: 0 14px 0 10px;
+  gap: 4px;
+  border-radius: 999px;
+  border: 2px solid var(--card-line);
+  background: var(--surface);
+  color: var(--blue);
+  box-shadow: 0 8px 18px -10px rgb(41 41 41 / 0.35);
+  transition:
+    opacity 160ms ease-out,
+    translate 220ms var(--ease-out);
+}
+/* The pill looks slim; a finger still gets a 44 px target. */
+.chat-composer-dock .chat-jump-latest::after {
+  content: "";
+  position: absolute;
+  inset: -6px -2px;
 }
 .chat-composer-dock .chat-jump-latest[data-active="false"] {
-  display: none;
+  opacity: 0;
+  translate: 0 6px;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-composer-dock .chat-jump-latest {
+    transition: none;
+  }
 }
 @media (max-width: 760px) {
   .chat-workspace {
-    height: 68dvh;
+    height: 68svh;
     min-height: 320px;
   }
 }
@@ -188,57 +199,13 @@
   margin-bottom: 10px;
   min-width: 0;
 }
-.proposal-chat-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid #dce0e9;
-  border-radius: 8px;
-  background: #fff;
-}
-.proposal-chat-bar > div {
-  flex: 1;
-  min-width: 0;
-}
-.proposal-chat-bar strong {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 13px;
-  line-height: 1.4;
-}
-.proposal-chat-bar span {
-  display: block;
-  color: var(--muted, #667080);
-  font-size: 12px;
-  line-height: 1.4;
-}
-.proposal-chat-bar .button {
-  flex-shrink: 0;
-  min-height: 36px;
-  padding: 6px 12px;
-  font-size: 13px;
-}
-.proposal-chat-bar .proposal-dismiss {
-  flex-shrink: 0;
-  width: 32px;
-  height: 36px;
-  font-size: 22px;
-}
-.price-suggestion-details {
-  margin: 8px 0;
-  font-size: 13px;
-}
 
-/* Chat turns use compact spacing in both current and previous responses. */
+/* The reply bubble frames every turn, so the panel inside it has no frame of its own. */
 .chat-workspace .agent-run-panel {
   margin: 0;
-  padding: 12px 14px;
-  border: 1px solid #e1e3eb;
-  border-radius: 12px 12px 12px 3px;
-  background: #fff;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 .chat-workspace .agent-run-identity {
   display: flex;
@@ -260,7 +227,8 @@
 }
 .chat-workspace .agent-run-header h2 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--type-label);
+  font-weight: 700;
   line-height: 1.4;
 }
 .chat-workspace .agent-run-actions {
@@ -281,7 +249,7 @@
   background: transparent;
 }
 .chat-workspace .agent-search-result-message > h3 {
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-label);
 }
 .chat-workspace .agent-run-answer {
   font-size: var(--type-body);
@@ -303,44 +271,6 @@
 .chat-workspace .agent-run-debug {
   margin-top: 10px;
 }
-.chat-workspace .section-heading {
-  margin: 10px 0 8px;
-}
-.chat-message-draft {
-  margin-top: 12px;
-  padding: 14px;
-  border: 1px solid #dce1f1;
-  border-radius: 10px;
-  background: #f7f8fd;
-}
-.chat-message-draft-heading {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 4px 12px;
-  font-size: 14px;
-}
-.chat-message-draft-heading span,
-.chat-message-draft small {
-  font-size: 12px;
-  color: var(--muted, #667080);
-}
-.chat-message-draft p {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font-size: 14px;
-  line-height: 1.5;
-  margin: 10px 0 12px;
-}
-.chat-message-draft small {
-  display: block;
-  margin-top: 8px;
-}
-.chat-message-draft .button {
-  min-height: 40px;
-  padding: 8px 14px;
-  font-size: 13px;
-}
 .chat-workspace .agent-run-identity {
   flex-wrap: nowrap;
 }
@@ -353,10 +283,25 @@
   text-align: right;
 }
 .chat-workspace .agent-run-panel.conversation-agent .agent-run-question {
+  max-width: none;
   margin: 0;
   padding: 0;
   border: 0;
   background: transparent;
+}
+/* Only the question keeps a reading width; "Skip for now" lines up with the menu above. */
+.chat-workspace
+  .agent-run-panel.conversation-agent
+  .agent-run-question
+  .agent-question-heading
+  > h3 {
+  max-width: 70ch;
+}
+.chat-workspace
+  .agent-run-panel.conversation-agent
+  .agent-question-heading
+  > .question-skip {
+  margin-left: auto;
 }
 
 /* Show the offers first, then the agent's explanation of those offers. */
@@ -379,4 +324,33 @@
 }
 .chat-composer-dock .chat-comparison > .button {
   min-height: var(--control-size);
+}
+
+/*
+ * Entering the chat: the home search box becomes the composer, and the text typed
+ * into it flies up as your message. The box pictures scale with their frame, so the
+ * two outlines stay flush; the text keeps its natural size, so the small bubble is
+ * not blown up to the width of the search field.
+ */
+::view-transition-group(agent-composer) {
+  z-index: 1;
+  overflow: clip;
+  border-radius: 12px;
+}
+::view-transition-group(agent-query) {
+  z-index: 2;
+}
+::view-transition-old(agent-query),
+::view-transition-new(agent-query) {
+  width: auto;
+  height: auto;
+}
+/* One request travels: the typed text hands over to the bubble at once instead of both
+   showing, half-faded, on top of each other. */
+::view-transition-old(agent-query) {
+  animation: none;
+  opacity: 0;
+}
+::view-transition-new(agent-query) {
+  animation: none;
 }
