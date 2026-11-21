@@ -50,7 +50,8 @@ const RECORDED: Record<string, Words> = {
   },
   peek: {
     question: "After “About you”",
-    options: { finish: "Finished", tour: "Watched the full scenes" },
+    // The choice is counted, not the playback: "Skip the rest" can follow it.
+    options: { finish: "Finished", tour: "Chose the full scenes" },
   },
 };
 
@@ -101,6 +102,16 @@ export function questionLabel(step: string): string {
   return scenario ? `${scenario} ${words.question}` : words.question;
 }
 
+/**
+ * Codes the survey shares between two wordings. Buyers read "Finding the right item"
+ * and sellers "Finding someone who wanted it"; both are stored as `finding`.
+ */
+const POOLED: Record<string, Record<string, string>> = {
+  "last-trouble": {
+    finding: "Finding the right item, or someone who wanted it",
+  },
+};
+
 export function optionLabel(step: string, option: string): string {
-  return wordsOf(step)?.options[option] ?? option;
+  return POOLED[step]?.[option] ?? wordsOf(step)?.options[option] ?? option;
 }
