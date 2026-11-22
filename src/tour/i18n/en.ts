@@ -45,7 +45,7 @@ export const EN = {
     },
     doneBefore: {
       title: "You've already taken part.",
-      text: "Thanks for taking part. You can leave your email below if you’d like to hear from us.",
+      text: "Thanks! If you'd like to hear from us, you can still leave your email.",
     },
     showTour: "Show me the tour",
     loadFailed: {
@@ -414,7 +414,7 @@ export const EN = {
       },
       "the-app": {
         bubble:
-          "Léa is selling her desk and you’d like to buy it. You each have a Pako. The two Pakos talk to each other to find a pickup time that works for both of you. You can also write to Léa yourself.",
+          "Léa is selling her desk and you'd like to buy it. You each have a Pako. The two Pakos talk to each other to find a pickup time that works for both of you. You can also write to Léa yourself.",
         text: "Two short scenes, a chat and a few questions about the story.",
       },
       price: {
@@ -431,7 +431,7 @@ export const EN = {
         text: "Léa still needs a desk lamp for her new room. Anyone looking for something can post what they need, and students nearby see it.",
       },
       delegate: {
-        text: "Imagine you’re selling Léa’s desk. Pako could send messages for you. You’d see them afterwards.",
+        text: "Imagine you're selling Léa's desk. Pako could send messages for you. You'd see them afterwards.",
       },
       price: {
         text: "Think about using Pako to write listings and handle messages.",
@@ -448,7 +448,7 @@ export const EN = {
       },
       deal: {
         title: "The pickup is booked",
-        text: "You’re Noah on Léa’s phone. Pako knows the pickup time. If someone is late or goes quiet, it checks in with both of you. Either of you can change the time or confirm pickup. Léa sees your ten-minute delay. If you stop replying, she can release the desk for another buyer.",
+        text: "On Léa's phone, you're Noah. Pako knows the pickup time and checks in with both of you if someone runs late or goes quiet. If a buyer stops replying, Léa can offer the desk to someone else.",
         label:
           "Léa accepts CHF 40. Noah reports a ten-minute delay, Pako shows the new arrival time, Noah confirms pickup and Léa marks the desk sold.",
       },
@@ -637,7 +637,7 @@ export const EN = {
       },
       "check-listing": {
         question:
-          "If you were Léa, what would you check before Pako’s listing goes online?",
+          "If you were Léa, what would you check before Pako's listing goes online?",
         options: {
           price: "The price",
           description: "The description",
@@ -660,8 +660,7 @@ export const EN = {
         options: {
           verified: "Verified student account",
           reviews: "Reviews",
-          "pako-rating":
-            "Pako’s reliability rating based on past sales and pickups",
+          "pako-rating": "Pako's rating from past sales and pickups",
           "campus-meet": "Meeting on campus",
           chat: "The chat so far",
           none: "None of these",
@@ -744,9 +743,9 @@ export const EN = {
       },
     },
     draft: {
-      intro: "You want Léa’s desk. Pako sent the first message for you.",
+      intro: "You want Léa's desk. Pako sent the first message for you.",
       scenario:
-        "You told Pako you’re free on weekend evenings. Léa gave her times to her own Pako.",
+        "You told Pako you're free on weekend evenings. Léa gave her times to her own Pako.",
       task: "Pick a day in the chat below.",
       chatLabel: "Practice chat with Léa",
       listing: {
@@ -759,11 +758,11 @@ export const EN = {
       lea: "Léa",
       you: "You",
       pako: "Pako",
-      sentByPako: "You · sent by Pako",
+      sentByPako: "Sent by Pako",
       opening: (price: number) =>
         `hey, is the desk still available? I can do CHF ${price}`,
       matchedTimes:
-        "Léa’s Pako and I found two times you’re both free. Saturday or Sunday at 5:30?",
+        "Léa's Pako and I found two times you're both free. Saturday or Sunday at 5:30?",
       revise: "Choose a different day or reply",
       askDay: "yeah, still got it! when could you pick it up?",
       pickDay: "Your answer to Léa",
@@ -772,9 +771,9 @@ export const EN = {
       confirm: (day: string) =>
         `${day.toLowerCase()} works! meet by the Rolex?`,
       typing: (name: string) => `${name} is typing`,
-      offerReady: "Here’s a confirmation you could send.",
+      offerReady: "Here's a confirmation you could send.",
       offer: (day: string, price: number) =>
-        `see you ${day.toLowerCase()} at 5:30 by the Rolex! I’ll bring CHF ${price}`,
+        `see you ${day.toLowerCase()} at 5:30 by the Rolex! I'll bring CHF ${price}`,
       offerTitle: "Pako's draft",
       question: "What would you do with this draft?",
       sendAsIs: "Send as written",
@@ -790,7 +789,7 @@ export const EN = {
     pilot: {
       sending: "Sending your email…",
       failed:
-        "Your email hasn’t been saved. Check your connection and try again.",
+        "Your email hasn't been saved. Check your connection and try again.",
       invite: "Would you like to hear from us again?",
       email: "Email address",
       ticksLegend: "What would you like?",

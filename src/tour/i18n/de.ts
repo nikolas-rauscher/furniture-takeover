@@ -49,7 +49,7 @@ export const DE: TourText = {
     },
     doneBefore: {
       title: "Du hast schon teilgenommen.",
-      text: "Danke fürs Mitmachen. Wenn du von uns hören möchtest, kannst du unten deine E-Mail-Adresse hinterlassen.",
+      text: "Danke! Wenn du von uns hören möchtest, kannst du noch deine E-Mail-Adresse hinterlassen.",
     },
     showTour: "Demo ansehen",
     loadFailed: {
@@ -459,7 +459,7 @@ export const DE: TourText = {
       },
       deal: {
         title: "Die Abholung steht",
-        text: "Auf Léas Handy heisst du Noah. Pako kennt den Termin. Wenn sich jemand verspätet oder nicht mehr antwortet, fragt Pako bei euch beiden nach. Ihr könnt die Zeit ändern oder die Abholung bestätigen. Léa sieht, dass du zehn Minuten später kommst. Antwortest du nicht mehr, kann sie den Tisch wieder freigeben.",
+        text: "Auf Léas Handy heisst du Noah. Pako kennt den Termin und fragt bei euch beiden nach, wenn sich jemand verspätet oder nicht mehr antwortet. Meldet sich ein Käufer nicht mehr, kann Léa den Tisch jemand anderem geben.",
         label:
           "Léa nimmt CHF 40 an. Noah meldet zehn Minuten Verspätung, Pako zeigt die neue Ankunftszeit. Noah bestätigt die Abholung und Léa markiert den Tisch als verkauft.",
       },
@@ -678,7 +678,7 @@ export const DE: TourText = {
           verified: "Bestätigtes Studierendenkonto",
           reviews: "Bewertungen",
           "pako-rating":
-            "Pakos Einschätzung der Zuverlässigkeit anhand früherer Verkäufe und Abholungen",
+            "Pakos Bewertung aus früheren Verkäufen und Abholungen",
           "campus-meet": "Treffen auf dem Campus",
           chat: "Der bisherige Chat",
           none: "Nichts davon",
@@ -782,7 +782,7 @@ export const DE: TourText = {
       lea: "Léa",
       you: "Du",
       pako: "Pako",
-      sentByPako: "Du · von Pako gesendet",
+      sentByPako: "Von Pako gesendet",
       opening: (price) =>
         `hey, ist der Tisch noch da? ich könnte dir CHF\u00a0${price} geben`,
       matchedTimes:

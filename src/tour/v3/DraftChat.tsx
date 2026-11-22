@@ -33,10 +33,13 @@ function Bubble({
 }) {
   return (
     <div className="tour-chat-row" data-from={from}>
-      <p className="tour-chat-bubble">
-        <span className={showName ? "tour-chat-sender" : "sr-only"}>
-          {name}:{" "}
+      {showName && (
+        <span className="tour-chat-sender" aria-hidden="true">
+          {name}
         </span>
+      )}
+      <p className="tour-chat-bubble">
+        <span className="sr-only">{name}: </span>
         {children}
       </p>
     </div>

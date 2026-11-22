@@ -338,6 +338,14 @@
   background: var(--blue);
   color: var(--on-primary);
 }
+/* A ranked card not placed yet keeps an empty ring where its place will show. */
+.ob-choice-rank-open {
+  display: block;
+  width: 26px;
+  height: 26px;
+  border: 2px dashed var(--card-line);
+  border-radius: 50%;
+}
 /* Number keys pick answers, so the badges only show where a keyboard is likely. */
 .ob-choice-key {
   display: none;

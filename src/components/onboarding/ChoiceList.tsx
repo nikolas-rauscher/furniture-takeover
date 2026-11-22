@@ -183,8 +183,13 @@ export default function ChoiceList<Id extends string>({
                     >
                       <Check size={14} strokeWidth={3} />
                     </motion.span>
+                  ) : ranked ? (
+                    <motion.span
+                      key="open"
+                      className="ob-choice-rank-open"
+                      {...mark}
+                    />
                   ) : (
-                    !ranked &&
                     index < KEYED_OPTIONS && (
                       <motion.kbd key="key" className="ob-choice-key" {...mark}>
                         {index + 1}

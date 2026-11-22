@@ -50,7 +50,7 @@ export const FR: TourText = {
     },
     doneBefore: {
       title: "Tu as déjà participé.",
-      text: "Merci d’avoir participé. Si tu veux de nos nouvelles, tu peux laisser ton adresse e-mail ci-dessous.",
+      text: "Merci\u202f! Si tu veux de nos nouvelles, tu peux encore laisser ton adresse e-mail.",
     },
     showTour: "Découvrir takeover",
     loadFailed: {
@@ -462,7 +462,7 @@ export const FR: TourText = {
       },
       deal: {
         title: "Le retrait est fixé",
-        text: "Sur le téléphone de Léa, tu t’appelles Noah. Pako connaît l’heure du rendez-vous. Si quelqu’un est en retard ou ne répond plus, il prend de vos nouvelles à tous les deux. Chacun peut proposer un autre horaire ou confirmer le retrait. Léa voit tes dix minutes de retard. Si tu ne réponds plus, elle peut remettre le bureau en vente.",
+        text: "Sur le téléphone de Léa, tu t’appelles Noah. Pako connaît l’heure du rendez-vous et prend des nouvelles de vous deux si quelqu’un est en retard ou ne répond plus. Si un acheteur ne répond plus, Léa peut proposer le bureau à quelqu’un d’autre.",
         label:
           "Léa accepte CHF 40. Noah annonce dix minutes de retard et Pako indique sa nouvelle heure d’arrivée. Noah confirme le retrait et Léa marque le bureau comme vendu.",
       },
@@ -680,8 +680,7 @@ export const FR: TourText = {
         options: {
           verified: "Compte étudiant vérifié",
           reviews: "Des évaluations",
-          "pako-rating":
-            "Une note de fiabilité donnée par Pako à partir des ventes et retraits passés",
+          "pako-rating": "La note de Pako selon les ventes et retraits passés",
           "campus-meet": "Se retrouver sur le campus",
           chat: "Le chat jusqu’ici",
           none: "Rien de tout ça",
@@ -785,7 +784,7 @@ export const FR: TourText = {
       lea: "Léa",
       you: "Toi",
       pako: "Pako",
-      sentByPako: "Toi · envoyé par Pako",
+      sentByPako: "Envoyé par Pako",
       opening: (price) =>
         `salut, le bureau est toujours dispo\u202f? je t’en propose CHF\u00a0${price}`,
       matchedTimes:
