@@ -243,3 +243,43 @@ test("the ladder counts everyone who entered it, with the answers it implies", (
     ],
   });
 });
+
+test("pricing rankings count each position and keep older single-choice results separate", () => {
+  const plans = ["credits", "free-ads", "free", "seller-fee", "monthly"];
+  const version = "v4-3";
+  const reportRows = rows({
+    sessions: [session({ version }), session({ version: "v4-2" })],
+    answers: [
+      ...times(5, () => ({
+        version,
+        step: "pay-model",
+        chosen: plans,
+        text: "",
+      })),
+      {
+        version,
+        step: "pay-model",
+        chosen: [...plans].reverse(),
+        text: "A day pass",
+      },
+      { version: "v4-2", step: "pay-model", chosen: ["pack-5"], text: "" },
+    ],
+  });
+  const report = buildStudyReport(reportRows, version);
+  assert.deepEqual(
+    report.questions[0].options.filter((option) => option.rank === 1),
+    [
+      { option: "credits", rank: 1, count: 5 },
+      { option: "monthly", rank: 1, count: null },
+    ],
+  );
+  assert.deepEqual(report.texts[0].texts, ["A day pass"]);
+  const earlier = buildStudyReport(reportRows, "v4-2");
+  assert.deepEqual(earlier.questions[0].options, [
+    { option: "pack-5", count: null },
+  ]);
+  const screens = earlier.funnel.map(({ step }) => step);
+  assert.equal(screens[screens.indexOf("app-deal") + 1], "max-distance");
+  assert.ok(screens.includes("pay-model-not"));
+  assert.ok(!report.funnel.some(({ step }) => step === "pay-model-not"));
+});

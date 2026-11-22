@@ -4,8 +4,22 @@ import { amountLabel } from "../../tour/v3/v3Words";
 
 type Words = { question: string; options: Record<string, string> };
 
-/** Answers stored without a question of their own in the survey's dictionary. */
+const EARLIER_PLANS = {
+  free: "Free",
+  "seller-fee": "Fee per sale",
+  "pack-5": "Pack of 5",
+  monthly: "Monthly subscription",
+};
+
+/** Stored questions without an entry in the current survey dictionary. */
 const RECORDED: Record<string, Words> = {
+  "pay-model-not": {
+    question: "Which of these would you not use?",
+    options: {
+      ...EARLIER_PLANS,
+      "all-ok": "I'd consider all of them",
+    },
+  },
   "draft-day": {
     question: "Day picked in the practice chat",
     options: EN.v3.draft.days,
@@ -21,6 +35,12 @@ const RECORDED: Record<string, Words> = {
       own: "Started their own, nothing decided",
     },
   },
+};
+
+/** Labels for answers still present in reports from before the v4-3 wording. */
+const EARLIER_OPTIONS: Record<string, Record<string, string>> = {
+  "pay-model": { ...EARLIER_PLANS, "not-sure": "Not sure" },
+  "last-messages": { "1-5": "1–5", "6-15": "6–15", "over-15": "More than 15" },
 };
 
 /** The amounts of each slider step, labelled as the participant read them. */
@@ -62,5 +82,7 @@ export function questionLabel(step: string): string {
 }
 
 export function optionLabel(step: string, option: string): string {
-  return wordsOf(step)?.options[option] ?? option;
+  return (
+    wordsOf(step)?.options[option] ?? EARLIER_OPTIONS[step]?.[option] ?? option
+  );
 }

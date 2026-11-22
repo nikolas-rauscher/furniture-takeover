@@ -201,13 +201,20 @@ function Questions({
       {questions.map(({ step, answered, options }) => (
         <div key={step} className="admin-study-question">
           <h3>
-            {questionLabel(step)} <code>{step}</code>
+            {step === "pay-model" && options.every((option) => !option.rank)
+              ? "Preferred pricing option"
+              : questionLabel(step)}{" "}
+            <code>{step}</code>
           </h3>
           <ul className="admin-study-bars">
-            {options.map(({ option, count }) => (
+            {options.map(({ option, count, rank }) => (
               <Bar
-                key={option}
-                label={optionLabel(step, option)}
+                key={`${rank ?? ""}:${option}`}
+                label={
+                  rank
+                    ? `Rank ${rank} · ${optionLabel(step, option)}`
+                    : optionLabel(step, option)
+                }
                 count={count}
                 of={answered}
                 minCell={report.minCell}
@@ -375,9 +382,11 @@ function Report({
       </Panel>
       <p className="admin-footnote">
         Counts from 1 to {report.minCell - 1} show as “&lt;{report.minCell}”, so
-        a small group can’t be singled out. Each bar reads chosen over answered;
-        in a multiple choice the bars add up to more. Forms at the end are not
-        linked to answers, and cover every version.
+        a small group can’t be singled out. Each bar shows a count out of the
+        people who answered. People can choose several answers on a
+        multiple-choice question. Each pricing rank counts one preference per
+        person. Email forms are counted separately for the selected wording
+        version.
       </p>
     </div>
   );

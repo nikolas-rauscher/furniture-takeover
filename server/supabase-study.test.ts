@@ -19,11 +19,11 @@ async function setup(t: TestContext) {
     db.query("select public.study_start($1,'v1','p1',null,'moodle','phone')", [
       session,
     ]);
-  const startV3 = (session = randomUUID()) =>
-    db.query(
-      "select public.study_start($1,'v3','v3-1','fr','moodle','phone')",
-      [session],
-    );
+  const startV3 = (session = randomUUID(), version = "v3-1") =>
+    db.query("select public.study_start($1,'v3',$2,'fr','moodle','phone')", [
+      session,
+      version,
+    ]);
   const saveAnswer = (session: string, step = "student", text = "") =>
     db.query(
       "select public.study_save_answer($1,$2,'{epfl}',null,'{}',$3,1200)",
@@ -453,8 +453,9 @@ test("the results page rows are for admins and carry no session ids or emails", 
   const admin = randomUUID();
   await asOwner("insert into public.admins(user_id) values($1)", [admin]);
   const session = randomUUID();
-  await startV3(session);
-  await saveV3Answer(session, "who", ["epfl"]);
+  const ranked = ["monthly", "free-ads", "credits", "seller-fee", "free"];
+  await startV3(session, "v4-3");
+  await saveV3Answer(session, "pay-model", ranked);
   await saveEvents(session, [0, 1]);
   await savePilot("ada@epfl.ch");
   await assert.rejects(
@@ -468,7 +469,7 @@ test("the results page rows are for admins and carry no session ids or emails", 
   const report = studyReportRowsSchema.parse(rows[0].r);
   assert.deepEqual(report.sessions, [
     {
-      version: "v3-1",
+      version: "v4-3",
       day: new Date().toISOString().slice(0, 10),
       source: "moodle",
       shown: ["who"],
@@ -478,7 +479,7 @@ test("the results page rows are for admins and carry no session ids or emails", 
     },
   ]);
   assert.deepEqual(report.answers, [
-    { version: "v3-1", step: "who", chosen: ["epfl"], text: "" },
+    { version: "v4-3", step: "pay-model", chosen: ranked, text: "" },
   ]);
   assert.deepEqual(report.pilot, [
     {

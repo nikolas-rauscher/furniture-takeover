@@ -298,7 +298,13 @@ export const studyReportSchema = z.strictObject({
     z.strictObject({
       step: stepId,
       answered: cell,
-      options: z.array(z.strictObject({ option: answerOption, count: cell })),
+      options: z.array(
+        z.strictObject({
+          option: answerOption,
+          count: cell,
+          rank: z.number().int().positive().optional(),
+        }),
+      ),
     }),
   ),
   /** Typed answers per step, sorted alphabetically so their order says nothing. */

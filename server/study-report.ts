@@ -110,6 +110,17 @@ function days(sessions: readonly Session[], sources: string[]) {
   });
 }
 
+function coreScreens(version: string | null): readonly string[] {
+  if (version !== "v4-2") return STUDY_V3_CORE_SCREENS;
+  return STUDY_V3_CORE_SCREENS.filter(
+    (step) => step !== "max-distance",
+  ).flatMap((step) => {
+    if (step === "app-deal") return [step, "max-distance"];
+    if (step === "pay-model") return [step, "pay-model-not"];
+    return [step];
+  });
+}
+
 /** Core screens first, in the survey's order; the rest after them by name. */
 function screenOrder(step: string) {
   const index = STUDY_V3_CORE_SCREENS.findIndex((screen) => screen === step);
@@ -117,6 +128,23 @@ function screenOrder(step: string) {
 }
 const inSurveyOrder = (a: string, b: string) =>
   screenOrder(a) - screenOrder(b) || a.localeCompare(b);
+
+/** A full pricing ranking has one count per position. Earlier single-pick versions retain ordinary counts. */
+function optionCounts(step: string, rows: Answer[]) {
+  const ranked =
+    step === "pay-model" && rows.some((row) => row.chosen.length > 1);
+  if (!ranked)
+    return byCount(countBy(rows, (row) => row.chosen)).map(
+      ([option, count]) => ({ option, count: shown(count) }),
+    );
+  return Array.from(
+    { length: Math.max(...rows.map((row) => row.chosen.length)) },
+    (_, index) =>
+      byCount(countBy(rows, (row) => row.chosen.slice(index, index + 1))).map(
+        ([option, count]) => ({ option, rank: index + 1, count: shown(count) }),
+      ),
+  ).flat();
+}
 
 function questions(answers: readonly Answer[]) {
   const answered = answers.filter((answer) => answer.chosen.length > 0);
@@ -126,9 +154,7 @@ function questions(answers: readonly Answer[]) {
     return {
       step,
       answered: shown(rows.length),
-      options: byCount(countBy(rows, (row) => row.chosen)).map(
-        ([option, count]) => ({ option, count: shown(count) }),
-      ),
+      options: optionCounts(step, rows),
     };
   });
 }
@@ -235,7 +261,7 @@ export function buildStudyReport(
     },
     sources,
     days: days(sessions, sources),
-    funnel: STUDY_V3_CORE_SCREENS.map((step) => ({
+    funnel: coreScreens(version).map((step) => ({
       step,
       reached: shown(reached.get(step) ?? 0),
     })),
