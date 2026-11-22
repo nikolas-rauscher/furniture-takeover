@@ -3,7 +3,7 @@ import test from "node:test";
 import { resumeDraft } from "./draftResume.ts";
 
 test("a decision saved before a reload is shown again, not asked a second time", () => {
-  const sent = { chosen: ["sent-unchanged"], text: "Hi Mia! Saturday works." };
+  const sent = { chosen: ["sent-unchanged"], text: "see you saturday at 5:30" };
   assert.deepEqual(resumeDraft("sat", sent), {
     day: "sat",
     phase: "decided",
@@ -32,4 +32,20 @@ test("a reload before the decision resumes at the day, the draft or the message 
     day: "sun",
     phase: "decide",
   });
+});
+
+test("entering the draft again lets the participant review or change the saved reply", () => {
+  const draft = { chosen: ["sent-own"], text: "see you there" };
+  assert.equal(
+    resumeDraft("sun", draft, [
+      {
+        kind: "shown",
+        step: "draft",
+        seq: 42,
+        detail: null,
+        at: new Date(0).toISOString(),
+      },
+    ]).phase,
+    "review",
+  );
 });

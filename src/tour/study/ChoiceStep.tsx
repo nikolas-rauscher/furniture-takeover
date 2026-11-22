@@ -22,11 +22,13 @@ export function pickOption(
   answer: StepAnswer,
   id: string,
   multiple: boolean,
+  /** The text belongs to the step, not to an option, so a tap never clears it. */
+  stepText = false,
 ): StepAnswer {
   const chosen = multiple ? toggleOption(options, answer.chosen, id) : [id];
-  const keepsText = options.some(
-    (option) => option.withText && chosen.includes(option.id),
-  );
+  const keepsText =
+    stepText ||
+    options.some((option) => option.withText && chosen.includes(option.id));
   return { ...answer, chosen, text: keepsText ? answer.text : "" };
 }
 
@@ -38,6 +40,8 @@ export default function ChoiceStep({
   answer,
   onChange,
   layout = "list",
+  ranked = false,
+  idea,
 }: {
   question: string;
   /** In the order shown. */
@@ -48,6 +52,10 @@ export default function ChoiceStep({
   onChange: (answer: StepAnswer, moved: boolean) => void;
   /** Short answers such as age bands sit side by side; ways of paying are price cards. */
   layout?: "list" | "grid" | "plans";
+  /** Taps put the options in order; see `ChoiceList`. */
+  ranked?: boolean;
+  /** A free line under the options for the step's own text, kept whatever is tapped. */
+  idea?: string;
 }) {
   const text = useTourText();
   const arrows = useArrowMoves();
@@ -67,14 +75,24 @@ export default function ChoiceStep({
           selected={answer.chosen}
           multiple={multiple}
           layout={layout}
+          ranked={ranked}
+          rankLabel={text.common.rank}
           onToggle={(id) =>
             onChange(
-              pickOption(options, answer, id, multiple),
+              pickOption(options, answer, id, multiple, idea !== undefined),
               arrows.takeMoved(),
             )
           }
         />
       </div>
+      {idea !== undefined && (
+        <TextAnswer
+          label={idea}
+          singleLine
+          value={answer.text}
+          onChange={(words) => onChange({ ...answer, text: words }, false)}
+        />
+      )}
       {withText && (
         <TextAnswer
           label={withText.textLine ?? text.common.inAFewWords(withText.label)}

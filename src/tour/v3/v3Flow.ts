@@ -7,6 +7,8 @@ import {
   offeredOptions,
   V3_SECTIONS,
   V3_STEPS,
+  type V3ChoiceStep,
+  type V3AmountStep,
   type V3Section,
   type V3Step,
 } from "./v3Script.ts";
@@ -107,6 +109,16 @@ export const backTarget = (progress: V3Progress): V3Step =>
 export function canGoBack(steps: readonly V3Step[], step: V3Step): boolean {
   const index = steps.findIndex((candidate) => candidate.id === step.id);
   return index > 0 && step.kind !== "end";
+}
+
+/** A ranked answer is complete once every plan has a place. */
+export function canContinue(
+  step: V3ChoiceStep | V3AmountStep,
+  chosen: readonly string[],
+) {
+  return step.kind === "choice" && step.rank
+    ? ordersSame(chosen, step.options)
+    : chosen.length > 0;
 }
 
 /** Which options a step shuffles, the answer id their order is stored under, and the fixed ends. */

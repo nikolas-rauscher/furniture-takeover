@@ -11,6 +11,7 @@ import { TOUR_TEXT } from "../i18n/tourText.ts";
 import {
   answerEvent,
   canGoBack,
+  canContinue,
   MIN_SECTION_FILL,
   nextV3,
   recordV3Answer,
@@ -77,9 +78,9 @@ const choiceSteps = (): V3ChoiceStep[] =>
 const choiceStep = (id: string) => v3StepById(id) as V3ChoiceStep;
 
 /** The obstacles of `last-trouble` offered after a role, as their ids. */
-const troubleFor = (role: string) =>
+const troubleFor = (...roles: string[]) =>
   optionsOf(TOUR_TEXT.en, choiceStep("last-trouble"), {
-    answers: { "last-role": answer(role) },
+    answers: { "last-role": answer(...roles) },
     orders: {},
   }).map((option) => option.id);
 
@@ -111,15 +112,15 @@ test("transport is asked only where something changed hands or still might", () 
   assert.ok(!after("no").includes("last-transport"));
 });
 
-test("the survey has 32 screens before the end after an attempt and 25 without", () => {
+test("the survey has 31 screens before the end after an attempt and 24 without when the release question has no answer", () => {
   const core = (answers: V3Progress["answers"]) => {
     const shown = ids(answers);
     return shown.slice(0, shown.indexOf("end")).length;
   };
   const idle = { "idle-items": answer("1-3"), "last-outcome": answer("yes") };
-  assert.equal(core({ ...idle, "last-role": answer("buying") }), 32);
-  assert.equal(core({ ...idle, "last-role": answer("none") }), 25);
-  assert.equal(core({ "idle-items": answer("none") }), 24);
+  assert.equal(core({ ...idle, "last-role": answer("buying") }), 31);
+  assert.equal(core({ ...idle, "last-role": answer("none") }), 24);
+  assert.equal(core({ "idle-items": answer("none") }), 23);
 });
 
 test("the steps follow the spec: personal parts first, then one story, then price and about you", () => {
@@ -149,6 +150,7 @@ test("the steps follow the spec: personal parts first, then one story, then pric
       "idle-release",
       "idle-why",
       "seeking",
+      "max-distance",
     ],
   );
   assert.deepEqual(
@@ -158,7 +160,6 @@ test("the steps follow the spec: personal parts first, then one story, then pric
       "check-listing",
       "draft",
       "app-deal",
-      "max-distance",
       "trust-signals",
       "delegate",
       "wanted-react",
@@ -168,7 +169,6 @@ test("the steps follow the spec: personal parts first, then one story, then pric
     "part-price",
     "wtp-monthly",
     "pay-model",
-    "pay-model-not",
     "pay-for",
     "who",
     "housing",
@@ -205,20 +205,59 @@ test("the monthly amount runs from nothing to CHF 10 in steps of 50 rappen, stor
   }
 });
 
-test("pay-model-not offers the four plans with their pay-model words, may be skipped, and all-ok stands alone", () => {
-  const not = choiceStep("pay-model-not");
-  assert.equal(not.optional, true);
-  assert.equal(not.exclusive, "all-ok");
-  for (const text of Object.values(TOUR_TEXT))
-    for (const id of ["free", "seller-fee", "pack-5", "monthly"]) {
-      const plans: Record<string, string> = text.v3.steps["pay-model"].options;
-      const nots: Record<string, string> =
-        text.v3.steps["pay-model-not"].options;
-      assert.equal(nots[id], plans[id], id);
-    }
-  const options = optionsOf(TOUR_TEXT.en, not, { answers: {}, orders: {} });
-  assert.deepEqual(toggleOption(options, ["free", "monthly"], "all-ok"), [
-    "all-ok",
+test("ranking requires each plan once; removing a plan closes the gap and reselecting puts it last", () => {
+  const step = choiceStep("pay-model");
+  assert.equal(step.rank, true);
+  const options = optionsOf(TOUR_TEXT.en, step, progress);
+  const ranked = ["monthly", "credits", "free", "free-ads", "seller-fee"];
+  assert.equal(canContinue(step, ranked), true);
+  assert.equal(canContinue(step, []), false);
+  const partial = toggleOption(options, ranked, "credits");
+  assert.equal(canContinue(step, partial), false);
+  assert.equal(canContinue(step, [...partial, "free"]), false);
+  assert.deepEqual(toggleOption(options, partial, "credits"), [
+    "monthly",
+    "free",
+    "free-ads",
+    "seller-fee",
+    "credits",
+  ]);
+});
+
+test("roles, items and obstacles allow several picks; combined roles see the union even after success", () => {
+  for (const step of ["last-role", "last-item", "last-trouble"])
+    assert.ok(choiceStep(step).multiple);
+  for (const [id, exclusive, regular] of [
+    ["last-role", "none", "buying"],
+    ["last-trouble", "nothing", "transport"],
+  ]) {
+    const options = optionsOf(TOUR_TEXT.en, choiceStep(id), progress);
+    assert.deepEqual(toggleOption(options, [regular], exclusive), [exclusive]);
+    assert.deepEqual(toggleOption(options, [exclusive], regular), [regular]);
+  }
+  assert.ok(
+    ids({
+      "last-role": answer("buying", "selling"),
+      "last-outcome": answer("yes"),
+    }).includes("last-trouble"),
+  );
+  const shown = troubleFor("buying", "selling");
+  assert.deepEqual(shown, choiceStep("last-trouble").options);
+  assert.ok(
+    studyAnswerSchema.safeParse({
+      session: SESSION,
+      step: "last-trouble",
+      ...answer("listing", "gone"),
+      shown,
+    }).success,
+  );
+  assert.deepEqual(choiceStep("last-messages").options, [
+    "none",
+    "1-3",
+    "4-7",
+    "8-12",
+    "over-12",
+    "dont-remember",
   ]);
 });
 
@@ -430,7 +469,10 @@ test("the first answer stays when the step is answered again", () => {
 test("shuffled steps keep their first order; the draft's days keep the order of the week", () => {
   const payModel = v3StepById("pay-model");
   const shuffled = withV3Order(progress, payModel, () => 0);
-  assert.equal(shuffled.orders["pay-model"].at(-1), "not-sure");
+  assert.notDeepEqual(
+    shuffled.orders["pay-model"],
+    withV3Order(progress, payModel, () => 0.99).orders["pay-model"],
+  );
   assert.equal(
     withV3Order(shuffled, payModel, () => 0.9),
     shuffled,
@@ -471,10 +513,6 @@ test("every way of paying is a card with its price and the same two facts, in ev
   for (const text of Object.values(TOUR_TEXT)) {
     const options = optionsOf(text, payModel, { answers: {}, orders: {} });
     for (const option of options) {
-      if (option.id === "not-sure") {
-        assert.equal(option.plan, undefined);
-        continue;
-      }
       assert.ok(option.plan?.price, option.id);
       assert.deepEqual(
         option.plan.facts.map((fact) => fact.label),
@@ -501,17 +539,17 @@ test("the current part fills over its longest path, from at least 0.15; finished
   assert.equal(fill(buying, "last-trouble"), 6 / 9);
   assert.equal(fill(failed, "last-trouble"), 6 / 8);
   // Part 2 counts the release question and the reasons until an answer rules them out.
-  assert.equal(fill({}, "idle-items"), 2 / 6);
-  assert.equal(fill({ "idle-items": answer("none") }, "seeking"), 3 / 4);
+  assert.equal(fill({}, "idle-items"), 2 / 7);
+  assert.equal(fill({ "idle-items": answer("none") }, "seeking"), 3 / 5);
   const idle = { "idle-items": answer("1-3") };
-  assert.equal(fill(idle, "idle-release"), 3 / 6);
+  assert.equal(fill(idle, "idle-release"), 3 / 7);
   assert.equal(
     fill({ ...idle, "idle-release": answer("no") }, "seeking"),
-    4 / 5,
+    4 / 6,
   );
   assert.equal(
     fill({ ...idle, "idle-release": answer("yes") }, "seeking"),
-    5 / 6,
+    5 / 7,
   );
   assert.deepEqual(sectionStates(v3StepById("delegate")), {
     "last-time": "done",
@@ -582,14 +620,14 @@ test("answers, events and the session are valid on the wire", () => {
   assert.ok(studyEventsSchema.safeParse(batch).success);
 });
 
-test("Léa confirms the agreed price and time; Pako's reply names the day and that price, in every language", () => {
+test("Pako opens with CHF 40, matches two times and drafts the confirmation for the agreed day in every language", () => {
   assert.equal(DRAFT_PRICE, 40);
   for (const text of Object.values(TOUR_TEXT))
     for (const day of DRAFT_DAYS) {
       const words = text.v3.draft.days[day];
-      const confirm = text.v3.draft.confirm(words, DRAFT_PRICE);
-      assert.ok(confirm.replace(/\s/g, " ").includes("CHF 40"), confirm);
-      assert.match(confirm, /17[.:]30|17\s+h\s+30|5:30 pm/);
+      const confirm = text.v3.draft.confirm(words);
+      assert.match(text.v3.draft.opening(DRAFT_PRICE), /CHF\s40/);
+      assert.match(text.v3.draft.matchedTimes, /17[.:]30|17\s+h\s+30|5:30/);
       assert.match(confirm, new RegExp(words, "i"));
       const offer = text.v3.draft.offer(words, DRAFT_PRICE);
       const label = `${day} in ${text.v3.draft.chatLabel}`;

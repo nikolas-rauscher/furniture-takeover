@@ -24,15 +24,19 @@ function Bubble({
   from,
   name,
   children,
+  showName = false,
 }: {
   from: "lea" | "you" | "pako";
   name: string;
   children: ReactNode;
+  showName?: boolean;
 }) {
   return (
     <div className="tour-chat-row" data-from={from}>
       <p className="tour-chat-bubble">
-        <span className="sr-only">{name}: </span>
+        <span className={showName ? "tour-chat-sender" : "sr-only"}>
+          {name}:{" "}
+        </span>
         {children}
       </p>
     </div>
@@ -41,11 +45,18 @@ function Bubble({
 
 /** Task: Léa's chat, the day agreed, and what to do with Pako's offer for that day. */
 export default function DraftChat({ context }: { context: StepContext }) {
-  const { draft } = useTourText().v3;
+  const {
+    common,
+    v3: { draft },
+  } = useTourText();
   const reduced = useReducedMotion() === true;
   const { answers } = context.progress;
   const [start] = useState(() =>
-    resumeDraft(answers[DRAFT_DAY_STEP]?.chosen[0], answers.draft),
+    resumeDraft(
+      answers[DRAFT_DAY_STEP]?.chosen[0],
+      answers.draft,
+      context.progress.events,
+    ),
   );
   const [day, setDay] = useState<DraftDay | undefined>(start.day);
   const [phase, setPhase] = useState<DraftPhase>(start.phase);
@@ -98,7 +109,12 @@ export default function DraftChat({ context }: { context: StepContext }) {
   function pickDay(picked: DraftDay) {
     setDay(picked);
     setPhase("lea-typing");
-    context.saveNow({ [DRAFT_DAY_STEP]: { chosen: [picked], text: "" } });
+    context.saveNow({
+      [DRAFT_DAY_STEP]: { chosen: [picked], text: "" },
+      ...(answers.draft?.chosen.length
+        ? { draft: { chosen: [], text: "" } }
+        : {}),
+    });
     log.current?.focus();
   }
 
@@ -153,10 +169,16 @@ export default function DraftChat({ context }: { context: StepContext }) {
         aria-live="polite"
         tabIndex={-1}
       >
+        <Bubble from="you" name={draft.sentByPako} showName>
+          {draft.opening(DRAFT_PRICE)}
+        </Bubble>
         <Bubble from="lea" name={draft.lea}>
           {draft.askDay}
         </Bubble>
-        {day && (
+        <Bubble from="pako" name={draft.pako} showName>
+          {draft.matchedTimes}
+        </Bubble>
+        {day && phase !== "ask" && (
           <Bubble from="you" name={draft.you}>
             {draft.yourDay(dayWords)}
           </Bubble>
@@ -164,10 +186,10 @@ export default function DraftChat({ context }: { context: StepContext }) {
         {phase === "lea-typing" && (
           <p className="tour-chat-typing">{draft.typing(draft.lea)}</p>
         )}
-        {after(["pako-typing", "decide", "write", "decided"]) && (
+        {after(["pako-typing", "decide", "write", "decided", "review"]) && (
           <div ref={agreement} className="tour-chat-anchor">
             <Bubble from="lea" name={draft.lea}>
-              {draft.confirm(dayWords, DRAFT_PRICE)}
+              {draft.confirm(dayWords)}
             </Bubble>
           </div>
         )}
@@ -198,11 +220,28 @@ export default function DraftChat({ context }: { context: StepContext }) {
             <Button
               key={id}
               className="button secondary"
+              aria-pressed={id === day}
               onClick={() => pickDay(id)}
             >
               {draft.days[id]}
             </Button>
           ))}
+        </div>
+      )}
+      {phase === "review" && (
+        <div className="tour-draft-actions">
+          <Button className="button primary" onClick={context.moveOn}>
+            {common.continue}
+          </Button>
+          <Button
+            className="button secondary"
+            onClick={() => {
+              setDecision(undefined);
+              setPhase("ask");
+            }}
+          >
+            {draft.revise}
+          </Button>
         </div>
       )}
       {phase === "decide" && (

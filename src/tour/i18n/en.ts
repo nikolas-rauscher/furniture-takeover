@@ -15,6 +15,7 @@ export const EN = {
     send: "Send",
     tryAgain: "Try again",
     openApp: "Open takeover",
+    rank: (place: number) => `rank ${place}`,
     textCount: (count: number, max: number) => `${count} of ${max} characters`,
     optional: "Your answer (optional)",
     inAFewWords: (option: string) => `${option}: in a few words (optional)`,
@@ -413,7 +414,7 @@ export const EN = {
       },
       "the-app": {
         bubble:
-          "Now a short story in the app. Léa is moving out and sells her desk, and you'd like to buy it. I'm Pako: I draft listings and messages, and you decide what gets sent.",
+          "Léa is selling her desk and you’d like to buy it. You each have a Pako. The two Pakos talk to each other to find a pickup time that works for both of you. You can also write to Léa yourself.",
         text: "Two short scenes, a chat and a few questions about the story.",
       },
       price: {
@@ -430,10 +431,10 @@ export const EN = {
         text: "Léa still needs a desk lamp for her new room. Anyone looking for something can post what they need, and students nearby see it.",
       },
       delegate: {
-        text: "Now you're in Léa's place: you're selling the desk, and Pako may act on its own. It sends messages in your name; you see them only afterwards.",
+        text: "Imagine you’re selling Léa’s desk. Pako could send messages for you. You’d see them afterwards.",
       },
       price: {
-        text: "Finally, a few questions about possible prices.",
+        text: "Think about using Pako to write listings and handle messages.",
       },
     },
     wantedPost: {
@@ -447,7 +448,9 @@ export const EN = {
       },
       deal: {
         title: "The pickup is booked",
-        text: "On Léa's phone: your offer of CHF 40 arrives (in the example you're called Noah). Léa accepts, and the pickup is booked. At pickup time, you both confirm the handover.",
+        text: "You’re Noah on Léa’s phone. Pako knows the pickup time. If someone is late or goes quiet, it checks in with both of you. Either of you can change the time or confirm pickup. Léa sees your ten-minute delay. If you stop replying, she can release the desk for another buyer.",
+        label:
+          "Léa accepts CHF 40. Noah reports a ten-minute delay, Pako shows the new arrival time, Noah confirms pickup and Léa marks the desk sold.",
       },
     },
     steps: {
@@ -516,7 +519,7 @@ export const EN = {
         options: { yes: "Yes", no: "No", ongoing: "Still in progress" },
       },
       "last-trouble": {
-        question: "What was difficult about this attempt, if anything was?",
+        question: "What was hard about it?",
         options: {
           nothing: "Nothing was difficult",
           finding: "Finding something suitable",
@@ -553,9 +556,10 @@ export const EN = {
           "Roughly how many messages did it take in total, with everyone?",
         options: {
           none: "None",
-          "1-5": "1–5",
-          "6-15": "6–15",
-          "over-15": "More than 15",
+          "1-3": "1–3",
+          "4-7": "4–7",
+          "8-12": "8–12",
+          "over-12": "More than 12",
           "dont-remember": "Can't remember",
         },
       },
@@ -611,39 +615,29 @@ export const EN = {
         options: { yes: "Yes", no: "No" },
       },
       delegate: {
-        question:
-          "What would you let Pako do without checking with you first? You can choose several.",
+        question: "What would you let Pako do without checking with you first?",
         options: {
           none: "None of these",
           "answer-questions": "Answer questions about the item",
-          "suggest-time": "Suggest a pickup time",
+          "suggest-time": "Suggest one of the pickup times I gave Pako",
           remind: "Remind the other person about the pickup",
           negotiate: "Negotiate the price",
           "accept-offer": "Accept an offer",
         },
       },
       "pay-model": {
-        question: "Which of these options would you like best?",
+        question: "How would you rank these pricing options?",
         options: {
           free: "Free",
+          "free-ads": "Free with ads",
+          credits: "Credit pack",
           "seller-fee": "Fee per sale",
-          "pack-5": "Pack of 5",
           monthly: "Monthly subscription",
-          "not-sure": "Not sure",
-        },
-      },
-      "pay-model-not": {
-        question: "Which of these would you not use? You can choose several.",
-        options: {
-          free: "Free",
-          "seller-fee": "Fee per sale",
-          "pack-5": "Pack of 5",
-          monthly: "Monthly subscription",
-          "all-ok": "I'd consider all of them",
         },
       },
       "check-listing": {
-        question: "What would you check before Pako's listing goes online?",
+        question:
+          "If you were Léa, what would you check before Pako’s listing goes online?",
         options: {
           price: "The price",
           description: "The description",
@@ -653,7 +647,7 @@ export const EN = {
         },
       },
       "max-distance": {
-        question: "How far would you go at most to pick up a desk?",
+        question: "How far would you go at most to pick up a used desk?",
         options: {
           "under-1": "Under 1 km",
           "1-3": "1–3 km",
@@ -666,6 +660,8 @@ export const EN = {
         options: {
           verified: "Verified student account",
           reviews: "Reviews",
+          "pako-rating":
+            "Pako’s reliability rating based on past sales and pickups",
           "campus-meet": "Meeting on campus",
           chat: "The chat so far",
           none: "None of these",
@@ -706,9 +702,8 @@ export const EN = {
     },
     amounts: {
       "wtp-monthly": {
-        question:
-          "How much would you be willing to pay per month for an app that takes care of writing listings and messages for you?",
-        choose: "Please choose",
+        question: "How much would you pay per month for that help?",
+        choose: "Drag to choose",
         nothing: "Nothing",
         amount: (francs: string) => `CHF ${francs} a month`,
         top: (francs: string) => `CHF ${francs}`,
@@ -719,6 +714,8 @@ export const EN = {
     moreBelow: "More options below",
     sceneInEnglish: "Example from the app (in English)",
     plans: {
+      rankHint: "Tap in order, favourite first. Tap again to undo.",
+      idea: "Your own pricing idea (optional)",
       label: "Example prices, not available yet",
       help: "Pako's help",
       pay: "You pay",
@@ -729,9 +726,14 @@ export const EN = {
           help: "unlimited",
           pay: "5% of the sale price, only if you sell something (CHF\u00a02 on CHF\u00a040)",
         },
-        "pack-5": {
+        "free-ads": {
+          price: "CHF 0",
+          help: "unlimited, with ads",
+          pay: "nothing",
+        },
+        credits: {
           price: "CHF 5",
-          help: "5 extra drafts",
+          help: "50 credits for listings, chats and messages",
           pay: "CHF 5 once",
         },
         monthly: {
@@ -742,10 +744,10 @@ export const EN = {
       },
     },
     draft: {
-      intro:
-        "You're looking for a desk and find Léa's listing. Léa asks when you could pick it up: choose a day in the chat below.",
-      scenario: "The price and the pickup place work for you.",
-      task: "First, answer Léa in the chat. Pako then drafts a reply for you, and you decide what to do with it.",
+      intro: "You want Léa’s desk. Pako sent the first message for you.",
+      scenario:
+        "You told Pako you’re free on weekend evenings. Léa gave her times to her own Pako.",
+      task: "Pick a day in the chat below.",
       chatLabel: "Practice chat with Léa",
       listing: {
         title: "Compact study desk",
@@ -757,17 +759,22 @@ export const EN = {
       lea: "Léa",
       you: "You",
       pako: "Pako",
-      askDay:
-        "Hi! The desk is still available. Which day could you pick it up? I'm free from 5 pm.",
+      sentByPako: "You · sent by Pako",
+      opening: (price: number) =>
+        `hey, is the desk still available? I can do CHF ${price}`,
+      matchedTimes:
+        "Léa’s Pako and I found two times you’re both free. Saturday or Sunday at 5:30?",
+      revise: "Choose a different day or reply",
+      askDay: "yeah, still got it! when could you pick it up?",
       pickDay: "Your answer to Léa",
       days: { sat: "Saturday", sun: "Sunday" },
-      yourDay: (day: string) => `${day} works for me. How about 5:30 pm?`,
-      confirm: (day: string, price: number) =>
-        `Agreed: CHF ${price}, on ${day} at 5:30 pm at the Rolex Learning Center.`,
+      yourDay: (day: string) => `how about ${day.toLowerCase()} at 5:30?`,
+      confirm: (day: string) =>
+        `${day.toLowerCase()} works! meet by the Rolex?`,
       typing: (name: string) => `${name} is typing`,
-      offerReady: "I've drafted a reply for you.",
+      offerReady: "Here’s a confirmation you could send.",
       offer: (day: string, price: number) =>
-        `Great, thanks! So CHF ${price}, on ${day} at 5:30 pm at the Rolex Learning Center. See you then!`,
+        `see you ${day.toLowerCase()} at 5:30 by the Rolex! I’ll bring CHF ${price}`,
       offerTitle: "Pako's draft",
       question: "What would you do with this draft?",
       sendAsIs: "Send as written",

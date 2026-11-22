@@ -24,7 +24,7 @@ function labelOf(text: TourText, step: V3ChoiceStep, id: string) {
 
 /** A way of paying as a card: its price and the same two facts as every other card. */
 function planOf(text: TourText, step: V3ChoiceStep, id: string) {
-  if (step.id !== "pay-model" || id === "not-sure") return {};
+  if (step.id !== "pay-model") return {};
   const { plans } = text.v3;
   const cards: Record<string, TourText["v3"]["plans"]["cards"]["monthly"]> =
     plans.cards;

@@ -4,8 +4,9 @@ import { Clock } from "@/components/icons";
 import type { DealTerms } from "../../../shared/deal";
 import { offerMessage, pickedUpMessage } from "../../../shared/dealMessages";
 import { cardImageFor } from "../../../shared/listingPhotos";
-import { formatPickup } from "../../../shared/pickupTime";
+import { formatPickup, resolvePickupAt } from "../../../shared/pickupTime";
 import type { ThreadRow } from "../../components/messagesModel";
+import { lateSend } from "../../pickupOptions";
 import { transitionPage } from "../../pageTransition";
 import { report } from "../device/sceneMessages";
 import PakoTray from "../../components/PakoTray";
@@ -26,6 +27,7 @@ import { useSceneScript } from "./useSceneScript";
 
 const BUYER = "Noah";
 const MINUTE = 60_000;
+const MINUTES_LATE = 10;
 const OFFER_ID = "noah-offer";
 
 type View = "inbox" | "thread";
@@ -60,35 +62,34 @@ type DealState = {
   card: DealCardStage;
 };
 
-/** The scene's own clock starts at 14:00 today, so its pickup is the same at any hour. */
-function sceneStart() {
-  const start = new Date();
-  start.setHours(14, 0, 0, 0);
-  return start;
-}
-
-/** The pickup the caption names: 17:30 the same day, ahead enough to be booked. */
-function pickupTime(from: Date) {
-  const pickup = new Date(from);
-  pickup.setHours(17, 30, 0, 0);
-  return pickup;
+/** The survey carries the day picked in chat. The standalone tour uses today's desk pickup. */
+function pickupTime() {
+  const day = new URLSearchParams(window.location.search).get("day");
+  const today = new Date();
+  if (day !== null) {
+    if (day !== "sat" && day !== "sun")
+      throw new Error("Unknown pickup day: " + day);
+    const at = resolvePickupAt(`${day} 17:30`, today);
+    if (!at) throw new Error("Could not schedule the desk pickup.");
+    return new Date(at);
+  }
+  today.setHours(17, 30, 0, 0);
+  return today;
 }
 
 /**
  * Noah's offer: below the asking price in the tour; in the survey's brief run the
  * asking price, the CHF 40 the participant agreed with Léa in the practice chat.
  */
-const offerAmount = (brief: boolean) => (brief ? DESK.price : 35);
-
-function offerTerms(pickupAt: Date, amount: number): DealTerms {
+function offerTerms(pickupAt: Date, brief: boolean): DealTerms {
   const at = pickupAt.toISOString();
   if (!DESK.pickupPoint) throw new Error("The desk needs its meeting point.");
   return {
-    amount,
+    amount: brief ? DESK.price : 35,
     fulfillment: "pickup",
     pickupAt: at,
     pickupTime: formatPickup(at),
-    pickupPoint: DESK.pickupPoint.name,
+    pickupPoint: brief ? "Rolex Learning Center" : DESK.pickupPoint.name,
   };
 }
 
@@ -117,6 +118,20 @@ const buyer = {
         text: offerMessage(DESK.title, terms),
         now: state.now,
         messageId: OFFER_ID,
+      }).thread,
+    };
+  },
+  late(state: DealState): DealState {
+    const { action, message } = lateSend(MINUTES_LATE);
+    return {
+      ...state,
+      skipped: false,
+      thread: movePickup(state.thread, {
+        actor: "buyer",
+        action,
+        text: message,
+        now: state.now,
+        messageId: "noah-late",
       }).thread,
     };
   },
@@ -152,8 +167,8 @@ const PICKUP_CARD = ".pickup-card";
  * One thing at a time: the row, the offer, Pako reading it, his line, the
  * card, then each tap and its answer.
  */
-function dealBeats(pickupAt: Date, amount: number): Beat<DealState>[] {
-  const terms = offerTerms(pickupAt, amount);
+function dealBeats(pickupAt: Date, brief: boolean): Beat<DealState>[] {
+  const terms = offerTerms(pickupAt, brief);
   return [
     {
       hold: 1400,
@@ -198,7 +213,13 @@ function dealBeats(pickupAt: Date, amount: number): Beat<DealState>[] {
     },
     {
       hold: 2800,
-      changes: now(skipTo(0, pickupAt)),
+      changes: now(buyer.late),
+      show: ".pickup-pako",
+      mood: "listen",
+    },
+    {
+      hold: 4200,
+      changes: now(skipTo(-MINUTES_LATE, pickupAt)),
       show: PICKUP_CARD,
       mood: "deliver",
     },
@@ -217,6 +238,7 @@ function dealBeats(pickupAt: Date, amount: number): Beat<DealState>[] {
 }
 
 const SKIP_LABEL = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Europe/Zurich",
   weekday: "long",
   hour: "2-digit",
   minute: "2-digit",
@@ -278,14 +300,12 @@ function useDealCardStage(stage: DealCardStage) {
 
 /** Agree and pick up: Noah's offer arrives, Léa confirms, the pickup counts down, Picked up and Mark sold. */
 export default function DealScene(round: SceneProps) {
-  const [start] = useState(sceneStart);
-  const [beats] = useState(() =>
-    dealBeats(pickupTime(start), offerAmount(round.brief)),
-  );
+  const [pickupAt] = useState(pickupTime);
+  const [beats] = useState(() => dealBeats(pickupAt, round.brief));
   const { state, setState, marks } = useSceneScript<DealState>(
     () => ({
       view: "inbox",
-      now: start,
+      now: new Date(pickupAt.getTime() - 210 * MINUTE),
       skipped: false,
       thread: startThread("tour-deal", DESK),
       reading: false,

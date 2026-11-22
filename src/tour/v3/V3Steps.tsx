@@ -16,6 +16,7 @@ import {
   answerEvent,
   backTarget,
   canGoBack,
+  canContinue,
   nextV3,
   recordV3Answer,
   v3StepById,
@@ -321,11 +322,12 @@ export default function V3Steps({
         { ...given[step.id], shown: [] },
         options[pick - 1].id,
         step.multiple ?? false,
+        step.rank,
       );
       answer(step.id, { chosen: picked.chosen, text: picked.text });
       return;
     }
-    const answered = given[step.id].chosen.length > 0;
+    const answered = canContinue(step, given[step.id].chosen);
     if (event.key === "Enter" && answered && !target?.closest("button, a")) {
       event.preventDefault();
       proceed();

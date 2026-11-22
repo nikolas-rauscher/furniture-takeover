@@ -6,7 +6,7 @@ import DraftChat from "./DraftChat";
 import MoreBelow from "./MoreBelow";
 import PartCard from "./PartCard";
 import type { StepContext } from "./stepContext";
-import type { V3ChoiceStep } from "./v3Script";
+import { DRAFT_DAY_STEP, type V3ChoiceStep } from "./v3Script";
 import WantedPost from "./WantedPost";
 import { optionsOf, questionOf } from "./v3Words";
 import V3End from "./V3End";
@@ -25,15 +25,17 @@ function ChoiceContent({
   const text = useTourText();
   const question = questionOf(text, step);
   const plans = step.id === "pay-model";
-  // A multiple choice says so above its answers, unless its question already does.
-  const saysSeveral =
-    step.multiple && !step.card && !question.includes(text.v3.chooseSeveral);
+
   return (
     <>
       {step.id === "wanted-react" && <WantedPost />}
       {step.card && <h2 className="tour-question">{question}</h2>}
       {plans && <p className="tour-eyebrow">{text.v3.plans.label}</p>}
-      {saysSeveral && <p className="tour-hint">{text.v3.chooseSeveral}</p>}
+      {step.multiple && (
+        <p className="tour-hint">
+          {step.rank ? text.v3.plans.rankHint : text.v3.chooseSeveral}
+        </p>
+      )}
       <div
         className="tour-choice-group"
         data-compact={step.compact || undefined}
@@ -43,13 +45,20 @@ function ChoiceContent({
           options={optionsOf(text, step, context.progress)}
           layout={plans ? "plans" : "list"}
           multiple={step.multiple ?? false}
+          ranked={step.rank}
+          idea={step.rank ? text.v3.plans.idea : undefined}
           answer={{ ...context.given[step.id], shown: [] }}
           onChange={({ chosen, text: words }, moved) =>
             context.answer(step.id, { chosen, text: words }, moved)
           }
         />
       </div>
-      <MoreBelow last=".ob-choices > .ob-choice-cell:last-child" />
+      <MoreBelow
+        last={
+          step.rank ? ".tour-text" : ".ob-choices > .ob-choice-cell:last-child"
+        }
+        label={step.rank ? text.v3.start.moreBelow : undefined}
+      />
     </>
   );
 }
@@ -91,9 +100,18 @@ export default function V3StepContent({ context }: { context: StepContext }) {
           </p>
           <DeviceFrame
             key={step.id}
-            label={text.scenes[step.scene].label}
+            label={
+              step.scene === "deal"
+                ? text.v3.scenes.deal.label
+                : text.scenes[step.scene].label
+            }
             scene={step.scene}
             brief
+            pickupDay={
+              step.scene === "deal"
+                ? context.progress.answers[DRAFT_DAY_STEP]?.chosen[0]
+                : undefined
+            }
             replay={context.scene.replay}
             onMood={context.onMood}
             onDone={context.sceneDone}

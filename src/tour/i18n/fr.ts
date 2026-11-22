@@ -20,6 +20,7 @@ export const FR: TourText = {
     send: "Envoyer",
     tryAgain: "Réessayer",
     openApp: "Ouvrir takeover",
+    rank: (place) => `rang ${place}`,
     textCount: (count, max) => `${count} sur ${max} caractères`,
     optional: "Ta réponse (facultatif)",
     inAFewWords: (option) => `${option}\u202f: en quelques mots (facultatif)`,
@@ -426,7 +427,7 @@ export const FR: TourText = {
       },
       "the-app": {
         bubble:
-          "Maintenant, une courte histoire dans l’app. Léa déménage et vend son bureau, et tu aimerais l’acheter. Moi, c’est Pako\u202f: je rédige des annonces et des messages, et c’est toi qui décides ce qui est envoyé.",
+          "Léa vend son bureau et tu aimerais l’acheter. Vous avez chacun votre Pako. Les deux Pakos se parlent pour trouver un horaire qui vous convient à tous les deux. Tu peux aussi écrire directement à Léa.",
         text: "Deux courtes scènes, un chat et quelques questions sur l’histoire.",
       },
       price: {
@@ -444,10 +445,10 @@ export const FR: TourText = {
         text: "Léa cherche encore une lampe de bureau pour sa nouvelle chambre. Si tu cherches quelque chose, tu peux publier ce dont tu as besoin, et les étudiant·es à proximité le voient.",
       },
       delegate: {
-        text: "Maintenant, tu es à la place de Léa\u202f: tu vends le bureau, et Pako peut agir seul. Il envoie des messages en ton nom\u202f; tu ne les vois qu’après.",
+        text: "Imagine que tu vends le bureau de Léa. Pako pourrait écrire en ton nom. Tu verrais ses messages après l’envoi.",
       },
       price: {
-        text: "Pour finir, quelques questions sur les prix possibles.",
+        text: "Imagine que Pako rédige tes annonces et s’occupe des messages.",
       },
     },
     wantedPost: {
@@ -461,7 +462,9 @@ export const FR: TourText = {
       },
       deal: {
         title: "Le retrait est fixé",
-        text: "Sur le téléphone de Léa\u202f: ton offre de CHF\u00a040 arrive (dans l’exemple, tu t’appelles Noah). Léa accepte, et le retrait est réservé. Au moment du retrait, vous confirmez tous les deux la remise.",
+        text: "Sur le téléphone de Léa, tu t’appelles Noah. Pako connaît l’heure du rendez-vous. Si quelqu’un est en retard ou ne répond plus, il prend de vos nouvelles à tous les deux. Chacun peut proposer un autre horaire ou confirmer le retrait. Léa voit tes dix minutes de retard. Si tu ne réponds plus, elle peut remettre le bureau en vente.",
+        label:
+          "Léa accepte CHF 40. Noah annonce dix minutes de retard et Pako indique sa nouvelle heure d’arrivée. Noah confirme le retrait et Léa marque le bureau comme vendu.",
       },
     },
     steps: {
@@ -530,8 +533,7 @@ export const FR: TourText = {
         options: { yes: "Oui", no: "Non", ongoing: "C’est encore en cours" },
       },
       "last-trouble": {
-        question:
-          "Qu’est-ce qui a été difficile lors de cette tentative, si quelque chose l’a été\u202f?",
+        question: "Qu’est-ce qui a été difficile\u202f?",
         options: {
           nothing: "Rien n’a posé problème",
           finding: "Trouver quelque chose qui convient",
@@ -568,9 +570,10 @@ export const FR: TourText = {
           "En tout, environ combien de messages as-tu échangés, toutes personnes confondues\u202f?",
         options: {
           none: "Aucun",
-          "1-5": "1–5",
-          "6-15": "6–15",
-          "over-15": "Plus de 15",
+          "1-3": "1–3",
+          "4-7": "4–7",
+          "8-12": "8–12",
+          "over-12": "Plus de 12",
           "dont-remember": "Je ne sais plus",
         },
       },
@@ -630,41 +633,29 @@ export const FR: TourText = {
         options: { yes: "Oui", no: "Non" },
       },
       delegate: {
-        question:
-          "Qu’est-ce que Pako aurait le droit de faire sans te demander\u202f? Tu peux en choisir plusieurs.",
+        question: "Que laisserais-tu Pako faire sans te demander\u202f?",
         options: {
           none: "Rien de tout ça",
           "answer-questions": "Répondre aux questions sur l’objet",
-          "suggest-time": "Proposer une heure pour venir chercher l’objet",
+          "suggest-time": "Proposer un des créneaux que j’ai donnés à Pako",
           remind: "Rappeler le rendez\u2011vous à l’autre personne",
           negotiate: "Négocier le prix",
           "accept-offer": "Accepter une offre",
         },
       },
       "pay-model": {
-        question: "Laquelle de ces formules préférerais-tu\u202f?",
+        question: "Comment classerais-tu ces formules\u202f?",
         options: {
           free: "Gratuit",
+          "free-ads": "Gratuit avec pub",
+          credits: "Pack de crédits",
           "seller-fee": "Commission par vente",
-          "pack-5": "Pack de 5",
           monthly: "Abonnement mensuel",
-          "not-sure": "Je ne sais pas",
-        },
-      },
-      "pay-model-not": {
-        question:
-          "Lesquelles n’utiliserais-tu pas\u202f? Tu peux en choisir plusieurs.",
-        options: {
-          free: "Gratuit",
-          "seller-fee": "Commission par vente",
-          "pack-5": "Pack de 5",
-          monthly: "Abonnement mensuel",
-          "all-ok": "Je les envisagerais toutes",
         },
       },
       "check-listing": {
         question:
-          "Que vérifierais-tu avant que l’annonce de Léa rédigée par Pako soit publiée\u202f?",
+          "À la place de Léa, que vérifierais-tu avant la publication de l’annonce de Pako\u202f?",
         options: {
           price: "Le prix",
           description: "La description",
@@ -675,7 +666,7 @@ export const FR: TourText = {
       },
       "max-distance": {
         question:
-          "Jusqu’où irais-tu au maximum pour aller chercher un bureau\u202f?",
+          "Jusqu’où irais-tu pour récupérer un bureau d’occasion\u202f?",
         options: {
           "under-1": "Moins de 1\u00a0km",
           "1-3": "1–3\u00a0km",
@@ -689,6 +680,8 @@ export const FR: TourText = {
         options: {
           verified: "Compte étudiant vérifié",
           reviews: "Des évaluations",
+          "pako-rating":
+            "Une note de fiabilité donnée par Pako à partir des ventes et retraits passés",
           "campus-meet": "Se retrouver sur le campus",
           chat: "Le chat jusqu’ici",
           none: "Rien de tout ça",
@@ -729,9 +722,8 @@ export const FR: TourText = {
     },
     amounts: {
       "wtp-monthly": {
-        question:
-          "Combien serais-tu prêt·e à payer par mois pour une app qui se charge pour toi de rédiger les annonces et les messages\u202f?",
-        choose: "Choisis un montant",
+        question: "Combien paierais-tu par mois pour cette aide\u202f?",
+        choose: "Fais glisser pour choisir",
         nothing: "Rien",
         amount: (francs) => `CHF ${francs} par mois`,
         top: (francs) => `CHF ${francs}`,
@@ -742,6 +734,9 @@ export const FR: TourText = {
     moreBelow: "Autres réponses plus bas",
     sceneInEnglish: "Exemple tiré de l’app (en anglais)",
     plans: {
+      rankHint:
+        "Touche les formules dans l’ordre, ta préférée d’abord. Touche à nouveau pour annuler.",
+      idea: "Ton idée de tarif (facultatif)",
       label: "Exemples de prix, pas encore disponibles",
       help: "Aide de Pako",
       pay: "Tu paies",
@@ -756,9 +751,14 @@ export const FR: TourText = {
           help: "illimitée",
           pay: "5\u00a0% du prix de vente, seulement si tu vends quelque chose (CHF\u00a02 sur CHF\u00a040)",
         },
-        "pack-5": {
+        "free-ads": {
+          price: "CHF\u00a00",
+          help: "illimitée, avec pub",
+          pay: "rien",
+        },
+        credits: {
           price: "CHF\u00a05",
-          help: "5 brouillons en plus",
+          help: "50 crédits pour les annonces, les chats et les messages",
           pay: "CHF\u00a05 une fois",
         },
         monthly: {
@@ -770,9 +770,10 @@ export const FR: TourText = {
     },
     draft: {
       intro:
-        "Tu cherches un bureau et tu trouves l’annonce de Léa. Elle te demande quand tu pourrais venir le chercher\u202f: choisis un jour dans le chat ci-dessous.",
-      scenario: "Le prix et le lieu de retrait te conviennent.",
-      task: "Réponds d’abord à Léa dans le chat. Pako rédige ensuite une réponse pour toi, et tu décides quoi en faire.",
+        "Tu aimerais acheter le bureau de Léa. Pako lui a déjà écrit pour toi.",
+      scenario:
+        "Tu as dit à Pako que tu es libre le week-end en soirée. Léa a donné ses disponibilités à son propre Pako.",
+      task: "Choisis un jour dans le chat ci-dessous.",
       chatLabel: "Chat d’essai avec Léa",
       listing: {
         title: "Bureau compact",
@@ -784,17 +785,23 @@ export const FR: TourText = {
       lea: "Léa",
       you: "Toi",
       pako: "Pako",
-      askDay:
-        "Salut\u202f! Le bureau est encore disponible. Quel jour pourrais\u2011tu venir le chercher\u202f? Je suis libre dès 17\u00a0h.",
+      sentByPako: "Toi · envoyé par Pako",
+      opening: (price) =>
+        `salut, le bureau est toujours dispo\u202f? je t’en propose CHF\u00a0${price}`,
+      matchedTimes:
+        "Avec le Pako de Léa, on a trouvé deux créneaux qui vous vont. Samedi ou dimanche à 17\u00a0h\u00a030\u202f?",
+      revise: "Changer de jour ou de réponse",
+      askDay: "oui, toujours dispo\u202f! tu pourrais passer quand\u202f?",
       pickDay: "Ta réponse à Léa",
       days: { sat: "Samedi", sun: "Dimanche" },
-      yourDay: (day) => `${day}, ça me va. À 17\u00a0h\u00a030\u202f?`,
-      confirm: (day, price) =>
-        `C’est d’accord\u202f: CHF\u00a0${price}, ${day.toLowerCase()} à 17\u00a0h\u00a030 au Rolex Learning Center.`,
+      yourDay: (day) =>
+        `${day.toLowerCase()} vers 17\u00a0h\u00a030, ça joue\u202f?`,
+      confirm: (day) =>
+        `ça marche pour ${day.toLowerCase()}\u202f! devant le Rolex\u202f?`,
       typing: (name) => `${name} écrit…`,
-      offerReady: "J’ai rédigé une réponse pour toi.",
+      offerReady: "Tu pourrais confirmer comme ça.",
       offer: (day, price) =>
-        `Super, merci\u202f! Donc CHF\u00a0${price}, ${day.toLowerCase()} à 17\u00a0h\u00a030 au Rolex Learning Center. À ${day.toLowerCase()}\u202f!`,
+        `à ${day.toLowerCase()} à 17\u00a0h\u00a030 devant le Rolex\u202f! je prends les CHF\u00a0${price}`,
       offerTitle: "Brouillon de Pako",
       question: "Que ferais-tu de ce brouillon\u202f?",
       sendAsIs: "Envoyer tel quel",

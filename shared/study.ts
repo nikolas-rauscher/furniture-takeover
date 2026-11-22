@@ -25,7 +25,7 @@ export const STUDY_EVENTS_PER_BATCH = 40;
 /** The server keeps at most this many events per session, so the client sends no more. */
 export const STUDY_EVENTS_PER_SESSION = 600;
 
-/** Room for the longest role-dependent list, `last-trouble` for sellers (13 options). */
+/** Room for all 16 obstacles when buying and selling roles overlap. */
 const MAX_OPTIONS = 16;
 const MAX_STEP_MS = 60 * 60 * 1000;
 const MAX_REVISION = 100_000;
@@ -237,19 +237,18 @@ export const STUDY_V3_CORE_SCREENS = [
   "idle-release",
   "idle-why",
   "seeking",
+  "max-distance",
   "part-the-app",
   "app-sell",
   "check-listing",
   "draft",
   "app-deal",
-  "max-distance",
   "trust-signals",
   "delegate",
   "wanted-react",
   "part-price",
   "wtp-monthly",
   "pay-model",
-  "pay-model-not",
   "pay-for",
   "who",
   "housing",

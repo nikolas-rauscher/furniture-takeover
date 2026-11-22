@@ -162,6 +162,7 @@ export type DeviceFrameProps = {
   scene: TourScene;
   /** Plays the scene's short version. */
   brief?: boolean;
+  pickupDay?: string;
   /** Says what the scene shows, for anyone who cannot see it. */
   label: string;
   /** Counts the visitor's replays; each change starts the scene again. */
@@ -176,6 +177,7 @@ export type DeviceFrameProps = {
 export default function DeviceFrame({
   scene,
   brief = false,
+  pickupDay,
   label,
   replay = 0,
   onMood,
@@ -228,7 +230,7 @@ export default function DeviceFrame({
                   <iframe
                     ref={frame}
                     className="tour-device-app"
-                    src={sceneAddress(scene, brief, true)}
+                    src={sceneAddress(scene, brief, true, pickupDay)}
                     title={label}
                     tabIndex={-1}
                     aria-hidden="true"

@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useTourText } from "../i18n/TourLanguage";
+import { canContinue } from "./v3Flow";
 import type { StepContext } from "./stepContext";
 
 /** The main buttons of a step. */
@@ -44,10 +45,7 @@ export default function V3Footer({ context }: { context: StepContext }) {
       return (
         <Button
           className={primary}
-          disabled={
-            given[step.id].chosen.length === 0 &&
-            !(step.kind === "choice" && step.optional)
-          }
+          disabled={!canContinue(step, given[step.id].chosen)}
           onClick={() => context.proceed()}
         >
           {common.continue}

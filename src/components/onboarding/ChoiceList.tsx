@@ -29,6 +29,10 @@ export type ChoiceListProps<Id extends string> = {
   selected: Id[];
   multiple: boolean;
   layout: "list" | "grid" | "plans";
+  /** The order of `selected` is a ranking: each picked card shows its place. */
+  ranked?: boolean;
+  /** Read out after a ranked card's title, such as "rank 2". */
+  rankLabel?: (rank: number) => string;
   onToggle: (id: Id) => void;
 };
 
@@ -62,6 +66,8 @@ export default function ChoiceList<Id extends string>({
   selected,
   multiple,
   layout,
+  ranked = false,
+  rankLabel,
   onToggle,
 }: ChoiceListProps<Id>) {
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
@@ -92,6 +98,7 @@ export default function ChoiceList<Id extends string>({
     >
       {options.map((option, index) => {
         const checked = selected.includes(option.id);
+        const rank = ranked && checked ? selected.indexOf(option.id) + 1 : 0;
         return (
           <motion.div
             key={option.id}
@@ -130,7 +137,12 @@ export default function ChoiceList<Id extends string>({
               )}
               <span className="ob-choice-text">
                 <span className="ob-choice-head">
-                  <span className="ob-choice-title">{option.title}</span>
+                  <span className="ob-choice-title">
+                    {option.title}
+                    {rank > 0 && rankLabel && (
+                      <span className="sr-only">, {rankLabel(rank)}</span>
+                    )}
+                  </span>
                   {option.plan && (
                     <span className="ob-choice-price">{option.plan.price}</span>
                   )}
@@ -155,7 +167,15 @@ export default function ChoiceList<Id extends string>({
               </span>
               <span className="ob-choice-mark" aria-hidden="true">
                 <AnimatePresence initial={false} mode="popLayout">
-                  {checked ? (
+                  {rank > 0 ? (
+                    <motion.span
+                      key={`rank-${rank}`}
+                      className="ob-choice-check ob-choice-rank"
+                      {...mark}
+                    >
+                      {rank}
+                    </motion.span>
+                  ) : checked ? (
                     <motion.span
                       key="check"
                       className="ob-choice-check"
@@ -164,6 +184,7 @@ export default function ChoiceList<Id extends string>({
                       <Check size={14} strokeWidth={3} />
                     </motion.span>
                   ) : (
+                    !ranked &&
                     index < KEYED_OPTIONS && (
                       <motion.kbd key="key" className="ob-choice-key" {...mark}>
                         {index + 1}

@@ -65,10 +65,16 @@ export function heldInAddress(search: string) {
   return new URLSearchParams(search).get("start") === "held";
 }
 
-export function sceneAddress(scene: TourScene, brief: boolean, held: boolean) {
+export function sceneAddress(
+  scene: TourScene,
+  brief: boolean,
+  held: boolean,
+  pickupDay?: string,
+) {
   const params = new URLSearchParams({ scene });
   if (brief) params.set("pace", "brief");
   if (held) params.set("start", "held");
+  if (pickupDay) params.set("day", pickupDay);
   return `/tour?${params}`;
 }
 

@@ -9,7 +9,7 @@ import type { TourText } from "../i18n/en.ts";
 import type { StepCondition } from "../stepConditions.ts";
 
 /** Raised whenever a question, an option or its wording changes. */
-export const V3_VERSION = "v4-2";
+export const V3_VERSION = "v4-3";
 /** The time the start screen and the share text name, rounded up from the core's estimate. */
 export const V3_MINUTES = 9;
 
@@ -41,7 +41,7 @@ export type V3ChoiceStep = Base & {
   options: readonly string[];
   /**
    * Options only some participants see, by option id: the roles of `last-role` they
-   * belong to. An option not listed here is offered to everyone.
+   * belong to; one of the roles picked there is enough. An option not listed here is offered to everyone.
    */
   onlyFor?: Readonly<Record<string, readonly string[]>>;
   /**
@@ -63,13 +63,16 @@ export type V3ChoiceStep = Base & {
   multiple?: boolean;
   /** In a multiple choice, the option that clears the others and is cleared by them. */
   exclusive?: string;
-  /** Continue works without a pick; the answer is then stored as skipped. */
-  optional?: boolean;
+  /**
+   * The options are put in order: each tap gives the next rank, Continue needs all of
+   * them, and a free line takes an idea of the participant's own.
+   */
+  rank?: boolean;
 };
 
 /**
  * An amount in CHF on a slider from `min` to `max` in steps of `increment`, stored as
- * the option `chf-<amount>`. No amount is preset: the handle appears once it is moved.
+ * the option `chf-<amount>`. No amount is selected until the participant uses the slider.
  */
 export type V3AmountStep = Base & {
   kind: "amount";
@@ -91,7 +94,7 @@ export type V3Step =
 
 /** The day picked in the draft chat is stored as an answer of its own. */
 export const DRAFT_DAY_STEP = "draft-day";
-/** The days Léa offers, in the order of the week. */
+/** The days both Pakos found, in the order of the week. */
 export const DRAFT_DAYS = ["sat", "sun"] as const;
 export type DraftDay = (typeof DRAFT_DAYS)[number];
 /** The price Léa and the participant agree on, in CHF; Pako's draft names it. */
@@ -182,10 +185,12 @@ export function offeredOptions(
 ): readonly string[] {
   const { onlyFor } = step;
   if (!onlyFor) return step.options;
-  const role = answers[ROLE_STEP]?.chosen[0];
+  const chosenRoles = answers[ROLE_STEP]?.chosen ?? [];
   return step.options.filter((id) => {
     const roles = onlyFor[id];
-    return roles === undefined || (role !== undefined && roles.includes(role));
+    return (
+      roles === undefined || chosenRoles.some((role) => roles.includes(role))
+    );
   });
 }
 
@@ -194,7 +199,13 @@ export const V3_STEPS: readonly V3Step[] = [
   choice(
     "last-role",
     ["buying", "getting-free", "selling", "giving-away", "none"],
-    { section: "last-time", card: "lastTime", compact: true },
+    {
+      section: "last-time",
+      card: "lastTime",
+      compact: true,
+      multiple: true,
+      exclusive: "none",
+    },
   ),
   choice(
     "last-item",
@@ -207,7 +218,7 @@ export const V3_STEPS: readonly V3Step[] = [
       "clothes",
       "other",
     ],
-    { section: "last-time", when: TRIED },
+    { section: "last-time", when: TRIED, multiple: true },
   ),
   choice("last-occasion", ["moving-in", "moving-out", "both", "no-move"], {
     section: "last-time",
@@ -246,6 +257,8 @@ export const V3_STEPS: readonly V3Step[] = [
     {
       section: "last-time",
       when: TRIED,
+      multiple: true,
+      exclusive: "nothing",
       shuffle: true,
       fixedFirst: 1,
       fixedLast: 2,
@@ -273,10 +286,11 @@ export const V3_STEPS: readonly V3Step[] = [
     ],
     { section: "last-time", when: MOVED_OR_MOVING },
   ),
-  choice("last-messages", ["none", "1-5", "6-15", "over-15", "dont-remember"], {
-    section: "last-time",
-    when: TRIED,
-  }),
+  choice(
+    "last-messages",
+    ["none", "1-3", "4-7", "8-12", "over-12", "dont-remember"],
+    { section: "last-time", when: TRIED },
+  ),
   { kind: "part", id: "part-home", section: "home" },
   choice(
     "trade-frequency",
@@ -316,6 +330,10 @@ export const V3_STEPS: readonly V3Step[] = [
     section: "home",
     withText: "yes",
   }),
+  // A question about the participant, so it stays with the others and out of the story.
+  choice("max-distance", ["under-1", "1-3", "3-10", "over-10"], {
+    section: "home",
+  }),
   // One story with the same people and the same desk: Léa sells it, the participant buys it.
   { kind: "part", id: "part-the-app", section: "the-app" },
   { kind: "scene", id: "app-sell", scene: "sell", section: "the-app" },
@@ -333,13 +351,9 @@ export const V3_STEPS: readonly V3Step[] = [
   ),
   { kind: "draft", id: "draft", section: "the-app" },
   { kind: "scene", id: "app-deal", scene: "deal", section: "the-app" },
-  choice("max-distance", ["under-1", "1-3", "3-10", "over-10"], {
-    section: "the-app",
-    product: true,
-  }),
   choice(
     "trust-signals",
-    ["verified", "reviews", "campus-meet", "chat", "none"],
+    ["verified", "reviews", "pako-rating", "campus-meet", "chat", "none"],
     {
       section: "the-app",
       product: true,
@@ -390,21 +404,16 @@ export const V3_STEPS: readonly V3Step[] = [
     card: "price",
     section: "price",
   },
-  choice("pay-model", ["free", "seller-fee", "pack-5", "monthly", "not-sure"], {
-    section: "price",
-    product: true,
-    shuffle: true,
-    fixedLast: 1,
-  }),
+  // Ranked, so every plan gets a place; the stored order is the ranking.
   choice(
-    "pay-model-not",
-    ["free", "seller-fee", "pack-5", "monthly", "all-ok"],
+    "pay-model",
+    ["free", "free-ads", "credits", "seller-fee", "monthly"],
     {
       section: "price",
       product: true,
       multiple: true,
-      exclusive: "all-ok",
-      optional: true,
+      rank: true,
+      shuffle: true,
     },
   ),
   choice(

@@ -7,7 +7,7 @@ import { amountLabel } from "./v3Words";
 
 /**
  * An amount on a native range input. Nothing is preset: until the participant moves
- * it, the track has no handle and no fill, the value reads "Please choose" and Continue
+ * it, a muted handle invites dragging, the readout asks for a choice and Continue
  * stays off. The input still needs a value, the middle; a tap on exactly that spot
  * counts as a choice when the pointer is released.
  */
@@ -39,22 +39,24 @@ export default function AmountSlider({
       <output className="tour-amount-value" aria-hidden="true">
         {readout}
       </output>
-      <input
-        className="price-slider-track"
-        type="range"
-        min={step.min}
-        max={step.max}
-        step={step.increment}
-        value={value}
-        aria-labelledby={step.card ? id : undefined}
-        aria-label={step.card ? undefined : words.question}
-        aria-valuetext={readout}
-        style={{ "--filled": `${filled}%` } as CSSProperties}
-        onChange={(event) => choose(Number(event.target.value))}
-        onPointerUp={(event) => {
-          if (amount === null) choose(Number(event.currentTarget.value));
-        }}
-      />
+      <div className="tour-amount-track">
+        <input
+          className="price-slider-track"
+          type="range"
+          min={step.min}
+          max={step.max}
+          step={step.increment}
+          value={value}
+          aria-labelledby={step.card ? id : undefined}
+          aria-label={step.card ? undefined : words.question}
+          aria-valuetext={readout}
+          style={{ "--filled": `${filled}%` } as CSSProperties}
+          onChange={(event) => choose(Number(event.target.value))}
+          onPointerUp={(event) => {
+            if (amount === null) choose(Number(event.currentTarget.value));
+          }}
+        />
+      </div>
       <div className="price-slider-bounds" aria-hidden="true">
         <span>{words.nothing}</span>
         <span>{words.top(String(step.max))}</span>

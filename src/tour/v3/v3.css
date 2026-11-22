@@ -128,6 +128,11 @@
   }
 }
 
+.tour-study .ob-choice-rank {
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
 /* The price cards sit closer to their question, so three show on a phone at first. */
 .tour-study .ob-step:has(.ob-choices-plans) {
   gap: 10px;
@@ -150,7 +155,19 @@
   display: contents;
 }
 @media (max-width: 760px), (max-height: 800px) {
+  /* Divide the space below the question among the cards, up to the usual card
+     height. Wrapped questions and longer translations leave less room. */
+  .tour-study .ob-body-inner:has([data-compact]) {
+    height: 100%;
+  }
+  .tour-study .ob-step:has([data-compact]),
   .tour-study [data-compact] .ob-choices-list {
+    flex: 1 0 0;
+    min-height: 0;
+  }
+  .tour-study [data-compact] .ob-choices-list {
+    grid-auto-rows: minmax(min-content, 76px);
+    align-content: start;
     gap: 6px;
   }
   .tour-study [data-compact] .ob-choices-list .ob-choice {
@@ -208,8 +225,38 @@
   }
 }
 
-/* An amount on a slider. Until it is moved there is no handle and no fill, so no
-   amount is suggested; the value reads "Please choose" in a quieter type. */
+/* The muted handle invites dragging before an amount has been chosen. */
+.tour-amount-track {
+  position: relative;
+  display: grid;
+  align-items: center;
+}
+.tour-amount[data-untouched] .tour-amount-track::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--muted);
+  border-radius: 50%;
+  background: var(--surface);
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tour-amount[data-untouched] .tour-amount-track::after {
+    animation: tour-slider-nudge 1.8s ease-in-out 2;
+  }
+}
+@keyframes tour-slider-nudge {
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
 .tour-amount {
   display: grid;
   gap: 10px;
@@ -285,6 +332,21 @@
   font-weight: 700;
 }
 
+.tour-study .ob-body-inner:has(.tour-chat) {
+  gap: 12px;
+}
+.tour-study .ob-body-inner:has(.tour-chat) .ob-pako {
+  width: 64px;
+  height: 64px;
+}
+.tour-study .ob-step:has(.tour-chat),
+.tour-chat {
+  gap: 8px;
+}
+.tour-chat .tour-chat-bubble {
+  padding: 7px 10px;
+  line-height: 1.35;
+}
 .tour-chat-listing {
   display: flex;
   align-items: center;
@@ -323,6 +385,11 @@
 }
 .tour-chat-row {
   display: flex;
+}
+.tour-chat-sender {
+  display: block;
+  font-size: var(--type-caption);
+  font-weight: 700;
 }
 .tour-chat-row[data-from="you"] {
   justify-content: flex-end;
@@ -605,5 +672,50 @@
 @media (min-width: 761px) {
   .tour-contact .tour-chips {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Use two columns when a short screen has too little room for six rows. */
+@media (max-width: 420px) and (max-height: 620px) {
+  .tour-study:has([data-compact]) .ob-header {
+    padding: 2px 10px;
+  }
+  .tour-study:has([data-compact]) .ob-footer {
+    padding: 6px 12px max(6px, env(safe-area-inset-bottom));
+  }
+  .tour-study .ob-body-inner:has([data-compact]) {
+    padding: 4px 10px 8px;
+    gap: 5px;
+  }
+  .tour-study .ob-step:has([data-compact]) {
+    gap: 4px;
+  }
+  .tour-study .ob-body-inner:has([data-compact]) .ob-guide-stage .ob-pako {
+    width: 30px;
+    height: 30px;
+  }
+  .tour-study .ob-body-inner:has([data-compact]) .ob-bubble {
+    padding: 5px 9px;
+  }
+  .tour-study [data-compact] .ob-choices-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+  }
+  .tour-study [data-compact] .ob-choices-list .ob-choice {
+    padding: 5px 7px;
+    gap: 4px;
+  }
+  .tour-study [data-compact] .ob-choice-mark,
+  .tour-study [data-compact] .ob-choice-check {
+    width: 18px;
+    height: 18px;
+  }
+  .tour-study .ob-step:has([data-compact]) .tour-wanted {
+    gap: 4px;
+    padding: 4px 7px;
+  }
+  .tour-study .ob-step:has([data-compact]) .tour-wanted-icon {
+    width: 26px;
+    height: 26px;
   }
 }
