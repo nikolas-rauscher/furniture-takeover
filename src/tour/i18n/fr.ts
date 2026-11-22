@@ -50,7 +50,7 @@ export const FR: TourText = {
     },
     doneBefore: {
       title: "Tu as déjà participé.",
-      text: "Merci\u202f! Ce navigateur se souvient que tu as terminé. Tu peux quand même découvrir takeover.",
+      text: "Merci d’avoir participé. Si tu veux de nos nouvelles, tu peux laisser ton adresse e-mail ci-dessous.",
     },
     showTour: "Découvrir takeover",
     loadFailed: {
@@ -409,7 +409,7 @@ export const FR: TourText = {
       saveTitle: "Ce que nous enregistrons",
       moreBelow: "La suite plus bas",
       save: (date) =>
-        `Nous enregistrons tes réponses, les écrans que tu consultes, ceux que tu passes et ceux sur lesquels tu reviens, ainsi que le temps passé sur chacun. Nous relevons aussi le lien que tu as suivi, la langue que tu utilises et ton type d’appareil (téléphone ou ordinateur). Ta progression reste dans cet onglet jusqu’à ce que tu le fermes, et ce navigateur se souvient que tu as terminé. Si tu laisses ton adresse e\u2011mail à la fin, nous la conservons à part de tes réponses. Tout sera supprimé au plus tard le ${date}.`,
+        `Nous enregistrons tes réponses, les écrans que tu consultes, ceux que tu passes et ceux sur lesquels tu reviens, ainsi que le temps passé sur chacun. Nous relevons aussi le lien que tu as suivi, la langue que tu utilises et ton type d’appareil (téléphone ou ordinateur). Pendant le sondage, ta progression reste dans cet onglet. Quand tu as terminé, ce navigateur garde tes réponses pour que tu puisses les modifier plus tard. Si tu laisses ton adresse e\u2011mail à la fin, nous la conservons à part de tes réponses. Nous supprimerons les données recueillies au plus tard le ${date}.`,
       questions: "Des questions sur le sondage\u202f?",
       go: "Commencer le sondage",
       demo: "Montre-moi juste l’app",
@@ -815,6 +815,9 @@ export const FR: TourText = {
     },
     scene: { next: "Suivant", replay: "Rejouer" },
     pilot: {
+      sending: "Envoi de ton adresse e-mail…",
+      failed:
+        "Ton adresse e-mail n’a pas été enregistrée. Vérifie ta connexion et réessaie.",
       invite: "Veux-tu avoir de nos nouvelles\u202f?",
       email: "Adresse e\u2011mail",
       ticksLegend: "Qu’est-ce qui t’intéresse\u202f?",
@@ -854,6 +857,7 @@ export const FR: TourText = {
       },
     },
     end: {
+      edit: "Modifier mes réponses",
       title: "Merci\u202f!",
       shareTitle:
         "Chaque réponse compte, y compris celles des personnes qui ne vendent jamais rien. Veux-tu partager le sondage\u202f?",

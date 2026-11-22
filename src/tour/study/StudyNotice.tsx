@@ -1,10 +1,55 @@
+import { useState, type ReactNode } from "react";
 import { MotionConfig } from "motion/react";
 import { Button } from "@/components/ui/button";
 import Guide from "@/components/onboarding/Guide";
 import type { PakoMood } from "@/components/onboarding/storyTypes";
+import type { StudyPilot } from "../../../shared/study";
 import LanguageSwitch from "../i18n/LanguageSwitch";
 import { useTourText } from "../i18n/TourLanguage";
 import type { TourText } from "../i18n/en";
+import { sendPilot } from "../studyApi";
+import PilotContact from "../v3/PilotForm";
+import { PILOT_KEY } from "../v3/v3Progress";
+import { useRecorder } from "./useRecorder";
+
+export function FinishedNotice({
+  version,
+  onShowPitch,
+  onEdit,
+}: {
+  version: string;
+  onShowPitch: () => void;
+  onEdit?: () => void;
+}) {
+  const { v3 } = useTourText();
+  const [submitted, setSubmitted] = useState(false);
+  const recorder = useRecorder([]);
+  function submit(pilot: StudyPilot) {
+    recorder.add({ key: PILOT_KEY, send: () => sendPilot(pilot) });
+    setSubmitted(true);
+  }
+  return (
+    <StudyNotice
+      kind="done-before"
+      onShowPitch={onShowPitch}
+      action={
+        onEdit && (
+          <Button className="button primary large" onClick={onEdit}>
+            {v3.end.edit}
+          </Button>
+        )
+      }
+    >
+      <PilotContact
+        version={version}
+        submitted={submitted}
+        save={recorder.save}
+        onSend={submit}
+        retry={recorder.retry}
+      />
+    </StudyNotice>
+  );
+}
 
 type NoticeKind =
   "loading" | "invalid-link" | "unreachable" | "closed" | "done-before";
@@ -25,8 +70,12 @@ export default function StudyNotice({
   kind,
   onShowPitch,
   onRetry,
+  action,
+  children,
 }: {
   kind: NoticeKind;
+  action?: ReactNode;
+  children?: ReactNode;
   onShowPitch: () => void;
   onRetry?: () => void;
 }) {
@@ -56,9 +105,11 @@ export default function StudyNotice({
               </h1>
               <p className="ob-lead">{words.text}</p>
             </div>
+            {children}
           </div>
         </div>
         <footer className="ob-footer">
+          {action}
           {onRetry && (
             <Button className="button primary large" onClick={onRetry}>
               {common.tryAgain}
@@ -66,7 +117,7 @@ export default function StudyNotice({
           )}
           {kind !== "loading" && (
             <Button
-              className={`button large ${onRetry ? "quiet" : "primary"}`}
+              className={`button large ${onRetry || action ? "quiet" : "primary"}`}
               onClick={onShowPitch}
             >
               {notices.showTour}

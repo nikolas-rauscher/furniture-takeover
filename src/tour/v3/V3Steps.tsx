@@ -25,8 +25,8 @@ import {
   withoutAnswersOffPath,
   withV3Order,
 } from "./v3Flow";
-import { PILOT_KEY, v3Job } from "./v3Jobs";
-import { rememberFinished, type V3Progress } from "./v3Progress";
+import { v3Job } from "./v3Jobs";
+import { PILOT_KEY, type V3Progress } from "./v3Progress";
 import type { V3AmountStep, V3ChoiceStep, V3Step } from "./v3Script";
 import { optionsOf, questionOf } from "./v3Words";
 import SectionStrip from "./SectionStrip";
@@ -148,12 +148,14 @@ export default function V3Steps({
   recorder,
   contact,
   onShowPitch,
+  onEdit,
 }: {
   progress: V3Progress;
   setProgress: (transform: Transform) => void;
   recorder: Recorder;
   contact: string;
   onShowPitch: () => void;
+  onEdit: () => void;
 }) {
   const text = useTourText();
   const steps = visibleV3Steps(progress.answers);
@@ -189,7 +191,6 @@ export default function V3Steps({
         next = withEvent(withEvent(next, "core-complete"), "end");
       return next;
     });
-    if (target.kind === "end") rememberFinished();
   }
 
   /**
@@ -299,6 +300,7 @@ export default function V3Steps({
     log,
     onMood: setMood,
     onShowPitch,
+    onEdit,
   };
 
   // Number keys pick answers and Enter moves on, as long as no control has the key.

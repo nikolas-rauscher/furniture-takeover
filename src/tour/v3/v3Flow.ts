@@ -1,10 +1,11 @@
 import type { StudyEventKind } from "../../../shared/study.ts";
 import { shuffleOptions, type RandomSource } from "../optionOrder.ts";
 import { emptiedOffPath, isShown, neighbourStep } from "../stepConditions.ts";
-import type { V3Answer, V3Progress } from "./v3Progress.ts";
+import type { StoredV3, V3Answer, V3Progress } from "./v3Progress.ts";
 import {
   answerIds,
   offeredOptions,
+  V3_VERSION,
   V3_SECTIONS,
   V3_STEPS,
   type V3ChoiceStep,
@@ -276,4 +277,19 @@ export function sectionFill(answers: AnswerSheet, step: V3Step): number {
   const done = inSection.findIndex((candidate) => candidate.id === step.id);
   if (done === -1) throw new Error(`Step ${step.id} is not part of this run.`);
   return Math.max(MIN_SECTION_FILL, done / inSection.length);
+}
+
+/** Return to the first question, keeping the session, answer revisions and pending writes. */
+export function reopenFinished(stored: StoredV3): StoredV3 {
+  const { progress } = stored;
+  if (progress.version !== V3_VERSION)
+    throw new Error("This wording version cannot be reopened.");
+  return {
+    ...stored,
+    progress: withEvent(
+      { ...progress, editPass: progress.editPass + 1, stepId: "last-role" },
+      "shown",
+      "last-role",
+    ),
+  };
 }

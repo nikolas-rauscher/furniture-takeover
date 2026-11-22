@@ -1,8 +1,9 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useTourText } from "../i18n/TourLanguage";
 import { SaveStatus } from "../study/StudyEnd";
-import PilotForm from "./PilotForm";
+import PilotContact from "./PilotForm";
+import { PILOT_KEY } from "./v3Progress";
 import QrCode from "./QrCode";
 import type { StepContext } from "./stepContext";
 import { V3_MINUTES } from "./v3Script";
@@ -91,34 +92,22 @@ function ShareBlock({ context }: { context: StepContext }) {
 function EndSaveStatus({ context }: { context: StepContext }) {
   const { save } = context;
   if (save.sending) return null;
-  return <SaveStatus save={save} onRetry={context.retry} />;
-}
-
-/** The optional form, for everyone who finished, until it is sent. */
-function StayInTouch({ context }: { context: StepContext }) {
-  const { pilot } = useTourText().v3;
-  const titleId = useId();
   return (
-    <section className="tour-card tour-contact" aria-labelledby={titleId}>
-      <h2 id={titleId} className="tour-card-title">
-        {pilot.invite}
-      </h2>
-      <PilotForm context={context} />
-    </section>
+    <SaveStatus
+      save={{
+        ...save,
+        unsaved: save.unsaved.filter((key) => key !== PILOT_KEY),
+      }}
+      onRetry={context.retry}
+    />
   );
 }
 
-/**
- * The thank-you with how saving went, the optional form and the share block. Who saw
- * the wrong price learns that it was deliberate; nobody under 18 is offered the form. Once the form is sent it gives way to a
- * line saying so, and the screen returns to its top.
- */
+/** The thank-you, optional contact form and ways to share or revise the survey. */
 export default function V3End({ context }: { context: StepContext }) {
   const { v3 } = useTourText();
   const top = useRef<HTMLDivElement>(null);
   const sent = context.progress.pilot !== null;
-  // No email address is asked of anyone under 18.
-  const minor = context.progress.answers.age?.chosen.includes("under-18");
   useEffect(() => {
     if (sent) top.current?.closest(".ob-body")?.scrollTo({ top: 0 });
   }, [sent]);
@@ -127,9 +116,17 @@ export default function V3End({ context }: { context: StepContext }) {
       <h2 className="ob-title">{v3.end.title}</h2>
       <div role="status">
         <EndSaveStatus context={context} />
-        {sent && <p className="tour-save">{v3.pilot.sent}</p>}
       </div>
-      {!sent && !minor && <StayInTouch context={context} />}
+      <PilotContact
+        version={context.progress.version}
+        submitted={sent}
+        save={context.save}
+        onSend={context.sendPilot}
+        retry={context.retry}
+      />
+      <Button className="button secondary" onClick={context.onEdit}>
+        {v3.end.edit}
+      </Button>
       <ShareBlock context={context} />
     </div>
   );

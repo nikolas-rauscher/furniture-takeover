@@ -49,7 +49,7 @@ export const DE: TourText = {
     },
     doneBefore: {
       title: "Du hast schon teilgenommen.",
-      text: "Danke! Dieser Browser merkt sich, dass du die Umfrage abgeschlossen hast. Du kannst dir trotzdem die Demo von takeover ansehen.",
+      text: "Danke fürs Mitmachen. Wenn du von uns hören möchtest, kannst du unten deine E-Mail-Adresse hinterlassen.",
     },
     showTour: "Demo ansehen",
     loadFailed: {
@@ -407,7 +407,7 @@ export const DE: TourText = {
       saveTitle: "Was wir speichern",
       moreBelow: "Weiter unten geht es weiter",
       save: (date) =>
-        `Wir speichern deine Antworten und erfassen, welche Seiten du ansiehst, überspringst oder erneut öffnest und wie lange du auf jeder Seite bleibst. Ausserdem erfassen wir, über welchen Link du zur Umfrage gekommen bist, welche Sprache du verwendest und ob du ein Handy oder einen Computer nutzt. Dein Fortschritt bleibt in diesem Tab, bis du ihn schliesst. Dein Browser merkt sich, dass du die Umfrage abgeschlossen hast. Wenn du am Schluss deine E-Mail-Adresse angibst, speichern wir sie getrennt von deinen Antworten. Alles wird bis zum ${date} gelöscht.`,
+        `Wir speichern deine Antworten und erfassen, welche Seiten du ansiehst, überspringst oder erneut öffnest und wie lange du auf jeder Seite bleibst. Ausserdem erfassen wir, über welchen Link du zur Umfrage gekommen bist, welche Sprache du verwendest und ob du ein Handy oder einen Computer nutzt. Während der Umfrage bleibt dein Fortschritt in diesem Tab. Nach dem Abschluss speichert dieser Browser deine Antworten, damit du sie später ändern kannst. Wenn du am Schluss deine E-Mail-Adresse angibst, speichern wir sie getrennt von deinen Antworten. Wir löschen die erhobenen Studiendaten bis zum ${date}.`,
       questions: "Fragen zur Umfrage:",
       go: "Umfrage starten",
       demo: "Zeig mir nur die App",
@@ -810,6 +810,9 @@ export const DE: TourText = {
     },
     scene: { next: "Weiter", replay: "Nochmals abspielen" },
     pilot: {
+      sending: "Deine E-Mail-Adresse wird gesendet…",
+      failed:
+        "Deine E-Mail-Adresse wurde nicht gespeichert. Prüfe deine Verbindung und versuch es nochmals.",
       invite: "Möchtest du wieder von uns hören?",
       email: "E-Mail-Adresse",
       ticksLegend: "Was möchtest du?",
@@ -849,6 +852,7 @@ export const DE: TourText = {
       },
     },
     end: {
+      edit: "Meine Antworten ändern",
       title: "Danke!",
       shareTitle:
         "Jede Antwort hilft, auch von Leuten, die nie etwas verkaufen. Magst du die Umfrage teilen?",

@@ -9,10 +9,9 @@ import {
   sendPilot,
   startSession,
 } from "../studyApi.ts";
-import type { V3Progress } from "./v3Progress.ts";
+import { PILOT_KEY, type V3Progress } from "./v3Progress.ts";
 
 export const SESSION_KEY = "session";
-export const PILOT_KEY = "pilot";
 const EVENTS_KEY = /^events-(\d+)-(\d+)$/;
 
 const eventsKey = (from: number, to: number) => `events-${from}-${to}`;

@@ -8,7 +8,8 @@ import {
 } from "../../../shared/study.ts";
 import { useTourText } from "../i18n/TourLanguage";
 import { toggleOption } from "../optionOrder";
-import type { StepContext } from "./stepContext";
+import type { SaveState } from "../saveQueue";
+import { PILOT_KEY } from "./v3Progress";
 
 type Role = (typeof STUDY_PILOT_ROLES)[number];
 type Place = (typeof STUDY_PILOT_PLACES)[number];
@@ -100,7 +101,12 @@ function TickBox({
  * The optional form at the end, stored without the session. Roles and place are asked
  * only of those who want to try takeover early.
  */
-export default function PilotForm({ context }: { context: StepContext }) {
+type PilotFormProps = {
+  version: string;
+  onSend: (pilot: StudyPilot) => void;
+};
+
+function PilotForm({ version, onSend }: PilotFormProps) {
   const { pilot } = useTourText().v3;
   const id = useId();
   const form = useRef<HTMLFormElement>(null);
@@ -137,9 +143,9 @@ export default function PilotForm({ context }: { context: StepContext }) {
       // The follow-up questions are answered only by those who want to try early.
       roles: draft.tryEarly ? draft.roles : [],
       place: draft.tryEarly ? draft.place : null,
-      version: context.progress.version,
+      version,
     });
-    context.sendPilot(sent);
+    onSend(sent);
   }
 
   const change = (update: Partial<Draft>) => {
@@ -239,5 +245,52 @@ export default function PilotForm({ context }: { context: StepContext }) {
         </Button>
       </div>
     </form>
+  );
+}
+
+/** The same invitation and confirmed delivery status on either completion screen. */
+export default function PilotContact({
+  version,
+  onSend,
+  submitted,
+  save,
+  retry,
+}: PilotFormProps & {
+  submitted: boolean;
+  save: SaveState;
+  retry: () => void;
+}) {
+  const {
+    common,
+    v3: { pilot },
+  } = useTourText();
+  const titleId = useId();
+  if (submitted) {
+    const waiting = save.unsaved.includes(PILOT_KEY);
+    return (
+      <div
+        className={
+          waiting && save.error ? "tour-card tour-save-failed" : "tour-save"
+        }
+        role="status"
+      >
+        <p>
+          {waiting ? (save.error ? pilot.failed : pilot.sending) : pilot.sent}
+        </p>
+        {waiting && save.error && (
+          <Button className="button secondary small" onClick={retry}>
+            {common.tryAgain}
+          </Button>
+        )}
+      </div>
+    );
+  }
+  return (
+    <section className="tour-card tour-contact" aria-labelledby={titleId}>
+      <h2 className="tour-card-title" id={titleId}>
+        {pilot.invite}
+      </h2>
+      <PilotForm version={version} onSend={onSend} />
+    </section>
   );
 }

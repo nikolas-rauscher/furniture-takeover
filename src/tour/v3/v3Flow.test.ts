@@ -15,6 +15,7 @@ import {
   MIN_SECTION_FILL,
   nextV3,
   recordV3Answer,
+  reopenFinished,
   sectionFill,
   sectionStates,
   v3StepById,
@@ -24,7 +25,13 @@ import {
   withV3Order,
 } from "./v3Flow.ts";
 import { eventJobs, v3Job } from "./v3Jobs.ts";
-import type { V3Answer, V3Progress } from "./v3Progress.ts";
+import {
+  finishedStudy,
+  loadV3,
+  storeV3,
+  type V3Answer,
+  type V3Progress,
+} from "./v3Progress.ts";
 import {
   amountOf,
   amountOption,
@@ -57,6 +64,7 @@ const answer = (...chosen: string[]): V3Answer => ({
 const progress: V3Progress = {
   session: SESSION,
   version: V3_VERSION,
+  editPass: 0,
   source: "friends",
   device: "phone",
   language: "en",
@@ -766,4 +774,64 @@ test("the start request names the wording version the session began in", async (
   );
   await v3Job({ ...progress, version: "v3-2" }, "session").send();
   assert.equal(sent[0].version, "v3-2");
+});
+
+test("reopening a completed survey keeps the session, ranks, first choices and pending survey saves", () => {
+  function storage() {
+    const items = new Map<string, string>();
+    return {
+      getItem: (key: string) => items.get(key) ?? null,
+      setItem: (key: string, value: string) => items.set(key, value),
+    };
+  }
+  const localStorage = storage();
+  Object.assign(globalThis, {
+    window: { localStorage, sessionStorage: storage() },
+  });
+  const ranks = ["monthly", "free", "credits", "free-ads", "seller-fee"];
+  const completed = withEvent(
+    {
+      ...progress,
+      stepId: "end",
+      answers: { "pay-model": { ...answer(...ranks), text: "Day pass" } },
+      pilot: {
+        email: "test@example.org",
+        launchNews: true,
+        tryEarly: false,
+        interview: false,
+        futureSurveys: false,
+        roles: [],
+        place: null,
+        version: V3_VERSION,
+      },
+    },
+    "end",
+  );
+  storeV3({ progress, unsaved: [] });
+  assert.equal(finishedStudy(), null);
+  storeV3({ progress: completed, unsaved: ["pay-model", "pilot"] });
+  const saved = finishedStudy()?.stored;
+  assert.ok(saved);
+  assert.equal(saved.progress.pilot, null);
+  assert.deepEqual(saved.unsaved, ["pay-model"]);
+  assert.ok(!JSON.stringify(saved).includes("test@example.org"));
+  const reopened = reopenFinished(saved);
+  storeV3(reopened);
+  assert.deepEqual(loadV3(progress.source).stored, reopened);
+  assert.equal(reopened.progress.stepId, "last-role");
+  assert.equal(reopened.progress.session, completed.session);
+  assert.deepEqual(reopened.progress.answers, completed.answers);
+  assert.equal(reopened.progress.events.at(-1)?.seq, completed.events.length);
+  assert.deepEqual(reopened.progress.orders, completed.orders);
+  // An older tab finishing a save keeps its own tab state but cannot overwrite the new editing pass.
+  storeV3({ progress: completed, unsaved: [] });
+  assert.deepEqual(finishedStudy()?.stored, reopened);
+  assert.throws(() =>
+    reopenFinished({
+      ...saved,
+      progress: { ...saved.progress, version: "v4-2" },
+    }),
+  );
+  localStorage.setItem("takeover-study-finished", new Date(0).toISOString());
+  assert.deepEqual(finishedStudy(), { version: "unknown", stored: null });
 });

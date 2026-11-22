@@ -3,10 +3,18 @@ import { randomUuid } from "../../randomUuid";
 import { deviceClass } from "../deviceClass";
 import { useTourLanguage } from "../i18n/TourLanguage";
 import { useRecorder, type Recorder } from "../study/useRecorder";
-import { withEvent, withV3Order } from "./v3Flow";
+import { reopenFinished, withEvent, withV3Order } from "./v3Flow";
 import { SESSION_KEY, eventJobs, v3Job } from "./v3Jobs";
-import { loadV3, storeV3, type V3Progress } from "./v3Progress";
+import {
+  finishedStudy,
+  loadV3,
+  storeV3,
+  superseded,
+  watchFinished,
+  type V3Progress,
+} from "./v3Progress";
 import { V3_STEPS, V3_VERSION } from "./v3Script";
+import { FinishedNotice } from "../study/StudyNotice";
 import V3Start from "./V3Start";
 import V3Steps from "./V3Steps";
 import type { StudyLanguage } from "../../../shared/study.ts";
@@ -22,6 +30,7 @@ function firstProgress(source: string, language: StudyLanguage): V3Progress {
   const started: V3Progress = {
     session: randomUuid(),
     version: V3_VERSION,
+    editPass: 0,
     source,
     device: deviceClass(),
     language,
@@ -92,6 +101,8 @@ export default function V3Study({
 }) {
   const { language } = useTourLanguage();
   const [{ stored, updated }] = useState(() => loadV3(source));
+  const [finished, setFinished] = useState(finishedStudy);
+  useEffect(() => watchFinished(() => setFinished(finishedStudy())), []);
   const [resumed] = useState(() =>
     stored ? stored.unsaved.map((key) => v3Job(stored.progress, key)) : [],
   );
@@ -111,6 +122,37 @@ export default function V3Study({
     recorder.add(v3Job(started, SESSION_KEY));
   }
 
+  function edit() {
+    const latest = finishedStudy();
+    const current =
+      progress?.stepId === "end" && !superseded(progress, latest)
+        ? { progress, unsaved: recorder.save.unsaved }
+        : null;
+    const saved = current ?? latest?.stored;
+    if (!saved) throw new Error("No finished answers to edit.");
+    const reopened = reopenFinished(saved);
+    storeV3(reopened);
+    // The invitation may now have a different tag. Reloads keep the original source.
+    const url = new URL(window.location.href);
+    url.searchParams.set("s", reopened.progress.source);
+    window.history.replaceState(null, "", url);
+    setProgress(reopened.progress);
+    if (!current)
+      reopened.unsaved.forEach((key) =>
+        recorder.add(v3Job(reopened.progress, key)),
+      );
+  }
+
+  if (finished && (!progress || superseded(progress, finished)))
+    return (
+      <FinishedNotice
+        version={finished.version}
+        onEdit={
+          finished.stored && finished.version === V3_VERSION ? edit : undefined
+        }
+        onShowPitch={onShowPitch}
+      />
+    );
   if (!progress)
     return (
       <V3Start
@@ -123,6 +165,8 @@ export default function V3Study({
     );
   return (
     <V3Steps
+      key={progress.editPass}
+      onEdit={edit}
       progress={progress}
       setProgress={(update) =>
         setProgress((current) => {

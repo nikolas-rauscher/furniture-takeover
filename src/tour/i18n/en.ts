@@ -45,7 +45,7 @@ export const EN = {
     },
     doneBefore: {
       title: "You've already taken part.",
-      text: "Thanks! This browser remembers that you finished. You can still see the tour of takeover.",
+      text: "Thanks for taking part. You can leave your email below if you’d like to hear from us.",
     },
     showTour: "Show me the tour",
     loadFailed: {
@@ -396,7 +396,7 @@ export const EN = {
       saveTitle: "What we save",
       moreBelow: "Continues below",
       save: (date: string) =>
-        `We save your answers and record which screens you visit, skip or return to and how long you spend on each one. We also record which link you followed, your language and whether you're using a phone or a computer. Your progress stays in this tab until you close it, and this browser remembers that you finished. If you leave your email at the end, we store it separately from your answers. Everything is deleted by ${date}.`,
+        `We save your answers and record which screens you visit, skip or return to and how long you spend on each one. We also record which link you followed, your language and whether you're using a phone or a computer. While you answer, your progress stays in this tab. Once you finish, this browser keeps your answers so you can change them later. If you leave your email at the end, we store it separately from your answers. We delete the study data we collect by ${date}.`,
       questions: "Questions about the survey:",
       go: "Start the survey",
       demo: "Just show me the app",
@@ -788,6 +788,9 @@ export const EN = {
     },
     scene: { next: "Next", replay: "Replay" },
     pilot: {
+      sending: "Sending your email…",
+      failed:
+        "Your email hasn’t been saved. Check your connection and try again.",
       invite: "Would you like to hear from us again?",
       email: "Email address",
       ticksLegend: "What would you like?",
@@ -827,6 +830,7 @@ export const EN = {
       },
     },
     end: {
+      edit: "Change my answers",
       title: "Thank you!",
       shareTitle:
         "Every answer helps, including from people who never sell anything. Would you share the survey?",

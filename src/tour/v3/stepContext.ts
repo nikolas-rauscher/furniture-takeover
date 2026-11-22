@@ -45,4 +45,5 @@ export type StepContext = {
   log: (kind: StudyEventKind, detail?: string) => void;
   onMood: (mood: PakoMood) => void;
   onShowPitch: () => void;
+  onEdit: () => void;
 };

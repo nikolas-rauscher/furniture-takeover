@@ -5,7 +5,6 @@ import { lookInAddress } from "./tourLook";
 import Study from "./study/Study";
 import StudyNotice from "./study/StudyNotice";
 import { readStudyConfig } from "./studyApi";
-import { finishedBefore, loadV3 } from "./v3/v3Progress";
 import V3Study from "./v3/V3Study";
 import "../components/onboarding/onboarding.css";
 import "../components/onboarding/onboarding-shell.css";
@@ -82,8 +81,6 @@ export default function TourPage() {
   if (!state.config.open)
     return <StudyNotice kind="closed" onShowPitch={showPitch} />;
   if (survey === "v3") {
-    if (finishedBefore() && !loadV3(source.data).stored)
-      return <StudyNotice kind="done-before" onShowPitch={showPitch} />;
     return (
       <V3Study
         source={source.data}
