@@ -5,10 +5,10 @@ import type {
   PhotoGroupResponse,
 } from "../shared/agent.ts";
 import {
-  assistWithDeepSeek,
-  groupPhotosWithDeepSeek,
+  completeAssist,
+  completePhotoGroups,
   type ProviderConfig,
-} from "./deepseek.ts";
+} from "./completion.ts";
 import { appPrices, explicitPrice } from "./facts.ts";
 import { validatePhotoGroupRequest, validateRequest } from "./validation.ts";
 import { AgentError, agentNotConfigured, invalidOutput } from "./errors.ts";
@@ -223,7 +223,7 @@ function groundListing(
 
 export function createAgentService(config: ProviderConfig): AgentService {
   const apiKey = config.apiKey.trim();
-  const model = config.model || "deepseek-flash";
+  const { model } = config;
   const health = (): HealthResponse => ({
     configured: Boolean(apiKey),
     mode: apiKey ? "live" : "unconfigured",
@@ -246,9 +246,9 @@ export function createAgentService(config: ProviderConfig): AgentService {
       ready(signal);
       const request = validateRequest(input);
       requireKey();
-      const output = await assistWithDeepSeek(
+      const output = await completeAssist(
         request,
-        { ...config, apiKey, model },
+        { ...config, apiKey },
         signal,
       );
       return groundListing(
@@ -260,9 +260,9 @@ export function createAgentService(config: ProviderConfig): AgentService {
       ready(signal);
       const { images, itemCount } = validatePhotoGroupRequest(input);
       requireKey();
-      const groups = await groupPhotosWithDeepSeek(
+      const groups = await completePhotoGroups(
         images,
-        { ...config, apiKey, model },
+        { ...config, apiKey },
         signal,
         itemCount,
       );

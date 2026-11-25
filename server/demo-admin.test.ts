@@ -49,6 +49,7 @@ async function setup(t: TestContext) {
   listings.seedDemo();
   const server = createAgentServer(
     createAgentService({
+      provider: "deepseek",
       apiKey: "",
       baseUrl: "https://api.deepseek.com",
       model: "deepseek-flash",

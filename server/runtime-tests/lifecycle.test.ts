@@ -30,7 +30,7 @@ test("missing keys and invalid input never call a provider or return demo succes
       {
         type: "error",
         code: "AGENT_NOT_CONFIGURED",
-        message: "Add the DeepSeek API key on the server to start the agent.",
+        message: "Add the model API key on the server to start the agent.",
       },
     ],
   );

@@ -19,6 +19,7 @@ export const completion = (data: unknown, finishReason = "stop") =>
     { status: 200 },
   );
 export const fakeConfig = {
+  provider: "deepseek" as const,
   apiKey: "test-key-never-sent",
   baseUrl: "https://mock.invalid",
   model: "deepseek-flash",

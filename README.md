@@ -60,6 +60,11 @@ Names and purpose only. Never commit values. The full list with comments is in [
 | `DEEPSEEK_API_KEY` | Key for Pako's language model |
 | `DEEPSEEK_BASE_URL` | Address of the DeepSeek API |
 | `DEEPSEEK_MODEL` | Model name Pako uses |
+| `AI_PROVIDER` | Provider of the server's own key: `deepseek` (default) or `openai` |
+| `OPENAI_API_KEY` | OpenAI key, required when `AI_PROVIDER` is `openai` |
+| `OPENAI_MODEL` | OpenAI model, required when `AI_PROVIDER` is `openai` |
+| `OPENAI_REASONING_EFFORT` | How much an OpenAI model thinks: `low` (default) or `none` |
+| `DEMO_LOGIN_CODE` | Code of the team link that opens the demo students. Optional |
 | `BRAVE_SEARCH_API_KEY` | Key for web search |
 | `API_PORT` | Port of the API |
 | `APP_PORT` | Port of the dev frontend |
@@ -94,7 +99,7 @@ CI runs `check` and `build` on Node 22 and 24.
 ## Architecture
 
 - **Client** (`src/`). A React and Vite app. Screens are in `src/shell/`, their building blocks in `src/components/`, client state in `src/hooks/`, the data seam in `src/api/` (demo) and `src/cloud/` (account mode, Supabase).
-- **Server** (`server/`). A Node.js API that checks every request. It runs Pako: the agent loop, its tools and prompts (`runtime.ts`, `agent-tools.ts`), the DeepSeek and Brave Search calls, and the local SQLite store. In account mode it also checks logins and daily AI limits through Supabase. It runs TypeScript directly, so Node 22.18 or newer is required.
+- **Server** (`server/`). A Node.js API that checks every request. It runs Pako: the agent loop, its tools and prompts (`runtime.ts`, `agent-tools.ts`), the model provider and Brave Search calls, and the local SQLite store. In account mode it also checks logins and daily AI limits through Supabase. It runs TypeScript directly, so Node 22.18 or newer is required.
 - **Shared contracts** (`shared/`). Types and validation used by both sides: listings, deals, pickup rules, messages, admin actions and the demo catalog. The server and the client both validate against them.
 - **Migrations** (`supabase/migrations/`). The database schema, row-level security and the deal, pickup and admin functions for account mode.
 
@@ -135,7 +140,7 @@ server/
   thread-options.ts           checks each suggested reply; thread-draft-wording.ts its wording
   thread-conversation.ts      which amounts, times and places the conversation allows
   thread-safe-text.ts         no contact details, payment methods or stray placeholders
-  service.ts, deepseek.ts     listing assist and photo grouping
+  service.ts, completion.ts   listing assist and photo grouping
   web-search.ts               Brave Search with a shared queue and offer filtering
   database.ts, messages.ts    local demo store: listings, conversations, deals (SQLite)
   demo-admin.ts               admin actions for the local demo

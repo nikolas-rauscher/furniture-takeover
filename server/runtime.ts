@@ -6,6 +6,11 @@ import {
 } from "./agent-tools.ts";
 import { RunError } from "./errors.ts";
 import { englishListingText, type ListingText } from "./listing-language.ts";
+import {
+  languageModel,
+  thinkingOptions,
+  type ModelAccess,
+} from "./model-provider.ts";
 import { listingInventory } from "../shared/listingInventory.ts";
 import {
   extractSearchConstraints,
@@ -24,7 +29,6 @@ import {
   ToolLoopAgent,
   type LanguageModel,
 } from "ai";
-import { createDeepSeek } from "@ai-sdk/deepseek";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import type {
@@ -50,10 +54,7 @@ import {
 import { finishRun, reportRunError } from "./run-result.ts";
 import { createRunStream, MAX_RUN_TEXT_CHARS } from "./run-stream.ts";
 
-export type AgentRuntimeConfig = {
-  apiKey: string;
-  baseUrl?: string;
-  model?: string;
+export type AgentRuntimeConfig = ModelAccess & {
   braveApiKey?: string;
   fetchImpl?: typeof fetch;
   /** Inject the official SDK mock model in tests; never supplied by HTTP callers. */
@@ -304,7 +305,7 @@ async function announceCatalogScan(
 }
 
 export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
-  const model = config.model?.trim() || "deepseek-flash";
+  const { model } = config;
   const apiKey = config.apiKey.trim();
   const braveApiKey = config.braveApiKey?.trim() || "";
   const health = (): AgentRuntimeHealth => ({
@@ -366,21 +367,15 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
         if (!apiKey)
           throw new RunError(
             "AGENT_NOT_CONFIGURED",
-            "Add the DeepSeek API key on the server to start the agent.",
+            "Add the model API key on the server to start the agent.",
           );
-        const provider = createDeepSeek({
-          apiKey,
-          baseURL: config.baseUrl || "https://api.deepseek.com",
-          fetch: config.fetchImpl,
-        });
+        const agentModel =
+          config.modelImpl ??
+          languageModel({ ...config, apiKey }, config.fetchImpl);
         const translateListing = (text: ListingText) =>
           config.listingTextTranslator
             ? config.listingTextTranslator(text, signal)
-            : englishListingText(
-                text,
-                config.modelImpl ?? provider(model),
-                signal,
-              );
+            : englishListingText(text, agentModel, signal, config);
         const negotiations = createNegotiationTools({
           current: request.context?.negotiation,
           inventory: currentInventory(),
@@ -448,7 +443,7 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
           previousMatches,
         };
         const agent = new ToolLoopAgent({
-          model: config.modelImpl ?? provider(model),
+          model: agentModel,
           instructions: buildAgentInstructions({
             ...instructionContext,
             allowWebSearch: state.allowWebSearch,
@@ -483,16 +478,10 @@ export function createAgentRuntime(config: AgentRuntimeConfig): AgentRuntime {
             }),
           }),
           // Provider response bodies stay server-private.
-          prepareCall: (options) => ({
-            ...options,
-            onError: ({ error }: { error: unknown }) =>
-              stream.recordFailure(error),
-          }),
+          onError: ({ error }) => stream.recordFailure(error),
           maxRetries: 2,
           maxOutputTokens: 4096,
-          providerOptions: {
-            deepseek: { thinking: { type: "enabled" }, reasoningEffort: "low" },
-          },
+          providerOptions: thinkingOptions(true, config),
           ...activity.callbacks(
             tools,
             listingMode,

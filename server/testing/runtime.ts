@@ -6,6 +6,13 @@ import { createAgentRuntime as createRuntime } from "../runtime.ts";
 import type { AgentRunEvent } from "../../shared/runs.ts";
 import type { AgentListingDraft } from "../../shared/actions.ts";
 
+export const testAccess = {
+  provider: "deepseek",
+  baseUrl: "https://api.deepseek.com",
+  model: "deepseek-flash",
+} as const;
+type RuntimeConfig = Parameters<typeof createRuntime>[0];
+
 // Deterministic SDK streams. Scenarios and assertions stay in each test.
 export const finish = (
   reason: "stop" | "tool-calls" = "stop",
@@ -55,8 +62,13 @@ export const answer = (...chunks: string[]) =>
   );
 // Translation is exercised separately; runtime tests keep seller text deterministic.
 export const createAgentRuntime = (
-  config: Parameters<typeof createRuntime>[0],
-) => createRuntime({ ...config, listingTextTranslator: async (text) => text });
+  config: Pick<RuntimeConfig, "apiKey"> & Partial<RuntimeConfig>,
+) =>
+  createRuntime({
+    ...testAccess,
+    ...config,
+    listingTextTranslator: async (text) => text,
+  });
 
 export const ownDesk = {
   id: "own-desk",

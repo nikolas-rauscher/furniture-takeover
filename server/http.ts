@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { DEMO_LOGIN_ROUTE } from "../shared/demoLogin.ts";
 import { localOrigins } from "./config.ts";
 import { AgentError } from "./errors.ts";
 import { serveFrontend } from "./frontend.ts";
@@ -12,6 +13,7 @@ import { sendRequestError } from "./http-io.ts";
 import { createAccountKeysRoute } from "./routes/account-keys.ts";
 import { createAdminRoute } from "./routes/admin.ts";
 import { createAgentRoutes } from "./routes/agent.ts";
+import { createDemoLoginRoute } from "./routes/demo-login.ts";
 import { createHealthRoutes } from "./routes/health.ts";
 import { createListingRoutes } from "./routes/listings.ts";
 import { createLocationRoute } from "./routes/location.ts";
@@ -44,6 +46,7 @@ export function createAgentServer(
     ...createAgentRoutes(service, options),
     ...createStudyRoutes(options.study, authorize),
     "/api/account/keys": createAccountKeysRoute(options),
+    [`POST ${DEMO_LOGIN_ROUTE}`]: createDemoLoginRoute(options),
     "/api/location/reverse": createLocationRoute(),
   };
   const routeTable = new Map(Object.entries(routes));

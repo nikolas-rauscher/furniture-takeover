@@ -20,7 +20,7 @@ The browser calls relative `/api/...` URLs. Vite forwards them to the loopback A
 | A listing field or search constraint | `shared/marketplace.ts`, `shared/actions.ts`                                                                    | Server validation, browser form, persistence and migrations             |
 | An agent tool                        | `server/agent-tools.ts` for registration, `server/actions.ts` or `server/negotiation-tools.ts` for domain logic | Registration in `agent-tools.ts`, typed stream event, frontend handling |
 | A question or chat control           | `AgentActionControls.tsx`, `AgentComposer.tsx`, `useAgentRun.ts`                                                | Free-text answers, Stop, stale responses and manual edit preservation   |
-| A provider or external source        | `deepseek.ts`, `web-search.ts`, `marketplace-policy.ts`                                                         | Cancellation, response bounds, URL validation and honest error states   |
+| A provider or external source        | `model-provider.ts`, `completion.ts`, `web-search.ts`, `marketplace-policy.ts`                                  | Cancellation, response bounds, URL validation and honest error states   |
 | An inbox feature                     | `shared/messages.ts`, `server/messages.ts`, `src/api/messages.ts`, `MessagesPage.tsx`                           | Workspace isolation and idempotent sends; this is still a local demo    |
 | Persistence changes                  | `server/database.ts`, browser storage hooks/repositories                                                        | Existing records, defaults and non-destructive migration tests          |
 

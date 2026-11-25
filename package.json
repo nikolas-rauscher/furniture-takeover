@@ -29,11 +29,12 @@
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^3.0.64",
+    "@ai-sdk/openai": "^4.0.123",
     "@animate-ui/react": "^2.4.2",
     "@base-ui/react": "^1.9.0",
     "@shadcn/react": "^0.3.1",
     "@supabase/supabase-js": "^2.118.0",
-    "ai": "^7.0.138",
+    "ai": "^7.0.181",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.2",
     "embla-carousel-react": "^8.6.0",

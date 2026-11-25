@@ -927,6 +927,21 @@
 .account-auth > .quiet-caption {
   text-align: center;
 }
+/* The team's demo students, two per row like the intro's answer cards. */
+.demo-accounts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+.demo-accounts .settings-row {
+  grid-template-columns: 44px minmax(0, 1fr);
+}
+.demo-accounts .settings-row-icon {
+  font-weight: 700;
+}
 .account-auth-hint,
 .account-auth-field-error,
 .account-auth-rule {

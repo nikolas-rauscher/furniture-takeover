@@ -6,6 +6,8 @@ import type { PakoMood } from "../components/onboarding/storyTypes";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { fail } from "./client";
+import DemoAccounts from "./DemoAccounts";
+import { demoLinkCode } from "./demoLogin";
 import {
   PASSWORD_MIN_LENGTH,
   resendFailure,
@@ -15,7 +17,7 @@ import {
 } from "./signup";
 
 type FormMode = "login" | "reset" | "password";
-type AuthMode = FormMode | "signup" | "inbox" | "complete";
+type AuthMode = FormMode | "signup" | "inbox" | "complete" | "demo";
 
 /** What a failed step tells the student; the provider's own wording varies by deployment. */
 const AUTH_FAILURES: Record<FormMode, string> = {
@@ -494,7 +496,10 @@ export default function Auth({
   recovery?: boolean;
   onDone: () => void;
 }) {
-  const [mode, setMode] = useState<AuthMode>(recovery ? "password" : "login");
+  const [demoCode] = useState(demoLinkCode);
+  const [mode, setMode] = useState<AuthMode>(
+    recovery ? "password" : demoCode ? "demo" : "login",
+  );
   const [email, setEmail] = useState("");
   const section = useRef<HTMLElement>(null);
   const shownMode = useRef(mode);
@@ -507,7 +512,19 @@ export default function Auth({
   const signIn = () => setMode("login");
   return (
     <section ref={section} className="account-auth">
-      {mode === "complete" ? (
+      {mode === "demo" && demoCode ? (
+        <>
+          <AuthHead mood="wave" title="Who do you want to be?">
+            Pick a demo student. No password needed.
+          </AuthHead>
+          <DemoAccounts
+            client={client}
+            code={demoCode}
+            onSignedIn={onDone}
+            onOwnAccount={signIn}
+          />
+        </>
+      ) : mode === "complete" ? (
         <>
           <AuthHead mood="cheer" title="Password saved!" />
           <p className="quiet-caption" role="status">
@@ -540,7 +557,7 @@ export default function Auth({
         <AccountForm
           key={mode}
           client={client}
-          mode={mode}
+          mode={mode === "demo" ? "login" : mode}
           recovery={recovery}
           email={email}
           onEmail={setEmail}

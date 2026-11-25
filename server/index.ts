@@ -1,10 +1,13 @@
 import { createCloud } from "./cloud.ts";
+import { createDemoLogin } from "./demo-login.ts";
+import { demoSellers } from "../shared/demoSellers.ts";
 import { createMessagesStore } from "./messages.ts";
 import { createAgentService } from "./service.ts";
 import { createAgentServer } from "./http.ts";
 import { createAgentRuntime } from "./runtime.ts";
 import { createThreadAgent } from "./thread-agent.ts";
 import { isLoopbackHost, readServerConfig } from "./config.ts";
+import { providerBaseUrls } from "./model-provider.ts";
 import { createListingsStore } from "./database.ts";
 import { createAccountKeyStore } from "./account-keys.ts";
 import { isCollecting } from "./routes/study.ts";
@@ -20,7 +23,14 @@ if (staticDirectory)
   await access(new URL("../dist/index.html", import.meta.url));
 
 const config = readServerConfig();
+const { demoLoginCode } = config;
 const cloud = createCloud(process.env, {
+  // The demo students test on prepaid OpenAI credits; on any other key they keep the daily limits.
+  unlimitedAccounts: new Set(
+    demoLoginCode && config.modelAccess.provider === "openai"
+      ? demoSellers.map(({ id }) => id)
+      : [],
+  ),
   localTesting:
     !staticDirectory &&
     ["127.0.0.1", "localhost", "::1"].includes(
@@ -30,7 +40,7 @@ const cloud = createCloud(process.env, {
       ["127.0.0.1", "localhost", "[::1]"].includes(new URL(origin).hostname),
     ),
 });
-const { port, baseUrl, apiKey, model } = config;
+const { port, modelAccess } = config;
 // Demo mode has no accounts, so it must not be reachable from other machines.
 if (!isLoopbackHost(config.host) && !cloud)
   throw new Error(
@@ -44,24 +54,18 @@ const accountKeys =
         encryptionKey: process.env.ACCOUNT_KEYS_ENCRYPTION_KEY.trim(),
       })
     : undefined;
-const service = createAgentService({
-  apiKey,
-  model,
-  baseUrl,
-});
+const service = createAgentService(modelAccess);
 const listings = cloud ? undefined : createListingsStore(config.databasePath);
 listings?.seedDemo();
 const runtime = createAgentRuntime({
-  apiKey,
-  model,
-  baseUrl,
+  ...modelAccess,
   braveApiKey: config.braveApiKey,
   inventoryAuthoritative: !!cloud,
   inventoryProvider: cloud
     ? () => cloud.inventory()
     : () => listings!.listDemo(),
 });
-const threads = createThreadAgent({ apiKey, model, baseUrl });
+const threads = createThreadAgent(modelAccess);
 const messages = cloud ? undefined : createMessagesStore(config.databasePath);
 const study = config.study.open
   ? {
@@ -80,32 +84,34 @@ const server = createAgentServer(service, {
   threads,
   cloud,
   accountKeys,
+  demoLogin:
+    cloud && demoLoginCode
+      ? createDemoLogin({
+          url: cloud.internalUrl,
+          secretKey: cloud.serviceKey,
+          code: demoLoginCode,
+        })
+      : undefined,
   forAccount: accountKeys
     ? async (owner, authorization) => {
         const keys = await accountKeys.credentials(owner, authorization);
-        const userApiKey = keys.deepseek ?? apiKey;
-        const userBaseUrl = keys.deepseek
-          ? "https://api.deepseek.com"
-          : baseUrl;
+        // A student's own key is a DeepSeek key, whatever the server itself uses.
+        const access = keys.deepseek
+          ? {
+              ...config.deepseek,
+              apiKey: keys.deepseek,
+              baseUrl: providerBaseUrls.deepseek,
+            }
+          : modelAccess;
         return {
-          service: createAgentService({
-            apiKey: userApiKey,
-            model,
-            baseUrl: userBaseUrl,
-          }),
+          service: createAgentService(access),
           runtime: createAgentRuntime({
-            apiKey: userApiKey,
-            model,
-            baseUrl: userBaseUrl,
+            ...access,
             braveApiKey: keys.brave ?? config.braveApiKey,
             inventoryAuthoritative: !!cloud,
             inventoryProvider: () => cloud!.inventory(),
           }),
-          threads: createThreadAgent({
-            apiKey: userApiKey,
-            model,
-            baseUrl: userBaseUrl,
-          }),
+          threads: createThreadAgent(access),
         };
       }
     : undefined,

@@ -7,10 +7,12 @@ import {
   type AdminAction,
   type AdminOutput,
 } from "../shared/admin.ts";
+import { demoSellers } from "../shared/demoSellers.ts";
 import {
   adminMigration,
   applyMigrations,
   buyer,
+  demoAccountsMigration,
   dealRulesMigration,
   marketplace,
   pickupMigration,
@@ -462,4 +464,61 @@ test("an agreed pickup survives a refused hide and a block, with atomic deal wri
   const overview = await rpc("overview");
   assert.deepEqual(overview.pakoToday, { requests: 4, threadReads: 7 });
   assert.equal(overview.deals.cancelled, 1);
+});
+
+test("opened demo students can sign in, stay part of the catalog, and can be closed again", async (t) => {
+  const { db, as, rpc } = await setup(t);
+  await db.exec("reset role");
+  await db.exec(`alter table auth.users add column confirmation_token text,
+    add column recovery_token text, add column email_change text,
+    add column email_change_token_new text;
+    create table auth.sessions(user_id uuid);`);
+  await applyMigrations(db, [demoAccountsMigration]);
+  await db.exec("select takeover_admin.seed_demo_catalog(false)");
+  const demoId = demoSellers[0].id;
+  const account = async (id: string) =>
+    (
+      await db.query<Record<string, unknown>>(
+        `select encrypted_password, email_confirmed_at is not null as confirmed,
+          banned_until::text as banned, confirmation_token as token from auth.users where id=$1`,
+        [id],
+      )
+    ).rows[0];
+  const students = await account(buyer);
+
+  assert.equal(
+    (await db.query("select takeover_admin.open_demo_accounts()")).rows.length,
+    demoSellers.length,
+  );
+  assert.deepEqual(await account(demoId), {
+    encrypted_password: null,
+    confirmed: true,
+    banned: null,
+    token: "",
+  });
+  assert.deepEqual(await account(buyer), students);
+
+  await as(demoId);
+  await db.query(
+    "update public.listings set price=price+1 where owner_id=$1 and status='active'",
+    [demoId],
+  );
+  await as(stranger);
+  await rpc("reset_demo", why);
+
+  await db.exec("reset role");
+  await db.query("insert into auth.sessions values($1),($2)", [demoId, buyer]);
+  await db.exec("select takeover_admin.close_demo_accounts()");
+  assert.equal((await account(demoId)).banned, "infinity");
+  assert.deepEqual((await db.query("select user_id from auth.sessions")).rows, [
+    { user_id: buyer },
+  ]);
+
+  for (const role of [null, buyer]) {
+    await as(role);
+    await assert.rejects(
+      db.query("select takeover_admin.open_demo_accounts()"),
+      /permission denied/,
+    );
+  }
 });

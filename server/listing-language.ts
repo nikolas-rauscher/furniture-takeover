@@ -1,5 +1,6 @@
 import { generateText, type LanguageModel } from "ai";
 import { z } from "zod";
+import { thinkingOptions, type ModelAccess } from "./model-provider.ts";
 
 export type ListingText = { title: string; description: string };
 const englishText = z
@@ -11,6 +12,7 @@ export async function englishListingText(
   text: ListingText,
   model: LanguageModel,
   signal: AbortSignal,
+  access: ModelAccess,
 ): Promise<ListingText> {
   const original = text.title + "\n" + text.description;
   const names = [
@@ -36,7 +38,7 @@ export async function englishListingText(
     abortSignal: signal,
     maxOutputTokens: 2200,
     maxRetries: 1,
-    providerOptions: { deepseek: { thinking: { type: "disabled" } } },
+    providerOptions: thinkingOptions(false, access, null),
   });
   const translated = englishText.parse(
     JSON.parse(result.text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim()),

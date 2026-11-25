@@ -117,10 +117,19 @@ Apply every file in `supabase/migrations/`, in this order:
 | `202611200005_pickup_collected.sql`     | After the buyer's "Picked up", `pickup_action` allows only Mark sold, the follow-up and a time proposal's answer                                                                                                                                                                                                                                                                                               |
 | `202611200006_review_fixes.sql`         | A pickup the buyer reported collected never expires, is cancelled or released by the follow-up, and stays reserved when the buyer deletes their account, `check_account_deletion` before photos are removed, and `inbox_latest_messages`, each conversation's newest message for the inbox                                                                                                                     |
 | `202611210001_study.sql`                | Tables for the user study on the tour page in `takeover_admin` (sessions, answers, events, the v1 contacts and the v3 form at the end), and the `study_*` functions that save them, remove a session and count the shared results. Only the server's secret key may call them. Students cannot read the tables. The study is open only when `STUDY_CONTACT` and `STUDY_DELETE_BY` are set; see `docs/STUDY.md` |
+| `202611250001_demo_accounts.sql`        | Recognises demo students by their marker alone, and adds `open_demo_accounts` and `close_demo_accounts` for the demo login                                                                                                                                                                                                                                                                                     |
 
 `202611200001_review_fixes.sql` makes the app server depend on `SUPABASE_SECRET_KEY`: without it, AI quota checks fail. Apply it only when the new build, started with that key, is ready to restart right after.
 
 Optional demo listings: after all migrations are applied, review and run `supabase/seed-demo.sql`. It adds the six inert demo sellers and the 40 shipped listings without overwriting existing edits. The seed and the admin reset use the catalog stored by `202611190004_admin.sql`.
+
+Optional demo login: lets a team use the six demo students without passwords.
+
+1. Run `supabase/seed-demo.sql` and `202611250001_demo_accounts.sql`, then `select takeover_admin.open_demo_accounts();` in the SQL Editor.
+2. Set `DEMO_LOGIN_CODE` on the app server and restart it. The team's link is `/?team=<code>#settings`. Everyone with the link can act as a demo student and read that student's conversations, so share it only with the team.
+3. With `AI_PROVIDER=openai` the demo students have no daily AI limit, so set a hard spend limit on the OpenAI project. With DeepSeek they keep the normal limits.
+
+To end it, remove `DEMO_LOGIN_CODE`, restart, and run `select takeover_admin.close_demo_accounts();`.
 
 To grant yourself admin access, create your account normally. In Studio's SQL Editor, replace the email below with the email for your account and run:
 

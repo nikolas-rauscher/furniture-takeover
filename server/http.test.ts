@@ -10,6 +10,8 @@ import {
   fakeConfig,
   fakeFetch,
 } from "./testing/provider.ts";
+import { DEMO_LOGIN_ROUTE } from "../shared/demoLogin.ts";
+import { demoSellers } from "../shared/demoSellers.ts";
 import { unavailableKeyStatus } from "./account-keys.ts";
 import {
   MAX_BATCH_PHOTOS,
@@ -1123,4 +1125,36 @@ test("the tour page is served at /tour, with or without a channel tag", async (t
   }
   assert.equal(await (await fetch(url)).text(), "<html>Takeover</html>");
   assert.equal((await fetch(url + "/tour/")).status, 404);
+});
+
+test("the demo login answers only on a server that opens it, and only for demo students", async (t) => {
+  const post = (url: string, body: unknown) =>
+    fetch(`${url}${DEMO_LOGIN_ROUTE}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  const request = { code: "team-demo-code-2026", accountId: demoSellers[0].id };
+  const closed = await startServer(t);
+  assert.equal((await post(closed.url, request)).status, 404);
+
+  const opened: unknown[] = [];
+  const open = await startServer(t, undefined, {
+    demoLogin: {
+      async open(value) {
+        opened.push(value);
+        return "one-time-token";
+      },
+    },
+  });
+  const answer = await post(open.url, request);
+  assert.equal(answer.status, 200);
+  assert.deepEqual(await answer.json(), { tokenHash: "one-time-token" });
+  for (const invalid of [
+    { ...request, accountId: "00000000-0000-4000-8000-000000000001" },
+    { ...request, code: 1 },
+    { accountId: request.accountId },
+  ])
+    assert.equal((await post(open.url, invalid)).status, 400);
+  assert.deepEqual(opened, [request]);
 });

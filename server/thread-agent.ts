@@ -1,4 +1,3 @@
-import { createDeepSeek } from "@ai-sdk/deepseek";
 import {
   InvalidToolInputError,
   stepCountIs,
@@ -16,16 +15,18 @@ import {
   type ThreadTurnRequest,
 } from "../shared/threadTurn.ts";
 import { AgentError } from "./errors.ts";
+import {
+  languageModel,
+  thinkingOptions,
+  type ModelAccess,
+} from "./model-provider.ts";
 import { groundProposal } from "./thread-grounding.ts";
 import { withoutContactDetails } from "./thread-safe-text.ts";
 import { logDroppedOption, replacementOption } from "./thread-options.ts";
 import { proposalSchema } from "./thread-proposal.ts";
 import { threadInstructions } from "./thread-instructions.ts";
 
-export type ThreadAgentConfig = {
-  apiKey: string;
-  baseUrl?: string;
-  model?: string;
+export type ThreadAgentConfig = ModelAccess & {
   fetchImpl?: typeof fetch;
   /** Inject the official SDK mock model in tests; never supplied by HTTP callers. */
   modelImpl?: LanguageModel;
@@ -132,7 +133,7 @@ function threadPrompt(request: ThreadTurnRequest, now: Date) {
  */
 export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
   const apiKey = config.apiKey.trim();
-  const model = config.model?.trim() || "deepseek-flash";
+  const { model } = config;
   const clock = config.now ?? (() => new Date());
   return {
     configured: Boolean(apiKey),
@@ -141,7 +142,7 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
         throw new AgentError(
           503,
           "AGENT_NOT_CONFIGURED",
-          "Add a DeepSeek API key to the server .env so Pako can read replies.",
+          "Add the model API key to the server .env so Pako can read replies.",
         );
       const runId = randomUUID();
       const startedAt = Date.now();
@@ -162,13 +163,10 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
       const failedChecks: string[] = [];
       let stage = "Reading the conversation";
       try {
-        const provider = createDeepSeek({
-          apiKey,
-          baseURL: config.baseUrl || "https://api.deepseek.com",
-          fetch: config.fetchImpl,
-        });
         const agent = new ToolLoopAgent({
-          model: config.modelImpl ?? provider(model),
+          model:
+            config.modelImpl ??
+            languageModel({ ...config, apiKey }, config.fetchImpl),
           instructions: threadInstructions,
           tools: {
             [TOOL_NAME]: tool({
@@ -241,15 +239,11 @@ export function createThreadAgent(config: ThreadAgentConfig): ThreadAgent {
           ],
           maxOutputTokens: MAX_OUTPUT_TOKENS,
           maxRetries: 1,
-          // DeepSeek cannot combine thinking with a forced tool.
-          providerOptions: { deepseek: { thinking: { type: "disabled" } } },
+          providerOptions: thinkingOptions(false, config, null),
           // Keep provider response bodies out of the console.
-          prepareCall: (options) => ({
-            ...options,
-            onError: ({ error }: { error: unknown }) => {
-              streamFailure = error;
-            },
-          }),
+          onError: ({ error }) => {
+            streamFailure = error;
+          },
           onStepStart: async ({ stepNumber }) => {
             stage =
               stepNumber === 0

@@ -7,6 +7,7 @@ import {
   ownDesk,
   eventsFor,
 } from "../testing/runtime.ts";
+import { thinkingOptions } from "../model-provider.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { MockLanguageModelV4 } from "ai/test";
@@ -274,12 +275,16 @@ test("actual SDK tool loop searches Brave, reads supplied inventory, and streams
   );
   assert.equal(model.doStreamCalls.length, 4);
   assert.deepEqual(model.doStreamCalls[0].toolChoice, { type: "required" });
+  // The SDK merges each step's options over the run's own.
+  const { deepseek, openai } = thinkingOptions(false);
   assert.deepEqual(model.doStreamCalls[0].providerOptions, {
-    deepseek: { thinking: { type: "disabled" }, reasoningEffort: "low" },
+    deepseek: { ...deepseek, reasoningEffort: "low" },
+    openai,
   });
-  assert.deepEqual(model.doStreamCalls[3].providerOptions, {
-    deepseek: { thinking: { type: "enabled" }, reasoningEffort: "low" },
-  });
+  assert.deepEqual(
+    model.doStreamCalls[3].providerOptions,
+    thinkingOptions(true),
+  );
   assert.match(
     JSON.stringify(model.doStreamCalls[3].prompt),
     /Small scratches/,

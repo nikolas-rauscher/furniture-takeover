@@ -1,7 +1,7 @@
 import test, { type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { MockLanguageModelV4 } from "ai/test";
-import { toolCall } from "../testing/runtime.ts";
+import { testAccess, toolCall } from "../testing/runtime.ts";
 import {
   createThreadAgent,
   validateThreadTurnRequest,
@@ -91,7 +91,12 @@ function agentReading(t: TestContext, ...proposals: unknown[]) {
       toolCall("propose_next_message", proposal, `call-${index}`),
     ),
   });
-  const agent = createThreadAgent({ apiKey: "test", modelImpl: model, now });
+  const agent = createThreadAgent({
+    ...testAccess,
+    apiKey: "test",
+    modelImpl: model,
+    now,
+  });
   return { model, agent, errors };
 }
 
@@ -419,9 +424,12 @@ test("requests are checked before Pako reads, and he needs a key to read", async
         "Pako couldn't read this conversation. messages.0.at is invalid. messages.1.at is invalid.",
     },
   );
-  await assert.rejects(createThreadAgent({ apiKey: "", now }).turn(request), {
-    code: "AGENT_NOT_CONFIGURED",
-  });
+  await assert.rejects(
+    createThreadAgent({ ...testAccess, apiKey: "", now }).turn(request),
+    {
+      code: "AGENT_NOT_CONFIGURED",
+    },
+  );
 });
 
 test("a known meeting point may be quoted by the name students use for it", async (t) => {
@@ -636,7 +644,12 @@ test("repair one rejected Friday reply once and keep the validated sibling", asy
         toolCall("repair_reply", replacement, "repair"),
       ],
     });
-    const agent = createThreadAgent({ apiKey: "test", modelImpl: model, now });
+    const agent = createThreadAgent({
+      ...testAccess,
+      apiKey: "test",
+      modelImpl: model,
+      now,
+    });
     const turn = await agent.turn(bike);
     assert.deepEqual(
       turn.options.map(({ label }) => label),

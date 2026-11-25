@@ -29,7 +29,6 @@ const cases: PolicyCase[] = [
     activeTools: ["ask_user"],
     choice: "required",
     thinking: "disabled",
-    effort: "low",
   },
   {
     name: "search the catalog after the budget is confirmed",
@@ -38,7 +37,6 @@ const cases: PolicyCase[] = [
     activeTools: ["inventory_search"],
     choice: "required",
     thinking: "disabled",
-    effort: "low",
   },
   {
     name: "curate the catalog after its search",
@@ -46,7 +44,6 @@ const cases: PolicyCase[] = [
     activeTools: ["show_takeover_listings"],
     choice: "required",
     thinking: "disabled",
-    effort: "low",
   },
   {
     name: "look up explicit external sources after curating the catalog",
@@ -59,7 +56,6 @@ const cases: PolicyCase[] = [
     activeTools: ["web_search"],
     choice: "required",
     thinking: "disabled",
-    effort: "low",
   },
   {
     name: "exclude web search when it is unavailable",
@@ -75,7 +71,6 @@ const cases: PolicyCase[] = [
     activeTools: ["ask_user", "get_negotiation", "update_negotiation"],
     choice: "required",
     thinking: "disabled",
-    effort: "low",
   },
   {
     name: "close a prepared or discarded proposal without tools",
@@ -132,7 +127,6 @@ const cases: PolicyCase[] = [
     activeTools: ["web_search"],
     choice: "required",
     thinking: "disabled",
-    effort: "low",
   },
   {
     name: "ask for a price when the search has fewer than two sources",
@@ -141,7 +135,6 @@ const cases: PolicyCase[] = [
     activeTools: ["ask_user"],
     choice: "required",
     thinking: "disabled",
-    effort: "low",
   },
   {
     name: "ask for the price decision after suggesting an amount",
@@ -150,7 +143,6 @@ const cases: PolicyCase[] = [
     activeTools: ["ask_user"],
     choice: "required",
     thinking: "disabled",
-    effort: "low",
   },
   {
     name: "ask for a price on the last ordinary step even without web search",
@@ -159,7 +151,6 @@ const cases: PolicyCase[] = [
     activeTools: ["ask_user"],
     choice: "required",
     thinking: "disabled",
-    effort: "low",
   },
 ];
 

@@ -5,6 +5,7 @@ import { buyerWorkflowTools } from "./agent-skills.ts";
 import type { AgentToolState } from "./agent-tools.ts";
 import { isSkippedAnswer } from "./conversation.ts";
 import { marketplaceDomains } from "./marketplace-policy.ts";
+import { deepseekThinkingOptions } from "./model-provider.ts";
 
 const MAX_STEPS = 8;
 export const MAX_TOOL_CALLS = 12;
@@ -86,12 +87,7 @@ type StepContext = RunMode & {
 type StepPolicy = {
   activeTools: string[];
   toolChoice: "none" | "auto" | "required";
-  providerOptions?: {
-    deepseek: {
-      thinking: { type: "enabled" | "disabled" };
-      reasoningEffort?: "low";
-    };
-  };
+  providerOptions?: ReturnType<typeof deepseekThinkingOptions>;
 };
 
 function requiredSearchTool(
@@ -195,7 +191,7 @@ export function getStepPolicy(
     return {
       activeTools: canAsk ? ["ask_user", "finish_search"] : ["finish_search"],
       toolChoice: "required",
-      providerOptions: { deepseek: { thinking: { type: "disabled" } } },
+      providerOptions: deepseekThinkingOptions(false),
     };
   }
 
@@ -222,11 +218,6 @@ export function getStepPolicy(
             state.allowWebSearch,
           ),
     toolChoice: requiresTool ? "required" : "auto",
-    providerOptions: {
-      deepseek: {
-        thinking: { type: requiresTool ? "disabled" : "enabled" },
-        reasoningEffort: "low",
-      },
-    },
+    providerOptions: deepseekThinkingOptions(!requiresTool),
   };
 }

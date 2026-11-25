@@ -276,6 +276,7 @@ test("HTTP serves, seeds, and updates SQLite demos without an AI key, preserving
   const store = createListingsStore(":memory:");
   const server = createAgentServer(
     createAgentService({
+      provider: "deepseek",
       apiKey: "",
       baseUrl: "https://api.deepseek.com",
       model: "deepseek-flash",

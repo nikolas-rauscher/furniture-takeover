@@ -1,4 +1,5 @@
 import { createAgentRuntime as createRuntime } from "../runtime.ts";
+import { testAccess } from "../testing/runtime.ts";
 import {
   call,
   toolStep,
@@ -499,6 +500,7 @@ test("an unanswered handover question never causes automatic description changes
     });
     const events = await eventsFor(
       createRuntime({
+        ...testAccess,
         apiKey: "test",
         modelImpl: model,
         listingTextTranslator: async () => {

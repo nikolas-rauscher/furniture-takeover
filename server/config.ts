@@ -1,6 +1,12 @@
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import { isIP } from "node:net";
+import {
+  modelProviders,
+  providerBaseUrls,
+  readOpenAIReasoningEffort,
+  type ModelAccess,
+} from "./model-provider.ts";
 import { studyConfigSchema, type StudyConfig } from "../shared/study.ts";
 
 export const DEFAULT_AGENT_CONCURRENCY = 16;
@@ -56,12 +62,49 @@ export function readStudyConfig(env: Environment): StudyConfig {
   return parsed.data;
 }
 
+/** The code in the team's demo link. Without one, the demo login is closed. */
+function readDemoLoginCode(env: Environment): string | undefined {
+  const code = env.DEMO_LOGIN_CODE?.trim();
+  if (!code) return undefined;
+  if (!/^[a-z0-9-]{16,64}$/.test(code))
+    throw new Error(
+      "DEMO_LOGIN_CODE must be 16 to 64 lowercase letters, numbers or dashes.",
+    );
+  return code;
+}
+
+/** The provider the server's own key uses. OpenAI runs only with its key and model set. */
+function readModelAccess(env: Environment, deepseek: ModelAccess): ModelAccess {
+  const provider = env.AI_PROVIDER?.trim() || "deepseek";
+  if (provider === "deepseek") return deepseek;
+  if (provider !== "openai")
+    throw new Error(
+      `AI_PROVIDER must be one of: ${modelProviders.join(", ")}.`,
+    );
+  const apiKey = env.OPENAI_API_KEY?.trim();
+  const model = env.OPENAI_MODEL?.trim();
+  if (!apiKey || !model)
+    throw new Error(
+      "Set OPENAI_API_KEY and OPENAI_MODEL when AI_PROVIDER is openai.",
+    );
+  const effort = env.OPENAI_REASONING_EFFORT?.trim();
+  return {
+    provider,
+    apiKey,
+    baseUrl: providerBaseUrls.openai,
+    model,
+    ...(effort !== undefined && {
+      openaiReasoningEffort: readOpenAIReasoningEffort(model, effort),
+    }),
+  };
+}
+
 export function readServerConfig(env: Environment = process.env) {
   const port = readPort(env.API_PORT, 8787, "API_PORT");
   const host = readHost(env.API_HOST);
   const appPort = readPort(env.APP_PORT, 5173, "APP_PORT");
   const previewPort = readPort(env.PREVIEW_PORT, 4173, "PREVIEW_PORT");
-  const baseUrl = env.DEEPSEEK_BASE_URL?.trim() || "https://api.deepseek.com";
+  const baseUrl = env.DEEPSEEK_BASE_URL?.trim() || providerBaseUrls.deepseek;
   const endpoint = new URL(baseUrl);
   if (
     endpoint.protocol !== "https:" &&
@@ -100,6 +143,12 @@ export function readServerConfig(env: Environment = process.env) {
       );
     allowedOrigins.push(url.origin);
   }
+  const deepseek: ModelAccess = {
+    provider: "deepseek",
+    apiKey: env.DEEPSEEK_API_KEY?.trim() ?? "",
+    baseUrl,
+    model: env.DEEPSEEK_MODEL?.trim() || "deepseek-flash",
+  };
   return {
     port,
     host,
@@ -108,9 +157,8 @@ export function readServerConfig(env: Environment = process.env) {
       DEFAULT_AGENT_CONCURRENCY,
       "API_AGENT_CONCURRENCY",
     ),
-    baseUrl,
-    apiKey: env.DEEPSEEK_API_KEY?.trim() ?? "",
-    model: env.DEEPSEEK_MODEL?.trim() || "deepseek-flash",
+    modelAccess: readModelAccess(env, deepseek),
+    deepseek,
     braveApiKey: env.BRAVE_SEARCH_API_KEY?.trim() ?? "",
     databasePath: resolve(
       projectRoot,
@@ -118,5 +166,6 @@ export function readServerConfig(env: Environment = process.env) {
     ),
     allowedOrigins: [...new Set(allowedOrigins)],
     study: readStudyConfig(env),
+    demoLoginCode: readDemoLoginCode(env),
   };
 }

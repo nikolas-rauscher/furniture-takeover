@@ -386,3 +386,38 @@ test("inventory photo links use the public URL, not the internal address", async
     "https://app.example/supabase/storage/v1/object/public/listing-photos/owner/card.jpg",
   ]);
 });
+
+test("unlimited accounts are never counted, and everyone else still is", async (t) => {
+  const original = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = original;
+  });
+  const charged: unknown[] = [];
+  globalThis.fetch = async (_url, init) => {
+    charged.push(JSON.parse(String(init?.body)).p_user);
+    return Response.json({
+      allowed: true,
+      limit: 50,
+      remaining: 49,
+      resetAt: "2026-12-01T00:00:00Z",
+    });
+  };
+  const cloud = createCloud(
+    {
+      SUPABASE_URL: "https://example.supabase.co",
+      SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
+      SUPABASE_SECRET_KEY: secret,
+    },
+    { unlimitedAccounts: new Set(["demo"]) },
+  )!;
+  for (const allowance of [
+    await cloud.quota("demo", true),
+    await cloud.spendReplyReading("demo"),
+  ]) {
+    assert.equal(allowance.allowed, true);
+    assert.equal(allowance.remaining, allowance.limit);
+    assert.ok(Date.parse(allowance.resetAt) > Date.now());
+  }
+  assert.equal((await cloud.quota("alice", true)).remaining, 49);
+  assert.deepEqual(charged, ["alice"]);
+});

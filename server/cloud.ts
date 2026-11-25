@@ -18,6 +18,20 @@ function quotaUnavailable(options?: ErrorOptions): AgentError {
   );
 }
 
+/** Shown to unlimited accounts in place of a daily allowance. */
+const UNLIMITED_REQUESTS = 1_000_000;
+
+function unlimitedAllowance(): Allowance {
+  const tomorrow = new Date();
+  tomorrow.setUTCHours(24, 0, 0, 0);
+  return {
+    allowed: true,
+    limit: UNLIMITED_REQUESTS,
+    remaining: UNLIMITED_REQUESTS,
+    resetAt: tomorrow.toISOString(),
+  };
+}
+
 /** Loopback, private-network and Tailscale addresses; never a public host. */
 function isPrivateHost(hostname: string): boolean {
   if (hostname === "localhost" || hostname === "[::1]") return true;
@@ -59,7 +73,14 @@ function supabaseUrl(value: string, name: string): string {
  */
 export function createCloud(
   env: NodeJS.ProcessEnv = process.env,
-  { localTesting = false }: { localTesting?: boolean } = {},
+  {
+    localTesting = false,
+    unlimitedAccounts = new Set(),
+  }: {
+    localTesting?: boolean;
+    /** Accounts whose AI use is neither counted nor limited per day. */
+    unlimitedAccounts?: ReadonlySet<string>;
+  } = {},
 ) {
   const configured = env.SUPABASE_URL?.trim(),
     key = env.SUPABASE_PUBLISHABLE_KEY?.trim();
@@ -128,6 +149,7 @@ export function createCloud(
     userId: string,
     spend: boolean,
   ): Promise<Allowance> => {
+    if (unlimitedAccounts.has(userId)) return unlimitedAllowance();
     const testing = userId === testUserId && Date.now() < testUntil;
     const response = await fetch(`${url}/rest/v1/rpc/ai_quota_spend`, {
       method: "POST",

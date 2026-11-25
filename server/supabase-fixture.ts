@@ -27,6 +27,7 @@ export async function applyMigrations(db: PGlite, migrations: string[]) {
 export const adminMigration = "202611190004_admin.sql";
 export const reviewMigration = "202611200001_review_fixes.sql";
 export const dealRulesMigration = "202611200002_deal_rules.sql";
+export const demoAccountsMigration = "202611250001_demo_accounts.sql";
 export const pickupMigration = "202611190003_pickup.sql";
 
 /** A database through the original deals migration, with an existing listing and conversation. */

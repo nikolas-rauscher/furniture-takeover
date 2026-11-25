@@ -31,6 +31,14 @@ services:
         sync: false
       - key: DEEPSEEK_API_KEY
         sync: false
+      - key: AI_PROVIDER
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        sync: false
+      - key: DEMO_LOGIN_CODE
+        sync: false
       - key: BRAVE_SEARCH_API_KEY
         sync: false
       - key: STUDY_CONTACT

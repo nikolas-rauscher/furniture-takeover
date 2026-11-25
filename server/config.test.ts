@@ -16,8 +16,8 @@ test("fresh setup works without credentials and uses a project-relative database
   const config = readServerConfig({});
   assert.equal(config.port, 8787);
   assert.equal(config.maxConcurrent, 16);
-  assert.equal(config.apiKey, "");
-  assert.equal(config.model, "deepseek-flash");
+  assert.equal(config.modelAccess.apiKey, "");
+  assert.equal(config.modelAccess.model, "deepseek-flash");
   assert.ok(isAbsolute(config.databasePath));
   assert.ok(config.allowedOrigins.includes("http://localhost:4173"));
   assert.ok(!config.allowedOrigins.includes("https://untrusted.example"));
@@ -67,6 +67,7 @@ test("configuration rejects invalid ports and unsafe endpoint/origin values", ()
 test("HTTP accepts the configured teammate origin and rejects another origin", async () => {
   const server = createAgentServer(
     createAgentService({
+      provider: "deepseek",
       apiKey: "",
       model: "test",
       baseUrl: "https://api.deepseek.com",
@@ -168,4 +169,47 @@ test("a half-set or invalid study configuration stops the server", () => {
       }),
     /email address/,
   );
+});
+
+test("OpenAI needs its key and model, and keeps DeepSeek ready for students' own keys", () => {
+  const openai = {
+    AI_PROVIDER: "openai",
+    OPENAI_API_KEY: " key ",
+    OPENAI_MODEL: "gpt-6-luna",
+    DEEPSEEK_API_KEY: "deepseek-key",
+  };
+  const config = readServerConfig(openai);
+  assert.deepEqual(config.modelAccess, {
+    provider: "openai",
+    apiKey: "key",
+    baseUrl: "https://api.openai.com/v1",
+    model: "gpt-6-luna",
+  });
+  assert.equal(config.deepseek.apiKey, "deepseek-key");
+  for (const missing of ["OPENAI_API_KEY", "OPENAI_MODEL"])
+    assert.throws(
+      () => readServerConfig({ ...openai, [missing]: "" }),
+      /OPENAI_API_KEY and OPENAI_MODEL/,
+    );
+  assert.throws(
+    () => readServerConfig({ AI_PROVIDER: "other" }),
+    /AI_PROVIDER/,
+  );
+});
+
+test("the demo login is closed without a long code", () => {
+  assert.equal(readServerConfig({}).demoLoginCode, undefined);
+  assert.equal(
+    readServerConfig({ DEMO_LOGIN_CODE: "team-demo-code-2026" }).demoLoginCode,
+    "team-demo-code-2026",
+  );
+  for (const code of [
+    "short",
+    "Upper-Case-Code-2026",
+    "with spaces in the code",
+  ])
+    assert.throws(
+      () => readServerConfig({ DEMO_LOGIN_CODE: code }),
+      /DEMO_LOGIN_CODE/,
+    );
 });

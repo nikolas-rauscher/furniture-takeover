@@ -3,6 +3,7 @@ import type { AccountKeyStore } from "../account-keys.ts";
 import type { AgentRuntime } from "../runtime.ts";
 import type { AgentService } from "../service.ts";
 import type { CloudAccess } from "../cloud.ts";
+import type { DemoLogin } from "../demo-login.ts";
 import type { ListingsStore } from "../database.ts";
 import type { MessagesStore } from "../messages.ts";
 import type { StudyStore } from "../study-store.ts";
@@ -20,6 +21,7 @@ export type StudyAccess = {
 export type ServerOptions = {
   cloud?: CloudAccess;
   accountKeys?: AccountKeyStore;
+  demoLogin?: DemoLogin;
   forAccount?: (
     owner: string,
     authorization: string,
